@@ -4,13 +4,13 @@
     <TargetFramework>netstandard1.3</TargetFramework>
     <PackageId>Gear.Components</PackageId>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <Authors>Daniel Henry</Authors>
+    <Authors>Epiforge</Authors>
     <Company>Epiforge</Company>
     <Product>Components Gear</Product>
     <Description>Basic component logic for Gear libraries.</Description>
-    <PackageLicenseUrl>https://raw.githubusercontent.com/BigBadBleuCheese/Gear/master/LICENSE</PackageLicenseUrl>
-    <PackageProjectUrl>https://github.com/BigBadBleuCheese/Gear</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/BigBadBleuCheese/Gear</RepositoryUrl>
+    <PackageLicenseUrl>https://raw.githubusercontent.com/Epiforge/Gear/master/LICENSE</PackageLicenseUrl>
+    <PackageProjectUrl>https://github.com/Epiforge/Gear</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/Epiforge/Gear</RepositoryUrl>
     <RepositoryType>GitHub</RepositoryType>
   </PropertyGroup>
 
