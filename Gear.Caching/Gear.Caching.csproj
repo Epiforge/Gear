@@ -10,6 +10,7 @@
     <RepositoryUrl>https://github.com/Epiforge/Gear</RepositoryUrl>
     <RepositoryType>GitHub</RepositoryType>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <Product>Caching Gear</Product>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
