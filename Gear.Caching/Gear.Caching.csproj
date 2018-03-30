@@ -11,6 +11,9 @@
     <RepositoryType>GitHub</RepositoryType>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <Product>Caching Gear</Product>
+    <Version>1.0.1</Version>
+    <AssemblyVersion>1.0.1</AssemblyVersion>
+    <FileVersion>1.0.1</FileVersion>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
@@ -22,7 +25,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Gear.Components" Version="1.0.0" />
+    <PackageReference Include="Gear.Components" Version="1.0.1" />
   </ItemGroup>
 
 </Project>
