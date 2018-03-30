@@ -138,7 +138,7 @@ namespace Gear.Components
                 DisposeAsync(false).Wait();
         }
 
-        bool disposed;
+		bool isDisposed;
         AsyncLock disposalAccess = new AsyncLock();
 
         /// <summary>
@@ -149,10 +149,10 @@ namespace Gear.Components
             if (!IsDisposable)
                 throw new InvalidOperationException();
             using (disposalAccess.Lock())
-                if (!disposed)
+                if (!isDisposed)
                 {
                     Dispose(true);
-                    disposed = true;
+                    isDisposed = true;
                     GC.SuppressFinalize(this);
                 }
         }
@@ -169,16 +169,15 @@ namespace Gear.Components
         /// Performs application-defined tasks associated with freeing, releasing, or resetting unmanaged resources
         /// </summary>
         /// <param name="cancellationToken">A token that can be used to attempt to cancel disposal</param>
-        /// <returns>A task that will complete when disposal has finished</returns>
         public async Task DisposeAsync(CancellationToken cancellationToken = default)
         {
             if (!IsAsyncDisposable)
                 throw new InvalidOperationException();
             using (await disposalAccess.LockAsync().ConfigureAwait(false))
-                if (!disposed)
+                if (!isDisposed)
                 {
                     await DisposeAsync(true, cancellationToken).ConfigureAwait(false);
-                    disposed = true;
+                    isDisposed = true;
                     GC.SuppressFinalize(this);
                 }
         }
@@ -188,11 +187,21 @@ namespace Gear.Components
         /// </summary>
         /// <param name="disposing"><see cref="false"/> if invoked by the finalizer because the object is being garbage collected; otherwise, <see cref="true"/></param>
         /// <param name="cancellationToken">A token that can be used to attempt to cancel disposal</param>
-        /// <returns>A task that will complete when disposal has finished</returns>
-        protected virtual Task DisposeAsync(bool disposing, CancellationToken cancellationToken = default) => Task.CompletedTask;
+		protected virtual Task DisposeAsync(bool disposing, CancellationToken cancellationToken = default) => Task.CompletedTask;
 
-        protected virtual bool IsDisposable => true;
-
+        /// <summary>
+        /// Gets whether this class supports asynchronous disposal
+		/// </summary>
         protected virtual bool IsAsyncDisposable => false;
+
+        /// <summary>
+        /// Gets whether this class supports synchronous disposal
+        /// </summary>
+        protected virtual bool IsDisposable => true;
+        
+        /// <summary>
+        /// Gets whether this object has been disposed
+        /// </summary>
+		protected bool IsDisposed => isDisposed;
     }
 }
