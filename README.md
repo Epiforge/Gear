@@ -9,7 +9,7 @@ Supports `netstandard1.3`.
 
 # Getting Started
 
-Insall the NuGet packages for the functionality you need.
+Install the NuGet packages for the functionality you need.
 
 | Package ID | Description
 | - | -
