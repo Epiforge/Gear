@@ -23,14 +23,12 @@ namespace Gear.Components
                 throw new ArgumentNullException(nameof(disposable));
             if (action == null)
                 throw new ArgumentNullException(nameof(action));
-            cancellationToken.ThrowIfCancellationRequested();
             try
             {
                 action();
             }
             finally
             {
-                cancellationToken.ThrowIfCancellationRequested();
                 if (continueFromDisposalOnCapturedContext)
                     await disposable.DisposeAsync(cancellationToken);
                 else
@@ -51,14 +49,12 @@ namespace Gear.Components
                 throw new ArgumentNullException(nameof(disposable));
             if (cancelableAction == null)
                 throw new ArgumentNullException(nameof(cancelableAction));
-            cancellationToken.ThrowIfCancellationRequested();
             try
             {
                 cancelableAction(cancellationToken);
             }
             finally
             {
-                cancellationToken.ThrowIfCancellationRequested();
                 if (continueFromDisposalOnCapturedContext)
                     await disposable.DisposeAsync(cancellationToken);
                 else
@@ -80,7 +76,6 @@ namespace Gear.Components
                 throw new ArgumentNullException(nameof(disposable));
             if (asyncAction == null)
                 throw new ArgumentNullException(nameof(asyncAction));
-            cancellationToken.ThrowIfCancellationRequested();
             try
             {
                 if (continueFromActionOnCapturedContext)
@@ -90,7 +85,6 @@ namespace Gear.Components
             }
             finally
             {
-                cancellationToken.ThrowIfCancellationRequested();
                 if (continueFromDisposalOnCapturedContext)
                     await disposable.DisposeAsync(cancellationToken);
                 else
@@ -112,7 +106,6 @@ namespace Gear.Components
                 throw new ArgumentNullException(nameof(disposable));
             if (cancelableAsyncAction == null)
                 throw new ArgumentNullException(nameof(cancelableAsyncAction));
-            cancellationToken.ThrowIfCancellationRequested();
             try
             {
                 if (continueFromActionOnCapturedContext)
@@ -122,7 +115,6 @@ namespace Gear.Components
             }
             finally
             {
-                cancellationToken.ThrowIfCancellationRequested();
                 if (continueFromDisposalOnCapturedContext)
                     await disposable.DisposeAsync(cancellationToken);
                 else
