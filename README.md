@@ -13,7 +13,7 @@ Insall the NuGet packages for the functionality you need.
 
 | Package ID | Description
 | - | -
-| [Gear.Caching](https://www.nuget.org/packages/Gear.Caching/) | Caching with synchronous and asynchronous APIs, including expiration, refreshing, cancellation, etc.
+| [Gear.Caching](https://www.nuget.org/packages/Gear.Caching/) | Caching with synchronous and asynchronous APIs, including expiration and refreshing
 | [Gear.Components](https://www.nuget.org/packages/Gear.Components/) | Disposal with synchronous and asynchronous APIs; property change notification helpers
 
 # Acknowledgements
