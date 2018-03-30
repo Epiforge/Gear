@@ -15,12 +15,11 @@ namespace Gear.Components
         /// </summary>
         /// <param name="disposable">The object to be disposed</param>
         /// <param name="action">The action to execute</param>
-        /// <param name="continueFromDisposalOnCapturedContext"><see cref="true"/> to attempt to marshal the continuation from disposal back to the original context captured; otherwise, <see cref="false"/></param>
         /// <param name="cancellationToken">The cancellation token used to cancel the disposal</param>
-        public static async Task UsingAsync(Disposable disposable, Action action, bool continueFromDisposalOnCapturedContext = true, CancellationToken cancellationToken = default)
+		/// <exception cref="ArgumentNullException"><paramref name="action"/> is <see cref="null"/></exception>
+		/// <exception cref="OperationCanceledException">disposal was interrupted by a cancellation request</exception>
+        public static async Task UsingAsync(Disposable disposable, Action action, CancellationToken cancellationToken = default)
         {
-            if (disposable == null)
-                throw new ArgumentNullException(nameof(disposable));
             if (action == null)
                 throw new ArgumentNullException(nameof(action));
             try
@@ -29,36 +28,8 @@ namespace Gear.Components
             }
             finally
             {
-                if (continueFromDisposalOnCapturedContext)
-                    await disposable.DisposeAsync(cancellationToken);
-                else
-                    await disposable.DisposeAsync(cancellationToken).ConfigureAwait(false);
-            }
-        }
-
-        /// <summary>
-        /// Executes an action and then asynchronously disposes of an object
-        /// </summary>
-        /// <param name="disposable">The object to be disposed</param>
-        /// <param name="cancelableAction">The action to execute</param>
-        /// <param name="continueFromDisposalOnCapturedContext"><see cref="true"/> to attempt to marshal the continuation from disposal back to the original context captured; otherwise, <see cref="false"/></param>
-        /// <param name="cancellationToken">The cancellation token used to cancel the disposal</param>
-        public static async Task UsingAsync(Disposable disposable, Action<CancellationToken> cancelableAction, bool continueFromDisposalOnCapturedContext = true, CancellationToken cancellationToken = default)
-        {
-            if (disposable == null)
-                throw new ArgumentNullException(nameof(disposable));
-            if (cancelableAction == null)
-                throw new ArgumentNullException(nameof(cancelableAction));
-            try
-            {
-                cancelableAction(cancellationToken);
-            }
-            finally
-            {
-                if (continueFromDisposalOnCapturedContext)
-                    await disposable.DisposeAsync(cancellationToken);
-                else
-                    await disposable.DisposeAsync(cancellationToken).ConfigureAwait(false);
+				if (disposable != null)
+					await disposable.DisposeAsync(cancellationToken).ConfigureAwait(false);
             }
         }
 
@@ -67,58 +38,21 @@ namespace Gear.Components
         /// </summary>
         /// <param name="disposable">The object to be disposed</param>
         /// <param name="asyncAction">The action to execute</param>
-        /// <param name="continueFromActionOnCapturedContext"><see cref="true"/> to attempt to marshal the continuation from executing the action back to the original context captured; otherwise, <see cref="false"/></param>
-        /// <param name="continueFromDisposalOnCapturedContext"><see cref="true"/> to attempt to marshal the continuation from disposal back to the original context captured; otherwise, <see cref="false"/></param>
-        /// <param name="cancellationToken">The cancellation token used to cancel the disposal</param>
-        public static async Task UsingAsync(Disposable disposable, Func<Task> asyncAction, bool continueFromActionOnCapturedContext = true, bool continueFromDisposalOnCapturedContext = true, CancellationToken cancellationToken = default)
+		/// <param name="cancellationToken">The cancellation token used to cancel the disposal</param>
+		/// <exception cref="ArgumentNullException"><paramref name="asyncAction"/> is <see cref="null"/></exception>
+        /// <exception cref="OperationCanceledException">disposal was interrupted by a cancellation request</exception>
+        public static async Task UsingAsync(Disposable disposable, Func<Task> asyncAction, CancellationToken cancellationToken = default)
         {
-            if (disposable == null)
-                throw new ArgumentNullException(nameof(disposable));
             if (asyncAction == null)
                 throw new ArgumentNullException(nameof(asyncAction));
             try
             {
-                if (continueFromActionOnCapturedContext)
-                    await asyncAction();
-                else
-                    await asyncAction().ConfigureAwait(false);
+                await asyncAction().ConfigureAwait(false);
             }
             finally
             {
-                if (continueFromDisposalOnCapturedContext)
-                    await disposable.DisposeAsync(cancellationToken);
-                else
-                    await disposable.DisposeAsync(cancellationToken).ConfigureAwait(false);
-            }
-        }
-
-        /// <summary>
-        /// Executes an action and then asynchronously disposes of an object
-        /// </summary>
-        /// <param name="disposable">The object to be disposed</param>
-        /// <param name="cancelableAsyncAction">The action to execute</param>
-        /// <param name="continueFromActionOnCapturedContext"><see cref="true"/> to attempt to marshal the continuation from executing the action back to the original context captured; otherwise, <see cref="false"/></param>
-        /// <param name="continueFromDisposalOnCapturedContext"><see cref="true"/> to attempt to marshal the continuation from disposal back to the original context captured; otherwise, <see cref="false"/></param>
-        /// <param name="cancellationToken">The cancellation token used to cancel the disposal</param>
-        public static async Task UsingAsync(Disposable disposable, Func<CancellationToken, Task> cancelableAsyncAction, bool continueFromActionOnCapturedContext = true, bool continueFromDisposalOnCapturedContext = true, CancellationToken cancellationToken = default)
-        {
-            if (disposable == null)
-                throw new ArgumentNullException(nameof(disposable));
-            if (cancelableAsyncAction == null)
-                throw new ArgumentNullException(nameof(cancelableAsyncAction));
-            try
-            {
-                if (continueFromActionOnCapturedContext)
-                    await cancelableAsyncAction(cancellationToken);
-                else
-                    await cancelableAsyncAction(cancellationToken).ConfigureAwait(false);
-            }
-            finally
-            {
-                if (continueFromDisposalOnCapturedContext)
-                    await disposable.DisposeAsync(cancellationToken);
-                else
-                    await disposable.DisposeAsync(cancellationToken).ConfigureAwait(false);
+				if (disposable != null)
+					await disposable.DisposeAsync(cancellationToken).ConfigureAwait(false);
             }
         }
 
@@ -136,6 +70,7 @@ namespace Gear.Components
         /// <summary>
         /// Performs application-defined tasks associated with freeing, releasing, or resetting unmanaged resources
         /// </summary>
+		/// <exception cref="InvalidOperationException">synchronous disposal is not supported</exception>
         public void Dispose()
         {
             if (!IsDisposable)
@@ -161,6 +96,8 @@ namespace Gear.Components
         /// Performs application-defined tasks associated with freeing, releasing, or resetting unmanaged resources
         /// </summary>
         /// <param name="cancellationToken">A token that can be used to attempt to cancel disposal</param>
+		/// <exception cref="InvalidOperationException">asyncronous disposal is not supported</exception>
+        /// <exception cref="OperationCanceledException">disposal was interrupted by a cancellation request</exception>
         public async Task DisposeAsync(CancellationToken cancellationToken = default)
         {
             if (!IsAsyncDisposable)
