@@ -1,3 +1,5 @@
+![Gear Logo](Gear.jpg)
+
 <h1>Gear</h1>
 
 General utilities to help with stuff in .NET Development, from Epiforge.
@@ -13,8 +15,8 @@ Install the NuGet packages for the functionality you need.
 
 | Package ID | Description
 | - | -
-| [Gear.Caching](https://www.nuget.org/packages/Gear.Caching/) | Caching with synchronous and asynchronous APIs, including expiration and refreshing
-| [Gear.Components](https://www.nuget.org/packages/Gear.Components/) | Disposal with synchronous and asynchronous APIs; property change notification helpers
+| [Gear.Caching](https://www.nuget.org/packages/Gear.Caching/) | Caching, including expiration and refreshing
+| [Gear.Components](https://www.nuget.org/packages/Gear.Components/) | Disposal; property change notification helpers
 
 # Acknowledgements
 
