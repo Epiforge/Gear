@@ -190,6 +190,16 @@ namespace Gear.Components
 		protected virtual Task DisposeAsync(bool disposing, CancellationToken cancellationToken = default) => Task.CompletedTask;
 
         /// <summary>
+        /// Ensure the object has not been disposed
+        /// </summary>
+		/// <exception cref="ObjectDisposedException">The object has already been disposed</exception>
+		protected void ThrowIfDisposed()
+		{         
+			if (isDisposed)
+				throw new ObjectDisposedException(GetType().Name);
+		}
+
+        /// <summary>
         /// Gets whether this class supports asynchronous disposal
 		/// </summary>
         protected virtual bool IsAsyncDisposable => false;
