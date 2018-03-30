@@ -13,10 +13,10 @@ Supports `netstandard1.3`.
 
 Install the NuGet packages for the functionality you need.
 
-| Package ID | Description
+| Package ID | Description | Documentation
 | - | -
 | [Gear.Caching](https://www.nuget.org/packages/Gear.Caching/) | Caching, including expiration and refreshing
-| [Gear.Components](https://www.nuget.org/packages/Gear.Components/) | Disposal; property change notification helpers
+| [Gear.Components](https://www.nuget.org/packages/Gear.Components/) | Disposal; property change notification helpers | [Wiki](https://github.com/Epiforge/Gear/wiki/Components-Gear)
 
 # Acknowledgements
 
