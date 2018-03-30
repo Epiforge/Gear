@@ -11,7 +11,7 @@ Supports `netstandard1.3`.
 
 Insall the NuGet packages for the functionality you need.
 
-| NuGet Package ID | Description
+| Package ID | Description
 | - | -
 | [Gear.Caching](https://www.nuget.org/packages/Gear.Caching/) | Caching with synchronous and asynchronous APIs, including expiration, refreshing, cancellation, etc.
 | [Gear.Components](https://www.nuget.org/packages/Gear.Components/) | Disposal with synchronous and asynchronous APIs; property change notification helpers
