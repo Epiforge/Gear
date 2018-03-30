@@ -5,7 +5,15 @@ VisualStudioVersion = 15.0.27428.2015
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Gear.Components", "Gear.Components\Gear.Components.csproj", "{036C79D7-976B-43D7-8D11-F73BED516FAD}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gear.Caching", "Gear.Caching\Gear.Caching.csproj", "{C9E360CB-359E-4EFB-A560-4B50B208B737}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Gear.Caching", "Gear.Caching\Gear.Caching.csproj", "{C9E360CB-359E-4EFB-A560-4B50B208B737}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Documentation", "Documentation", "{B479DA3D-21AF-4E09-92C0-6330EAA9B008}"
+	ProjectSection(SolutionItems) = preProject
+		Gear.jpg = Gear.jpg
+		LICENSE = LICENSE
+		NuGet.jpg = NuGet.jpg
+		README.md = README.md
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
