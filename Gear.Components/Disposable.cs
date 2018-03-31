@@ -16,7 +16,7 @@ namespace Gear.Components
         /// <param name="disposable">The object to be disposed</param>
         /// <param name="action">The action to execute</param>
         /// <param name="cancellationToken">The cancellation token used to cancel the disposal</param>
-		/// <exception cref="ArgumentNullException"><paramref name="action"/> is <see cref="null"/></exception>
+		/// <exception cref="ArgumentNullException"><paramref name="action"/> is null</exception>
 		/// <exception cref="OperationCanceledException">disposal was interrupted by a cancellation request</exception>
         public static async Task UsingAsync(Disposable disposable, Action action, CancellationToken cancellationToken = default)
         {
@@ -39,7 +39,7 @@ namespace Gear.Components
         /// <param name="disposable">The object to be disposed</param>
         /// <param name="asyncAction">The action to execute</param>
 		/// <param name="cancellationToken">The cancellation token used to cancel the disposal</param>
-		/// <exception cref="ArgumentNullException"><paramref name="asyncAction"/> is <see cref="null"/></exception>
+		/// <exception cref="ArgumentNullException"><paramref name="asyncAction"/> is null</exception>
         /// <exception cref="OperationCanceledException">disposal was interrupted by a cancellation request</exception>
         public static async Task UsingAsync(Disposable disposable, Func<Task> asyncAction, CancellationToken cancellationToken = default)
         {
@@ -56,6 +56,9 @@ namespace Gear.Components
             }
         }
 
+        /// <summary>
+        /// Releases unmanaged resources and performs other cleanup operations before the class is reclaimed by garbage collection
+        /// </summary>
         ~Disposable()
         {
             if (IsDisposable)
@@ -87,7 +90,7 @@ namespace Gear.Components
         /// <summary>
         /// Frees, releases, or resets unmanaged resources
         /// </summary>
-        /// <param name="disposing"><see cref="false"/> if invoked by the finalizer because the object is being garbage collected; otherwise, <see cref="true"/></param>
+        /// <param name="disposing">false if invoked by the finalizer because the object is being garbage collected; otherwise, true</param>
         protected virtual void Dispose(bool disposing)
         {
         }
@@ -114,7 +117,7 @@ namespace Gear.Components
         /// <summary>
         /// Frees, releases, or resets unmanaged resources
         /// </summary>
-        /// <param name="disposing"><see cref="false"/> if invoked by the finalizer because the object is being garbage collected; otherwise, <see cref="true"/></param>
+        /// <param name="disposing">false if invoked by the finalizer because the object is being garbage collected; otherwise, true</param>
         /// <param name="cancellationToken">A token that can be used to attempt to cancel disposal</param>
 		protected virtual Task DisposeAsync(bool disposing, CancellationToken cancellationToken = default) => Task.CompletedTask;
 
