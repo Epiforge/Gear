@@ -421,20 +421,11 @@ namespace Gear.Caching
             return PerformAddOrUpdateAsync(key, ValueSource<TValue>.Create(cancelableAsyncValueFactory), expireIn, cancellationToken);
         }
 
-        static AsyncAutoResetEvent AutoResetEventFactory(TKey key)
-        {
-            return new AsyncAutoResetEvent();
-        }
+        static AsyncAutoResetEvent AutoResetEventFactory(TKey key) => new AsyncAutoResetEvent();
 
-        static AsyncAutoResetEvent AutoResetEventFactory(TKey key, AsyncAutoResetEvent previousAutoResetEvent)
-        {
-            return new AsyncAutoResetEvent();
-        }
+        static AsyncAutoResetEvent AutoResetEventFactory(TKey key, AsyncAutoResetEvent previousAutoResetEvent) => new AsyncAutoResetEvent();
 
-        static CancellationTokenSource CancellationTokenSourceFactory(TKey key)
-        {
-            return new CancellationTokenSource();
-        }
+        static CancellationTokenSource CancellationTokenSourceFactory(TKey key) => new CancellationTokenSource();
 
         static CancellationTokenSource CancellationTokenSourceFactory(TKey key, CancellationTokenSource previousCancellationTokenSource)
         {
@@ -663,10 +654,7 @@ namespace Gear.Caching
             return result.Value;
         }
 
-        AsyncReaderWriterLock GetAsyncReaderWriterLock(TKey key)
-        {
-            return retrievalAccess.GetOrAdd(key, ReaderWriterLockFactory);
-        }
+        AsyncReaderWriterLock GetAsyncReaderWriterLock(TKey key) => retrievalAccess.GetOrAdd(key, ReaderWriterLockFactory);
 
         /// <summary>
         /// Gets a value in the cache or adds it to the cache if it is not already present
@@ -3174,10 +3162,7 @@ namespace Gear.Caching
 			/// <summary>
 			/// Initializes a new instance of the <see cref="TryGetResult"/> class as a failed attempt
             /// </summary>
-            public TryGetResult()
-            {
-                WasFound = false;
-            }
+            public TryGetResult() => WasFound = false;
 
             /// <summary>
 			/// Initializes a new instance of the <see cref="TryGetResult"/> class as a successful attempt
@@ -3208,10 +3193,7 @@ namespace Gear.Caching
 			/// <summary>
 			/// Initializes a new instance of the <see cref="TryGetResult{T}"/> class as a failed attempt
             /// </summary>
-            public TryGetResult()
-            {
-                WasFound = false;
-            }
+            public TryGetResult() => WasFound = false;
 
             /// <summary>
 			/// Initializes a new instance of the <see cref="TryGetResult{T}"/> class as a successful attempt
@@ -3245,10 +3227,7 @@ namespace Gear.Caching
 			/// Initializes a new instance of the <see cref="KeyedEventArgs"/> class
             /// </summary>
             /// <param name="key">The key</param>
-            public KeyedEventArgs(TKey key)
-            {
-                Key = key;
-            }
+            public KeyedEventArgs(TKey key) => Key = key;
 
             /// <summary>
             /// Gets the key
@@ -3266,10 +3245,7 @@ namespace Gear.Caching
             /// </summary>
             /// <param name="key">The key</param>
             /// <param name="ex">The exception</param>
-            public KeyedExceptionEventArgs(TKey key, Exception ex) : base(key)
-            {
-                Exception = ex;
-            }
+            public KeyedExceptionEventArgs(TKey key, Exception ex) : base(key) => Exception = ex;
 
             /// <summary>
             /// Gets the exception
@@ -3287,10 +3263,7 @@ namespace Gear.Caching
             /// </summary>
             /// <param name="key">The key</param>
             /// <param name="value">The value</param>
-            public KeyValueEventArgs(TKey key, TValue value) : base(key)
-            {
-                Value = value;
-            }
+            public KeyValueEventArgs(TKey key, TValue value) : base(key) => Value = value;
 
             /// <summary>
             /// Gets the value
@@ -3309,10 +3282,7 @@ namespace Gear.Caching
             /// <param name="key">The key</param>
             /// <param name="value">The value</param>
             /// <param name="expired">When the value expired</param>
-            public ValueExpiredEventArgs(TKey key, TValue value, DateTime expired) : base(key, value)
-            {
-                Expired = expired;
-            }
+            public ValueExpiredEventArgs(TKey key, TValue value, DateTime expired) : base(key, value) => Expired = expired;
             
             /// <summary>
             /// Gets when the value expired
@@ -3368,46 +3338,31 @@ namespace Gear.Caching
 			/// Creates a <see cref="ValueSource{T}"/> using an existing value
             /// </summary>
             /// <param name="value">The value</param>
-            static public ValueSource<T> Create(T value)
-            {
-                return new Value<T>(value);
-            }
+            static public ValueSource<T> Create(T value) => new Value<T>(value);
 
             /// <summary>
 			/// Creates a <see cref="ValueSource{T}"/> using a value factory
             /// </summary>
             /// <param name="valueFactory">The value factory</param>
-            static public ValueSource<T> Create(Func<T> valueFactory)
-            {
-                return new ValueFactory<T>(valueFactory);
-            }
+            static public ValueSource<T> Create(Func<T> valueFactory) => new ValueFactory<T>(valueFactory);
 
             /// <summary>
 			/// Creates a <see cref="ValueSource{T}"/> using a cancellable value factory
             /// </summary>
             /// <param name="cancelableValueFactory">The cancellable value factory</param>
-            static public ValueSource<T> Create(Func<CancellationToken, T> cancelableValueFactory)
-            {
-                return new CancelableValueFactory<T>(cancelableValueFactory);
-            }
+            static public ValueSource<T> Create(Func<CancellationToken, T> cancelableValueFactory) => new CancelableValueFactory<T>(cancelableValueFactory);
 
             /// <summary>
 			/// Creates a <see cref="ValueSource{T}"/> using an asynchronous value factory
             /// </summary>
             /// <param name="asyncValueFactory">The asynchronous value factory</param>
-            static public ValueSource<T> Create(Func<Task<T>> asyncValueFactory)
-            {
-                return new AsyncValueFactory<T>(asyncValueFactory);
-            }
+            static public ValueSource<T> Create(Func<Task<T>> asyncValueFactory) => new AsyncValueFactory<T>(asyncValueFactory);
 
             /// <summary>
 			/// Creates a <see cref="ValueSource{T}"/> using a cancellable asynchronous value factory
             /// </summary>
 			/// <param name="cancelableAsyncValueFactory">The cancellable asynchronous value factory</param>
-            static public ValueSource<T> Create(Func<CancellationToken, Task<T>> cancelableAsyncValueFactory)
-            {
-                return new AsyncCancelableValueFactory<T>(cancelableAsyncValueFactory);
-            }
+            static public ValueSource<T> Create(Func<CancellationToken, Task<T>> cancelableAsyncValueFactory) => new AsyncCancelableValueFactory<T>(cancelableAsyncValueFactory);
 
             /// <summary>
             /// Gets the value
@@ -3450,10 +3405,7 @@ namespace Gear.Caching
 			/// Initializes a new instance of the <see cref="Value{T}"/> class
             /// </summary>
             /// <param name="value">The value</param>
-            public Value(T value)
-            {
-                this.value = value;
-            }
+            public Value(T value) => this.value = value;
 
             T value;
 
@@ -3463,10 +3415,7 @@ namespace Gear.Caching
             /// <param name="cancellationToken">A cancellation token to request cancelling the production of the value</param>
             /// <exception cref="InvalidOperationException">The value source is asynchronous</exception>
             /// <exception cref="NotImplementedException">The value source failed to provide a synchronous implementation</exception>
-            public override T GetValue(CancellationToken cancellationToken)
-            {
-                return value;
-            }
+            public override T GetValue(CancellationToken cancellationToken) => value;
         };
 
         /// <summary>
@@ -3478,10 +3427,7 @@ namespace Gear.Caching
 			/// Initializes a new instance of the <see cref="ValueSource{T}"/> class
             /// </summary>
             /// <param name="valueFactory">The value factory</param>
-            public ValueFactory(Func<T> valueFactory)
-            {
-                this.valueFactory = valueFactory;
-            }
+            public ValueFactory(Func<T> valueFactory) => this.valueFactory = valueFactory;
 
             Func<T> valueFactory;
 
@@ -3491,10 +3437,7 @@ namespace Gear.Caching
             /// <param name="cancellationToken">A cancellation token to request cancelling the production of the value</param>
             /// <exception cref="InvalidOperationException">The value source is asynchronous</exception>
             /// <exception cref="NotImplementedException">The value source failed to provide a synchronous implementation</exception>
-            public override T GetValue(CancellationToken cancellationToken)
-            {
-                return valueFactory();
-            }
+            public override T GetValue(CancellationToken cancellationToken) => valueFactory();
         };
 
         /// <summary>
@@ -3506,10 +3449,7 @@ namespace Gear.Caching
 			/// Initializes a new instance of the <see cref="CancelableValueFactory{T}"/> class
             /// </summary>
             /// <param name="cancelableValueFactory">The cancelable value factory</param>
-            public CancelableValueFactory(Func<CancellationToken, T> cancelableValueFactory)
-            {
-                this.cancelableValueFactory = cancelableValueFactory;
-            }
+            public CancelableValueFactory(Func<CancellationToken, T> cancelableValueFactory) => this.cancelableValueFactory = cancelableValueFactory;
 
             Func<CancellationToken, T> cancelableValueFactory;
 
@@ -3519,10 +3459,7 @@ namespace Gear.Caching
             /// <param name="cancellationToken">A cancellation token to request cancelling the production of the value</param>
             /// <exception cref="InvalidOperationException">The value source is asynchronous</exception>
             /// <exception cref="NotImplementedException">The value source failed to provide a synchronous implementation</exception>
-            public override T GetValue(CancellationToken cancellationToken)
-            {
-                return cancelableValueFactory(cancellationToken);
-            }
+            public override T GetValue(CancellationToken cancellationToken) => cancelableValueFactory(cancellationToken);
         };
 
         /// <summary>
@@ -3534,10 +3471,7 @@ namespace Gear.Caching
 			/// Initializes a new instance of the <see cref="AsyncValueFactory{T}"/> class
             /// </summary>
             /// <param name="asyncValueFactory">The asynchronous value factory</param>
-            public AsyncValueFactory(Func<Task<T>> asyncValueFactory)
-            {
-                this.asyncValueFactory = asyncValueFactory;
-            }
+            public AsyncValueFactory(Func<Task<T>> asyncValueFactory) => this.asyncValueFactory = asyncValueFactory;
 
             Func<Task<T>> asyncValueFactory;
 
@@ -3547,10 +3481,7 @@ namespace Gear.Caching
             /// <param name="cancellationToken">A cancellation token to request cancelling the production of the value</param>
             /// <exception cref="InvalidOperationException">The value source is synchronous</exception>
             /// <exception cref="NotImplementedException">The value source failed to provide an asynchronous implementation</exception>
-            public override Task<T> GetValueAsync(CancellationToken cancellationToken)
-            {
-                return asyncValueFactory();
-            }
+            public override Task<T> GetValueAsync(CancellationToken cancellationToken) => asyncValueFactory();
 
 			/// <summary>
 			/// Gets whether the value source is asynchronous
@@ -3567,10 +3498,7 @@ namespace Gear.Caching
 			/// Initializes a new instance of the <see cref="AsyncCancelableValueFactory{T}"/> class
             /// </summary>
             /// <param name="cancelableAsyncValueFactory">The cancelable async value factory</param>
-            public AsyncCancelableValueFactory(Func<CancellationToken, Task<T>> cancelableAsyncValueFactory)
-            {
-                this.cancelableAsyncValueFactory = cancelableAsyncValueFactory;
-            }
+            public AsyncCancelableValueFactory(Func<CancellationToken, Task<T>> cancelableAsyncValueFactory) => this.cancelableAsyncValueFactory = cancelableAsyncValueFactory;
 
             Func<CancellationToken, Task<T>> cancelableAsyncValueFactory;
 
@@ -3580,10 +3508,7 @@ namespace Gear.Caching
             /// <param name="cancellationToken">A cancellation token to request cancelling the production of the value</param>
             /// <exception cref="InvalidOperationException">The value source is synchronous</exception>
             /// <exception cref="NotImplementedException">The value source failed to provide an asynchronous implementation</exception>
-            public override Task<T> GetValueAsync(CancellationToken cancellationToken)
-            {
-                return cancelableAsyncValueFactory(cancellationToken);
-            }
+            public override Task<T> GetValueAsync(CancellationToken cancellationToken) => cancelableAsyncValueFactory(cancellationToken);
 
 			/// <summary>
 			/// Gets whether the value source is asynchronous
