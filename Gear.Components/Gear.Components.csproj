@@ -32,6 +32,8 @@
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
     <LangVersion>7.2</LangVersion>
+    <DebugType></DebugType>
+    <DocumentationFile>bin\Release\netstandard1.3\Gear.Components.xml</DocumentationFile>
   </PropertyGroup>
 
   <ItemGroup>

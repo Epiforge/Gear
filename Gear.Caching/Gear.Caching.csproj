@@ -28,6 +28,8 @@
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
     <LangVersion>7.2</LangVersion>
+    <DebugType></DebugType>
+    <DocumentationFile>bin\Release\netstandard1.3\Gear.Caching.xml</DocumentationFile>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
@@ -35,7 +37,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Gear.Components" Version="1.0.3" />
+    <PackageReference Include="Gear.Components" Version="1.0.8" />
   </ItemGroup>
 
 </Project>
