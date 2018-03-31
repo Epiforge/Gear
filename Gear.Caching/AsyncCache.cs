@@ -40,11 +40,6 @@ namespace Gear.Caching
             retrievalAccess = new ConcurrentDictionary<TKey, AsyncReaderWriterLock>(comparer);
         }
 
-        ~AsyncCache()
-        {
-            Dispose(false);
-        }
-
         ConcurrentDictionary<TKey, Bucket> buckets;
         IEqualityComparer<TKey> comparer;
         ConcurrentDictionary<TKey, CancellationTokenSource> refreshCancellationTokenSources;
@@ -520,7 +515,7 @@ namespace Gear.Caching
         /// </summary>
         /// <param name="key">The key of the value</param>
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
-		/// <returns><see cref="true"/> if the value was found in the cache; otherwise, <see cref="false"/></returns>
+		/// <returns>true if the value was found in the cache; otherwise, false</returns>
         /// <exception cref="ObjectDisposedException">The cache has been disposed</exception>
         public virtual bool ContainsKey(TKey key, CancellationToken cancellationToken = default)
         {
@@ -556,7 +551,7 @@ namespace Gear.Caching
         /// </summary>
         /// <param name="key">The key of the value</param>
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
-		/// <returns><see cref="true"/> if the value was found in the cache; otherwise, <see cref="false"/></returns>
+		/// <returns>true if the value was found in the cache; otherwise, false</returns>
 		/// <exception cref="KeyNotFoundException">A value for <paramref name="key"/> was not found</exception>
         /// <exception cref="ObjectDisposedException">The cache has been disposed</exception>
         public virtual async Task<bool> ContainsKeyAsync(TKey key, CancellationToken cancellationToken = default)
@@ -589,6 +584,10 @@ namespace Gear.Caching
             }
         }
 
+		/// <summary>
+        /// Frees, releases, or resets unmanaged resources
+        /// </summary>
+        /// <param name="disposing">false if invoked by the finalizer because the object is being garbage collected; otherwise, true</param>
         protected override void Dispose(bool disposing)
         {
             base.Dispose(disposing);
@@ -1594,7 +1593,7 @@ namespace Gear.Caching
         /// <param name="valueSource">The value</param>
         /// <param name="expireIn">The amount of time in which the value should expire</param>
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
-        /// <returns><see cref="true"/> is the value was added; otherwise, <see cref="false"/></returns>
+        /// <returns>true is the value was added; otherwise, false</returns>
         protected virtual bool PerformTryAdd(TKey key, ValueSource<TValue> valueSource, TimeSpan? expireIn = null, CancellationToken cancellationToken = default)
         {
             DateTime? expired = null;
@@ -1630,7 +1629,7 @@ namespace Gear.Caching
         /// <param name="valueSource">The source of the value</param>
         /// <param name="expireIn">The amount of time in which the value should expire</param>
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
-        /// <returns><see cref="true"/> if the value was added; otherwise, <see cref="false"/></returns>
+        /// <returns>true if the value was added; otherwise, false</returns>
         protected virtual async Task<bool> PerformTryAddAsync(TKey key, ValueSource<TValue> valueSource, TimeSpan? expireIn = null, CancellationToken cancellationToken = default)
         {
             DateTime? expired = null;
@@ -1669,7 +1668,7 @@ namespace Gear.Caching
         /// <param name="valueSource">The source of the value</param>
         /// <param name="interval">The amount of time between refreshes</param>
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
-        /// <returns><see cref="true"/> if the value was added; otherwise, <see cref="false"/></returns>
+        /// <returns>true if the value was added; otherwise, false</returns>
         protected virtual bool PerformTryAddAndRefresh(TKey key, ValueSource<TValue> valueSource, TimeSpan interval, CancellationToken cancellationToken = default)
         {
             DateTime? expired = null;
@@ -1762,7 +1761,7 @@ namespace Gear.Caching
         /// <param name="valueSource">The source of the value</param>
         /// <param name="interval">The amount of time between refreshes</param>
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
-        /// <returns><see cref="true"/> if the value was added; otherwise, <see cref="false"/></returns>
+        /// <returns>true if the value was added; otherwise, false</returns>
         protected virtual async Task<bool> PerformTryAddAndRefreshAsync(TKey key, ValueSource<TValue> valueSource, TimeSpan interval, CancellationToken cancellationToken = default)
         {
             DateTime? expired = null;
@@ -1865,7 +1864,7 @@ namespace Gear.Caching
         /// <param name="setExpiration">When true, expiration is updated with <paramref name="expireIn"/></param>
         /// <param name="expireIn">The amount of time in which the value should expire</param>
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
-        /// <returns><see cref="true"/> if the value was updated; otherwise, <see cref="false"/></returns>
+        /// <returns>true if the value was updated; otherwise, false</returns>
         protected virtual bool PerformTryUpdate(TKey key, ValueSource<TValue> valueSource, bool setExpiration, TimeSpan? expireIn, CancellationToken cancellationToken = default)
         {
             DateTime? expired = null;
@@ -1909,7 +1908,7 @@ namespace Gear.Caching
         /// <param name="setExpiration">When true, expiration is updated with <paramref name="expireIn"/></param>
         /// <param name="expireIn">The amount of time in which the value should expire</param>
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
-        /// <returns><see cref="true"/> if the value was updated; otherwise, <see cref="false"/></returns>
+        /// <returns>true if the value was updated; otherwise, false</returns>
         protected virtual async Task<bool> PerformTryUpdateAsync(TKey key, ValueSource<TValue> valueFactory, bool setExpiration, TimeSpan? expireIn, CancellationToken cancellationToken = default)
         {
             DateTime? expired = null;
@@ -2050,7 +2049,7 @@ namespace Gear.Caching
         /// <param name="value">The value</param>
         /// <param name="expireIn">The amount of time in which the value should expire</param>
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
-		/// <returns><see cref="true"/> is the value was added; otherwise, <see cref="false"/></returns>
+		/// <returns>true is the value was added; otherwise, false</returns>
         /// <exception cref="ObjectDisposedException">The cache has been disposed</exception>
         public bool TryAdd(TKey key, TValue value, TimeSpan? expireIn = null, CancellationToken cancellationToken = default)
         {
@@ -2065,7 +2064,7 @@ namespace Gear.Caching
         /// <param name="cancelableValueFactory">A factory to produce the value</param>
         /// <param name="expireIn">The amount of time in which the value should expire</param>
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
-		/// <returns><see cref="true"/> is the value was added; otherwise, <see cref="false"/></returns>
+		/// <returns>true is the value was added; otherwise, false</returns>
         /// <exception cref="ObjectDisposedException">The cache has been disposed</exception>
         public bool TryAdd(TKey key, Func<CancellationToken, TValue> cancelableValueFactory, TimeSpan? expireIn = null, CancellationToken cancellationToken = default)
         {
@@ -2080,7 +2079,7 @@ namespace Gear.Caching
         /// <param name="valueFactory">A factory to produce the value</param>
         /// <param name="expireIn">The amount of time in which the value should expire</param>
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
-		/// <returns><see cref="true"/> is the value was added; otherwise, <see cref="false"/></returns>
+		/// <returns>true is the value was added; otherwise, false</returns>
         /// <exception cref="ObjectDisposedException">The cache has been disposed</exception>
         public bool TryAdd(TKey key, Func<TValue> valueFactory, TimeSpan? expireIn = null, CancellationToken cancellationToken = default)
         {
@@ -2095,7 +2094,7 @@ namespace Gear.Caching
         /// <param name="value">The value</param>
         /// <param name="expireIn">The amount of time in which the value should expire</param>
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
-		/// <returns><see cref="true"/> if the value was added; otherwise, <see cref="false"/></returns>
+		/// <returns>true if the value was added; otherwise, false</returns>
         /// <exception cref="ObjectDisposedException">The cache has been disposed</exception>
         public Task<bool> TryAddAsync(TKey key, TValue value, TimeSpan? expireIn = null, CancellationToken cancellationToken = default)
         {
@@ -2110,7 +2109,7 @@ namespace Gear.Caching
         /// <param name="valueFactory">A factory to produce the value</param>
         /// <param name="expireIn">The amount of time in which the value should expire</param>
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
-		/// <returns><see cref="true"/> if the value was added; otherwise, <see cref="false"/></returns>
+		/// <returns>true if the value was added; otherwise, false</returns>
         /// <exception cref="ObjectDisposedException">The cache has been disposed</exception>
         public Task<bool> TryAddAsync(TKey key, Func<TValue> valueFactory, TimeSpan? expireIn = null, CancellationToken cancellationToken = default)
         {
@@ -2125,7 +2124,7 @@ namespace Gear.Caching
         /// <param name="cancelableValueFactory">A factory to produce the value</param>
         /// <param name="expireIn">The amount of time in which the value should expire</param>
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
-		/// <returns><see cref="true"/> if the value was added; otherwise, <see cref="false"/></returns>
+		/// <returns>true if the value was added; otherwise, false</returns>
         /// <exception cref="ObjectDisposedException">The cache has been disposed</exception>
         public Task<bool> TryAddAsync(TKey key, Func<CancellationToken, TValue> cancelableValueFactory, TimeSpan? expireIn = null, CancellationToken cancellationToken = default)
         {
@@ -2140,7 +2139,7 @@ namespace Gear.Caching
         /// <param name="cancelableAsyncValueFactory">A factory to produce the value</param>
         /// <param name="expireIn">The amount of time in which the value should expire</param>
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
-		/// <returns><see cref="true"/> if the value was added; otherwise, <see cref="false"/></returns>
+		/// <returns>true if the value was added; otherwise, false</returns>
         /// <exception cref="ObjectDisposedException">The cache has been disposed</exception>
         public Task<bool> TryAddAsync(TKey key, Func<CancellationToken, Task<TValue>> cancelableAsyncValueFactory, TimeSpan? expireIn = null, CancellationToken cancellationToken = default)
         {
@@ -2155,7 +2154,7 @@ namespace Gear.Caching
         /// <param name="asyncValueFactory">A factory to produce the value</param>
         /// <param name="expireIn">The amount of time in which the value should expire</param>
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
-		/// <returns><see cref="true"/> if the value was added; otherwise, <see cref="false"/></returns>
+		/// <returns>true if the value was added; otherwise, false</returns>
         /// <exception cref="ObjectDisposedException">The cache has been disposed</exception>
         public Task<bool> TryAddAsync(TKey key, Func<Task<TValue>> asyncValueFactory, TimeSpan? expireIn = null, CancellationToken cancellationToken = default)
         {
@@ -2170,7 +2169,7 @@ namespace Gear.Caching
         /// <param name="valueFactory">A factory to produce the value</param>
         /// <param name="interval">The amount of time between refreshes</param>
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
-		/// <returns><see cref="true"/> if the value was added; otherwise, <see cref="false"/></returns>
+		/// <returns>true if the value was added; otherwise, false</returns>
         /// <exception cref="ObjectDisposedException">The cache has been disposed</exception>
         public bool TryAddAndRefresh(TKey key, Func<TValue> valueFactory, TimeSpan interval, CancellationToken cancellationToken = default)
         {
@@ -2185,7 +2184,7 @@ namespace Gear.Caching
         /// <param name="cancelableValueFactory">A factory to produce the value</param>
         /// <param name="interval">The amount of time between refreshes</param>
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
-		/// <returns><see cref="true"/> if the value was added; otherwise, <see cref="false"/></returns>
+		/// <returns>true if the value was added; otherwise, false</returns>
         /// <exception cref="ObjectDisposedException">The cache has been disposed</exception>
         public bool TryAddAndRefresh(TKey key, Func<CancellationToken, TValue> cancelableValueFactory, TimeSpan interval, CancellationToken cancellationToken = default)
         {
@@ -2200,7 +2199,7 @@ namespace Gear.Caching
         /// <param name="valueFactory">A factory to produce the value</param>
         /// <param name="interval">The amount of time between refreshes</param>
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
-		/// <returns><see cref="true"/> if the value was added; otherwise, <see cref="false"/></returns>
+		/// <returns>true if the value was added; otherwise, false</returns>
         /// <exception cref="ObjectDisposedException">The cache has been disposed</exception>
         public Task<bool> TryAddAndRefreshAsync(TKey key, Func<TValue> valueFactory, TimeSpan interval, CancellationToken cancellationToken = default)
         {
@@ -2215,7 +2214,7 @@ namespace Gear.Caching
         /// <param name="cancelableValueFactory">A factory to produce the value</param>
         /// <param name="interval">The amount of time between refreshes</param>
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
-		/// <returns><see cref="true"/> if the value was added; otherwise, <see cref="false"/></returns>
+		/// <returns>true if the value was added; otherwise, false</returns>
         /// <exception cref="ObjectDisposedException">The cache has been disposed</exception>
         public Task<bool> TryAddAndRefreshAsync(TKey key, Func<CancellationToken, TValue> cancelableValueFactory, TimeSpan interval, CancellationToken cancellationToken = default)
         {
@@ -2230,7 +2229,7 @@ namespace Gear.Caching
         /// <param name="asyncValueFactory">A factory to produce the value</param>
         /// <param name="interval">The amount of time between refreshes</param>
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
-		/// <returns><see cref="true"/> if the value was added; otherwise, <see cref="false"/></returns>
+		/// <returns>true if the value was added; otherwise, false</returns>
         /// <exception cref="ObjectDisposedException">The cache has been disposed</exception>
         public Task<bool> TryAddAndRefreshAsync(TKey key, Func<Task<TValue>> asyncValueFactory, TimeSpan interval, CancellationToken cancellationToken = default)
         {
@@ -2245,7 +2244,7 @@ namespace Gear.Caching
         /// <param name="cancelableAsyncValueFactory">A factory to produce the value</param>
         /// <param name="interval">The amount of time between refreshes</param>
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
-		/// <returns><see cref="true"/> if the value was added; otherwise, <see cref="false"/></returns>
+		/// <returns>true if the value was added; otherwise, false</returns>
         /// <exception cref="ObjectDisposedException">The cache has been disposed</exception>
         public Task<bool> TryAddAndRefreshAsync(TKey key, Func<CancellationToken, Task<TValue>> cancelableAsyncValueFactory, TimeSpan interval, CancellationToken cancellationToken = default)
         {
@@ -2258,7 +2257,7 @@ namespace Gear.Caching
         /// </summary>
         /// <param name="key">The key of the value</param>
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
-		/// <returns><see cref="true"/> if refreshing of the value was cancelled; otherwise, <see cref="false"/></returns>
+		/// <returns>true if refreshing of the value was cancelled; otherwise, false</returns>
         /// <exception cref="ObjectDisposedException">The cache has been disposed</exception>
         public virtual bool TryCancelRefreshing(TKey key, CancellationToken cancellationToken = default)
         {
@@ -2309,7 +2308,7 @@ namespace Gear.Caching
         /// </summary>
         /// <param name="key">The key of the value</param>
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
-		/// <returns><see cref="true"/> if refreshing of the value was cancelled; otherwise, <see cref="false"/></returns>
+		/// <returns>true if refreshing of the value was cancelled; otherwise, false</returns>
         /// <exception cref="ObjectDisposedException">The cache has been disposed</exception>
         public virtual async Task<bool> TryCancelRefreshingAsync(TKey key, CancellationToken cancellationToken = default)
         {
@@ -2363,7 +2362,7 @@ namespace Gear.Caching
         /// <param name="key">The key of the value</param>
         /// <param name="value">The value</param>
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
-		/// <returns><see cref="true"/> if the value was found; otherwise, <see cref="false"/></returns>
+		/// <returns>true if the value was found; otherwise, false</returns>
         /// <exception cref="ObjectDisposedException">The cache has been disposed</exception>
         public virtual bool TryGet(TKey key, out TValue value, CancellationToken cancellationToken = default)
         {
@@ -2406,7 +2405,7 @@ namespace Gear.Caching
         /// <param name="key">The key of the value</param>
         /// <param name="value">The value</param>
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
-		/// <returns><see cref="true"/> if the value was found; otherwise, <see cref="false"/></returns>
+		/// <returns>true if the value was found; otherwise, false</returns>
         /// <exception cref="ObjectDisposedException">The cache has been disposed</exception>
         public bool TryGet<T>(TKey key, out T value, CancellationToken cancellationToken = default) where T : TValue
         {
@@ -2480,7 +2479,7 @@ namespace Gear.Caching
         /// </summary>
         /// <param name="key">The key of the value</param>
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
-		/// <returns><see cref="true"/> if the value was removed; otherwise, <see cref="false"/></returns>
+		/// <returns>true if the value was removed; otherwise, false</returns>
         /// <exception cref="ObjectDisposedException">The cache has been disposed</exception>
         public virtual bool TryRemove(TKey key, CancellationToken cancellationToken = default)
         {
@@ -2534,7 +2533,7 @@ namespace Gear.Caching
         /// </summary>
         /// <param name="key">The key of the value</param>
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
-		/// <returns><see cref="true"/> if the value was removed; otherwise, <see cref="false"/></returns>
+		/// <returns>true if the value was removed; otherwise, false</returns>
         /// <exception cref="ObjectDisposedException">The cache has been disposed</exception>
         public virtual async Task<bool> TryRemoveAsync(TKey key, CancellationToken cancellationToken = default)
         {
@@ -2590,7 +2589,7 @@ namespace Gear.Caching
         /// </summary>
         /// <param name="key">The key of the value</param>
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
-		/// <returns><see cref="true"/> if a signal was successfully sent to refresh the value; otherwise, <see cref="false"/></returns>
+		/// <returns>true if a signal was successfully sent to refresh the value; otherwise, false</returns>
         /// <exception cref="ObjectDisposedException">The cache has been disposed</exception>
         public virtual bool TrySignalRefresh(TKey key, CancellationToken cancellationToken = default)
         {
@@ -2629,7 +2628,7 @@ namespace Gear.Caching
         /// </summary>
         /// <param name="key">The key of the value</param>
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
-		/// <returns><see cref="true"/> if a signal was successfully sent to refresh the value; otherwise, <see cref="false"/></returns>
+		/// <returns>true if a signal was successfully sent to refresh the value; otherwise, false</returns>
         /// <exception cref="ObjectDisposedException">The cache has been disposed</exception>
         public virtual async Task<bool> TrySignalRefreshAsync(TKey key, CancellationToken cancellationToken = default)
         {
@@ -2669,7 +2668,7 @@ namespace Gear.Caching
         /// <param name="key">The key of the value</param>
         /// <param name="value">The value</param>
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
-		/// <returns><see cref="true"/> if the value was updated; otherwise, <see cref="false"/></returns>
+		/// <returns>true if the value was updated; otherwise, false</returns>
         /// <exception cref="ObjectDisposedException">The cache has been disposed</exception>
         public bool TryUpdate(TKey key, TValue value, CancellationToken cancellationToken = default)
         {
@@ -2684,7 +2683,7 @@ namespace Gear.Caching
         /// <param name="value">The value</param>
         /// <param name="expireIn">The amount of time in which the value should expire</param>
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
-		/// <returns><see cref="true"/> if the value was updated; otherwise, <see cref="false"/></returns>
+		/// <returns>true if the value was updated; otherwise, false</returns>
         /// <exception cref="ObjectDisposedException">The cache has been disposed</exception>
         public bool TryUpdate(TKey key, TValue value, TimeSpan? expireIn, CancellationToken cancellationToken = default)
         {
@@ -2698,7 +2697,7 @@ namespace Gear.Caching
         /// <param name="key">The key of the value</param>
         /// <param name="valueFactory">A factory to produce the value</param>
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
-		/// <returns><see cref="true"/> if the value was updated; otherwise, <see cref="false"/></returns>
+		/// <returns>true if the value was updated; otherwise, false</returns>
         /// <exception cref="ObjectDisposedException">The cache has been disposed</exception>
         public bool TryUpdate(TKey key, Func<TValue> valueFactory, CancellationToken cancellationToken = default)
         {
@@ -2712,7 +2711,7 @@ namespace Gear.Caching
         /// <param name="key">The key of the value</param>
         /// <param name="cancelableValueFactory">A factory to produce the value</param>
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
-		/// <returns><see cref="true"/> if the value was updated; otherwise, <see cref="false"/></returns>
+		/// <returns>true if the value was updated; otherwise, false</returns>
         /// <exception cref="ObjectDisposedException">The cache has been disposed</exception>
         public bool TryUpdate(TKey key, Func<CancellationToken, TValue> cancelableValueFactory, CancellationToken cancellationToken = default)
         {
@@ -2727,7 +2726,7 @@ namespace Gear.Caching
         /// <param name="valueFactory">A factory to produce the value</param>
         /// <param name="expireIn">The amount of time in which the value should expire</param>
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
-		/// <returns><see cref="true"/> if the value was updated; otherwise, <see cref="false"/></returns>
+		/// <returns>true if the value was updated; otherwise, false</returns>
         /// <exception cref="ObjectDisposedException">The cache has been disposed</exception>
         public bool TryUpdate(TKey key, Func<TValue> valueFactory, TimeSpan? expireIn, CancellationToken cancellationToken = default)
         {
@@ -2742,7 +2741,7 @@ namespace Gear.Caching
         /// <param name="cancelableValueFactory">A factory to produce the value</param>
         /// <param name="expireIn">The amount of time in which the value should expire</param>
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
-		/// <returns><see cref="true"/> if the value was updated; otherwise, <see cref="false"/></returns>
+		/// <returns>true if the value was updated; otherwise, false</returns>
         /// <exception cref="ObjectDisposedException">The cache has been disposed</exception>
         public bool TryUpdate(TKey key, Func<CancellationToken, TValue> cancelableValueFactory, TimeSpan? expireIn, CancellationToken cancellationToken = default)
         {
@@ -2756,7 +2755,7 @@ namespace Gear.Caching
         /// <param name="key">The key of the value</param>
         /// <param name="value">The value</param>
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
-		/// <returns><see cref="true"/> if the value was updated; otherwise, <see cref="false"/></returns>
+		/// <returns>true if the value was updated; otherwise, false</returns>
         /// <exception cref="ObjectDisposedException">The cache has been disposed</exception>
         public Task<bool> TryUpdateAsync(TKey key, TValue value, CancellationToken cancellationToken = default)
         {
@@ -2771,7 +2770,7 @@ namespace Gear.Caching
         /// <param name="value">The value</param>
         /// <param name="expireIn">The amount of time in which the value should expire</param>
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
-		/// <returns><see cref="true"/> if the value was updated; otherwise, <see cref="false"/></returns>
+		/// <returns>true if the value was updated; otherwise, false</returns>
         /// <exception cref="ObjectDisposedException">The cache has been disposed</exception>
         public Task<bool> TryUpdateAsync(TKey key, TValue value, TimeSpan? expireIn, CancellationToken cancellationToken = default)
         {
@@ -2785,7 +2784,7 @@ namespace Gear.Caching
         /// <param name="key">The key of the value</param>
         /// <param name="valueFactory">A factory to produce the value</param>
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
-		/// <returns><see cref="true"/> if the value was updated; otherwise, <see cref="false"/></returns>
+		/// <returns>true if the value was updated; otherwise, false</returns>
         /// <exception cref="ObjectDisposedException">The cache has been disposed</exception>
         public Task<bool> TryUpdateAsync(TKey key, Func<TValue> valueFactory, CancellationToken cancellationToken = default)
         {
@@ -2799,7 +2798,7 @@ namespace Gear.Caching
         /// <param name="key">The key of the value</param>
         /// <param name="cancelableValueFactory">A factory to produce the value</param>
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
-		/// <returns><see cref="true"/> if the value was updated; otherwise, <see cref="false"/></returns>
+		/// <returns>true if the value was updated; otherwise, false</returns>
         /// <exception cref="ObjectDisposedException">The cache has been disposed</exception>
         public Task<bool> TryUpdateAsync(TKey key, Func<CancellationToken, TValue> cancelableValueFactory, CancellationToken cancellationToken = default)
         {
@@ -2814,7 +2813,7 @@ namespace Gear.Caching
         /// <param name="valueFactory">A factory to produce the value</param>
         /// <param name="expireIn">The amount of time in which the value should expire</param>
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
-		/// <returns><see cref="true"/> if the value was updated; otherwise, <see cref="false"/></returns>
+		/// <returns>true if the value was updated; otherwise, false</returns>
         /// <exception cref="ObjectDisposedException">The cache has been disposed</exception>
         public Task<bool> TryUpdateAsync(TKey key, Func<TValue> valueFactory, TimeSpan? expireIn, CancellationToken cancellationToken = default)
         {
@@ -2829,7 +2828,7 @@ namespace Gear.Caching
         /// <param name="cancelableValueFactory">A factory to produce the value</param>
         /// <param name="expireIn">The amount of time in which the value should expire</param>
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
-		/// <returns><see cref="true"/> if the value was updated; otherwise, <see cref="false"/></returns>
+		/// <returns>true if the value was updated; otherwise, false</returns>
         /// <exception cref="ObjectDisposedException">The cache has been disposed</exception>
         public Task<bool> TryUpdateAsync(TKey key, Func<CancellationToken, TValue> cancelableValueFactory, TimeSpan? expireIn, CancellationToken cancellationToken = default)
         {
@@ -2843,7 +2842,7 @@ namespace Gear.Caching
         /// <param name="key">The key of the value</param>
         /// <param name="asyncValueFactory">A factory to produce the value</param>
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
-		/// <returns><see cref="true"/> if the value was updated; otherwise, <see cref="false"/></returns>
+		/// <returns>true if the value was updated; otherwise, false</returns>
         /// <exception cref="ObjectDisposedException">The cache has been disposed</exception>
         public Task<bool> TryUpdateAsync(TKey key, Func<Task<TValue>> asyncValueFactory, CancellationToken cancellationToken = default)
         {
@@ -2857,7 +2856,7 @@ namespace Gear.Caching
         /// <param name="key">The key of the value</param>
         /// <param name="cancelableAsyncValueFactory">A factory to produce the value</param>
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
-		/// <returns><see cref="true"/> if the value was updated; otherwise, <see cref="false"/></returns>
+		/// <returns>true if the value was updated; otherwise, false</returns>
         /// <exception cref="ObjectDisposedException">The cache has been disposed</exception>
         public Task<bool> TryUpdateAsync(TKey key, Func<CancellationToken, Task<TValue>> cancelableAsyncValueFactory, CancellationToken cancellationToken = default)
         {
@@ -2872,7 +2871,7 @@ namespace Gear.Caching
         /// <param name="asyncValueFactory">A factory to produce the value</param>
         /// <param name="expireIn">The amount of time in which the value should expire</param>
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
-		/// <returns><see cref="true"/> if the value was updated; otherwise, <see cref="false"/></returns>
+		/// <returns>true if the value was updated; otherwise, false</returns>
         /// <exception cref="ObjectDisposedException">The cache has been disposed</exception>
         public Task<bool> TryUpdateAsync(TKey key, Func<Task<TValue>> asyncValueFactory, TimeSpan? expireIn, CancellationToken cancellationToken = default)
         {
@@ -2887,7 +2886,7 @@ namespace Gear.Caching
         /// <param name="cancelableAsyncValueFactory">A factory to produce the value</param>
         /// <param name="expireIn">The amount of time in which the value should expire</param>
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
-		/// <returns><see cref="true"/> if the value was updated; otherwise, <see cref="false"/></returns>
+		/// <returns>true if the value was updated; otherwise, false</returns>
         /// <exception cref="ObjectDisposedException">The cache has been disposed</exception>
         public Task<bool> TryUpdateAsync(TKey key, Func<CancellationToken, Task<TValue>> cancelableAsyncValueFactory, TimeSpan? expireIn, CancellationToken cancellationToken = default)
         {
@@ -3143,6 +3142,16 @@ namespace Gear.Caching
                 throw new KeyNotFoundException();
         }
 
+		/// <summary>
+        /// Gets whether this class supports synchronous disposal
+        /// </summary>
+        protected override bool IsDisposable => true;
+
+		/// <summary>
+		/// Gets whether the cache has been disposed
+		/// </summary>
+		new public bool IsDisposed => base.IsDisposed;
+
         class Bucket
         {
             public Bucket(TValue value, TimeSpan? expireIn = null)
@@ -3157,13 +3166,23 @@ namespace Gear.Caching
             public TValue Value { get; set; }
         }
 
+        /// <summary>
+        /// The result of attempting to get a value from the cache
+        /// </summary>
         public class TryGetResult
         {
+			/// <summary>
+			/// Initializes a new instance of the <see cref="TryGetResult"/> class as a failed attempt
+            /// </summary>
             public TryGetResult()
             {
                 WasFound = false;
             }
 
+            /// <summary>
+			/// Initializes a new instance of the <see cref="TryGetResult"/> class as a successful attempt
+            /// </summary>
+            /// <param name="value">The value</param>
             public TryGetResult(TValue value)
             {
                 Value = value;
@@ -3181,13 +3200,23 @@ namespace Gear.Caching
             public bool WasFound { get; }
         }
 
+        /// <summary>
+        /// The result of attempting to get a typed value from the cache
+        /// </summary>
         public class TryGetResult<T> where T : TValue
         {
+			/// <summary>
+			/// Initializes a new instance of the <see cref="TryGetResult{T}"/> class as a failed attempt
+            /// </summary>
             public TryGetResult()
             {
                 WasFound = false;
             }
 
+            /// <summary>
+			/// Initializes a new instance of the <see cref="TryGetResult{T}"/> class as a successful attempt
+            /// </summary>
+            /// <param name="value">The value</param>
             public TryGetResult(T value)
             {
                 Value = value;
@@ -3207,48 +3236,102 @@ namespace Gear.Caching
 
         #region EventArgs classes
 
+        /// <summary>
+		/// Event arguments for <see cref="AsyncCache{TKey, TValue}"/> events based on keys
+        /// </summary>
         public class KeyedEventArgs : EventArgs
         {
+			/// <summary>
+			/// Initializes a new instance of the <see cref="KeyedEventArgs"/> class
+            /// </summary>
+            /// <param name="key">The key</param>
             public KeyedEventArgs(TKey key)
             {
                 Key = key;
             }
 
+            /// <summary>
+            /// Gets the key
+            /// </summary>
             public TKey Key { get; }
         }
 
+        /// <summary>
+		/// Event arguments for <see cref="AsyncCache{TKey, TValue}"/> exception events based on keys
+        /// </summary>
         public class KeyedExceptionEventArgs : KeyedEventArgs
         {
+			/// <summary>
+			/// Initializes a new instance of the <see cref="KeyedExceptionEventArgs"/> class
+            /// </summary>
+            /// <param name="key">The key</param>
+            /// <param name="ex">The exception</param>
             public KeyedExceptionEventArgs(TKey key, Exception ex) : base(key)
             {
                 Exception = ex;
             }
 
+            /// <summary>
+            /// Gets the exception
+            /// </summary>
             public Exception Exception { get; }
         }
 
+        /// <summary>
+		/// Event arguments for <see cref="AsyncCache{TKey, TValue}"/> events based on keys and values
+        /// </summary>
         public class KeyValueEventArgs : KeyedEventArgs
         {
+			/// <summary>
+			/// Initializes a new instance of the <see cref="KeyValueEventArgs"/> class
+            /// </summary>
+            /// <param name="key">The key</param>
+            /// <param name="value">The value</param>
             public KeyValueEventArgs(TKey key, TValue value) : base(key)
             {
                 Value = value;
             }
 
+            /// <summary>
+            /// Gets the value
+            /// </summary>
             public TValue Value { get; }
         }
 
+        /// <summary>
+		/// Event arguments for the <see cref="AsyncCache{TKey, TValue}.ValueExpired"/> event
+        /// </summary>
         public class ValueExpiredEventArgs : KeyValueEventArgs
         {
+			/// <summary>
+			/// Initializes a new instance of the <see cref="ValueExpiredEventArgs"/> class
+            /// </summary>
+            /// <param name="key">The key</param>
+            /// <param name="value">The value</param>
+            /// <param name="expired">When the value expired</param>
             public ValueExpiredEventArgs(TKey key, TValue value, DateTime expired) : base(key, value)
             {
                 Expired = expired;
             }
-
+            
+            /// <summary>
+            /// Gets when the value expired
+            /// </summary>
             public DateTime Expired { get; }
         }
 
+        /// <summary>
+		/// Event arguments for the <see cref="AsyncCache{TKey, TValue}.ValueUpdated"/> event
+        /// </summary>
         public class ValueUpdatedEventArgs : KeyedEventArgs
         {
+			/// <summary>
+			/// Initializes a new instance of the <see cref="ValueUpdatedEventArgs"/> class
+            /// </summary>
+            /// <param name="key">The key</param>
+            /// <param name="oldValue">The old value</param>
+            /// <param name="newValue">The new value</param>
+			/// <param name="isRefresh">Whether the update was the result of a refresh</param>
             public ValueUpdatedEventArgs(TKey key, TValue oldValue, TValue newValue, bool isRefresh) : base(key)
             {
                 OldValue = oldValue;
@@ -3256,42 +3339,82 @@ namespace Gear.Caching
                 IsRefresh = isRefresh;
             }
 
+            /// <summary>
+            /// Gets whether the update was the result of a refresh
+            /// </summary>
             public bool IsRefresh { get; }
+
+            /// <summary>
+            /// Gets the new value
+            /// </summary>
             public TValue NewValue { get; }
+
+            /// <summary>
+            /// Gets the old value
+            /// </summary>
             public TValue OldValue { get; }
         }
 
-        #endregion EventArgs classes
+		#endregion EventArgs classes
 
-        #region ValueSource classes
+		#region ValueSource classes
 
-        protected abstract class ValueSource<T> where T : TValue
+        /// <summary>
+        /// The source of a value to add or update in the cache
+        /// </summary>
+		protected abstract class ValueSource<T> where T : TValue
         {
+			/// <summary>
+			/// Creates a <see cref="ValueSource{T}"/> using an existing value
+            /// </summary>
+            /// <param name="value">The value</param>
             static public ValueSource<T> Create(T value)
             {
                 return new Value<T>(value);
             }
 
+            /// <summary>
+			/// Creates a <see cref="ValueSource{T}"/> using a value factory
+            /// </summary>
+            /// <param name="valueFactory">The value factory</param>
             static public ValueSource<T> Create(Func<T> valueFactory)
             {
                 return new ValueFactory<T>(valueFactory);
             }
 
+            /// <summary>
+			/// Creates a <see cref="ValueSource{T}"/> using a cancellable value factory
+            /// </summary>
+            /// <param name="cancelableValueFactory">The cancellable value factory</param>
             static public ValueSource<T> Create(Func<CancellationToken, T> cancelableValueFactory)
             {
                 return new CancelableValueFactory<T>(cancelableValueFactory);
             }
 
+            /// <summary>
+			/// Creates a <see cref="ValueSource{T}"/> using an asynchronous value factory
+            /// </summary>
+            /// <param name="asyncValueFactory">The asynchronous value factory</param>
             static public ValueSource<T> Create(Func<Task<T>> asyncValueFactory)
             {
                 return new AsyncValueFactory<T>(asyncValueFactory);
             }
 
+            /// <summary>
+			/// Creates a <see cref="ValueSource{T}"/> using a cancellable asynchronous value factory
+            /// </summary>
+			/// <param name="cancelableAsyncValueFactory">The cancellable asynchronous value factory</param>
             static public ValueSource<T> Create(Func<CancellationToken, Task<T>> cancelableAsyncValueFactory)
             {
                 return new AsyncCancelableValueFactory<T>(cancelableAsyncValueFactory);
             }
 
+            /// <summary>
+            /// Gets the value
+            /// </summary>
+            /// <param name="cancellationToken">A cancellation token to request cancelling the production of the value</param>
+			/// <exception cref="InvalidOperationException">The value source is asynchronous</exception>
+			/// <exception cref="NotImplementedException">The value source failed to provide a synchronous implementation</exception>
             public virtual T GetValue(CancellationToken cancellationToken)
             {
                 if (IsAsync)
@@ -3299,6 +3422,12 @@ namespace Gear.Caching
                 throw new NotImplementedException();
             }
 
+            /// <summary>
+            /// Gets the value asynchronously
+			/// </summary>
+            /// <param name="cancellationToken">A cancellation token to request cancelling the production of the value</param>
+            /// <exception cref="InvalidOperationException">The value source is synchronous</exception>
+            /// <exception cref="NotImplementedException">The value source failed to provide an asynchronous implementation</exception>
             public virtual Task<T> GetValueAsync(CancellationToken cancellationToken)
             {
                 if (!IsAsync)
@@ -3306,14 +3435,21 @@ namespace Gear.Caching
                 throw new NotImplementedException();
             }
 
-            public virtual bool IsAsync
-            {
-                get { return false; }
-            }
+			/// <summary>
+			/// Gets whether the value source is asynchronous
+			/// </summary>
+			public virtual bool IsAsync => false;
         };
 
+        /// <summary>
+		/// A <see cref="ValueSource{T}"/> created using an existing value
+        /// </summary>
         protected sealed class Value<T> : ValueSource<T> where T : TValue
         {
+			/// <summary>
+			/// Initializes a new instance of the <see cref="Value{T}"/> class
+            /// </summary>
+            /// <param name="value">The value</param>
             public Value(T value)
             {
                 this.value = value;
@@ -3321,14 +3457,27 @@ namespace Gear.Caching
 
             T value;
 
+			/// <summary>
+            /// Gets the value
+            /// </summary>
+            /// <param name="cancellationToken">A cancellation token to request cancelling the production of the value</param>
+            /// <exception cref="InvalidOperationException">The value source is asynchronous</exception>
+            /// <exception cref="NotImplementedException">The value source failed to provide a synchronous implementation</exception>
             public override T GetValue(CancellationToken cancellationToken)
             {
                 return value;
             }
         };
 
+        /// <summary>
+		/// A <see cref="ValueSource{T}"/> created using a value factory
+        /// </summary>
         protected sealed class ValueFactory<T> : ValueSource<T> where T : TValue
         {
+			/// <summary>
+			/// Initializes a new instance of the <see cref="ValueSource{T}"/> class
+            /// </summary>
+            /// <param name="valueFactory">The value factory</param>
             public ValueFactory(Func<T> valueFactory)
             {
                 this.valueFactory = valueFactory;
@@ -3336,14 +3485,27 @@ namespace Gear.Caching
 
             Func<T> valueFactory;
 
+			/// <summary>
+            /// Gets the value
+            /// </summary>
+            /// <param name="cancellationToken">A cancellation token to request cancelling the production of the value</param>
+            /// <exception cref="InvalidOperationException">The value source is asynchronous</exception>
+            /// <exception cref="NotImplementedException">The value source failed to provide a synchronous implementation</exception>
             public override T GetValue(CancellationToken cancellationToken)
             {
                 return valueFactory();
             }
         };
 
+        /// <summary>
+		/// A <see cref="ValueSource{T}"/> created using a cancelable value factory
+        /// </summary>
         protected sealed class CancelableValueFactory<T> : ValueSource<T> where T : TValue
         {
+			/// <summary>
+			/// Initializes a new instance of the <see cref="CancelableValueFactory{T}"/> class
+            /// </summary>
+            /// <param name="cancelableValueFactory">The cancelable value factory</param>
             public CancelableValueFactory(Func<CancellationToken, T> cancelableValueFactory)
             {
                 this.cancelableValueFactory = cancelableValueFactory;
@@ -3351,14 +3513,27 @@ namespace Gear.Caching
 
             Func<CancellationToken, T> cancelableValueFactory;
 
+			/// <summary>
+            /// Gets the value
+            /// </summary>
+            /// <param name="cancellationToken">A cancellation token to request cancelling the production of the value</param>
+            /// <exception cref="InvalidOperationException">The value source is asynchronous</exception>
+            /// <exception cref="NotImplementedException">The value source failed to provide a synchronous implementation</exception>
             public override T GetValue(CancellationToken cancellationToken)
             {
                 return cancelableValueFactory(cancellationToken);
             }
         };
 
+        /// <summary>
+		/// A <see cref="ValueSource{T}"/> created using an asynchronous value factory
+        /// </summary>
         protected sealed class AsyncValueFactory<T> : ValueSource<T> where T : TValue
         {
+			/// <summary>
+			/// Initializes a new instance of the <see cref="AsyncValueFactory{T}"/> class
+            /// </summary>
+            /// <param name="asyncValueFactory">The asynchronous value factory</param>
             public AsyncValueFactory(Func<Task<T>> asyncValueFactory)
             {
                 this.asyncValueFactory = asyncValueFactory;
@@ -3366,19 +3541,32 @@ namespace Gear.Caching
 
             Func<Task<T>> asyncValueFactory;
 
+			/// <summary>
+            /// Gets the value asynchronously
+            /// </summary>
+            /// <param name="cancellationToken">A cancellation token to request cancelling the production of the value</param>
+            /// <exception cref="InvalidOperationException">The value source is synchronous</exception>
+            /// <exception cref="NotImplementedException">The value source failed to provide an asynchronous implementation</exception>
             public override Task<T> GetValueAsync(CancellationToken cancellationToken)
             {
                 return asyncValueFactory();
             }
 
-            public override bool IsAsync
-            {
-                get { return true; }
-            }
+			/// <summary>
+			/// Gets whether the value source is asynchronous
+			/// </summary>
+			public override bool IsAsync => true;
         };
 
+        /// <summary>
+		/// A <see cref="ValueSource{T}"/> created using a cancelable asynchronous value factory
+        /// </summary>
         protected sealed class AsyncCancelableValueFactory<T> : ValueSource<T> where T : TValue
         {
+			/// <summary>
+			/// Initializes a new instance of the <see cref="AsyncCancelableValueFactory{T}"/> class
+            /// </summary>
+            /// <param name="cancelableAsyncValueFactory">The cancelable async value factory</param>
             public AsyncCancelableValueFactory(Func<CancellationToken, Task<T>> cancelableAsyncValueFactory)
             {
                 this.cancelableAsyncValueFactory = cancelableAsyncValueFactory;
@@ -3386,15 +3574,21 @@ namespace Gear.Caching
 
             Func<CancellationToken, Task<T>> cancelableAsyncValueFactory;
 
+			/// <summary>
+            /// Gets the value asynchronously
+            /// </summary>
+            /// <param name="cancellationToken">A cancellation token to request cancelling the production of the value</param>
+            /// <exception cref="InvalidOperationException">The value source is synchronous</exception>
+            /// <exception cref="NotImplementedException">The value source failed to provide an asynchronous implementation</exception>
             public override Task<T> GetValueAsync(CancellationToken cancellationToken)
             {
                 return cancelableAsyncValueFactory(cancellationToken);
             }
 
-            public override bool IsAsync
-            {
-                get { return true; }
-            }
+			/// <summary>
+			/// Gets whether the value source is asynchronous
+			/// </summary>
+			public override bool IsAsync => true;
         };
 
         #endregion ValueSource classes
