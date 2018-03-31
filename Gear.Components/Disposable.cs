@@ -16,7 +16,7 @@ namespace Gear.Components
         /// <param name="disposable">The object to be disposed</param>
         /// <param name="action">The action to execute</param>
         /// <param name="cancellationToken">The cancellation token used to cancel the disposal</param>
-		/// <exception cref="ArgumentNullException"><paramref name="action"/> is <see cref="null"/></exception>
+		/// <exception cref="ArgumentNullException"><paramref name="action"/> is null</exception>
 		/// <exception cref="OperationCanceledException">disposal was interrupted by a cancellation request</exception>
         public static async Task UsingAsync(Disposable disposable, Action action, CancellationToken cancellationToken = default)
         {
@@ -39,7 +39,7 @@ namespace Gear.Components
         /// <param name="disposable">The object to be disposed</param>
         /// <param name="asyncAction">The action to execute</param>
 		/// <param name="cancellationToken">The cancellation token used to cancel the disposal</param>
-		/// <exception cref="ArgumentNullException"><paramref name="asyncAction"/> is <see cref="null"/></exception>
+		/// <exception cref="ArgumentNullException"><paramref name="asyncAction"/> is null</exception>
         /// <exception cref="OperationCanceledException">disposal was interrupted by a cancellation request</exception>
         public static async Task UsingAsync(Disposable disposable, Func<Task> asyncAction, CancellationToken cancellationToken = default)
         {
@@ -56,7 +56,9 @@ namespace Gear.Components
             }
         }
 
-        ~Disposable()
+#pragma warning disable CS1591
+
+		~Disposable()
         {
             if (IsDisposable)
                 Dispose(false);
@@ -64,13 +66,16 @@ namespace Gear.Components
                 DisposeAsync(false).Wait();
         }
 
+#pragma warning restore CS1591
+
 		bool isDisposed;
         AsyncLock disposalAccess = new AsyncLock();
 
         /// <summary>
         /// Performs application-defined tasks associated with freeing, releasing, or resetting unmanaged resources
         /// </summary>
-		/// <exception cref="InvalidOperationException">synchronous disposal is not supported</exception>
+		/// <exception cref="InvalidOperationException">Synchronous disposal is not supported</exception>
+		/// <exception cref="NotImplementedException">The deriving class failed to properly override <see cref="Dispose(bool)"/></exception>
         public void Dispose()
         {
             if (!IsDisposable)
@@ -84,20 +89,20 @@ namespace Gear.Components
                 }
         }
 
-        /// <summary>
-        /// Frees, releases, or resets unmanaged resources
-        /// </summary>
-        /// <param name="disposing"><see cref="false"/> if invoked by the finalizer because the object is being garbage collected; otherwise, <see cref="true"/></param>
-        protected virtual void Dispose(bool disposing)
-        {
-        }
+		/// <summary>
+		/// Frees, releases, or resets unmanaged resources
+		/// </summary>
+		/// <param name="disposing">false if invoked by the finalizer because the object is being garbage collected; otherwise, true</param>
+		/// <exception cref="NotImplementedException">The deriving class has failed to properly override this method</exception>
+		protected virtual void Dispose(bool disposing) => throw new NotImplementedException();
 
         /// <summary>
         /// Performs application-defined tasks associated with freeing, releasing, or resetting unmanaged resources
         /// </summary>
         /// <param name="cancellationToken">A token that can be used to attempt to cancel disposal</param>
-		/// <exception cref="InvalidOperationException">asyncronous disposal is not supported</exception>
-        /// <exception cref="OperationCanceledException">disposal was interrupted by a cancellation request</exception>
+		/// <exception cref="InvalidOperationException">Asyncronous disposal is not supported</exception>
+        /// <exception cref="NotImplementedException">The deriving class failed to properly override <see cref="DisposeAsync(bool, CancellationToken)"/></exception>
+        /// <exception cref="OperationCanceledException">Disposal was interrupted by a cancellation request</exception>
         public async Task DisposeAsync(CancellationToken cancellationToken = default)
         {
             if (!IsAsyncDisposable)
@@ -111,12 +116,13 @@ namespace Gear.Components
                 }
         }
 
-        /// <summary>
-        /// Frees, releases, or resets unmanaged resources
-        /// </summary>
-        /// <param name="disposing"><see cref="false"/> if invoked by the finalizer because the object is being garbage collected; otherwise, <see cref="true"/></param>
-        /// <param name="cancellationToken">A token that can be used to attempt to cancel disposal</param>
-		protected virtual Task DisposeAsync(bool disposing, CancellationToken cancellationToken = default) => Task.CompletedTask;
+		/// <summary>
+		/// Frees, releases, or resets unmanaged resources
+		/// </summary>
+		/// <param name="disposing">false if invoked by the finalizer because the object is being garbage collected; otherwise, true</param>
+		/// <param name="cancellationToken">A token that can be used to attempt to cancel disposal</param>
+		/// <exception cref="NotImplementedException">The deriving class has failed to properly override this method</exception>
+		protected virtual Task DisposeAsync(bool disposing, CancellationToken cancellationToken = default) => throw new NotImplementedException();
 
         /// <summary>
         /// Ensure the object has not been disposed
@@ -136,7 +142,7 @@ namespace Gear.Components
         /// <summary>
         /// Gets whether this class supports synchronous disposal
         /// </summary>
-        protected virtual bool IsDisposable => true;
+        protected virtual bool IsDisposable => false;
         
         /// <summary>
         /// Gets whether this object has been disposed

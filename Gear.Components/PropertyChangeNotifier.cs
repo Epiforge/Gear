@@ -24,7 +24,7 @@ namespace Gear.Components
         /// Raises the <see cref="PropertyChanged"/> event
         /// </summary>
 		/// <param name="e">The arguments of the event</param>
-        /// <exception cref="ArgumentNullException"><paramref name="e"/> is <see cref="null"/></exception>
+        /// <exception cref="ArgumentNullException"><paramref name="e"/> is null</exception>
         protected virtual void OnPropertyChanged(PropertyChangedEventArgs e)
         {
             if (e == null)
@@ -36,7 +36,7 @@ namespace Gear.Components
         /// Notifies that a property changed
         /// </summary>
         /// <param name="propertyName">The name of the property that changed</param>
-		/// <exception cref="ArgumentNullException"><paramref name="propertyName"/> is <see cref="null"/></exception>
+		/// <exception cref="ArgumentNullException"><paramref name="propertyName"/> is null</exception>
         protected void OnPropertyChanged([CallerMemberName] string propertyName = null)
         {
             if (propertyName == null)
@@ -48,7 +48,7 @@ namespace Gear.Components
         /// Raises the <see cref="PropertyChanging"/> event
         /// </summary>
 		/// <param name="e">The arguments of the event</param>
-        /// <exception cref="ArgumentNullException"><paramref name="e"/> is <see cref="null"/></exception>
+        /// <exception cref="ArgumentNullException"><paramref name="e"/> is null</exception>
         protected virtual void OnPropertyChanging(PropertyChangingEventArgs e)
         {
             if (e == null)
@@ -60,7 +60,7 @@ namespace Gear.Components
         /// Notifies that a property is changing
         /// </summary>
 		/// <param name="propertyName">The name of the property that is changing</param>
-        /// <exception cref="ArgumentNullException"><paramref name="propertyName"/> is <see cref="null"/></exception>
+        /// <exception cref="ArgumentNullException"><paramref name="propertyName"/> is null</exception>
         protected void OnPropertyChanging([CallerMemberName] string propertyName = null)
         {
             if (propertyName == null)
@@ -75,7 +75,7 @@ namespace Gear.Components
         /// <param name="backingField">A reference to the backing field of the property</param>
         /// <param name="value">The new value</param>
         /// <param name="propertyName">The name of the property</param>
-        /// <returns><see cref="true"/> if <paramref name="backingField"/> was unequal to <paramref name="value"/>; otherwise, <see cref="false"/></returns>
+        /// <returns>true if <paramref name="backingField"/> was unequal to <paramref name="value"/>; otherwise, false</returns>
         protected bool SetBackedProperty<TValue>(ref TValue backingField, in TValue value, [CallerMemberName] string propertyName = null)
         {
             if (!EqualityComparer<TValue>.Default.Equals(backingField, value))
