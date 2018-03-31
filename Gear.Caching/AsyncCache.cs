@@ -470,17 +470,42 @@ namespace Gear.Caching
             ThrowIfDisposed();
             if (!(await TryCancelRefreshingAsync(key, cancellationToken).ConfigureAwait(false)))
                 throw new KeyNotFoundException();
-        }
+		}
 
         /// <summary>
         /// Cancels refreshing of all values
-		/// </summary>
+        /// </summary>
         /// <exception cref="ObjectDisposedException">The cache has been disposed</exception>
-        public virtual void CancelRefreshingAll()
+        public void CancelRefreshingAll()
         {
-			ThrowIfDisposed();
+            ThrowIfDisposed();
+			foreach (var key in buckets.Keys.ToList())
+            {
+                refreshAutoResetEvents.TryRemove(key, out AsyncAutoResetEvent removedAutoResetEvent);
+                if (refreshCancellationTokenSources.TryRemove(key, out CancellationTokenSource removedCancellationTokenSource))
+                {
+                    try
+                    {
+                        removedCancellationTokenSource.Cancel();
+                        removedCancellationTokenSource.Dispose();
+                    }
+                    catch
+                    {
+                        // Allow this to happen silently
+                    }
+                }
+            }
+		}
+
+        /// <summary>
+        /// Cancels refreshing of all values
+        /// </summary>
+        /// <exception cref="ObjectDisposedException">The cache has been disposed</exception>
+        public virtual Task CancelRefreshingAllAsync()
+        {
+            ThrowIfDisposed();
             var keys = buckets.Keys.ToList();
-            Task.Run(() =>
+            return Task.Run(() =>
             {
                 foreach (var key in keys)
                 {
@@ -581,20 +606,30 @@ namespace Gear.Caching
         /// <param name="disposing">false if invoked by the finalizer because the object is being garbage collected; otherwise, true</param>
         protected override void Dispose(bool disposing)
         {
-            base.Dispose(disposing);
             if (disposing)
                 CancelRefreshingAll();
         }
 
-        /// <summary>
-        /// Gets a value in the cache
+		/// <summary>
+        /// Frees, releases, or resets unmanaged resources
         /// </summary>
-        /// <param name="key">The key of the value</param>
-        /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
+        /// <param name="disposing">false if invoked by the finalizer because the object is being garbage collected; otherwise, true</param>
+        /// <param name="cancellationToken">A token that can be used to attempt to cancel disposal</param>
+        protected override async Task DisposeAsync(bool disposing, CancellationToken cancellationToken = default)
+		{
+			if (disposing)
+				await CancelRefreshingAllAsync().ConfigureAwait(false);
+		}
+
+		/// <summary>
+		/// Gets a value in the cache
+		/// </summary>
+		/// <param name="key">The key of the value</param>
+		/// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
 		/// <returns>The value</returns>
 		/// <exception cref="KeyNotFoundException">A value for <paramref name="key"/> was not found</exception>
-        /// <exception cref="ObjectDisposedException">The cache has been disposed</exception>
-        public TValue Get(TKey key, CancellationToken cancellationToken = default)
+		/// <exception cref="ObjectDisposedException">The cache has been disposed</exception>
+		public TValue Get(TKey key, CancellationToken cancellationToken = default)
         {
             ThrowIfDisposed();
             if (!TryGet(key, out TValue value, cancellationToken))
@@ -1966,17 +2001,39 @@ namespace Gear.Caching
             ThrowIfDisposed();
             if (!(await TryRemoveAsync(key, cancellationToken).ConfigureAwait(false)))
                 throw new KeyNotFoundException();
-        }
+		}
 
         /// <summary>
         /// Cancels any refreshing of values in the cache and removes all values from the cache
-		/// </summary>
+        /// </summary>
         /// <exception cref="ObjectDisposedException">The cache has been disposed</exception>
         public virtual void Reset()
         {
             ThrowIfDisposed();
             OnBeforeReset(new EventArgs());
-            CancelRefreshingAll();
+			CancelRefreshingAllAsync().Wait();
+            if (comparer == null)
+            {
+                buckets = new ConcurrentDictionary<TKey, Bucket>();
+                retrievalAccess = new ConcurrentDictionary<TKey, AsyncReaderWriterLock>();
+            }
+            else
+            {
+                buckets = new ConcurrentDictionary<TKey, Bucket>(comparer);
+                retrievalAccess = new ConcurrentDictionary<TKey, AsyncReaderWriterLock>(comparer);
+            }
+            OnAfterReset(new EventArgs());
+		}
+
+        /// <summary>
+        /// Cancels any refreshing of values in the cache and removes all values from the cache
+        /// </summary>
+        /// <exception cref="ObjectDisposedException">The cache has been disposed</exception>
+        public virtual async Task ResetAsync()
+        {
+            ThrowIfDisposed();
+            OnBeforeReset(new EventArgs());
+            await CancelRefreshingAllAsync().ConfigureAwait(false);
             if (comparer == null)
             {
                 buckets = new ConcurrentDictionary<TKey, Bucket>();
@@ -3131,9 +3188,14 @@ namespace Gear.Caching
         }
 
 		/// <summary>
-        /// Gets whether this class supports synchronous disposal
+        /// Gets whether this class supports asynchronous disposal
         /// </summary>
-        protected override bool IsDisposable => true;
+        protected override bool IsAsyncDisposable => true;
+
+		/// <summary>
+		/// Gets whether this class supports synchronous disposal
+		/// </summary>
+		protected override bool IsDisposable => true;
 
 		/// <summary>
 		/// Gets whether the cache has been disposed
