@@ -11,17 +11,17 @@
     <RepositoryType>GitHub</RepositoryType>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <Product>Caching Gear</Product>
-    <Version>1.0.3</Version>
-    <AssemblyVersion>1.0.3</AssemblyVersion>
-    <FileVersion>1.0.3</FileVersion>
+    <Version>1.0.4</Version>
+    <AssemblyVersion>1.0.4</AssemblyVersion>
+    <FileVersion>1.0.4</FileVersion>
     <PackageIconUrl>https://raw.githubusercontent.com/Epiforge/Gear/master/NuGet.jpg</PackageIconUrl>
     <PackageTags>cache caching-library async await async-await task</PackageTags>
     <PackOnBuild>true</PackOnBuild>
-    <PackageVersion>1.0.3</PackageVersion>
+    <PackageVersion>1.0.4</PackageVersion>
     <Owners>Epiforge</Owners>
     <Summary>Gear for caching stuff.</Summary>
     <Title>Caching Gear</Title>
-    <ReleaseVersion>1.0.3</ReleaseVersion>
+    <ReleaseVersion>1.0.4</ReleaseVersion>
     <SynchReleaseVersion>false</SynchReleaseVersion>
     <PackageId>Gear.Caching</PackageId>
   </PropertyGroup>
@@ -37,7 +37,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Gear.Components" Version="1.0.8" />
+    <PackageReference Include="Gear.Components" Version="1.0.11" />
   </ItemGroup>
 
 </Project>
