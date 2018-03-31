@@ -23,7 +23,8 @@ namespace Gear.Components
         /// <summary>
         /// Raises the <see cref="PropertyChanged"/> event
         /// </summary>
-        /// <param name="e">The arguments of the event</param>
+		/// <param name="e">The arguments of the event</param>
+        /// <exception cref="ArgumentNullException"><paramref name="e"/> is <see cref="null"/></exception>
         protected virtual void OnPropertyChanged(PropertyChangedEventArgs e)
         {
             if (e == null)
@@ -34,7 +35,8 @@ namespace Gear.Components
         /// <summary>
         /// Notifies that a property changed
         /// </summary>
-        /// <param name="propertyName">The name of the property that changed</param>
+		/// <param name="propertyName">The name of the property that changed</param>
+        /// <exception cref="ArgumentNullException"><paramref name="propertyName"/> is <see cref="null"/></exception>
         protected void OnPropertyChanged([CallerMemberName] string propertyName = null)
         {
             if (propertyName == null)
@@ -45,7 +47,8 @@ namespace Gear.Components
         /// <summary>
         /// Raises the <see cref="PropertyChanging"/> event
         /// </summary>
-        /// <param name="e">The arguments of the event</param>
+		/// <param name="e">The arguments of the event</param>
+        /// <exception cref="ArgumentNullException"><paramref name="e"/> is <see cref="null"/></exception>
         protected virtual void OnPropertyChanging(PropertyChangingEventArgs e)
         {
             if (e == null)
@@ -56,7 +59,8 @@ namespace Gear.Components
         /// <summary>
         /// Notifies that a property is changing
         /// </summary>
-        /// <param name="propertyName">The name of the property that is changing</param>
+		/// <param name="propertyName">The name of the property that is changing</param>
+        /// <exception cref="ArgumentNullException"><paramref name="propertyName"/> is <see cref="null"/></exception>
         protected void OnPropertyChanging([CallerMemberName] string propertyName = null)
         {
             if (propertyName == null)
