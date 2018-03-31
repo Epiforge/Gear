@@ -87,13 +87,12 @@ namespace Gear.Components
                 }
         }
 
-        /// <summary>
-        /// Frees, releases, or resets unmanaged resources
-        /// </summary>
-        /// <param name="disposing">false if invoked by the finalizer because the object is being garbage collected; otherwise, true</param>
-        protected virtual void Dispose(bool disposing)
-        {
-        }
+		/// <summary>
+		/// Frees, releases, or resets unmanaged resources
+		/// </summary>
+		/// <param name="disposing">false if invoked by the finalizer because the object is being garbage collected; otherwise, true</param>
+		/// <exception cref="NotImplementedException">The deriving class has failed to properly override this method</exception>
+		protected virtual void Dispose(bool disposing) => throw new NotImplementedException();
 
         /// <summary>
         /// Performs application-defined tasks associated with freeing, releasing, or resetting unmanaged resources
@@ -114,12 +113,13 @@ namespace Gear.Components
                 }
         }
 
-        /// <summary>
-        /// Frees, releases, or resets unmanaged resources
-        /// </summary>
-        /// <param name="disposing">false if invoked by the finalizer because the object is being garbage collected; otherwise, true</param>
-        /// <param name="cancellationToken">A token that can be used to attempt to cancel disposal</param>
-		protected virtual Task DisposeAsync(bool disposing, CancellationToken cancellationToken = default) => Task.CompletedTask;
+		/// <summary>
+		/// Frees, releases, or resets unmanaged resources
+		/// </summary>
+		/// <param name="disposing">false if invoked by the finalizer because the object is being garbage collected; otherwise, true</param>
+		/// <param name="cancellationToken">A token that can be used to attempt to cancel disposal</param>
+		/// <exception cref="NotImplementedException">The deriving class has failed to properly override this method</exception>
+		protected virtual Task DisposeAsync(bool disposing, CancellationToken cancellationToken = default) => throw new NotImplementedException();
 
         /// <summary>
         /// Ensure the object has not been disposed
@@ -139,7 +139,7 @@ namespace Gear.Components
         /// <summary>
         /// Gets whether this class supports synchronous disposal
         /// </summary>
-        protected virtual bool IsDisposable => true;
+        protected virtual bool IsDisposable => false;
         
         /// <summary>
         /// Gets whether this object has been disposed
