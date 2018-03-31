@@ -56,10 +56,9 @@ namespace Gear.Components
             }
         }
 
-        /// <summary>
-        /// Releases unmanaged resources and performs other cleanup operations before the class is reclaimed by garbage collection
-        /// </summary>
-        ~Disposable()
+#pragma warning disable CS1591
+
+		~Disposable()
         {
             if (IsDisposable)
                 Dispose(false);
@@ -67,13 +66,16 @@ namespace Gear.Components
                 DisposeAsync(false).Wait();
         }
 
+#pragma warning restore CS1591
+
 		bool isDisposed;
         AsyncLock disposalAccess = new AsyncLock();
 
         /// <summary>
         /// Performs application-defined tasks associated with freeing, releasing, or resetting unmanaged resources
         /// </summary>
-		/// <exception cref="InvalidOperationException">synchronous disposal is not supported</exception>
+		/// <exception cref="InvalidOperationException">Synchronous disposal is not supported</exception>
+		/// <exception cref="NotImplementedException">The deriving class failed to properly override <see cref="Dispose(bool)"/></exception>
         public void Dispose()
         {
             if (!IsDisposable)
@@ -98,8 +100,9 @@ namespace Gear.Components
         /// Performs application-defined tasks associated with freeing, releasing, or resetting unmanaged resources
         /// </summary>
         /// <param name="cancellationToken">A token that can be used to attempt to cancel disposal</param>
-		/// <exception cref="InvalidOperationException">asyncronous disposal is not supported</exception>
-        /// <exception cref="OperationCanceledException">disposal was interrupted by a cancellation request</exception>
+		/// <exception cref="InvalidOperationException">Asyncronous disposal is not supported</exception>
+        /// <exception cref="NotImplementedException">The deriving class failed to properly override <see cref="DisposeAsync(bool, CancellationToken)"/></exception>
+        /// <exception cref="OperationCanceledException">Disposal was interrupted by a cancellation request</exception>
         public async Task DisposeAsync(CancellationToken cancellationToken = default)
         {
             if (!IsAsyncDisposable)
