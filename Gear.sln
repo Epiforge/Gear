@@ -15,6 +15,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Documentation", "Documentat
 		README.md = README.md
 	EndProjectSection
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gear.Components.Tests", "Gear.Components.Tests\Gear.Components.Tests.csproj", "{2A33CDE4-C5F9-4864-8EE0-72D04EAAA27B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -29,6 +31,10 @@ Global
 		{C9E360CB-359E-4EFB-A560-4B50B208B737}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C9E360CB-359E-4EFB-A560-4B50B208B737}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C9E360CB-359E-4EFB-A560-4B50B208B737}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2A33CDE4-C5F9-4864-8EE0-72D04EAAA27B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2A33CDE4-C5F9-4864-8EE0-72D04EAAA27B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2A33CDE4-C5F9-4864-8EE0-72D04EAAA27B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2A33CDE4-C5F9-4864-8EE0-72D04EAAA27B}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
