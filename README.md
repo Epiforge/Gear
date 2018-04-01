@@ -6,7 +6,10 @@ General utilities to help with stuff in .NET Development, from Epiforge.
 
 Supports `netstandard1.3`.
 
-![master - Build Status](https://ci.appveyor.com/api/projects/status/3s25e4ldo2ji1ech/branch/master?svg=true&pendingText=master%20-%20Building&failingText=master%20-%20Build%20Failed&passingText=master%20-%20Built)
+| Branch | Stati
+| - | -
+| master | ![master - Build Status](https://ci.appveyor.com/api/projects/status/3s25e4ldo2ji1ech/branch/master?svg=true&pendingText=master%20-%20Building&failingText=master%20-%20Build%20Failed&passingText=master%20-%20Built)
+| test | ![test - Build Status](https://ci.appveyor.com/api/projects/status/3s25e4ldo2ji1ech/branch/test?svg=true&pendingText=test%20-%20Building&failingText=test%20-%20Build%20Failed&passingText=test%20-%20Built)
 
 - [Getting Started](#getting-started)
 - [Acknowledgements](#acknowledgements)
