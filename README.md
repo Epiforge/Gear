@@ -6,6 +6,8 @@ General utilities to help with stuff in .NET Development, from Epiforge.
 
 Supports `netstandard1.3`.
 
+![master - Build Status](https://ci.appveyor.com/api/projects/status/3s25e4ldo2ji1ech/branch/master?svg=true&pendingText=master%20-%20Building&failingText=master%20-%20Build Failed&passingText=master%20-%20Built)
+
 - [Getting Started](#getting-started)
 - [Acknowledgements](#acknowledgements)
 
