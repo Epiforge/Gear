@@ -6,13 +6,10 @@ General utilities to help with stuff in .NET Development, from Epiforge.
 
 Supports `netstandard1.3`.
 
-| Branch | Status
-| - | -
-| master | ![master - Build Status](https://ci.appveyor.com/api/projects/status/3s25e4ldo2ji1ech/branch/master?svg=true)
-| test | ![test - Build Status](https://ci.appveyor.com/api/projects/status/3s25e4ldo2ji1ech/branch/test?svg=true)
-| dev | ![dev - Build Status](https://ci.appveyor.com/api/projects/status/3s25e4ldo2ji1ech/branch/dev?svg=true)
+![master - Build Status](https://ci.appveyor.com/api/projects/status/3s25e4ldo2ji1ech/branch/master?svg=true)
 
 - [Getting Started](#getting-started)
+- [Contributing](#contributing)
 - [Acknowledgements](#acknowledgements)
 
 # Getting Started
@@ -23,6 +20,10 @@ Install the NuGet packages for the functionality you need.
 | - | - | -
 | [Gear.Caching](https://www.nuget.org/packages/Gear.Caching/) | Caching, including expiration and refreshing
 | [Gear.Components](https://www.nuget.org/packages/Gear.Components/) | Disposal; property change notification helpers | [Wiki](https://github.com/Epiforge/Gear/wiki/Components)
+
+# Contributing
+
+[Click here](CONTRIBUTING.md) to learn how to contribute.
 
 # Acknowledgements
 
