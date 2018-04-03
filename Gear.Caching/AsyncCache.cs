@@ -658,17 +658,23 @@ namespace Gear.Caching
         /// Gets a value in the cache
         /// </summary>
         /// <param name="key">The key of the value</param>
+        /// <param name="retryDelay">The amount of time to wait before attempting the get again</param>
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
 		/// <returns>The value</returns>
 		/// <exception cref="KeyNotFoundException">A value for <paramref name="key"/> was not found</exception>
         /// <exception cref="ObjectDisposedException">The cache has been disposed</exception>
-        public async Task<TValue> GetAsync(TKey key, CancellationToken cancellationToken = default)
+        public async Task<TValue> GetAsync(TKey key, TimeSpan? retryDelay = null, CancellationToken cancellationToken = default)
         {
             ThrowIfDisposed();
-            var result = await TryGetAsync(key, cancellationToken).ConfigureAwait(false);
-            if (!result.WasFound)
-                throw new KeyNotFoundException();
-            return result.Value;
+            while (true)
+            {
+                var result = await TryGetAsync(key, cancellationToken).ConfigureAwait(false);
+                if (result.WasFound)
+                    return result.Value;
+                if (!(retryDelay is TimeSpan nonNullRetryDelay))
+                    throw new KeyNotFoundException();
+                await Task.Delay(nonNullRetryDelay).ConfigureAwait(false);
+            }
         }
 
         /// <summary>
@@ -676,17 +682,23 @@ namespace Gear.Caching
         /// </summary>
         /// <typeparam name="T">The type of the value</typeparam>
         /// <param name="key">The key of the value</param>
+        /// <param name="retryDelay">The amount of time to wait before attempting the get again</param>
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
 		/// <returns>The value</returns>
 		/// <exception cref="KeyNotFoundException">A value for <paramref name="key"/> was not found</exception>
         /// <exception cref="ObjectDisposedException">The cache has been disposed</exception>
-        public async Task<T> GetAsync<T>(TKey key, CancellationToken cancellationToken = default) where T : TValue
+        public async Task<T> GetAsync<T>(TKey key, TimeSpan? retryDelay = null, CancellationToken cancellationToken = default) where T : TValue
         {
             ThrowIfDisposed();
-            var result = await TryGetAsync<T>(key, cancellationToken).ConfigureAwait(false);
-            if (!result.WasFound)
-                throw new KeyNotFoundException();
-            return result.Value;
+            while (true)
+            {
+                var result = await TryGetAsync<T>(key, cancellationToken).ConfigureAwait(false);
+                if (result.WasFound)
+                    return result.Value;
+                if (!(retryDelay is TimeSpan nonNullRetryDelay))
+                    throw new KeyNotFoundException();
+                await Task.Delay(nonNullRetryDelay).ConfigureAwait(false);
+            }
         }
 
         AsyncReaderWriterLock GetAsyncReaderWriterLock(TKey key) => retrievalAccess.GetOrAdd(key, ReaderWriterLockFactory);
