@@ -665,15 +665,15 @@ namespace Gear.Caching
         /// <exception cref="ObjectDisposedException">The cache has been disposed</exception>
         public async Task<TValue> GetAsync(TKey key, TimeSpan? retryDelay = null, CancellationToken cancellationToken = default)
         {
-            ThrowIfDisposed();
             while (true)
-            {
+			{
+                ThrowIfDisposed();
                 var result = await TryGetAsync(key, cancellationToken).ConfigureAwait(false);
                 if (result.WasFound)
                     return result.Value;
                 if (!(retryDelay is TimeSpan nonNullRetryDelay))
                     throw new KeyNotFoundException();
-                await Task.Delay(nonNullRetryDelay).ConfigureAwait(false);
+				await Task.Delay(nonNullRetryDelay, cancellationToken).ConfigureAwait(false);
             }
         }
 
@@ -689,15 +689,15 @@ namespace Gear.Caching
         /// <exception cref="ObjectDisposedException">The cache has been disposed</exception>
         public async Task<T> GetAsync<T>(TKey key, TimeSpan? retryDelay = null, CancellationToken cancellationToken = default) where T : TValue
         {
-            ThrowIfDisposed();
             while (true)
-            {
+			{
+                ThrowIfDisposed();
                 var result = await TryGetAsync<T>(key, cancellationToken).ConfigureAwait(false);
                 if (result.WasFound)
                     return result.Value;
                 if (!(retryDelay is TimeSpan nonNullRetryDelay))
                     throw new KeyNotFoundException();
-                await Task.Delay(nonNullRetryDelay).ConfigureAwait(false);
+				await Task.Delay(nonNullRetryDelay, cancellationToken).ConfigureAwait(false);
             }
         }
 
