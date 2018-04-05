@@ -6,7 +6,9 @@ General utilities to help with stuff in .NET Development, from Epiforge.
 
 Supports `netstandard1.3`.
 
-![master - Build Status](https://ci.appveyor.com/api/projects/status/3s25e4ldo2ji1ech/branch/master?svg=true)
+![Build Status](https://ci.appveyor.com/api/projects/status/3s25e4ldo2ji1ech?svg=true)
+
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2FEpiforge%2FGear.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2FEpiforge%2FGear?ref=badge_shield)
 
 - [Getting Started](#getting-started)
 - [Contributing](#contributing)
