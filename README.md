@@ -11,6 +11,7 @@ Supports `netstandard1.3`.
 [![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2FEpiforge%2FGear.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2FEpiforge%2FGear?ref=badge_shield)
 
 - [Getting Started](#getting-started)
+- [License](#license)
 - [Contributing](#contributing)
 - [Acknowledgements](#acknowledgements)
 
