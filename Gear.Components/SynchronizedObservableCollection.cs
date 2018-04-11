@@ -9,35 +9,31 @@ namespace Gear.Components
     {
         public SynchronizedObservableCollection(SynchronizationContext owner, bool isSynchronized = true) : base()
         {
-            Owner = owner;
+            SynchronizationContext = owner;
             IsSynchronized = isSynchronized;
         }
 
-        public SynchronizedObservableCollection(SynchronizationContext owner, IEnumerable<T> collection, bool isSynchronized = true) : base(collection)
+        public SynchronizedObservableCollection(SynchronizationContext synchronizationContext, IEnumerable<T> collection, bool isSynchronized = true) : base(collection)
         {
-            Owner = owner;
+            SynchronizationContext = synchronizationContext;
             IsSynchronized = isSynchronized;
         }
-
-        public bool IsSynchronized { get; set; }
-
-        private readonly SynchronizationContext Owner;
 
         protected void Execute(Action action)
         {
-            if (!IsSynchronized || Owner == null || SynchronizationContext.Current == Owner)
+            if (!IsSynchronized || SynchronizationContext == null || SynchronizationContext.Current == SynchronizationContext)
                 action();
             else if (IsSynchronized)
-                Owner.Send(state => action(), null);
+                SynchronizationContext.Send(state => action(), null);
         }
 
         protected TReturn Execute<TReturn>(Func<TReturn> func)
         {
             var result = default(TReturn);
-            if (!IsSynchronized || Owner == null || SynchronizationContext.Current == Owner)
+            if (!IsSynchronized || SynchronizationContext == null || SynchronizationContext.Current == SynchronizationContext)
                 result = func();
             else if (IsSynchronized)
-                Owner.Send(state => result = func(), null);
+                SynchronizationContext.Send(state => result = func(), null);
             return result;
         }
 
@@ -50,5 +46,9 @@ namespace Gear.Components
         protected override void RemoveItem(int index) => Execute(() => base.RemoveItem(index));
 
         protected override void SetItem(int index, T item) => Execute(() => base.SetItem(index, item));
+
+        public bool IsSynchronized { get; set; }
+
+        public SynchronizationContext SynchronizationContext { get; }
     }
 }
