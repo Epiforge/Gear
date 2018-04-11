@@ -3,6 +3,9 @@ using System.Linq;
 
 namespace Gear.Components
 {
+    /// <summary>
+    /// Provides utlities for generating hash codes to be returned from overrides of <see cref="object.GetHashCode"/>
+    /// </summary>
     public static class HashCodes
     {
         /// <summary>
