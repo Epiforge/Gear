@@ -5,7 +5,7 @@ using System.Threading;
 
 namespace Gear.Components
 {
-    public class SynchronizedObservableCollection<T> : ObservableCollection<T>
+    public class SynchronizedObservableCollection<T> : ObservableCollection<T>, IsSynchronizable
     {
         public SynchronizedObservableCollection(SynchronizationContext owner, bool isSynchronized = true) : base()
         {

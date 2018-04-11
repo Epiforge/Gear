@@ -12,17 +12,17 @@
     <PackageProjectUrl>https://github.com/Epiforge/Gear</PackageProjectUrl>
     <RepositoryUrl>https://github.com/Epiforge/Gear</RepositoryUrl>
     <RepositoryType>GitHub</RepositoryType>
-    <AssemblyVersion>1.0.14</AssemblyVersion>
-    <FileVersion>1.0.14</FileVersion>
-    <Version>1.0.14</Version>
+    <AssemblyVersion>1.0.15</AssemblyVersion>
+    <FileVersion>1.0.15</FileVersion>
+    <Version>1.0.15</Version>
     <PackageIconUrl>https://raw.githubusercontent.com/Epiforge/Gear/master/NuGet.jpg</PackageIconUrl>
     <PackageTags>disposable async await async-await property-change-notification</PackageTags>
     <PackOnBuild>true</PackOnBuild>
-    <PackageVersion>1.0.14</PackageVersion>
+    <PackageVersion>1.0.15</PackageVersion>
     <Owners>Epiforge</Owners>
     <Summary>Gear for making components.</Summary>
     <Title>Components Gear</Title>
-    <ReleaseVersion>1.0.14</ReleaseVersion>
+    <ReleaseVersion>1.0.15</ReleaseVersion>
     <SynchReleaseVersion>false</SynchReleaseVersion>
   </PropertyGroup>
 
