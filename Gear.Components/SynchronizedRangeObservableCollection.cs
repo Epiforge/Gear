@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace Gear.Components
 {
@@ -19,6 +20,10 @@ namespace Gear.Components
         public void AddRange(IEnumerable<T> items) => InsertRange(Items.Count, items);
 
         public void AddRange(IList<T> items) => AddRange((IEnumerable<T>)items);
+
+        public Task AddRangeAsync(IEnumerable<T> items) => InsertRangeAsync(Items.Count, items);
+
+        public Task AddRangeAsync(IList<T> items) => AddRangeAsync((IEnumerable<T>)items);
 
         public void InsertRange(int index, IEnumerable<T> items) => Execute(() =>
         {
@@ -38,6 +43,10 @@ namespace Gear.Components
         });
 
         public void InsertRange(int index, IList<T> items) => InsertRange(index, (IEnumerable<T>)items);
+
+        public Task InsertRangeAsync(int index, IEnumerable<T> items) => ExecuteAsync(() => InsertRange(index, items));
+
+        public Task InsertRangeAsync(int index, IList<T> items) => InsertRangeAsync(index, (IEnumerable<T>)items);
 
         public void MoveRange(int oldStartIndex, int newStartIndex, int count) => Execute(() =>
         {
@@ -60,6 +69,8 @@ namespace Gear.Components
             }
         });
 
+        public Task MoveRangeAsync(int oldStartIndex, int newStartIndex, int count) => ExecuteAsync(() => MoveRange(oldStartIndex, newStartIndex, count));
+
         public int RemoveAll(Func<T, bool> predicate) => Execute(() =>
         {
             var removed = 0;
@@ -78,6 +89,8 @@ namespace Gear.Components
             }
             return removed;
         });
+
+        public Task<int> RemoveAllAsync(Func<T, bool> predicate) => ExecuteAsync(() => RemoveAll(predicate));
 
         public void RemoveRange(IEnumerable<T> items) => Execute(() =>
         {
@@ -110,6 +123,12 @@ namespace Gear.Components
             }
         });
 
+        public Task RemoveRangeAsync(IEnumerable<T> items) => ExecuteAsync(() => RemoveRange(items));
+
+        public Task RemoveRangeAsync(IList<T> items) => ExecuteAsync(() => RemoveRange(items));
+
+        public Task RemoveRangeAsync(int index, int count) => ExecuteAsync(() => RemoveRange(index, count));
+
         public void ReplaceAll(IEnumerable<T> collection) => Execute(() =>
         {
             var oldItems = new T[Items.Count];
@@ -127,6 +146,10 @@ namespace Gear.Components
         });
 
         public void ReplaceAll(IList<T> list) => ReplaceAll((IEnumerable<T>)list);
+
+        public Task ReplaceAllAsync(IEnumerable<T> collection) => ExecuteAsync(() => ReplaceAll(collection));
+
+        public Task ReplaceAllAsync(IList<T> list) => ExecuteAsync(() => ReplaceAll(list));
 
         public void ReplaceRange(int index, int count, IEnumerable<T> collection) => Execute(() =>
         {
@@ -151,6 +174,10 @@ namespace Gear.Components
 
         public void ReplaceRange(int index, int count, IList<T> list) => ReplaceRange(index, count, (IEnumerable<T>)list);
 
+        public Task ReplaceRangeAsync(int index, int count, IEnumerable<T> collection) => ExecuteAsync(() => ReplaceRange(index, count, collection));
+
+        public Task ReplaceRangeAsync(int index, int count, IList<T> list) => ExecuteAsync(() => ReplaceRange(index, count, list));
+
         public void Reset(IEnumerable<T> newCollection) => Execute(() =>
         {
             var previousCount = Items.Count;
@@ -161,5 +188,7 @@ namespace Gear.Components
             if (previousCount != Items.Count)
                 OnPropertyChanged(new PropertyChangedEventArgs(nameof(Count)));
         });
+
+        public Task ResetAsync(IEnumerable<T> newCollection) => ExecuteAsync(() => Reset(newCollection));
     }
 }

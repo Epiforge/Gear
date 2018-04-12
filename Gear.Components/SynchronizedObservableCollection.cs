@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace Gear.Components
 {
@@ -19,6 +20,16 @@ namespace Gear.Components
             IsSynchronized = isSynchronized;
         }
 
+        public Task AddAsync(T item) => ExecuteAsync(() => Add(item));
+
+        public Task ClearAsync() => ExecuteAsync(() => Clear());
+
+        protected override void ClearItems() => Execute(() => base.ClearItems());
+
+        public Task<bool> ContainsAsync(T item) => ExecuteAsync(() => Contains(item));
+
+        public Task CopyToAsync(T[] array, int index) => ExecuteAsync(() => CopyTo(array, index));
+
         protected void Execute(Action action)
         {
             if (!IsSynchronized || SynchronizationContext == null || SynchronizationContext.Current == SynchronizationContext)
@@ -29,23 +40,78 @@ namespace Gear.Components
 
         protected TReturn Execute<TReturn>(Func<TReturn> func)
         {
-            var result = default(TReturn);
             if (!IsSynchronized || SynchronizationContext == null || SynchronizationContext.Current == SynchronizationContext)
-                result = func();
-            else if (IsSynchronized)
-                SynchronizationContext.Send(state => result = func(), null);
+                return func();
+            var result = default(TReturn);
+            SynchronizationContext.Send(state => result = func(), null);
             return result;
         }
 
-        protected override void ClearItems() => Execute(() => base.ClearItems());
+        protected async Task ExecuteAsync(Action action)
+        {
+            if (!IsSynchronized || SynchronizationContext == null || SynchronizationContext.Current == SynchronizationContext)
+                action();
+            else if (IsSynchronized)
+            {
+                var completion = new TaskCompletionSource<object>();
+                SynchronizationContext.Post(state =>
+                {
+                    try
+                    {
+                        action();
+                        completion.SetResult(null);
+                    }
+                    catch (Exception ex)
+                    {
+                        completion.SetException(ex);
+                    }
+                }, null);
+                await completion.Task.ConfigureAwait(false);
+            }
+        }
+
+        protected Task<TResult> ExecuteAsync<TResult>(Func<TResult> func)
+        {
+            if (!IsSynchronized || SynchronizationContext == null || SynchronizationContext.Current == SynchronizationContext)
+                return Task.FromResult(func());
+            var completion = new TaskCompletionSource<TResult>();
+            SynchronizationContext.Post(state =>
+            {
+                try
+                {
+                    completion.SetResult(func());
+                }
+                catch (Exception ex)
+                {
+                    completion.SetException(ex);
+                }
+            }, null);
+            return completion.Task;
+        }
+
+        public Task<T> GetItemAsync(int index) => ExecuteAsync(() => this[index]);
+
+        public Task<int> IndexOfAsync(T item) => ExecuteAsync(() => IndexOf(item));
+
+        public Task InsertAsync(int index, T item) => ExecuteAsync(() => Insert(index, item));
 
         protected override void InsertItem(int index, T item) => Execute(() => base.InsertItem(index, item));
 
+        public Task MoveAsync(int oldIndex, int newIndex) => ExecuteAsync(() => Move(oldIndex, newIndex));
+
         protected override void MoveItem(int oldIndex, int newIndex) => Execute(() => base.MoveItem(oldIndex, newIndex));
+
+        public Task<bool> RemoveAsync(T item) => ExecuteAsync(() => Remove(item));
+
+        public Task RemoveAtAsync(int index) => ExecuteAsync(() => RemoveAt(index));
 
         protected override void RemoveItem(int index) => Execute(() => base.RemoveItem(index));
 
         protected override void SetItem(int index, T item) => Execute(() => base.SetItem(index, item));
+
+        public Task SetItemAsync(int index, T item) => ExecuteAsync(() => this[index] = item);
+
+        public Task<int> CountAsync => ExecuteAsync(() => Count);
 
         public bool IsSynchronized { get; set; }
 
