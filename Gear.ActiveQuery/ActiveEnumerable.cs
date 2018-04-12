@@ -11,14 +11,14 @@ namespace Gear.ActiveQuery
     {
         internal ActiveEnumerable(IList<T> list, Action<bool> onDispose = null)
         {
-            if (list is ActiveEnumerable<T>)
-                readOnlyObservableCollection = ((ActiveEnumerable<T>)list).readOnlyObservableCollection;
-            else if (list is ReadOnlyObservableCollection<T>)
-                readOnlyObservableCollection = list as ReadOnlyObservableCollection<T>;
-            else if (list is ObservableCollection<T>)
-                readOnlyObservableCollection = new ReadOnlyObservableCollection<T>((ObservableCollection<T>)list);
+            if (list is ActiveEnumerable<T> activeEnumerable)
+                readOnlyObservableCollection = activeEnumerable.readOnlyObservableCollection;
+            else if (list is ReadOnlyObservableCollection<T> readOnlyObservableCollection)
+                this.readOnlyObservableCollection = readOnlyObservableCollection;
+            else if (list is ObservableCollection<T> observableCollection)
+                this.readOnlyObservableCollection = new ReadOnlyObservableCollection<T>(observableCollection);
             else
-                readOnlyObservableCollection = new ReadOnlyObservableCollection<T>(new ObservableCollection<T>(list));
+                this.readOnlyObservableCollection = new ReadOnlyObservableCollection<T>(new ObservableCollection<T>(list));
             ((INotifyCollectionChanged)readOnlyObservableCollection).CollectionChanged += CollectionChangedHandler;
             this.onDispose = onDispose;
         }
