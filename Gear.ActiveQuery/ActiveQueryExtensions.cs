@@ -1307,7 +1307,7 @@ namespace Gear.ActiveQuery
             return result;
         }
 
-        public static ActiveAggregateValue<double> LiveSum<TSource>(this IList<TSource> source, Func<TSource, double> selector, params string[] selectorProperties) where TSource : class
+        public static ActiveAggregateValue<double> ActiveSum<TSource>(this IList<TSource> source, Func<TSource, double> selector, params string[] selectorProperties) where TSource : class
         {
             var selectorValues = new Dictionary<TSource, double>();
             var firstSum = (double)0;
@@ -1394,7 +1394,7 @@ namespace Gear.ActiveQuery
             return result;
         }
 
-        public static ActiveAggregateValue<double?> LiveSum<TSource>(this IList<TSource> source, Func<TSource, double?> selector, params string[] selectorProperties) where TSource : class
+        public static ActiveAggregateValue<double?> ActiveSum<TSource>(this IList<TSource> source, Func<TSource, double?> selector, params string[] selectorProperties) where TSource : class
         {
             var selectorValues = new Dictionary<TSource, double?>();
             var firstSum = (double?)0;
@@ -1481,7 +1481,7 @@ namespace Gear.ActiveQuery
             return result;
         }
 
-        public static ActiveAggregateValue<float> LiveSum<TSource>(this IList<TSource> source, Func<TSource, float> selector, params string[] selectorProperties) where TSource : class
+        public static ActiveAggregateValue<float> ActiveSum<TSource>(this IList<TSource> source, Func<TSource, float> selector, params string[] selectorProperties) where TSource : class
         {
             var selectorValues = new Dictionary<TSource, float>();
             var firstSum = (float)0;
@@ -1568,7 +1568,7 @@ namespace Gear.ActiveQuery
             return result;
         }
 
-        public static ActiveAggregateValue<float?> LiveSum<TSource>(this IList<TSource> source, Func<TSource, float?> selector, params string[] selectorProperties) where TSource : class
+        public static ActiveAggregateValue<float?> ActiveSum<TSource>(this IList<TSource> source, Func<TSource, float?> selector, params string[] selectorProperties) where TSource : class
         {
             var selectorValues = new Dictionary<TSource, float?>();
             var firstSum = (float?)0;
@@ -1655,7 +1655,7 @@ namespace Gear.ActiveQuery
             return result;
         }
 
-        public static ActiveAggregateValue<int> LiveSum<TSource>(this IList<TSource> source, Func<TSource, int> selector, params string[] selectorProperties) where TSource : class
+        public static ActiveAggregateValue<int> ActiveSum<TSource>(this IList<TSource> source, Func<TSource, int> selector, params string[] selectorProperties) where TSource : class
         {
             var selectorValues = new Dictionary<TSource, int>();
             var firstSum = 0;
@@ -1742,7 +1742,7 @@ namespace Gear.ActiveQuery
             return result;
         }
 
-        public static ActiveAggregateValue<int?> LiveSum<TSource>(this IList<TSource> source, Func<TSource, int?> selector, params string[] selectorProperties) where TSource : class
+        public static ActiveAggregateValue<int?> ActiveSum<TSource>(this IList<TSource> source, Func<TSource, int?> selector, params string[] selectorProperties) where TSource : class
         {
             var selectorValues = new Dictionary<TSource, int?>();
             var firstSum = (int?)0;
@@ -1829,7 +1829,7 @@ namespace Gear.ActiveQuery
             return result;
         }
 
-        public static ActiveAggregateValue<long> LiveSum<TSource>(this IList<TSource> source, Func<TSource, long> selector, params string[] selectorProperties) where TSource : class
+        public static ActiveAggregateValue<long> ActiveSum<TSource>(this IList<TSource> source, Func<TSource, long> selector, params string[] selectorProperties) where TSource : class
         {
             var selectorValues = new Dictionary<TSource, long>();
             var firstSum = (long)0;
@@ -1916,7 +1916,7 @@ namespace Gear.ActiveQuery
             return result;
         }
 
-        public static ActiveAggregateValue<long?> LiveSum<TSource>(this IList<TSource> source, Func<TSource, long?> selector, params string[] selectorProperties) where TSource : class
+        public static ActiveAggregateValue<long?> ActiveSum<TSource>(this IList<TSource> source, Func<TSource, long?> selector, params string[] selectorProperties) where TSource : class
         {
             var selectorValues = new Dictionary<TSource, long?>();
             var firstSum = (long?)0;
