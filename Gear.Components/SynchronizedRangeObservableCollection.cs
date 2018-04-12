@@ -25,6 +25,16 @@ namespace Gear.Components
 
         public Task AddRangeAsync(IList<T> items) => AddRangeAsync((IEnumerable<T>)items);
 
+        public IReadOnlyList<T> GetRange(int index, int count) => Execute(() =>
+        {
+            var result = new List<T>();
+            for (int i = index, ii = index + count; i < ii; ++i)
+                result.Add(this[i]);
+            return result;
+        });
+
+        public Task<IReadOnlyList<T>> GetRangeAsync(int index, int count) => ExecuteAsync(() => GetRange(index, count));
+
         public void InsertRange(int index, IEnumerable<T> items) => Execute(() =>
         {
             var originalIndex = index;
