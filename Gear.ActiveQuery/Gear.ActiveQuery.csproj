@@ -1,20 +1,29 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netstandard1.3</TargetFramework>
-    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <AssemblyVersion>1.0.1</AssemblyVersion>
     <Authors>Epiforge</Authors>
     <Company>Epiforge</Company>
-    <Product>Active Query Gear</Product>
     <Description>Gear for performing active queries.</Description>
+    <FileVersion>1.0.1</FileVersion>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <Owners>Epiforge</Owners>
+    <PackageIconUrl>https://raw.githubusercontent.com/Epiforge/Gear/master/NuGet.jpg</PackageIconUrl>
+    <PackageId>Gear.ActiveQuery</PackageId>
     <PackageLicenseUrl>https://raw.githubusercontent.com/Epiforge/Gear/master/LICENSE</PackageLicenseUrl>
     <PackageProjectUrl>https://github.com/Epiforge/Gear</PackageProjectUrl>
-    <PackageIconUrl>https://raw.githubusercontent.com/Epiforge/Gear/master/NuGet.jpg</PackageIconUrl>
-    <RepositoryUrl>https://github.com/Epiforge/Gear</RepositoryUrl>
-    <RepositoryType>GitHub</RepositoryType>
     <PackageTags>linq query active live update</PackageTags>
-    <AssemblyVersion>1.0.1</AssemblyVersion>
-    <FileVersion>1.0.1</FileVersion>
+    <PackageVersion>1.0.1</PackageVersion>
+    <PackOnBuild>true</PackOnBuild>
+    <Product>Active Query Gear</Product>
+    <ReleaseVersion>1.0.1</ReleaseVersion>
+    <RepositoryType>GitHub</RepositoryType>
+    <RepositoryUrl>https://github.com/Epiforge/Gear</RepositoryUrl>
+    <Summary>Gear for performing active queries.</Summary>
+    <SynchReleaseVersion>false</SynchReleaseVersion>
+    <TargetFramework>netstandard1.3</TargetFramework>
+    <Title>Active Query Gear</Title>
+    <Version>1.0.1</Version>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
