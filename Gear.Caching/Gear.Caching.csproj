@@ -1,29 +1,29 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netstandard1.3</TargetFramework>
+    <AssemblyVersion>1.0.6</AssemblyVersion>
     <Authors>Epiforge</Authors>
     <Company>Epiforge</Company>
     <Description>Gear for caching stuff.</Description>
+    <FileVersion>1.0.6</FileVersion>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <Owners>Epiforge</Owners>
+    <PackageIconUrl>https://raw.githubusercontent.com/Epiforge/Gear/master/NuGet.jpg</PackageIconUrl>
+    <PackageId>Gear.Caching</PackageId>
     <PackageLicenseUrl>https://raw.githubusercontent.com/Epiforge/Gear/master/LICENSE</PackageLicenseUrl>
     <PackageProjectUrl>https://github.com/Epiforge/Gear</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/Epiforge/Gear</RepositoryUrl>
-    <RepositoryType>GitHub</RepositoryType>
-    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <Product>Caching Gear</Product>
-    <Version>1.0.6</Version>
-    <AssemblyVersion>1.0.6</AssemblyVersion>
-    <FileVersion>1.0.6</FileVersion>
-    <PackageIconUrl>https://raw.githubusercontent.com/Epiforge/Gear/master/NuGet.jpg</PackageIconUrl>
     <PackageTags>cache caching-library async await async-await task</PackageTags>
-    <PackOnBuild>true</PackOnBuild>
     <PackageVersion>1.0.6</PackageVersion>
-    <Owners>Epiforge</Owners>
-    <Summary>Gear for caching stuff.</Summary>
-    <Title>Caching Gear</Title>
+    <PackOnBuild>true</PackOnBuild>
+    <Product>Caching Gear</Product>
     <ReleaseVersion>1.0.6</ReleaseVersion>
+    <RepositoryType>GitHub</RepositoryType>
+    <RepositoryUrl>https://github.com/Epiforge/Gear</RepositoryUrl>
+    <Summary>Gear for caching stuff.</Summary>
     <SynchReleaseVersion>false</SynchReleaseVersion>
-    <PackageId>Gear.Caching</PackageId>
+    <TargetFramework>netstandard1.3</TargetFramework>
+    <Title>Caching Gear</Title>
+    <Version>1.0.6</Version>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
