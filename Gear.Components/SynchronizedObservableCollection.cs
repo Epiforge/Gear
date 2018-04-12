@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -33,41 +34,67 @@ namespace Gear.Components
         protected void Execute(Action action)
         {
             if (!IsSynchronized || SynchronizationContext == null || SynchronizationContext.Current == SynchronizationContext)
+            {
                 action();
-            else if (IsSynchronized)
-                SynchronizationContext.Send(state => action(), null);
+                return;
+            }
+            ExceptionDispatchInfo edi = null;
+            SynchronizationContext.Send(state =>
+            {
+                try
+                {
+                    action();
+                }
+                catch (Exception ex)
+                {
+                    edi = ExceptionDispatchInfo.Capture(ex);
+                }
+            }, null);
+            edi?.Throw();
         }
 
         protected TReturn Execute<TReturn>(Func<TReturn> func)
         {
             if (!IsSynchronized || SynchronizationContext == null || SynchronizationContext.Current == SynchronizationContext)
                 return func();
-            var result = default(TReturn);
-            SynchronizationContext.Send(state => result = func(), null);
+            TReturn result = default;
+            ExceptionDispatchInfo edi = null;
+            SynchronizationContext.Send(state =>
+            {
+                try
+                {
+                    result = func();
+                }
+                catch (Exception ex)
+                {
+                    edi = ExceptionDispatchInfo.Capture(ex);
+                }
+            }, null);
+            edi?.Throw();
             return result;
         }
 
-        protected async Task ExecuteAsync(Action action)
+        protected Task ExecuteAsync(Action action)
         {
             if (!IsSynchronized || SynchronizationContext == null || SynchronizationContext.Current == SynchronizationContext)
-                action();
-            else if (IsSynchronized)
             {
-                var completion = new TaskCompletionSource<object>();
-                SynchronizationContext.Post(state =>
-                {
-                    try
-                    {
-                        action();
-                        completion.SetResult(null);
-                    }
-                    catch (Exception ex)
-                    {
-                        completion.SetException(ex);
-                    }
-                }, null);
-                await completion.Task.ConfigureAwait(false);
+                action();
+                return Task.CompletedTask;
             }
+            var completion = new TaskCompletionSource<object>();
+            SynchronizationContext.Post(state =>
+            {
+                try
+                {
+                    action();
+                    completion.SetResult(null);
+                }
+                catch (Exception ex)
+                {
+                    completion.SetException(ex);
+                }
+            }, null);
+            return completion.Task;
         }
 
         protected Task<TResult> ExecuteAsync<TResult>(Func<TResult> func)
