@@ -311,5 +311,7 @@ namespace Gear.ActiveQuery
         public bool ElementsNotifyChanged { get; }
 
         public bool ElementsNotifyChanging { get; }
+
+        protected override bool IsDisposable => true;
     }
 }
