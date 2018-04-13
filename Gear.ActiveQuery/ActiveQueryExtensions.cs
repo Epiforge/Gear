@@ -37,12 +37,14 @@ namespace Gear.ActiveQuery
                 }
             }
 
-            if (source is INotifyCollectionChanged)
-                ((INotifyCollectionChanged)source).CollectionChanged += notifyCollectionChangedEventHandler;
+            {
+                if (source is INotifyCollectionChanged notifyingSource)
+                    notifyingSource.CollectionChanged += notifyCollectionChangedEventHandler;
+            }
             var result = new ActiveEnumerable<TResult>(rangeObservableCollection, disposing =>
             {
-                if (source is INotifyCollectionChanged)
-                    ((INotifyCollectionChanged)source).CollectionChanged -= notifyCollectionChangedEventHandler;
+                if (source is INotifyCollectionChanged notifyingSource)
+                    notifyingSource.CollectionChanged -= notifyCollectionChangedEventHandler;
             });
             if (synchronizationContext != null)
                 rangeObservableCollection.IsSynchronized = true;
@@ -95,16 +97,18 @@ namespace Gear.ActiveQuery
                 }
             }
 
-            if (first is INotifyCollectionChanged)
-                ((INotifyCollectionChanged)first).CollectionChanged += firstNotifyCollectionChangedEventHandler;
-            if (second is INotifyCollectionChanged)
-                ((INotifyCollectionChanged)second).CollectionChanged += secondNotifyCollectionChangedEventHandler;
+            {
+                if (first is INotifyCollectionChanged notifyingFirst)
+                    notifyingFirst.CollectionChanged += firstNotifyCollectionChangedEventHandler;
+                if (second is INotifyCollectionChanged notifyingSecond)
+                    notifyingSecond.CollectionChanged += secondNotifyCollectionChangedEventHandler;
+            }
             var result = new ActiveEnumerable<TSource>(rangeObservableCollection, disposing =>
             {
-                if (first is INotifyCollectionChanged)
-                    ((INotifyCollectionChanged)first).CollectionChanged -= firstNotifyCollectionChangedEventHandler;
-                if (second is INotifyCollectionChanged)
-                    ((INotifyCollectionChanged)second).CollectionChanged -= secondNotifyCollectionChangedEventHandler;
+                if (first is INotifyCollectionChanged notifyingFirst)
+                    notifyingFirst.CollectionChanged -= firstNotifyCollectionChangedEventHandler;
+                if (second is INotifyCollectionChanged notifyingSecond)
+                    notifyingSecond.CollectionChanged -= secondNotifyCollectionChangedEventHandler;
             });
             if (synchronizationContext != null)
                 rangeObservableCollection.IsSynchronized = true;
@@ -165,12 +169,14 @@ namespace Gear.ActiveQuery
                 }
             }
 
-            if (source is INotifyCollectionChanged)
-                ((INotifyCollectionChanged)source).CollectionChanged += collectionChangedHandler;
+            {
+                if (source is INotifyCollectionChanged notifyingSource)
+                    notifyingSource.CollectionChanged += collectionChangedHandler;
+            }
             var result = new ActiveEnumerable<TSource>(rangeObservableCollection, disposing =>
             {
-                if (source is INotifyCollectionChanged)
-                    ((INotifyCollectionChanged)source).CollectionChanged -= collectionChangedHandler;
+                if (source is INotifyCollectionChanged notifyingSource)
+                    notifyingSource.CollectionChanged -= collectionChangedHandler;
             });
             if (synchronizationContext != null)
                 rangeObservableCollection.IsSynchronized = true;
