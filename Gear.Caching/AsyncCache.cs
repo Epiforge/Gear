@@ -1245,7 +1245,11 @@ namespace Gear.Caching
                 if (valueSource.IsAsync)
                     value = await valueSource.GetValueAsync(cancellationToken).ConfigureAwait(false);
                 else
+                {
                     value = valueSource.GetValue(cancellationToken);
+                    if (typeof(TValue) == typeof(object))
+                        value = (TValue)(await TaskResolver.ResolveAsync(value).ConfigureAwait(false));
+                }
                 if (buckets.TryGetValue(key, out Bucket bucket))
                 {
                     if (bucket.Expiration < DateTime.UtcNow)
@@ -1464,7 +1468,11 @@ namespace Gear.Caching
                         if (valueSource.IsAsync)
                             value = await valueSource.GetValueAsync(cancellationToken).ConfigureAwait(false);
                         else
+                        {
                             value = valueSource.GetValue(cancellationToken);
+                            if (typeof(TValue) == typeof(object))
+                                value = (T)(await TaskResolver.ResolveAsync(value).ConfigureAwait(false));
+                        }
                         addedBucket = new Bucket(value);
                         buckets.TryAdd(key, addedBucket);
                         return value;
@@ -1478,7 +1486,11 @@ namespace Gear.Caching
                         if (valueSource.IsAsync)
                             value = await valueSource.GetValueAsync(cancellationToken).ConfigureAwait(false);
                         else
+                        {
                             value = valueSource.GetValue(cancellationToken);
+                            if (typeof(TValue) == typeof(object))
+                                value = (T)(await TaskResolver.ResolveAsync(value).ConfigureAwait(false));
+                        }
                         addedBucket = new Bucket(value);
                         buckets.TryAdd(key, addedBucket);
                         return value;
@@ -1526,7 +1538,11 @@ namespace Gear.Caching
                                 if (valueSource.IsAsync)
                                     newValue = await valueSource.GetValueAsync(refreshCancellationToken).ConfigureAwait(false);
                                 else
+                                {
                                     newValue = valueSource.GetValue(refreshCancellationToken);
+                                    if (typeof(TValue) == typeof(object))
+                                        newValue = (T)(await TaskResolver.ResolveAsync(newValue).ConfigureAwait(false));
+                                }
                                 using (await GetAsyncReaderWriterLock(key).WriterLockAsync(refreshCancellationToken).ConfigureAwait(false))
                                 {
                                     if (!buckets.TryGetValue(key, out Bucket refreshingBucket) || refreshingBucket.Id != addedBucketId)
@@ -1587,7 +1603,11 @@ namespace Gear.Caching
                         if (valueSource.IsAsync)
                             value = await valueSource.GetValueAsync(cancellationToken).ConfigureAwait(false);
                         else
+                        {
                             value = valueSource.GetValue(cancellationToken);
+                            if (typeof(TValue) == typeof(object))
+                                value = (T)(await TaskResolver.ResolveAsync(value).ConfigureAwait(false));
+                        }
                         buckets.TryAdd(key, new Bucket(value, expireIn));
                         added = true;
                         return value;
@@ -1600,7 +1620,11 @@ namespace Gear.Caching
                         if (valueSource.IsAsync)
                             value = await valueSource.GetValueAsync(cancellationToken).ConfigureAwait(false);
                         else
+                        {
                             value = valueSource.GetValue(cancellationToken);
+                            if (typeof(TValue) == typeof(object))
+                                value = (T)(await TaskResolver.ResolveAsync(value).ConfigureAwait(false));
+                        }
                         buckets.TryAdd(key, new Bucket(value, expireIn));
                         added = true;
                         return value;
@@ -1687,7 +1711,11 @@ namespace Gear.Caching
                 if (valueSource.IsAsync)
                     value = await valueSource.GetValueAsync(cancellationToken).ConfigureAwait(false);
                 else
+                {
                     value = valueSource.GetValue(cancellationToken);
+                    if (typeof(TValue) == typeof(object))
+                        value = (TValue)(await TaskResolver.ResolveAsync(value).ConfigureAwait(false));
+                }
                 buckets.TryAdd(key, new Bucket(value, expireIn));
             }
             if (expired != null)
@@ -1819,7 +1847,11 @@ namespace Gear.Caching
                 if (valueSource.IsAsync)
                     value = await valueSource.GetValueAsync(cancellationToken).ConfigureAwait(false);
                 else
+                {
                     value = valueSource.GetValue(cancellationToken);
+                    if (typeof(TValue) == typeof(object))
+                        value = (TValue)(await TaskResolver.ResolveAsync(value).ConfigureAwait(false));
+                }
                 var addedBucket = new Bucket(value);
                 var addedBucketId = addedBucket.Id;
                 buckets.TryAdd(key, addedBucket);
@@ -1856,7 +1888,11 @@ namespace Gear.Caching
                             if (valueSource.IsAsync)
                                 newValue = await valueSource.GetValueAsync(refreshCancellationToken).ConfigureAwait(false);
                             else
+                            {
                                 newValue = valueSource.GetValue(refreshCancellationToken);
+                                if (typeof(TValue) == typeof(object))
+                                    newValue = (TValue)(await TaskResolver.ResolveAsync(newValue).ConfigureAwait(false));
+                            }
                             using (await GetAsyncReaderWriterLock(key).WriterLockAsync(refreshCancellationToken).ConfigureAwait(false))
                             {
                                 if (!buckets.TryGetValue(key, out Bucket refreshingBucket) || refreshingBucket.Id != addedBucketId)
@@ -1939,12 +1975,12 @@ namespace Gear.Caching
         /// Tries to update a value in the cache
         /// </summary>
         /// <param name="key">The key of the value</param>
-        /// <param name="valueFactory">A factory to produce the value</param>
+        /// <param name="valueSource">A factory to produce the value</param>
         /// <param name="setExpiration">When true, expiration is updated with <paramref name="expireIn"/></param>
         /// <param name="expireIn">The amount of time in which the value should expire</param>
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
         /// <returns>true if the value was updated; otherwise, false</returns>
-        protected virtual async Task<bool> PerformTryUpdateAsync(TKey key, ValueSource<TValue> valueFactory, bool setExpiration, TimeSpan? expireIn, CancellationToken cancellationToken = default)
+        protected virtual async Task<bool> PerformTryUpdateAsync(TKey key, ValueSource<TValue> valueSource, bool setExpiration, TimeSpan? expireIn, CancellationToken cancellationToken = default)
         {
             DateTime? expired = null;
             var expiredValue = default(TValue);
@@ -1963,10 +1999,14 @@ namespace Gear.Caching
                         expiredValue = bucket.Value;
                         return false;
                     }
-                    if (valueFactory.IsAsync)
-                        value = await valueFactory.GetValueAsync(cancellationToken).ConfigureAwait(false);
+                    if (valueSource.IsAsync)
+                        value = await valueSource.GetValueAsync(cancellationToken).ConfigureAwait(false);
                     else
-                        value = valueFactory.GetValue(cancellationToken);
+                    {
+                        value = valueSource.GetValue(cancellationToken);
+                        if (typeof(TValue) == typeof(object))
+                            value = (TValue)(await TaskResolver.ResolveAsync(value).ConfigureAwait(false));
+                    }
                     oldValue = bucket.Value;
                     bucket.Value = value;
                     if (setExpiration)
