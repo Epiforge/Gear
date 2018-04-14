@@ -20,7 +20,7 @@ namespace Gear.Components
                 var parameterInfo = parameterInfos[i];
                 argumentExpressions.Add(Expression.Convert(Expression.ArrayIndex(argumentsExpression, Expression.Constant(i)), parameterInfo.ParameterType));
             }
-            var callExpression = Expression.Call(!methodInfo.IsStatic ? Expression.Convert(instanceExpression, methodInfo.ReflectedType) : null, methodInfo, argumentExpressions);
+            var callExpression = Expression.Call(!methodInfo.IsStatic ? Expression.Convert(instanceExpression, methodInfo.DeclaringType) : null, methodInfo, argumentExpressions);
             if (callExpression.Type == typeof(void))
             {
                 var voidDelegate = Expression.Lambda<VoidDelegate>(callExpression, instanceExpression, argumentsExpression).Compile();
