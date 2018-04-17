@@ -107,8 +107,14 @@ namespace Gear.Caching
         public void Add(TKey key, TValue value, TimeSpan? expireIn = null, CancellationToken cancellationToken = default)
         {
             ThrowIfDisposed();
-            if (!PerformTryAdd(key, ValueSource<TValue>.Create(value), expireIn, cancellationToken))
-                throw new ArgumentException("A value with the same key has already been added");
+            var result = PerformTryAdd(key, ValueSource<TValue>.Create(value), expireIn, cancellationToken);
+            switch (result.Status)
+            {
+                case TryOperationStatus.DuplicateKey:
+                    throw new ArgumentException("A value with the same key has already been added", nameof(key));
+                case TryOperationStatus.ValueSourceThrew:
+                    throw new ArgumentException("The value source threw an exception", nameof(value), result.Exception);
+            }
         }
 
         /// <summary>
@@ -123,8 +129,14 @@ namespace Gear.Caching
         public void Add(TKey key, Func<TValue> valueFactory, TimeSpan? expireIn = null, CancellationToken cancellationToken = default)
         {
             ThrowIfDisposed();
-            if (!PerformTryAdd(key, ValueSource<TValue>.Create(valueFactory), expireIn, cancellationToken))
-                throw new ArgumentException("A value with the same key has already been added");
+            var result = PerformTryAdd(key, ValueSource<TValue>.Create(valueFactory), expireIn, cancellationToken);
+            switch (result.Status)
+            {
+                case TryOperationStatus.DuplicateKey:
+                    throw new ArgumentException("A value with the same key has already been added", nameof(key));
+                case TryOperationStatus.ValueSourceThrew:
+                    throw new ArgumentException("The value source threw an exception", nameof(valueFactory), result.Exception);
+            }
         }
 
         /// <summary>
@@ -139,8 +151,14 @@ namespace Gear.Caching
         public void Add(TKey key, Func<CancellationToken, TValue> cancelableValueFactory, TimeSpan? expireIn = null, CancellationToken cancellationToken = default)
         {
             ThrowIfDisposed();
-            if (!PerformTryAdd(key, ValueSource<TValue>.Create(cancelableValueFactory), expireIn, cancellationToken))
-                throw new ArgumentException("A value with the same key has already been added");
+            var result = PerformTryAdd(key, ValueSource<TValue>.Create(cancelableValueFactory), expireIn, cancellationToken);
+            switch (result.Status)
+            {
+                case TryOperationStatus.DuplicateKey:
+                    throw new ArgumentException("A value with the same key has already been added", nameof(key));
+                case TryOperationStatus.ValueSourceThrew:
+                    throw new ArgumentException("The value source threw an exception", nameof(cancelableValueFactory), result.Exception);
+            }
         }
 
         /// <summary>
@@ -155,8 +173,14 @@ namespace Gear.Caching
         public async Task AddAsync(TKey key, TValue value, TimeSpan? expireIn = null, CancellationToken cancellationToken = default)
         {
             ThrowIfDisposed();
-            if (!(await PerformTryAddAsync(key, ValueSource<TValue>.Create(value), expireIn, cancellationToken).ConfigureAwait(false)))
-                throw new ArgumentException("A value with the same key has already been added");
+            var result = await PerformTryAddAsync(key, ValueSource<TValue>.Create(value), expireIn, cancellationToken).ConfigureAwait(false);
+            switch (result.Status)
+            {
+                case TryOperationStatus.DuplicateKey:
+                    throw new ArgumentException("A value with the same key has already been added", nameof(key));
+                case TryOperationStatus.ValueSourceThrew:
+                    throw new ArgumentException("The value source threw an exception", nameof(value), result.Exception);
+            }
         }
 
         /// <summary>
@@ -171,8 +195,14 @@ namespace Gear.Caching
         public async Task AddAsync(TKey key, Func<TValue> valueFactory, TimeSpan? expireIn = null, CancellationToken cancellationToken = default)
         {
             ThrowIfDisposed();
-            if (!(await PerformTryAddAsync(key, ValueSource<TValue>.Create(valueFactory), expireIn, cancellationToken).ConfigureAwait(false)))
-                throw new ArgumentException("A value with the same key has already been added");
+            var result = await PerformTryAddAsync(key, ValueSource<TValue>.Create(valueFactory), expireIn, cancellationToken).ConfigureAwait(false);
+            switch (result.Status)
+            {
+                case TryOperationStatus.DuplicateKey:
+                    throw new ArgumentException("A value with the same key has already been added", nameof(key));
+                case TryOperationStatus.ValueSourceThrew:
+                    throw new ArgumentException("The value source threw an exception", nameof(valueFactory), result.Exception);
+            }
         }
 
         /// <summary>
@@ -187,8 +217,14 @@ namespace Gear.Caching
         public async Task AddAsync(TKey key, Func<CancellationToken, TValue> cancelableValueFactory, TimeSpan? expireIn = null, CancellationToken cancellationToken = default)
         {
             ThrowIfDisposed();
-            if (!(await PerformTryAddAsync(key, ValueSource<TValue>.Create(cancelableValueFactory), expireIn, cancellationToken).ConfigureAwait(false)))
-                throw new ArgumentException("A value with the same key has already been added");
+            var result = await PerformTryAddAsync(key, ValueSource<TValue>.Create(cancelableValueFactory), expireIn, cancellationToken).ConfigureAwait(false);
+            switch (result.Status)
+            {
+                case TryOperationStatus.DuplicateKey:
+                    throw new ArgumentException("A value with the same key has already been added", nameof(key));
+                case TryOperationStatus.ValueSourceThrew:
+                    throw new ArgumentException("The value source threw an exception", nameof(cancelableValueFactory), result.Exception);
+            }
         }
 
         /// <summary>
@@ -203,8 +239,14 @@ namespace Gear.Caching
         public async Task AddAsync(TKey key, Func<Task<TValue>> asyncValueFactory, TimeSpan? expireIn = null, CancellationToken cancellationToken = default)
         {
             ThrowIfDisposed();
-            if (!(await PerformTryAddAsync(key, ValueSource<TValue>.Create(asyncValueFactory), expireIn, cancellationToken).ConfigureAwait(false)))
-                throw new ArgumentException("A value with the same key has already been added");
+            var result = await PerformTryAddAsync(key, ValueSource<TValue>.Create(asyncValueFactory), expireIn, cancellationToken).ConfigureAwait(false);
+            switch (result.Status)
+            {
+                case TryOperationStatus.DuplicateKey:
+                    throw new ArgumentException("A value with the same key has already been added", nameof(key));
+                case TryOperationStatus.ValueSourceThrew:
+                    throw new ArgumentException("The value source threw an exception", nameof(asyncValueFactory), result.Exception);
+            }
         }
 
         /// <summary>
@@ -219,8 +261,14 @@ namespace Gear.Caching
         public async Task AddAsync(TKey key, Func<CancellationToken, Task<TValue>> cancelableAsyncValueFactory, TimeSpan? expireIn = null, CancellationToken cancellationToken = default)
         {
             ThrowIfDisposed();
-            if (!(await PerformTryAddAsync(key, ValueSource<TValue>.Create(cancelableAsyncValueFactory), expireIn, cancellationToken).ConfigureAwait(false)))
-                throw new ArgumentException("A value with the same key has already been added");
+            var result = await PerformTryAddAsync(key, ValueSource<TValue>.Create(cancelableAsyncValueFactory), expireIn, cancellationToken).ConfigureAwait(false);
+            switch (result.Status)
+            {
+                case TryOperationStatus.DuplicateKey:
+                    throw new ArgumentException("A value with the same key has already been added", nameof(key));
+                case TryOperationStatus.ValueSourceThrew:
+                    throw new ArgumentException("The value source threw an exception", nameof(cancelableAsyncValueFactory), result.Exception);
+            }
         }
 
         /// <summary>
@@ -235,8 +283,14 @@ namespace Gear.Caching
         public void AddAndRefresh(TKey key, Func<TValue> valueFactory, TimeSpan interval, CancellationToken cancellationToken = default)
         {
             ThrowIfDisposed();
-            if (!PerformTryAddAndRefresh(key, ValueSource<TValue>.Create(valueFactory), interval, cancellationToken))
-                throw new ArgumentException("A value with the same key has already been added");
+            var result = PerformTryAddAndRefresh(key, ValueSource<TValue>.Create(valueFactory), interval, cancellationToken);
+            switch (result.Status)
+            {
+                case TryOperationStatus.DuplicateKey:
+                    throw new ArgumentException("A value with the same key has already been added", nameof(key));
+                case TryOperationStatus.ValueSourceThrew:
+                    throw new ArgumentException("The value source threw an exception", nameof(valueFactory), result.Exception);
+            }
         }
 
         /// <summary>
@@ -251,8 +305,14 @@ namespace Gear.Caching
         public void AddAndRefresh(TKey key, Func<CancellationToken, TValue> cancelableValueFactory, TimeSpan interval, CancellationToken cancellationToken = default)
         {
             ThrowIfDisposed();
-            if (!PerformTryAddAndRefresh(key, ValueSource<TValue>.Create(cancelableValueFactory), interval, cancellationToken))
-                throw new ArgumentException("A value with the same key has already been added");
+            var result = PerformTryAddAndRefresh(key, ValueSource<TValue>.Create(cancelableValueFactory), interval, cancellationToken);
+            switch (result.Status)
+            {
+                case TryOperationStatus.DuplicateKey:
+                    throw new ArgumentException("A value with the same key has already been added", nameof(key));
+                case TryOperationStatus.ValueSourceThrew:
+                    throw new ArgumentException("The value source threw an exception", nameof(cancelableValueFactory), result.Exception);
+            }
         }
 
         /// <summary>
@@ -267,8 +327,14 @@ namespace Gear.Caching
         public async Task AddAndRefreshAsync(TKey key, Func<TValue> valueFactory, TimeSpan interval, CancellationToken cancellationToken = default)
         {
             ThrowIfDisposed();
-            if (!(await PerformTryAddAndRefreshAsync(key, ValueSource<TValue>.Create(valueFactory), interval, cancellationToken).ConfigureAwait(false)))
-                throw new ArgumentException("A value with the same key has already been added");
+            var result = await PerformTryAddAndRefreshAsync(key, ValueSource<TValue>.Create(valueFactory), interval, cancellationToken).ConfigureAwait(false);
+            switch (result.Status)
+            {
+                case TryOperationStatus.DuplicateKey:
+                    throw new ArgumentException("A value with the same key has already been added", nameof(key));
+                case TryOperationStatus.ValueSourceThrew:
+                    throw new ArgumentException("The value source threw an exception", nameof(valueFactory), result.Exception);
+            }
         }
 
         /// <summary>
@@ -283,8 +349,14 @@ namespace Gear.Caching
         public async Task AddAndRefreshAsync(TKey key, Func<CancellationToken, TValue> cancelableValueFactory, TimeSpan interval, CancellationToken cancellationToken = default)
         {
             ThrowIfDisposed();
-            if (!(await PerformTryAddAndRefreshAsync(key, ValueSource<TValue>.Create(cancelableValueFactory), interval, cancellationToken).ConfigureAwait(false)))
-                throw new ArgumentException("A value with the same key has already been added");
+            var result = await PerformTryAddAndRefreshAsync(key, ValueSource<TValue>.Create(cancelableValueFactory), interval, cancellationToken).ConfigureAwait(false);
+            switch (result.Status)
+            {
+                case TryOperationStatus.DuplicateKey:
+                    throw new ArgumentException("A value with the same key has already been added", nameof(key));
+                case TryOperationStatus.ValueSourceThrew:
+                    throw new ArgumentException("The value source threw an exception", nameof(cancelableValueFactory), result.Exception);
+            }
         }
 
         /// <summary>
@@ -299,8 +371,14 @@ namespace Gear.Caching
         public async Task AddAndRefreshAsync(TKey key, Func<Task<TValue>> asyncValueFactory, TimeSpan interval, CancellationToken cancellationToken = default)
         {
             ThrowIfDisposed();
-            if (!(await PerformTryAddAndRefreshAsync(key, ValueSource<TValue>.Create(asyncValueFactory), interval, cancellationToken).ConfigureAwait(false)))
-                throw new ArgumentException("A value with the same key has already been added");
+            var result = await PerformTryAddAndRefreshAsync(key, ValueSource<TValue>.Create(asyncValueFactory), interval, cancellationToken).ConfigureAwait(false);
+            switch (result.Status)
+            {
+                case TryOperationStatus.DuplicateKey:
+                    throw new ArgumentException("A value with the same key has already been added", nameof(key));
+                case TryOperationStatus.ValueSourceThrew:
+                    throw new ArgumentException("The value source threw an exception", nameof(asyncValueFactory), result.Exception);
+            }
         }
 
         /// <summary>
@@ -315,8 +393,14 @@ namespace Gear.Caching
         public async Task AddAndRefreshAsync(TKey key, Func<CancellationToken, Task<TValue>> cancelableAsyncValueFactory, TimeSpan interval, CancellationToken cancellationToken = default)
         {
             ThrowIfDisposed();
-            if (!(await PerformTryAddAndRefreshAsync(key, ValueSource<TValue>.Create(cancelableAsyncValueFactory), interval, cancellationToken).ConfigureAwait(false)))
-                throw new ArgumentException("A value with the same key has already been added");
+            var result = await PerformTryAddAndRefreshAsync(key, ValueSource<TValue>.Create(cancelableAsyncValueFactory), interval, cancellationToken).ConfigureAwait(false);
+            switch (result.Status)
+            {
+                case TryOperationStatus.DuplicateKey:
+                    throw new ArgumentException("A value with the same key has already been added", nameof(key));
+                case TryOperationStatus.ValueSourceThrew:
+                    throw new ArgumentException("The value source threw an exception", nameof(cancelableAsyncValueFactory), result.Exception);
+            }
         }
 
         /// <summary>
@@ -1675,7 +1759,7 @@ namespace Gear.Caching
         /// <param name="expireIn">The amount of time in which the value should expire</param>
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
         /// <returns>true is the value was added; otherwise, false</returns>
-        protected virtual bool PerformTryAdd(TKey key, ValueSource<TValue> valueSource, TimeSpan? expireIn = null, CancellationToken cancellationToken = default)
+        protected virtual TryOperationResult PerformTryAdd(TKey key, ValueSource<TValue> valueSource, TimeSpan? expireIn = null, CancellationToken cancellationToken = default)
         {
             DateTime? expired = null;
             var expiredValue = default(TValue);
@@ -1692,7 +1776,7 @@ namespace Gear.Caching
                         expiredValue = removedBucket.Value;
                     }
                     else
-                        return false;
+                        return TryOperationResult.DuplicateKey;
                 }
                 try
                 {
@@ -1708,14 +1792,14 @@ namespace Gear.Caching
                     {
                         // Nothing we can do about this
                     }
-                    return false;
+                    return new TryOperationResult(ex);
                 }
                 buckets.TryAdd(key, new Bucket(value, expireIn));
             }
             if (expired != null)
                 OnValueExpired(new ValueExpiredEventArgs(key, expiredValue, expired.Value));
             OnValueAdded(new KeyValueEventArgs(key, value));
-            return true;
+            return TryOperationResult.Succeeded;
         }
 
         /// <summary>
@@ -1726,7 +1810,7 @@ namespace Gear.Caching
         /// <param name="expireIn">The amount of time in which the value should expire</param>
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
         /// <returns>true if the value was added; otherwise, false</returns>
-        protected virtual async Task<bool> PerformTryAddAsync(TKey key, ValueSource<TValue> valueSource, TimeSpan? expireIn = null, CancellationToken cancellationToken = default)
+        protected virtual async Task<TryOperationResult> PerformTryAddAsync(TKey key, ValueSource<TValue> valueSource, TimeSpan? expireIn = null, CancellationToken cancellationToken = default)
         {
             DateTime? expired = null;
             var expiredValue = default(TValue);
@@ -1743,7 +1827,7 @@ namespace Gear.Caching
                         expiredValue = removedBucket.Value;
                     }
                     else
-                        return false;
+                        return TryOperationResult.DuplicateKey;
                 }
                 try
                 {
@@ -1766,14 +1850,14 @@ namespace Gear.Caching
                     {
                         // Nothing we can do about this
                     }
-                    return false;
+                    return new TryOperationResult(ex);
                 }
                 buckets.TryAdd(key, new Bucket(value, expireIn));
             }
             if (expired != null)
                 OnValueExpired(new ValueExpiredEventArgs(key, expiredValue, expired.Value));
             OnValueAdded(new KeyValueEventArgs(key, value));
-            return true;
+            return TryOperationResult.Succeeded;
         }
 
         /// <summary>
@@ -1784,7 +1868,7 @@ namespace Gear.Caching
         /// <param name="interval">The amount of time between refreshes</param>
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
         /// <returns>true if the value was added; otherwise, false</returns>
-        protected virtual bool PerformTryAddAndRefresh(TKey key, ValueSource<TValue> valueSource, TimeSpan interval, CancellationToken cancellationToken = default)
+        protected virtual TryOperationResult PerformTryAddAndRefresh(TKey key, ValueSource<TValue> valueSource, TimeSpan interval, CancellationToken cancellationToken = default)
         {
             DateTime? expired = null;
             var expiredValue = default(TValue);
@@ -1801,7 +1885,7 @@ namespace Gear.Caching
                         expiredValue = removedBucket.Value;
                     }
                     else
-                        return false;
+                        return TryOperationResult.DuplicateKey;
                 }
                 try
                 {
@@ -1817,7 +1901,7 @@ namespace Gear.Caching
                     {
                         // Nothing we can do about this
                     }
-                    return false;
+                    return new TryOperationResult(ex);
                 }
                 var addedBucket = new Bucket(value);
                 var addedBucketId = addedBucket.Id;
@@ -1881,7 +1965,7 @@ namespace Gear.Caching
             if (expired != null)
                 OnValueExpired(new ValueExpiredEventArgs(key, expiredValue, expired.Value));
             OnValueAdded(new KeyValueEventArgs(key, value));
-            return true;
+            return TryOperationResult.Succeeded;
         }
 
         /// <summary>
@@ -1892,7 +1976,7 @@ namespace Gear.Caching
         /// <param name="interval">The amount of time between refreshes</param>
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
         /// <returns>true if the value was added; otherwise, false</returns>
-        protected virtual async Task<bool> PerformTryAddAndRefreshAsync(TKey key, ValueSource<TValue> valueSource, TimeSpan interval, CancellationToken cancellationToken = default)
+        protected virtual async Task<TryOperationResult> PerformTryAddAndRefreshAsync(TKey key, ValueSource<TValue> valueSource, TimeSpan interval, CancellationToken cancellationToken = default)
         {
             DateTime? expired = null;
             var expiredValue = default(TValue);
@@ -1909,7 +1993,7 @@ namespace Gear.Caching
                         expiredValue = removedBucket.Value;
                     }
                     else
-                        return false;
+                        return TryOperationResult.DuplicateKey;
                 }
                 try
                 {
@@ -1932,7 +2016,7 @@ namespace Gear.Caching
                     {
                         // Nothing we can do about this
                     }
-                    return false;
+                    return new TryOperationResult(ex);
                 }
                 var addedBucket = new Bucket(value);
                 var addedBucketId = addedBucket.Id;
@@ -2006,7 +2090,7 @@ namespace Gear.Caching
             if (expired != null)
                 OnValueExpired(new ValueExpiredEventArgs(key, expiredValue, expired.Value));
             OnValueAdded(new KeyValueEventArgs(key, value));
-            return true;
+            return TryOperationResult.Succeeded;
         }
 
         /// <summary>
@@ -2018,7 +2102,7 @@ namespace Gear.Caching
         /// <param name="expireIn">The amount of time in which the value should expire</param>
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
         /// <returns>true if the value was updated; otherwise, false</returns>
-        protected virtual bool PerformTryUpdate(TKey key, ValueSource<TValue> valueSource, bool setExpiration, TimeSpan? expireIn, CancellationToken cancellationToken = default)
+        protected virtual TryOperationResult PerformTryUpdate(TKey key, ValueSource<TValue> valueSource, bool setExpiration, TimeSpan? expireIn, CancellationToken cancellationToken = default)
         {
             DateTime? expired = null;
             var expiredValue = default(TValue);
@@ -2029,13 +2113,13 @@ namespace Gear.Caching
                 {
                     cancellationToken.ThrowIfCancellationRequested();
                     if (!buckets.TryGetValue(key, out Bucket bucket))
-                        return false;
+                        return TryOperationResult.KeyNotFound;
                     if (bucket.Expiration < DateTime.UtcNow)
                     {
                         buckets.TryRemove(key, out Bucket removedBucket);
                         expired = bucket.Expiration.Value;
                         expiredValue = bucket.Value;
-                        return false;
+                        return TryOperationResult.KeyNotFound;
                     }
                     try
                     {
@@ -2051,7 +2135,7 @@ namespace Gear.Caching
                         {
                             // Nothing we can do about this
                         }
-                        return false;
+                        return new TryOperationResult(ex);
                     }
                     oldValue = bucket.Value;
                     bucket.Value = value;
@@ -2059,7 +2143,7 @@ namespace Gear.Caching
                         bucket.Expiration = DateTime.UtcNow + expireIn;
                 }
                 OnValueUpdated(new ValueUpdatedEventArgs(key, oldValue, value, false));
-                return true;
+                return TryOperationResult.Succeeded;
             }
             finally
             {
@@ -2077,7 +2161,7 @@ namespace Gear.Caching
         /// <param name="expireIn">The amount of time in which the value should expire</param>
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
         /// <returns>true if the value was updated; otherwise, false</returns>
-        protected virtual async Task<bool> PerformTryUpdateAsync(TKey key, ValueSource<TValue> valueSource, bool setExpiration, TimeSpan? expireIn, CancellationToken cancellationToken = default)
+        protected virtual async Task<TryOperationResult> PerformTryUpdateAsync(TKey key, ValueSource<TValue> valueSource, bool setExpiration, TimeSpan? expireIn, CancellationToken cancellationToken = default)
         {
             DateTime? expired = null;
             var expiredValue = default(TValue);
@@ -2088,13 +2172,13 @@ namespace Gear.Caching
                 {
                     cancellationToken.ThrowIfCancellationRequested();
                     if (!buckets.TryGetValue(key, out Bucket bucket))
-                        return false;
+                        return TryOperationResult.KeyNotFound;
                     if (bucket.Expiration < DateTime.UtcNow)
                     {
                         buckets.TryRemove(key, out Bucket removedBucket);
                         expired = bucket.Expiration.Value;
                         expiredValue = bucket.Value;
-                        return false;
+                        return TryOperationResult.KeyNotFound;
                     }
                     try
                     {
@@ -2117,7 +2201,7 @@ namespace Gear.Caching
                         {
                             // Nothing we can do about this
                         }
-                        return false;
+                        return new TryOperationResult(ex);
                     }
                     oldValue = bucket.Value;
                     bucket.Value = value;
@@ -2125,7 +2209,7 @@ namespace Gear.Caching
                         bucket.Expiration = DateTime.UtcNow + expireIn;
                 }
                 OnValueUpdated(new ValueUpdatedEventArgs(key, oldValue, value, false));
-                return true;
+                return TryOperationResult.Succeeded;
             }
             finally
             {
@@ -2260,7 +2344,7 @@ namespace Gear.Caching
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
 		/// <returns>true is the value was added; otherwise, false</returns>
         /// <exception cref="ObjectDisposedException">The cache has been disposed</exception>
-        public bool TryAdd(TKey key, TValue value, TimeSpan? expireIn = null, CancellationToken cancellationToken = default)
+        public TryOperationResult TryAdd(TKey key, TValue value, TimeSpan? expireIn = null, CancellationToken cancellationToken = default)
         {
             ThrowIfDisposed();
             return PerformTryAdd(key, ValueSource<TValue>.Create(value), expireIn, cancellationToken);
@@ -2275,7 +2359,7 @@ namespace Gear.Caching
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
 		/// <returns>true is the value was added; otherwise, false</returns>
         /// <exception cref="ObjectDisposedException">The cache has been disposed</exception>
-        public bool TryAdd(TKey key, Func<CancellationToken, TValue> cancelableValueFactory, TimeSpan? expireIn = null, CancellationToken cancellationToken = default)
+        public TryOperationResult TryAdd(TKey key, Func<CancellationToken, TValue> cancelableValueFactory, TimeSpan? expireIn = null, CancellationToken cancellationToken = default)
         {
             ThrowIfDisposed();
             return PerformTryAdd(key, ValueSource<TValue>.Create(cancelableValueFactory), expireIn, cancellationToken);
@@ -2290,7 +2374,7 @@ namespace Gear.Caching
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
 		/// <returns>true is the value was added; otherwise, false</returns>
         /// <exception cref="ObjectDisposedException">The cache has been disposed</exception>
-        public bool TryAdd(TKey key, Func<TValue> valueFactory, TimeSpan? expireIn = null, CancellationToken cancellationToken = default)
+        public TryOperationResult TryAdd(TKey key, Func<TValue> valueFactory, TimeSpan? expireIn = null, CancellationToken cancellationToken = default)
         {
             ThrowIfDisposed();
             return PerformTryAdd(key, ValueSource<TValue>.Create(valueFactory), expireIn, cancellationToken);
@@ -2305,7 +2389,7 @@ namespace Gear.Caching
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
 		/// <returns>true if the value was added; otherwise, false</returns>
         /// <exception cref="ObjectDisposedException">The cache has been disposed</exception>
-        public Task<bool> TryAddAsync(TKey key, TValue value, TimeSpan? expireIn = null, CancellationToken cancellationToken = default)
+        public Task<TryOperationResult> TryAddAsync(TKey key, TValue value, TimeSpan? expireIn = null, CancellationToken cancellationToken = default)
         {
             ThrowIfDisposed();
             return PerformTryAddAsync(key, ValueSource<TValue>.Create(value), expireIn, cancellationToken);
@@ -2320,7 +2404,7 @@ namespace Gear.Caching
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
 		/// <returns>true if the value was added; otherwise, false</returns>
         /// <exception cref="ObjectDisposedException">The cache has been disposed</exception>
-        public Task<bool> TryAddAsync(TKey key, Func<TValue> valueFactory, TimeSpan? expireIn = null, CancellationToken cancellationToken = default)
+        public Task<TryOperationResult> TryAddAsync(TKey key, Func<TValue> valueFactory, TimeSpan? expireIn = null, CancellationToken cancellationToken = default)
         {
             ThrowIfDisposed();
             return PerformTryAddAsync(key, ValueSource<TValue>.Create(valueFactory), expireIn, cancellationToken);
@@ -2335,7 +2419,7 @@ namespace Gear.Caching
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
 		/// <returns>true if the value was added; otherwise, false</returns>
         /// <exception cref="ObjectDisposedException">The cache has been disposed</exception>
-        public Task<bool> TryAddAsync(TKey key, Func<CancellationToken, TValue> cancelableValueFactory, TimeSpan? expireIn = null, CancellationToken cancellationToken = default)
+        public Task<TryOperationResult> TryAddAsync(TKey key, Func<CancellationToken, TValue> cancelableValueFactory, TimeSpan? expireIn = null, CancellationToken cancellationToken = default)
         {
             ThrowIfDisposed();
             return PerformTryAddAsync(key, ValueSource<TValue>.Create(cancelableValueFactory), expireIn, cancellationToken);
@@ -2350,7 +2434,7 @@ namespace Gear.Caching
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
 		/// <returns>true if the value was added; otherwise, false</returns>
         /// <exception cref="ObjectDisposedException">The cache has been disposed</exception>
-        public Task<bool> TryAddAsync(TKey key, Func<CancellationToken, Task<TValue>> cancelableAsyncValueFactory, TimeSpan? expireIn = null, CancellationToken cancellationToken = default)
+        public Task<TryOperationResult> TryAddAsync(TKey key, Func<CancellationToken, Task<TValue>> cancelableAsyncValueFactory, TimeSpan? expireIn = null, CancellationToken cancellationToken = default)
         {
             ThrowIfDisposed();
             return PerformTryAddAsync(key, ValueSource<TValue>.Create(cancelableAsyncValueFactory), expireIn, cancellationToken);
@@ -2365,7 +2449,7 @@ namespace Gear.Caching
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
 		/// <returns>true if the value was added; otherwise, false</returns>
         /// <exception cref="ObjectDisposedException">The cache has been disposed</exception>
-        public Task<bool> TryAddAsync(TKey key, Func<Task<TValue>> asyncValueFactory, TimeSpan? expireIn = null, CancellationToken cancellationToken = default)
+        public Task<TryOperationResult> TryAddAsync(TKey key, Func<Task<TValue>> asyncValueFactory, TimeSpan? expireIn = null, CancellationToken cancellationToken = default)
         {
             ThrowIfDisposed();
             return PerformTryAddAsync(key, ValueSource<TValue>.Create(asyncValueFactory), expireIn, cancellationToken);
@@ -2380,7 +2464,7 @@ namespace Gear.Caching
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
 		/// <returns>true if the value was added; otherwise, false</returns>
         /// <exception cref="ObjectDisposedException">The cache has been disposed</exception>
-        public bool TryAddAndRefresh(TKey key, Func<TValue> valueFactory, TimeSpan interval, CancellationToken cancellationToken = default)
+        public TryOperationResult TryAddAndRefresh(TKey key, Func<TValue> valueFactory, TimeSpan interval, CancellationToken cancellationToken = default)
         {
             ThrowIfDisposed();
             return PerformTryAddAndRefresh(key, ValueSource<TValue>.Create(valueFactory), interval, cancellationToken);
@@ -2395,7 +2479,7 @@ namespace Gear.Caching
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
 		/// <returns>true if the value was added; otherwise, false</returns>
         /// <exception cref="ObjectDisposedException">The cache has been disposed</exception>
-        public bool TryAddAndRefresh(TKey key, Func<CancellationToken, TValue> cancelableValueFactory, TimeSpan interval, CancellationToken cancellationToken = default)
+        public TryOperationResult TryAddAndRefresh(TKey key, Func<CancellationToken, TValue> cancelableValueFactory, TimeSpan interval, CancellationToken cancellationToken = default)
         {
             ThrowIfDisposed();
             return PerformTryAddAndRefresh(key, ValueSource<TValue>.Create(cancelableValueFactory), interval, cancellationToken);
@@ -2410,7 +2494,7 @@ namespace Gear.Caching
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
 		/// <returns>true if the value was added; otherwise, false</returns>
         /// <exception cref="ObjectDisposedException">The cache has been disposed</exception>
-        public Task<bool> TryAddAndRefreshAsync(TKey key, Func<TValue> valueFactory, TimeSpan interval, CancellationToken cancellationToken = default)
+        public Task<TryOperationResult> TryAddAndRefreshAsync(TKey key, Func<TValue> valueFactory, TimeSpan interval, CancellationToken cancellationToken = default)
         {
             ThrowIfDisposed();
             return PerformTryAddAndRefreshAsync(key, ValueSource<TValue>.Create(valueFactory), interval, cancellationToken);
@@ -2425,7 +2509,7 @@ namespace Gear.Caching
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
 		/// <returns>true if the value was added; otherwise, false</returns>
         /// <exception cref="ObjectDisposedException">The cache has been disposed</exception>
-        public Task<bool> TryAddAndRefreshAsync(TKey key, Func<CancellationToken, TValue> cancelableValueFactory, TimeSpan interval, CancellationToken cancellationToken = default)
+        public Task<TryOperationResult> TryAddAndRefreshAsync(TKey key, Func<CancellationToken, TValue> cancelableValueFactory, TimeSpan interval, CancellationToken cancellationToken = default)
         {
             ThrowIfDisposed();
             return PerformTryAddAndRefreshAsync(key, ValueSource<TValue>.Create(cancelableValueFactory), interval, cancellationToken);
@@ -2440,7 +2524,7 @@ namespace Gear.Caching
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
 		/// <returns>true if the value was added; otherwise, false</returns>
         /// <exception cref="ObjectDisposedException">The cache has been disposed</exception>
-        public Task<bool> TryAddAndRefreshAsync(TKey key, Func<Task<TValue>> asyncValueFactory, TimeSpan interval, CancellationToken cancellationToken = default)
+        public Task<TryOperationResult> TryAddAndRefreshAsync(TKey key, Func<Task<TValue>> asyncValueFactory, TimeSpan interval, CancellationToken cancellationToken = default)
         {
             ThrowIfDisposed();
             return PerformTryAddAndRefreshAsync(key, ValueSource<TValue>.Create(asyncValueFactory), interval, cancellationToken);
@@ -2455,7 +2539,7 @@ namespace Gear.Caching
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
 		/// <returns>true if the value was added; otherwise, false</returns>
         /// <exception cref="ObjectDisposedException">The cache has been disposed</exception>
-        public Task<bool> TryAddAndRefreshAsync(TKey key, Func<CancellationToken, Task<TValue>> cancelableAsyncValueFactory, TimeSpan interval, CancellationToken cancellationToken = default)
+        public Task<TryOperationResult> TryAddAndRefreshAsync(TKey key, Func<CancellationToken, Task<TValue>> cancelableAsyncValueFactory, TimeSpan interval, CancellationToken cancellationToken = default)
         {
             ThrowIfDisposed();
             return PerformTryAddAndRefreshAsync(key, ValueSource<TValue>.Create(cancelableAsyncValueFactory), interval, cancellationToken);
@@ -2879,7 +2963,7 @@ namespace Gear.Caching
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
 		/// <returns>true if the value was updated; otherwise, false</returns>
         /// <exception cref="ObjectDisposedException">The cache has been disposed</exception>
-        public bool TryUpdate(TKey key, TValue value, CancellationToken cancellationToken = default)
+        public TryOperationResult TryUpdate(TKey key, TValue value, CancellationToken cancellationToken = default)
         {
             ThrowIfDisposed();
             return PerformTryUpdate(key, ValueSource<TValue>.Create(value), false, null, cancellationToken);
@@ -2894,7 +2978,7 @@ namespace Gear.Caching
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
 		/// <returns>true if the value was updated; otherwise, false</returns>
         /// <exception cref="ObjectDisposedException">The cache has been disposed</exception>
-        public bool TryUpdate(TKey key, TValue value, TimeSpan? expireIn, CancellationToken cancellationToken = default)
+        public TryOperationResult TryUpdate(TKey key, TValue value, TimeSpan? expireIn, CancellationToken cancellationToken = default)
         {
             ThrowIfDisposed();
             return PerformTryUpdate(key, ValueSource<TValue>.Create(value), true, expireIn, cancellationToken);
@@ -2908,7 +2992,7 @@ namespace Gear.Caching
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
 		/// <returns>true if the value was updated; otherwise, false</returns>
         /// <exception cref="ObjectDisposedException">The cache has been disposed</exception>
-        public bool TryUpdate(TKey key, Func<TValue> valueFactory, CancellationToken cancellationToken = default)
+        public TryOperationResult TryUpdate(TKey key, Func<TValue> valueFactory, CancellationToken cancellationToken = default)
         {
             ThrowIfDisposed();
             return PerformTryUpdate(key, ValueSource<TValue>.Create(valueFactory), false, null, cancellationToken);
@@ -2922,7 +3006,7 @@ namespace Gear.Caching
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
 		/// <returns>true if the value was updated; otherwise, false</returns>
         /// <exception cref="ObjectDisposedException">The cache has been disposed</exception>
-        public bool TryUpdate(TKey key, Func<CancellationToken, TValue> cancelableValueFactory, CancellationToken cancellationToken = default)
+        public TryOperationResult TryUpdate(TKey key, Func<CancellationToken, TValue> cancelableValueFactory, CancellationToken cancellationToken = default)
         {
             ThrowIfDisposed();
             return PerformTryUpdate(key, ValueSource<TValue>.Create(cancelableValueFactory), false, null, cancellationToken);
@@ -2937,7 +3021,7 @@ namespace Gear.Caching
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
 		/// <returns>true if the value was updated; otherwise, false</returns>
         /// <exception cref="ObjectDisposedException">The cache has been disposed</exception>
-        public bool TryUpdate(TKey key, Func<TValue> valueFactory, TimeSpan? expireIn, CancellationToken cancellationToken = default)
+        public TryOperationResult TryUpdate(TKey key, Func<TValue> valueFactory, TimeSpan? expireIn, CancellationToken cancellationToken = default)
         {
             ThrowIfDisposed();
             return PerformTryUpdate(key, ValueSource<TValue>.Create(valueFactory), true, expireIn, cancellationToken);
@@ -2952,7 +3036,7 @@ namespace Gear.Caching
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
 		/// <returns>true if the value was updated; otherwise, false</returns>
         /// <exception cref="ObjectDisposedException">The cache has been disposed</exception>
-        public bool TryUpdate(TKey key, Func<CancellationToken, TValue> cancelableValueFactory, TimeSpan? expireIn, CancellationToken cancellationToken = default)
+        public TryOperationResult TryUpdate(TKey key, Func<CancellationToken, TValue> cancelableValueFactory, TimeSpan? expireIn, CancellationToken cancellationToken = default)
         {
             ThrowIfDisposed();
             return PerformTryUpdate(key, ValueSource<TValue>.Create(cancelableValueFactory), true, expireIn, cancellationToken);
@@ -2966,7 +3050,7 @@ namespace Gear.Caching
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
 		/// <returns>true if the value was updated; otherwise, false</returns>
         /// <exception cref="ObjectDisposedException">The cache has been disposed</exception>
-        public Task<bool> TryUpdateAsync(TKey key, TValue value, CancellationToken cancellationToken = default)
+        public Task<TryOperationResult> TryUpdateAsync(TKey key, TValue value, CancellationToken cancellationToken = default)
         {
             ThrowIfDisposed();
             return PerformTryUpdateAsync(key, ValueSource<TValue>.Create(value), false, null, cancellationToken);
@@ -2981,7 +3065,7 @@ namespace Gear.Caching
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
 		/// <returns>true if the value was updated; otherwise, false</returns>
         /// <exception cref="ObjectDisposedException">The cache has been disposed</exception>
-        public Task<bool> TryUpdateAsync(TKey key, TValue value, TimeSpan? expireIn, CancellationToken cancellationToken = default)
+        public Task<TryOperationResult> TryUpdateAsync(TKey key, TValue value, TimeSpan? expireIn, CancellationToken cancellationToken = default)
         {
             ThrowIfDisposed();
             return PerformTryUpdateAsync(key, ValueSource<TValue>.Create(value), true, expireIn, cancellationToken);
@@ -2995,7 +3079,7 @@ namespace Gear.Caching
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
 		/// <returns>true if the value was updated; otherwise, false</returns>
         /// <exception cref="ObjectDisposedException">The cache has been disposed</exception>
-        public Task<bool> TryUpdateAsync(TKey key, Func<TValue> valueFactory, CancellationToken cancellationToken = default)
+        public Task<TryOperationResult> TryUpdateAsync(TKey key, Func<TValue> valueFactory, CancellationToken cancellationToken = default)
         {
             ThrowIfDisposed();
             return PerformTryUpdateAsync(key, ValueSource<TValue>.Create(valueFactory), false, null, cancellationToken);
@@ -3009,7 +3093,7 @@ namespace Gear.Caching
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
 		/// <returns>true if the value was updated; otherwise, false</returns>
         /// <exception cref="ObjectDisposedException">The cache has been disposed</exception>
-        public Task<bool> TryUpdateAsync(TKey key, Func<CancellationToken, TValue> cancelableValueFactory, CancellationToken cancellationToken = default)
+        public Task<TryOperationResult> TryUpdateAsync(TKey key, Func<CancellationToken, TValue> cancelableValueFactory, CancellationToken cancellationToken = default)
         {
             ThrowIfDisposed();
             return PerformTryUpdateAsync(key, ValueSource<TValue>.Create(cancelableValueFactory), false, null, cancellationToken);
@@ -3024,7 +3108,7 @@ namespace Gear.Caching
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
 		/// <returns>true if the value was updated; otherwise, false</returns>
         /// <exception cref="ObjectDisposedException">The cache has been disposed</exception>
-        public Task<bool> TryUpdateAsync(TKey key, Func<TValue> valueFactory, TimeSpan? expireIn, CancellationToken cancellationToken = default)
+        public Task<TryOperationResult> TryUpdateAsync(TKey key, Func<TValue> valueFactory, TimeSpan? expireIn, CancellationToken cancellationToken = default)
         {
             ThrowIfDisposed();
             return PerformTryUpdateAsync(key, ValueSource<TValue>.Create(valueFactory), true, expireIn, cancellationToken);
@@ -3039,7 +3123,7 @@ namespace Gear.Caching
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
 		/// <returns>true if the value was updated; otherwise, false</returns>
         /// <exception cref="ObjectDisposedException">The cache has been disposed</exception>
-        public Task<bool> TryUpdateAsync(TKey key, Func<CancellationToken, TValue> cancelableValueFactory, TimeSpan? expireIn, CancellationToken cancellationToken = default)
+        public Task<TryOperationResult> TryUpdateAsync(TKey key, Func<CancellationToken, TValue> cancelableValueFactory, TimeSpan? expireIn, CancellationToken cancellationToken = default)
         {
             ThrowIfDisposed();
             return PerformTryUpdateAsync(key, ValueSource<TValue>.Create(cancelableValueFactory), true, expireIn, cancellationToken);
@@ -3053,7 +3137,7 @@ namespace Gear.Caching
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
 		/// <returns>true if the value was updated; otherwise, false</returns>
         /// <exception cref="ObjectDisposedException">The cache has been disposed</exception>
-        public Task<bool> TryUpdateAsync(TKey key, Func<Task<TValue>> asyncValueFactory, CancellationToken cancellationToken = default)
+        public Task<TryOperationResult> TryUpdateAsync(TKey key, Func<Task<TValue>> asyncValueFactory, CancellationToken cancellationToken = default)
         {
             ThrowIfDisposed();
             return PerformTryUpdateAsync(key, ValueSource<TValue>.Create(asyncValueFactory), false, null, cancellationToken);
@@ -3067,7 +3151,7 @@ namespace Gear.Caching
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
 		/// <returns>true if the value was updated; otherwise, false</returns>
         /// <exception cref="ObjectDisposedException">The cache has been disposed</exception>
-        public Task<bool> TryUpdateAsync(TKey key, Func<CancellationToken, Task<TValue>> cancelableAsyncValueFactory, CancellationToken cancellationToken = default)
+        public Task<TryOperationResult> TryUpdateAsync(TKey key, Func<CancellationToken, Task<TValue>> cancelableAsyncValueFactory, CancellationToken cancellationToken = default)
         {
             ThrowIfDisposed();
             return PerformTryUpdateAsync(key, ValueSource<TValue>.Create(cancelableAsyncValueFactory), false, null, cancellationToken);
@@ -3082,7 +3166,7 @@ namespace Gear.Caching
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
 		/// <returns>true if the value was updated; otherwise, false</returns>
         /// <exception cref="ObjectDisposedException">The cache has been disposed</exception>
-        public Task<bool> TryUpdateAsync(TKey key, Func<Task<TValue>> asyncValueFactory, TimeSpan? expireIn, CancellationToken cancellationToken = default)
+        public Task<TryOperationResult> TryUpdateAsync(TKey key, Func<Task<TValue>> asyncValueFactory, TimeSpan? expireIn, CancellationToken cancellationToken = default)
         {
             ThrowIfDisposed();
             return PerformTryUpdateAsync(key, ValueSource<TValue>.Create(asyncValueFactory), true, expireIn, cancellationToken);
@@ -3097,7 +3181,7 @@ namespace Gear.Caching
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
 		/// <returns>true if the value was updated; otherwise, false</returns>
         /// <exception cref="ObjectDisposedException">The cache has been disposed</exception>
-        public Task<bool> TryUpdateAsync(TKey key, Func<CancellationToken, Task<TValue>> cancelableAsyncValueFactory, TimeSpan? expireIn, CancellationToken cancellationToken = default)
+        public Task<TryOperationResult> TryUpdateAsync(TKey key, Func<CancellationToken, Task<TValue>> cancelableAsyncValueFactory, TimeSpan? expireIn, CancellationToken cancellationToken = default)
         {
             ThrowIfDisposed();
             return PerformTryUpdateAsync(key, ValueSource<TValue>.Create(cancelableAsyncValueFactory), true, expireIn, cancellationToken);
@@ -3114,8 +3198,14 @@ namespace Gear.Caching
         public void Update(TKey key, TValue value, CancellationToken cancellationToken = default)
         {
             ThrowIfDisposed();
-            if (!TryUpdate(key, value, cancellationToken))
-                throw new KeyNotFoundException();
+            var result = TryUpdate(key, value, cancellationToken);
+            switch (result.Status)
+            {
+                case TryOperationStatus.KeyNotFound:
+                    throw new KeyNotFoundException();
+                case TryOperationStatus.ValueSourceThrew:
+                    throw new ArgumentException("The value source threw an exception", nameof(value), result.Exception);
+            }
         }
 
         /// <summary>
@@ -3130,8 +3220,14 @@ namespace Gear.Caching
         public void Update(TKey key, TValue value, TimeSpan? expireIn, CancellationToken cancellationToken = default)
         {
             ThrowIfDisposed();
-            if (!TryUpdate(key, value, expireIn, cancellationToken))
-                throw new KeyNotFoundException();
+            var result = TryUpdate(key, value, expireIn, cancellationToken);
+            switch (result.Status)
+            {
+                case TryOperationStatus.KeyNotFound:
+                    throw new KeyNotFoundException();
+                case TryOperationStatus.ValueSourceThrew:
+                    throw new ArgumentException("The value source threw an exception", nameof(value), result.Exception);
+            }
         }
 
         /// <summary>
@@ -3145,8 +3241,14 @@ namespace Gear.Caching
         public void Update(TKey key, Func<TValue> valueFactory, CancellationToken cancellationToken = default)
         {
             ThrowIfDisposed();
-            if (!TryUpdate(key, valueFactory, cancellationToken))
-                throw new KeyNotFoundException();
+            var result = TryUpdate(key, valueFactory, cancellationToken);
+            switch (result.Status)
+            {
+                case TryOperationStatus.KeyNotFound:
+                    throw new KeyNotFoundException();
+                case TryOperationStatus.ValueSourceThrew:
+                    throw new ArgumentException("The value source threw an exception", nameof(valueFactory), result.Exception);
+            }
         }
 
         /// <summary>
@@ -3160,8 +3262,14 @@ namespace Gear.Caching
         public void Update(TKey key, Func<CancellationToken, TValue> cancelableValueFactory, CancellationToken cancellationToken = default)
         {
             ThrowIfDisposed();
-            if (!TryUpdate(key, cancelableValueFactory, cancellationToken))
-                throw new KeyNotFoundException();
+            var result = TryUpdate(key, cancelableValueFactory, cancellationToken);
+            switch (result.Status)
+            {
+                case TryOperationStatus.KeyNotFound:
+                    throw new KeyNotFoundException();
+                case TryOperationStatus.ValueSourceThrew:
+                    throw new ArgumentException("The value source threw an exception", nameof(cancelableValueFactory), result.Exception);
+            }
         }
 
         /// <summary>
@@ -3176,8 +3284,14 @@ namespace Gear.Caching
         public void Update(TKey key, Func<TValue> valueFactory, TimeSpan? expireIn, CancellationToken cancellationToken = default)
         {
             ThrowIfDisposed();
-            if (!TryUpdate(key, valueFactory, expireIn, cancellationToken))
-                throw new KeyNotFoundException();
+            var result = TryUpdate(key, valueFactory, expireIn, cancellationToken);
+            switch (result.Status)
+            {
+                case TryOperationStatus.KeyNotFound:
+                    throw new KeyNotFoundException();
+                case TryOperationStatus.ValueSourceThrew:
+                    throw new ArgumentException("The value source threw an exception", nameof(valueFactory), result.Exception);
+            }
         }
 
         /// <summary>
@@ -3192,8 +3306,14 @@ namespace Gear.Caching
         public void Update(TKey key, Func<CancellationToken, TValue> cancelableValueFactory, TimeSpan? expireIn, CancellationToken cancellationToken = default)
         {
             ThrowIfDisposed();
-            if (!TryUpdate(key, cancelableValueFactory, expireIn, cancellationToken))
-                throw new KeyNotFoundException();
+            var result = TryUpdate(key, cancelableValueFactory, expireIn, cancellationToken);
+            switch (result.Status)
+            {
+                case TryOperationStatus.KeyNotFound:
+                    throw new KeyNotFoundException();
+                case TryOperationStatus.ValueSourceThrew:
+                    throw new ArgumentException("The value source threw an exception", nameof(cancelableValueFactory), result.Exception);
+            }
         }
 
         /// <summary>
@@ -3207,8 +3327,14 @@ namespace Gear.Caching
         public async Task UpdateAsync(TKey key, TValue value, CancellationToken cancellationToken = default)
         {
             ThrowIfDisposed();
-            if (!(await TryUpdateAsync(key, value, cancellationToken).ConfigureAwait(false)))
-                throw new KeyNotFoundException();
+            var result = await TryUpdateAsync(key, value, cancellationToken).ConfigureAwait(false);
+            switch (result.Status)
+            {
+                case TryOperationStatus.KeyNotFound:
+                    throw new KeyNotFoundException();
+                case TryOperationStatus.ValueSourceThrew:
+                    throw new ArgumentException("The value source threw an exception", nameof(value), result.Exception);
+            }
         }
 
         /// <summary>
@@ -3223,8 +3349,14 @@ namespace Gear.Caching
         public async Task UpdateAsync(TKey key, TValue value, TimeSpan? expireIn, CancellationToken cancellationToken = default)
         {
             ThrowIfDisposed();
-            if (!(await TryUpdateAsync(key, value, expireIn, cancellationToken).ConfigureAwait(false)))
-                throw new KeyNotFoundException();
+            var result = await TryUpdateAsync(key, value, expireIn, cancellationToken).ConfigureAwait(false);
+            switch (result.Status)
+            {
+                case TryOperationStatus.KeyNotFound:
+                    throw new KeyNotFoundException();
+                case TryOperationStatus.ValueSourceThrew:
+                    throw new ArgumentException("The value source threw an exception", nameof(value), result.Exception);
+            }
         }
 
         /// <summary>
@@ -3238,8 +3370,14 @@ namespace Gear.Caching
         public async Task UpdateAsync(TKey key, Func<TValue> valueFactory, CancellationToken cancellationToken = default)
         {
             ThrowIfDisposed();
-            if (!(await TryUpdateAsync(key, valueFactory, cancellationToken).ConfigureAwait(false)))
-                throw new KeyNotFoundException();
+            var result = await TryUpdateAsync(key, valueFactory, cancellationToken).ConfigureAwait(false);
+            switch (result.Status)
+            {
+                case TryOperationStatus.KeyNotFound:
+                    throw new KeyNotFoundException();
+                case TryOperationStatus.ValueSourceThrew:
+                    throw new ArgumentException("The value source threw an exception", nameof(valueFactory), result.Exception);
+            }
         }
 
         /// <summary>
@@ -3253,8 +3391,14 @@ namespace Gear.Caching
         public async Task UpdateAsync(TKey key, Func<CancellationToken, TValue> cancelableValueFactory, CancellationToken cancellationToken = default)
         {
             ThrowIfDisposed();
-            if (!(await TryUpdateAsync(key, cancelableValueFactory, cancellationToken).ConfigureAwait(false)))
-                throw new KeyNotFoundException();
+            var result = await TryUpdateAsync(key, cancelableValueFactory, cancellationToken).ConfigureAwait(false);
+            switch (result.Status)
+            {
+                case TryOperationStatus.KeyNotFound:
+                    throw new KeyNotFoundException();
+                case TryOperationStatus.ValueSourceThrew:
+                    throw new ArgumentException("The value source threw an exception", nameof(cancelableValueFactory), result.Exception);
+            }
         }
 
         /// <summary>
@@ -3269,8 +3413,14 @@ namespace Gear.Caching
         public async Task UpdateAsync(TKey key, Func<TValue> valueFactory, TimeSpan? expireIn, CancellationToken cancellationToken = default)
         {
             ThrowIfDisposed();
-            if (!(await TryUpdateAsync(key, valueFactory, expireIn, cancellationToken).ConfigureAwait(false)))
-                throw new KeyNotFoundException();
+            var result = await TryUpdateAsync(key, valueFactory, expireIn, cancellationToken).ConfigureAwait(false);
+            switch (result.Status)
+            {
+                case TryOperationStatus.KeyNotFound:
+                    throw new KeyNotFoundException();
+                case TryOperationStatus.ValueSourceThrew:
+                    throw new ArgumentException("The value source threw an exception", nameof(valueFactory), result.Exception);
+            }
         }
 
         /// <summary>
@@ -3285,8 +3435,14 @@ namespace Gear.Caching
         public async Task UpdateAsync(TKey key, Func<CancellationToken, TValue> cancelableValueFactory, TimeSpan? expireIn, CancellationToken cancellationToken = default)
         {
             ThrowIfDisposed();
-            if (!(await TryUpdateAsync(key, cancelableValueFactory, expireIn, cancellationToken).ConfigureAwait(false)))
-                throw new KeyNotFoundException();
+            var result = await TryUpdateAsync(key, cancelableValueFactory, expireIn, cancellationToken).ConfigureAwait(false);
+            switch (result.Status)
+            {
+                case TryOperationStatus.KeyNotFound:
+                    throw new KeyNotFoundException();
+                case TryOperationStatus.ValueSourceThrew:
+                    throw new ArgumentException("The value source threw an exception", nameof(cancelableValueFactory), result.Exception);
+            }
         }
 
         /// <summary>
@@ -3300,8 +3456,14 @@ namespace Gear.Caching
         public async Task UpdateAsync(TKey key, Func<Task<TValue>> asyncValueFactory, CancellationToken cancellationToken = default)
         {
             ThrowIfDisposed();
-            if (!(await TryUpdateAsync(key, asyncValueFactory, cancellationToken).ConfigureAwait(false)))
-                throw new KeyNotFoundException();
+            var result = await TryUpdateAsync(key, asyncValueFactory, cancellationToken).ConfigureAwait(false);
+            switch (result.Status)
+            {
+                case TryOperationStatus.KeyNotFound:
+                    throw new KeyNotFoundException();
+                case TryOperationStatus.ValueSourceThrew:
+                    throw new ArgumentException("The value source threw an exception", nameof(asyncValueFactory), result.Exception);
+            }
         }
 
         /// <summary>
@@ -3315,8 +3477,14 @@ namespace Gear.Caching
         public async Task UpdateAsync(TKey key, Func<CancellationToken, Task<TValue>> cancelableAsyncValueFactory, CancellationToken cancellationToken = default)
         {
             ThrowIfDisposed();
-            if (!(await TryUpdateAsync(key, cancelableAsyncValueFactory, cancellationToken).ConfigureAwait(false)))
-                throw new KeyNotFoundException();
+            var result = await TryUpdateAsync(key, cancelableAsyncValueFactory, cancellationToken).ConfigureAwait(false);
+            switch (result.Status)
+            {
+                case TryOperationStatus.KeyNotFound:
+                    throw new KeyNotFoundException();
+                case TryOperationStatus.ValueSourceThrew:
+                    throw new ArgumentException("The value source threw an exception", nameof(cancelableAsyncValueFactory), result.Exception);
+            }
         }
 
         /// <summary>
@@ -3331,8 +3499,14 @@ namespace Gear.Caching
         public async Task UpdateAsync(TKey key, Func<Task<TValue>> asyncValueFactory, TimeSpan? expireIn, CancellationToken cancellationToken = default)
         {
             ThrowIfDisposed();
-            if (!(await TryUpdateAsync(key, asyncValueFactory, expireIn, cancellationToken).ConfigureAwait(false)))
-                throw new KeyNotFoundException();
+            var result = await TryUpdateAsync(key, asyncValueFactory, expireIn, cancellationToken).ConfigureAwait(false);
+            switch (result.Status)
+            {
+                case TryOperationStatus.KeyNotFound:
+                    throw new KeyNotFoundException();
+                case TryOperationStatus.ValueSourceThrew:
+                    throw new ArgumentException("The value source threw an exception", nameof(asyncValueFactory), result.Exception);
+            }
         }
 
         /// <summary>
@@ -3347,11 +3521,17 @@ namespace Gear.Caching
         public async Task UpdateAsync(TKey key, Func<CancellationToken, Task<TValue>> cancelableAsyncValueFactory, TimeSpan? expireIn, CancellationToken cancellationToken = default)
         {
             ThrowIfDisposed();
-            if (!(await TryUpdateAsync(key, cancelableAsyncValueFactory, expireIn, cancellationToken).ConfigureAwait(false)))
-                throw new KeyNotFoundException();
+            var result = await TryUpdateAsync(key, cancelableAsyncValueFactory, expireIn, cancellationToken).ConfigureAwait(false);
+            switch (result.Status)
+            {
+                case TryOperationStatus.KeyNotFound:
+                    throw new KeyNotFoundException();
+                case TryOperationStatus.ValueSourceThrew:
+                    throw new ArgumentException("The value source threw an exception", nameof(cancelableAsyncValueFactory), result.Exception);
+            }
         }
 
-		/// <summary>
+        /// <summary>
         /// Gets whether this class supports asynchronous disposal
         /// </summary>
         protected override bool IsAsyncDisposable => true;
