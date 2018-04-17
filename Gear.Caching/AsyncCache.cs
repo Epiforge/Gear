@@ -71,6 +71,11 @@ namespace Gear.Caching
         public event EventHandler<ValueExpiredEventArgs> ValueExpired;
 
         /// <summary>
+        /// Occurs when an attempt to add a value to the cache fails
+        /// </summary>
+        public event EventHandler<KeyedExceptionEventArgs> ValueAddFailed;
+
+        /// <summary>
         /// Occurs when an attempt to refresh a value in the cache fails
         /// </summary>
         public event EventHandler<KeyedExceptionEventArgs> ValueRefreshFailed;
@@ -84,6 +89,11 @@ namespace Gear.Caching
         /// Occurs when a value in the cache is updated
         /// </summary>
         public event EventHandler<ValueUpdatedEventArgs> ValueUpdated;
+
+        /// <summary>
+        /// Occurs when an attempt to update a value in the cache fails
+        /// </summary>
+        public event EventHandler<KeyedExceptionEventArgs> ValueUpdateFailed;
 
         /// <summary>
         /// Adds a value to the cache
@@ -1160,8 +1170,14 @@ namespace Gear.Caching
         /// <param name="e">The event arguments</param>
         protected virtual void OnValueExpired(ValueExpiredEventArgs e) => ValueExpired?.Invoke(this, e);
 
-		/// <summary>
-		/// Raises the <see cref="ValueRefreshFailed"/> event
+        /// <summary>
+        /// Raises the <see cref="ValueAddFailed"/> event
+        /// </summary>
+        /// <param name="e">The event arguments</param>
+        protected virtual void OnValueAddFailed(KeyedExceptionEventArgs e) => ValueAddFailed?.Invoke(this, e);
+
+        /// <summary>
+        /// Raises the <see cref="ValueRefreshFailed"/> event
         /// </summary>
         /// <param name="e">The event arguments</param>
         protected virtual void OnValueRefreshFailed(KeyedExceptionEventArgs e) => ValueRefreshFailed?.Invoke(this, e);
@@ -1177,6 +1193,12 @@ namespace Gear.Caching
         /// </summary>
         /// <param name="e">The event arguments</param>
         protected virtual void OnValueUpdated(ValueUpdatedEventArgs e) => ValueUpdated?.Invoke(this, e);
+
+        /// <summary>
+		/// Raises the <see cref="ValueUpdateFailed"/> event
+        /// </summary>
+        /// <param name="e">The event arguments</param>
+        protected virtual void OnValueUpdateFailed(KeyedExceptionEventArgs e) => ValueUpdateFailed?.Invoke(this, e);
 
         /// <summary>
         /// Invoked when a caller adds a value to or updates a value in the cache
@@ -1657,7 +1679,7 @@ namespace Gear.Caching
         {
             DateTime? expired = null;
             var expiredValue = default(TValue);
-            TValue Value;
+            TValue value;
             using (GetAsyncReaderWriterLock(key).WriterLock(cancellationToken))
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -1672,12 +1694,27 @@ namespace Gear.Caching
                     else
                         return false;
                 }
-                Value = valueSource.GetValue(cancellationToken);
-                buckets.TryAdd(key, new Bucket(Value, expireIn));
+                try
+                {
+                    value = valueSource.GetValue(cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    try
+                    {
+                        OnValueAddFailed(new KeyedExceptionEventArgs(key, ex));
+                    }
+                    catch
+                    {
+                        // Nothing we can do about this
+                    }
+                    return false;
+                }
+                buckets.TryAdd(key, new Bucket(value, expireIn));
             }
             if (expired != null)
                 OnValueExpired(new ValueExpiredEventArgs(key, expiredValue, expired.Value));
-            OnValueAdded(new KeyValueEventArgs(key, Value));
+            OnValueAdded(new KeyValueEventArgs(key, value));
             return true;
         }
 
@@ -1708,13 +1745,28 @@ namespace Gear.Caching
                     else
                         return false;
                 }
-                if (valueSource.IsAsync)
-                    value = await valueSource.GetValueAsync(cancellationToken).ConfigureAwait(false);
-                else
+                try
                 {
-                    value = valueSource.GetValue(cancellationToken);
-                    if (typeof(TValue) == typeof(object))
-                        value = (TValue)(await TaskResolver.ResolveAsync(value).ConfigureAwait(false));
+                    if (valueSource.IsAsync)
+                        value = await valueSource.GetValueAsync(cancellationToken).ConfigureAwait(false);
+                    else
+                    {
+                        value = valueSource.GetValue(cancellationToken);
+                        if (typeof(TValue) == typeof(object))
+                            value = (TValue)(await TaskResolver.ResolveAsync(value).ConfigureAwait(false));
+                    }
+                }
+                catch (Exception ex)
+                {
+                    try
+                    {
+                        OnValueAddFailed(new KeyedExceptionEventArgs(key, ex));
+                    }
+                    catch
+                    {
+                        // Nothing we can do about this
+                    }
+                    return false;
                 }
                 buckets.TryAdd(key, new Bucket(value, expireIn));
             }
@@ -1751,7 +1803,22 @@ namespace Gear.Caching
                     else
                         return false;
                 }
-                value = valueSource.GetValue(cancellationToken);
+                try
+                {
+                    value = valueSource.GetValue(cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    try
+                    {
+                        OnValueAddFailed(new KeyedExceptionEventArgs(key, ex));
+                    }
+                    catch
+                    {
+                        // Nothing we can do about this
+                    }
+                    return false;
+                }
                 var addedBucket = new Bucket(value);
                 var addedBucketId = addedBucket.Id;
                 buckets.TryAdd(key, addedBucket);
@@ -1844,13 +1911,28 @@ namespace Gear.Caching
                     else
                         return false;
                 }
-                if (valueSource.IsAsync)
-                    value = await valueSource.GetValueAsync(cancellationToken).ConfigureAwait(false);
-                else
+                try
                 {
-                    value = valueSource.GetValue(cancellationToken);
-                    if (typeof(TValue) == typeof(object))
-                        value = (TValue)(await TaskResolver.ResolveAsync(value).ConfigureAwait(false));
+                    if (valueSource.IsAsync)
+                        value = await valueSource.GetValueAsync(cancellationToken).ConfigureAwait(false);
+                    else
+                    {
+                        value = valueSource.GetValue(cancellationToken);
+                        if (typeof(TValue) == typeof(object))
+                            value = (TValue)(await TaskResolver.ResolveAsync(value).ConfigureAwait(false));
+                    }
+                }
+                catch (Exception ex)
+                {
+                    try
+                    {
+                        OnValueAddFailed(new KeyedExceptionEventArgs(key, ex));
+                    }
+                    catch
+                    {
+                        // Nothing we can do about this
+                    }
+                    return false;
                 }
                 var addedBucket = new Bucket(value);
                 var addedBucketId = addedBucket.Id;
@@ -1955,7 +2037,22 @@ namespace Gear.Caching
                         expiredValue = bucket.Value;
                         return false;
                     }
-                    value = valueSource.GetValue(cancellationToken);
+                    try
+                    {
+                        value = valueSource.GetValue(cancellationToken);
+                    }
+                    catch (Exception ex)
+                    {
+                        try
+                        {
+                            OnValueUpdateFailed(new KeyedExceptionEventArgs(key, ex));
+                        }
+                        catch
+                        {
+                            // Nothing we can do about this
+                        }
+                        return false;
+                    }
                     oldValue = bucket.Value;
                     bucket.Value = value;
                     if (setExpiration)
@@ -1999,13 +2096,28 @@ namespace Gear.Caching
                         expiredValue = bucket.Value;
                         return false;
                     }
-                    if (valueSource.IsAsync)
-                        value = await valueSource.GetValueAsync(cancellationToken).ConfigureAwait(false);
-                    else
+                    try
                     {
-                        value = valueSource.GetValue(cancellationToken);
-                        if (typeof(TValue) == typeof(object))
-                            value = (TValue)(await TaskResolver.ResolveAsync(value).ConfigureAwait(false));
+                        if (valueSource.IsAsync)
+                            value = await valueSource.GetValueAsync(cancellationToken).ConfigureAwait(false);
+                        else
+                        {
+                            value = valueSource.GetValue(cancellationToken);
+                            if (typeof(TValue) == typeof(object))
+                                value = (TValue)(await TaskResolver.ResolveAsync(value).ConfigureAwait(false));
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        try
+                        {
+                            OnValueUpdateFailed(new KeyedExceptionEventArgs(key, ex));
+                        }
+                        catch
+                        {
+                            // Nothing we can do about this
+                        }
+                        return false;
                     }
                     oldValue = bucket.Value;
                     bucket.Value = value;
