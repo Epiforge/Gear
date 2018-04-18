@@ -1403,39 +1403,51 @@ namespace Gear.Caching
             var value = default(T);
             try
             {
+                using (GetAsyncReaderWriterLock(key).ReaderLock(cancellationToken))
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    if (buckets.TryGetValue(key, out Bucket bucket))
+                    {
+                        if (bucket.Expiration < DateTime.UtcNow)
+                        {
+                            buckets.TryRemove(key, out Bucket removedBucket);
+                            expired = removedBucket.Expiration;
+                            expiredValue = removedBucket.Value;
+                        }
+                        else if (bucket.Value is T typedValue)
+                            return typedValue;
+                        else
+                            throw new InvalidCastException();
+                    }
+                }
                 using (GetAsyncReaderWriterLock(key).WriterLock(cancellationToken))
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-                    if (!buckets.TryGetValue(key, out Bucket bucket))
+                    if (buckets.TryGetValue(key, out Bucket bucket))
                     {
-                        value = valueSource.GetValue(cancellationToken);
-                        buckets.TryAdd(key, new Bucket(value, expireIn));
-                        added = true;
-                        return value;
+                        if (bucket.Expiration < DateTime.UtcNow)
+                        {
+                            buckets.TryRemove(key, out Bucket removedBucket);
+                            expired = removedBucket.Expiration;
+                            expiredValue = removedBucket.Value;
+                        }
+                        else if (bucket.Value is T typedValue)
+                            return typedValue;
+                        else
+                            throw new InvalidCastException();
                     }
-                    if (bucket.Expiration < DateTime.UtcNow)
-                    {
-                        buckets.TryRemove(key, out Bucket removedBucket);
-                        expired = removedBucket.Expiration;
-                        expiredValue = removedBucket.Value;
-                        value = valueSource.GetValue(cancellationToken);
-                        buckets.TryAdd(key, new Bucket(value, expireIn));
-                        added = true;
-                        return value;
-                    }
-                    if (!(bucket.Value is T))
-                        throw new InvalidCastException();
-                    return (T)bucket.Value;
+                    value = valueSource.GetValue(cancellationToken);
+                    buckets.TryAdd(key, new Bucket(value, expireIn));
+                    added = true;
+                    return value;
                 }
             }
             finally
             {
+                if (expired != null)
+                    OnValueExpired(new ValueExpiredEventArgs(key, expiredValue, expired.Value));
                 if (added)
-                {
-                    if (expired != null)
-                        OnValueExpired(new ValueExpiredEventArgs(key, expiredValue, expired.Value));
                     OnValueAdded(new KeyValueEventArgs(key, value));
-                }
             }
         }
 
@@ -1456,33 +1468,49 @@ namespace Gear.Caching
             Bucket addedBucket = null;
             try
             {
+                using (GetAsyncReaderWriterLock(key).ReaderLock(cancellationToken))
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    if (buckets.TryGetValue(key, out Bucket bucket))
+                    {
+                        if (bucket.Expiration < DateTime.UtcNow)
+                        {
+                            buckets.TryRemove(key, out Bucket removedBucket);
+                            expired = removedBucket.Expiration;
+                            expiredValue = removedBucket.Value;
+                        }
+                        else if (bucket.Value is T typedValue)
+                            return typedValue;
+                        else
+                            throw new InvalidCastException();
+                    }
+                }
                 using (GetAsyncReaderWriterLock(key).WriterLock(cancellationToken))
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-                    if (!buckets.TryGetValue(key, out Bucket bucket))
+                    if (buckets.TryGetValue(key, out Bucket bucket))
                     {
-                        var value = valueFactory.GetValue(cancellationToken);
-                        addedBucket = new Bucket(value);
-                        buckets.TryAdd(key, addedBucket);
-                        return value;
+                        if (bucket.Expiration < DateTime.UtcNow)
+                        {
+                            buckets.TryRemove(key, out Bucket removedBucket);
+                            expired = removedBucket.Expiration;
+                            expiredValue = removedBucket.Value;
+                        }
+                        else if (bucket.Value is T typedValue)
+                            return typedValue;
+                        else
+                            throw new InvalidCastException();
                     }
-                    if (bucket.Expiration < DateTime.UtcNow)
-                    {
-                        buckets.TryRemove(key, out Bucket removedBucket);
-                        expired = removedBucket.Expiration;
-                        expiredValue = removedBucket.Value;
-                        var value = valueFactory.GetValue(cancellationToken);
-                        addedBucket = new Bucket(value);
-                        buckets.TryAdd(key, addedBucket);
-                        return value;
-                    }
-                    if (!(bucket.Value is T))
-                        throw new InvalidCastException();
-                    return (T)bucket.Value;
+                    var value = valueFactory.GetValue(cancellationToken);
+                    addedBucket = new Bucket(value);
+                    buckets.TryAdd(key, addedBucket);
+                    return value;
                 }
             }
             finally
             {
+                if (expired != null)
+                    OnValueExpired(new ValueExpiredEventArgs(key, expiredValue, expired.Value));
                 if (addedBucket != null)
                 {
                     var addedBucketId = addedBucket.Id;
@@ -1541,8 +1569,6 @@ namespace Gear.Caching
                             }
                         }
                     });
-                    if (expired != null)
-                        OnValueExpired(new ValueExpiredEventArgs(key, expiredValue, expired.Value));
                     OnValueAdded(new KeyValueEventArgs(key, addedBucket.Value));
                 }
             }
@@ -1565,49 +1591,57 @@ namespace Gear.Caching
             Bucket addedBucket = null;
             try
             {
+                using (await GetAsyncReaderWriterLock(key).ReaderLockAsync(cancellationToken).ConfigureAwait(false))
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    if (buckets.TryGetValue(key, out Bucket bucket))
+                    {
+                        if (bucket.Expiration < DateTime.UtcNow)
+                        {
+                            buckets.TryRemove(key, out Bucket removedBucket);
+                            expired = removedBucket.Expiration;
+                            expiredValue = removedBucket.Value;
+                        }
+                        else if (bucket.Value is T typedValue)
+                            return typedValue;
+                        else
+                            throw new InvalidCastException();
+                    }
+                }
                 using (await GetAsyncReaderWriterLock(key).WriterLockAsync(cancellationToken).ConfigureAwait(false))
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-                    if (!buckets.TryGetValue(key, out Bucket bucket))
+                    if (buckets.TryGetValue(key, out Bucket bucket))
                     {
-                        T value;
-                        if (valueSource.IsAsync)
-                            value = await valueSource.GetValueAsync(cancellationToken).ConfigureAwait(false);
-                        else
+                        if (bucket.Expiration < DateTime.UtcNow)
                         {
-                            value = valueSource.GetValue(cancellationToken);
-                            if (typeof(TValue) == typeof(object))
-                                value = (T)(await TaskResolver.ResolveAsync(value).ConfigureAwait(false));
+                            buckets.TryRemove(key, out Bucket removedBucket);
+                            expired = removedBucket.Expiration;
+                            expiredValue = removedBucket.Value;
                         }
-                        addedBucket = new Bucket(value);
-                        buckets.TryAdd(key, addedBucket);
-                        return value;
+                        else if (bucket.Value is T typedValue)
+                            return typedValue;
+                        else
+                            throw new InvalidCastException();
                     }
-                    if (bucket.Expiration < DateTime.UtcNow)
+                    T value;
+                    if (valueSource.IsAsync)
+                        value = await valueSource.GetValueAsync(cancellationToken).ConfigureAwait(false);
+                    else
                     {
-                        buckets.TryRemove(key, out Bucket removedBucket);
-                        expired = removedBucket.Expiration;
-                        expiredValue = removedBucket.Value;
-                        T value;
-                        if (valueSource.IsAsync)
-                            value = await valueSource.GetValueAsync(cancellationToken).ConfigureAwait(false);
-                        else
-                        {
-                            value = valueSource.GetValue(cancellationToken);
-                            if (typeof(TValue) == typeof(object))
-                                value = (T)(await TaskResolver.ResolveAsync(value).ConfigureAwait(false));
-                        }
-                        addedBucket = new Bucket(value);
-                        buckets.TryAdd(key, addedBucket);
-                        return value;
+                        value = valueSource.GetValue(cancellationToken);
+                        if (typeof(TValue) == typeof(object))
+                            value = (T)(await TaskResolver.ResolveAsync(value).ConfigureAwait(false));
                     }
-                    if (!(bucket.Value is T))
-                        throw new InvalidCastException();
-                    return (T)bucket.Value;
+                    addedBucket = new Bucket(value);
+                    buckets.TryAdd(key, addedBucket);
+                    return value;
                 }
             }
             finally
             {
+                if (expired != null)
+                    OnValueExpired(new ValueExpiredEventArgs(key, expiredValue, expired.Value));
                 if (addedBucket != null)
                 {
                     var addedBucketId = addedBucket.Id;
@@ -1676,8 +1710,6 @@ namespace Gear.Caching
                         }
                     });
 #pragma warning restore CS4014
-                    if (expired != null)
-                        OnValueExpired(new ValueExpiredEventArgs(key, expiredValue, expired.Value));
                     OnValueAdded(new KeyValueEventArgs(key, addedBucket.Value));
                 }
             }
@@ -1701,53 +1733,58 @@ namespace Gear.Caching
             var value = default(T);
             try
             {
+                using (await GetAsyncReaderWriterLock(key).ReaderLockAsync(cancellationToken).ConfigureAwait(false))
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    if (buckets.TryGetValue(key, out Bucket bucket))
+                    {
+                        if (bucket.Expiration < DateTime.UtcNow)
+                        {
+                            buckets.TryRemove(key, out Bucket removedBucket);
+                            expired = removedBucket.Expiration;
+                            expiredValue = removedBucket.Value;
+                        }
+                        else if (bucket.Value is T typedValue)
+                            return typedValue;
+                        else
+                            throw new InvalidCastException();
+                    }
+                }
                 using (await GetAsyncReaderWriterLock(key).WriterLockAsync(cancellationToken).ConfigureAwait(false))
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-                    if (!buckets.TryGetValue(key, out Bucket bucket))
+                    if (buckets.TryGetValue(key, out Bucket bucket))
                     {
-                        if (valueSource.IsAsync)
-                            value = await valueSource.GetValueAsync(cancellationToken).ConfigureAwait(false);
-                        else
+                        if (bucket.Expiration < DateTime.UtcNow)
                         {
-                            value = valueSource.GetValue(cancellationToken);
-                            if (typeof(TValue) == typeof(object))
-                                value = (T)(await TaskResolver.ResolveAsync(value).ConfigureAwait(false));
+                            buckets.TryRemove(key, out Bucket removedBucket);
+                            expired = removedBucket.Expiration;
+                            expiredValue = removedBucket.Value;
                         }
-                        buckets.TryAdd(key, new Bucket(value, expireIn));
-                        added = true;
-                        return value;
+                        else if (bucket.Value is T typedValue)
+                            return typedValue;
+                        else
+                            throw new InvalidCastException();
                     }
-                    if (bucket.Expiration < DateTime.UtcNow)
+                    if (valueSource.IsAsync)
+                        value = await valueSource.GetValueAsync(cancellationToken).ConfigureAwait(false);
+                    else
                     {
-                        buckets.TryRemove(key, out Bucket removedBucket);
-                        expired = removedBucket.Expiration;
-                        expiredValue = removedBucket.Value;
-                        if (valueSource.IsAsync)
-                            value = await valueSource.GetValueAsync(cancellationToken).ConfigureAwait(false);
-                        else
-                        {
-                            value = valueSource.GetValue(cancellationToken);
-                            if (typeof(TValue) == typeof(object))
-                                value = (T)(await TaskResolver.ResolveAsync(value).ConfigureAwait(false));
-                        }
-                        buckets.TryAdd(key, new Bucket(value, expireIn));
-                        added = true;
-                        return value;
+                        value = valueSource.GetValue(cancellationToken);
+                        if (typeof(TValue) == typeof(object))
+                            value = (T)(await TaskResolver.ResolveAsync(value).ConfigureAwait(false));
                     }
-                    if (!(bucket.Value is T))
-                        throw new InvalidCastException();
-                    return (T)bucket.Value;
+                    buckets.TryAdd(key, new Bucket(value, expireIn));
+                    added = true;
+                    return value;
                 }
             }
             finally
             {
+                if (expired != null)
+                    OnValueExpired(new ValueExpiredEventArgs(key, expiredValue, expired.Value));
                 if (added)
-                {
-                    if (expired != null)
-                        OnValueExpired(new ValueExpiredEventArgs(key, expiredValue, expired.Value));
                     OnValueAdded(new KeyValueEventArgs(key, value));
-                }
             }
         }
 
