@@ -1552,7 +1552,7 @@ namespace Gear.Caching
                                 }
                                 OnValueUpdated(new ValueUpdatedEventArgs(key, oldValue, newValue, true));
                             }
-                            catch (TaskCanceledException)
+                            catch (OperationCanceledException)
                             {
                                 break;
                             }
@@ -1692,7 +1692,7 @@ namespace Gear.Caching
                                 }
                                 OnValueUpdated(new ValueUpdatedEventArgs(key, oldValue, newValue, true));
                             }
-                            catch (TaskCanceledException)
+                            catch (OperationCanceledException)
                             {
                                 break;
                             }
@@ -1981,7 +1981,7 @@ namespace Gear.Caching
                             }
                             OnValueUpdated(new ValueUpdatedEventArgs(key, oldValue, newValue, true));
                         }
-                        catch (TaskCanceledException)
+                        catch (OperationCanceledException)
                         {
                             break;
                         }
@@ -2105,7 +2105,7 @@ namespace Gear.Caching
                             }
                             OnValueUpdated(new ValueUpdatedEventArgs(key, oldValue, newValue, true));
                         }
-                        catch (TaskCanceledException)
+                        catch (OperationCanceledException)
                         {
                             break;
                         }
