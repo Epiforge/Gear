@@ -25,13 +25,13 @@ namespace Gear.ActiveQuery
         public bool IsValid
         {
             get => isValid;
-            private set => SetBackedProperty(ref isValid, value);
+            private set => SetBackedProperty(ref isValid, in value);
         }
 
         public T Value
         {
             get => value;
-            private set => SetBackedProperty(ref this.value, value);
+            private set => SetBackedProperty(ref this.value, in value);
         }
     }
 }
