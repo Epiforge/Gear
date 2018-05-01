@@ -76,6 +76,26 @@ namespace Gear.Components
         /// <param name="value">The new value</param>
         /// <param name="propertyName">The name of the property</param>
         /// <returns>true if <paramref name="backingField"/> was unequal to <paramref name="value"/>; otherwise, false</returns>
+        protected bool SetBackedProperty<TValue>(ref TValue backingField, TValue value, [CallerMemberName] string propertyName = null)
+        {
+            if (!EqualityComparer<TValue>.Default.Equals(backingField, value))
+            {
+                OnPropertyChanging(propertyName);
+                backingField = value;
+                OnPropertyChanged(propertyName);
+                return true;
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// Compares a property's backing field and a new value for inequality, and when they are unequal, raises the <see cref="PropertyChanging"/> event, sets the backing field to the new value, and then raises the <see cref="PropertyChanged"/> event
+        /// </summary>
+        /// <typeparam name="TValue">The type of the property</typeparam>
+        /// <param name="backingField">A reference to the backing field of the property</param>
+        /// <param name="value">The new value</param>
+        /// <param name="propertyName">The name of the property</param>
+        /// <returns>true if <paramref name="backingField"/> was unequal to <paramref name="value"/>; otherwise, false</returns>
         protected bool SetBackedProperty<TValue>(ref TValue backingField, in TValue value, [CallerMemberName] string propertyName = null)
         {
             if (!EqualityComparer<TValue>.Default.Equals(backingField, value))
