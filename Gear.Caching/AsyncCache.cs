@@ -3657,7 +3657,6 @@ namespace Gear.Caching
                 {
                     ValueSource = valueSource;
                     weakValue = new WeakReference<object>(value);
-                    owner.OnValueReferenceWeakened(new KeyValueEventArgs(key, value));
                 }
             }
 
@@ -3673,13 +3672,13 @@ namespace Gear.Caching
                 using (valueAccess.Lock(cancellationToken))
                 {
                     if (weakValue == default)
-                        return strongValue;
-                    if (weakValue.TryGetTarget(out object reference))
                     {
                         if (weakenAt != default)
                             weakenAt = DateTime.UtcNow + owner.WeakenReferencesIn.Value;
-                        return (TValue)reference;
+                        return strongValue;
                     }
+                    if (weakValue.TryGetTarget(out object reference))
+                        return (TValue)reference;
                     var valueSource = ValueSource;
                     weakValue = default;
                     strongValue = valueSource.IsAsync ? valueSource.GetValueAsync(cancellationToken).Result : valueSource.GetValue(cancellationToken);
@@ -3695,13 +3694,13 @@ namespace Gear.Caching
                 using (await valueAccess.LockAsync(cancellationToken).ConfigureAwait(false))
                 {
                     if (weakValue == default)
-                        return strongValue;
-                    if (weakValue.TryGetTarget(out object reference))
                     {
                         if (weakenAt != default)
                             weakenAt = DateTime.UtcNow + owner.WeakenReferencesIn.Value;
-                        return (TValue)reference;
+                        return strongValue;
                     }
+                    if (weakValue.TryGetTarget(out object reference))
+                        return (TValue)reference;
                     var valueSource = ValueSource;
                     weakValue = default;
                     strongValue = valueSource.IsAsync ? await valueSource.GetValueAsync(cancellationToken).ConfigureAwait(false) : valueSource.GetValue(cancellationToken);
@@ -3717,9 +3716,13 @@ namespace Gear.Caching
                 {
                     while (true)
                     {
+                        if (weakenAt == default)
+                            break;
                         await Task.Delay(weakenAt.Value - DateTime.UtcNow).ConfigureAwait(false);
                         using (await valueAccess.LockAsync().ConfigureAwait(false))
                         {
+                            if (weakenAt == default)
+                                break;
                             if (DateTime.UtcNow < (weakenAt ?? DateTime.UtcNow))
                                 continue;
                             var currentValue = strongValue;
