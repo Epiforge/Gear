@@ -3649,12 +3649,14 @@ namespace Gear.Caching
                     strongValue = value;
                     if (owner.WeakenReferencesIn is TimeSpan weakenIn)
                     {
+                        valueAccess = new AsyncLock();
                         weakenAt = DateTime.UtcNow + weakenIn;
                         ScheduleWeakening();
                     }
                 }
                 else
                 {
+                    valueAccess = new AsyncLock();
                     ValueSource = valueSource;
                     weakValue = new WeakReference<object>(value);
                 }
@@ -3663,12 +3665,14 @@ namespace Gear.Caching
             readonly TKey key;
             readonly AsyncCache<TKey, TValue> owner;
             TValue strongValue;
-            readonly AsyncLock valueAccess = new AsyncLock();
+            readonly AsyncLock valueAccess;
             DateTime? weakenAt;
             WeakReference<object> weakValue;
 
             public TValue GetValue(CancellationToken cancellationToken = default)
             {
+                if (!owner.AddReferencesAsWeak && owner.WeakenReferencesIn == default)
+                    return strongValue;
                 using (valueAccess.Lock(cancellationToken))
                 {
                     if (weakValue == default)
@@ -3691,6 +3695,8 @@ namespace Gear.Caching
 
             public async Task<TValue> GetValueAsync(CancellationToken cancellationToken = default)
             {
+                if (!owner.AddReferencesAsWeak && owner.WeakenReferencesIn == default)
+                    return strongValue;
                 using (await valueAccess.LockAsync(cancellationToken).ConfigureAwait(false))
                 {
                     if (weakValue == default)
@@ -3737,56 +3743,67 @@ namespace Gear.Caching
 
             public void SetValue(TValue value, bool strengthen, CancellationToken cancellationToken = default)
             {
-                using (valueAccess.Lock(cancellationToken))
-                {
-                    if (strengthen)
+                if (!owner.AddReferencesAsWeak && owner.WeakenReferencesIn == default)
+                    strongValue = value;
+                else
+                    using (valueAccess.Lock(cancellationToken))
                     {
-                        strongValue = value;
-                        weakValue = default;
-                        if (owner.WeakenReferencesIn is TimeSpan weakenIn)
+                        if (strengthen)
                         {
-                            weakenAt = DateTime.UtcNow + weakenIn;
-                            ScheduleWeakening();
+                            strongValue = value;
+                            weakValue = default;
+                            if (owner.WeakenReferencesIn is TimeSpan weakenIn)
+                            {
+                                weakenAt = DateTime.UtcNow + weakenIn;
+                                ScheduleWeakening();
+                            }
                         }
+                        else if (weakValue == default)
+                        {
+                            strongValue = value;
+                            if (owner.WeakenReferencesIn is TimeSpan weakenIn && weakenAt != default)
+                                weakenAt = DateTime.UtcNow + weakenIn;
+                        }
+                        else
+                            weakValue.SetTarget(value);
                     }
-                    else if (weakValue == default)
-                    {
-                        strongValue = value;
-                        if (owner.WeakenReferencesIn is TimeSpan weakenIn && weakenAt != default)
-                            weakenAt = DateTime.UtcNow + weakenIn;
-                    }
-                    else
-                        weakValue.SetTarget(value);
-                }
             }
 
             public async Task SetValueAsync(TValue value, bool strengthen, CancellationToken cancellationToken = default)
             {
-                using (await valueAccess.LockAsync(cancellationToken).ConfigureAwait(false))
-                {
-                    if (strengthen)
+                if (!owner.AddReferencesAsWeak && owner.WeakenReferencesIn == default)
+                    strongValue = value;
+                else
+                    using (await valueAccess.LockAsync(cancellationToken).ConfigureAwait(false))
                     {
-                        strongValue = value;
-                        weakValue = default;
-                        if (owner.WeakenReferencesIn is TimeSpan weakenIn)
+                        if (strengthen)
                         {
-                            weakenAt = DateTime.UtcNow + weakenIn;
-                            ScheduleWeakening();
+                            strongValue = value;
+                            weakValue = default;
+                            if (owner.WeakenReferencesIn is TimeSpan weakenIn)
+                            {
+                                weakenAt = DateTime.UtcNow + weakenIn;
+                                ScheduleWeakening();
+                            }
                         }
+                        else if (weakValue == default)
+                        {
+                            strongValue = value;
+                            if (owner.WeakenReferencesIn is TimeSpan weakenIn && weakenAt != default)
+                                weakenAt = DateTime.UtcNow + weakenIn;
+                        }
+                        else
+                            weakValue.SetTarget(value);
                     }
-                    else if (weakValue == default)
-                    {
-                        strongValue = value;
-                        if (owner.WeakenReferencesIn is TimeSpan weakenIn && weakenAt != default)
-                            weakenAt = DateTime.UtcNow + weakenIn;
-                    }
-                    else
-                        weakValue.SetTarget(value);
-                }
             }
 
             public bool TrySoftGetValue(out TValue value)
             {
+                if (!owner.AddReferencesAsWeak && owner.WeakenReferencesIn == default)
+                {
+                    value = strongValue;
+                    return true;
+                }
                 using (valueAccess.Lock())
                 {
                     if (weakValue == default)
