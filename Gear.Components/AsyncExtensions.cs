@@ -1,0 +1,86 @@
+﻿using System;
+using System.Threading.Tasks;
+
+namespace Gear.Components
+{
+    public static class AsyncExtensions
+    {
+        #region TaskCompletionSource
+
+        /// <summary>
+        /// Invokes a void method and then <see cref="TaskCompletionSource{TResult}.SetResult(TResult)"/> with the default value of <typeparamref name="TResult"/> if it succeeds; otherwise invokes <see cref="TaskCompletionSource{TResult}.SetException(Exception)"/> with the exception thrown by the method
+        /// </summary>
+        /// <typeparam name="TResult">The generic type argument of the task completion source</typeparam>
+        /// <param name="taskCompletionSource">The task completion source</param>
+        /// <param name="action">The void method to invoke</param>
+        public static void AttemptSetResult<TResult>(this TaskCompletionSource<TResult> taskCompletionSource, Action action)
+        {
+            try
+            {
+                action();
+                taskCompletionSource.SetResult(default);
+            }
+            catch (Exception ex)
+            {
+                taskCompletionSource.SetException(ex);
+            }
+        }
+
+        /// <summary>
+        /// Invokes a method with a return value and then <see cref="TaskCompletionSource{TResult}.SetResult(TResult)"/> with what it returned; otherwise invokes <see cref="TaskCompletionSource{TResult}.SetException(Exception)"/> with the exception thrown by the method
+        /// </summary>
+        /// <typeparam name="TResult">The generic type argument of the task completion source</typeparam>
+        /// <param name="taskCompletionSource">The task completion source</param>
+        /// <param name="func">The method with a return value to invoke</param>
+        public static void AttemptSetResult<TResult>(this TaskCompletionSource<TResult> taskCompletionSource, Func<TResult> func)
+        {
+            try
+            {
+                taskCompletionSource.SetResult(func());
+            }
+            catch (Exception ex)
+            {
+                taskCompletionSource.SetException(ex);
+            }
+        }
+
+        /// <summary>
+        /// Invokes a void async method and then <see cref="TaskCompletionSource{TResult}.SetResult(TResult)"/> with the default value of <typeparamref name="TResult"/> if it succeeds; otherwise invokes <see cref="TaskCompletionSource{TResult}.SetException(Exception)"/> with the exception thrown by the method
+        /// </summary>
+        /// <typeparam name="TResult">The generic type argument of the task completion source</typeparam>
+        /// <param name="taskCompletionSource">The task completion source</param>
+        /// <param name="asyncAction">The void async method to invoke</param>
+        public static async Task AttemptSetResultAsync<TResult>(this TaskCompletionSource<TResult> taskCompletionSource, Func<Task> asyncAction)
+        {
+            try
+            {
+                await asyncAction().ConfigureAwait(false);
+                taskCompletionSource.SetResult(default);
+            }
+            catch (Exception ex)
+            {
+                taskCompletionSource.SetException(ex);
+            }
+        }
+
+        /// <summary>
+        /// Invokes an async method with a return value and then <see cref="TaskCompletionSource{TResult}.SetResult(TResult)"/> with what it returned; otherwise invokes <see cref="TaskCompletionSource{TResult}.SetException(Exception)"/> with the exception thrown by the method
+        /// </summary>
+        /// <typeparam name="TResult">The generic type argument of the task completion source</typeparam>
+        /// <param name="taskCompletionSource">The task completion source</param>
+        /// <param name="asyncFunc">The async method with a return value to invoke</param>
+        public static async Task AttemptSetResultAsync<TResult>(this TaskCompletionSource<TResult> taskCompletionSource, Func<Task<TResult>> asyncFunc)
+        {
+            try
+            {
+                taskCompletionSource.SetResult(await asyncFunc().ConfigureAwait(false));
+            }
+            catch (Exception ex)
+            {
+                taskCompletionSource.SetException(ex);
+            }
+        }
+
+        #endregion TaskCompletionSource
+    }
+}
