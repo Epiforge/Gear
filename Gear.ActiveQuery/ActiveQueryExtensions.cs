@@ -2011,10 +2011,10 @@ namespace Gear.ActiveQuery
 
         public static ActiveEnumerable<TSource> ToActiveEnumerable<TSource>(this IList<TSource> source) => new ActiveEnumerable<TSource>(source);
 
-        public static ActiveEnumerable<TSource> LiveWhere<TSource>(this IList<TSource> source, Func<TSource, bool> predicate, params string[] predicateProperties) where TSource : class =>
-            LiveWhere(source, (source as IsSynchronizable)?.SynchronizationContext, predicate, predicateProperties);
+        public static ActiveEnumerable<TSource> ActiveWhere<TSource>(this IList<TSource> source, Func<TSource, bool> predicate, params string[] predicateProperties) where TSource : class =>
+            ActiveWhere(source, (source as IsSynchronizable)?.SynchronizationContext, predicate, predicateProperties);
 
-        public static ActiveEnumerable<TSource> LiveWhere<TSource>(this IList<TSource> source, SynchronizationContext synchronizationContext, Func<TSource, bool> predicate, params string[] predicateProperties) where TSource : class
+        public static ActiveEnumerable<TSource> ActiveWhere<TSource>(this IList<TSource> source, SynchronizationContext synchronizationContext, Func<TSource, bool> predicate, params string[] predicateProperties) where TSource : class
         {
             var rangeObservableCollection = new SynchronizedRangeObservableCollection<TSource>(synchronizationContext, source.Where(predicate));
             var rangeObservableCollectionAccess = new AsyncLock();
