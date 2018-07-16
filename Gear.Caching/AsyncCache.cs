@@ -1,4 +1,4 @@
-﻿using Gear.Components;
+using Gear.Components;
 using Nito.AsyncEx;
 using System;
 using System.Collections.Concurrent;
@@ -3615,21 +3615,6 @@ namespace Gear.Caching
         /// Gets whether newly added values start as weak references (has no effect if <see cref="WeakenReferencesIn"/> is <c>null</c> or <c>default</c>)
         /// </summary>
         public bool AddReferencesAsWeak { get; }
-
-        /// <summary>
-        /// Gets whether this class supports asynchronous disposal
-        /// </summary>
-        protected override bool IsAsyncDisposable => true;
-
-		/// <summary>
-		/// Gets whether this class supports synchronous disposal
-		/// </summary>
-		protected override bool IsDisposable => true;
-
-		/// <summary>
-		/// Gets whether the cache has been disposed
-		/// </summary>
-		new public bool IsDisposed => base.IsDisposed;
 
         /// <summary>
         /// Gets the amount of time a value can be left unaccessed by callers before being potentially subjected to garbage collection (if <c>null</c> or <c>default</c>, values will never be garbage collected)

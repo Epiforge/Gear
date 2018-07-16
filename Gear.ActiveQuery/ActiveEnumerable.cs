@@ -1,4 +1,4 @@
-﻿using Gear.Components;
+using Gear.Components;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -7,7 +7,7 @@ using System.Collections.Specialized;
 
 namespace Gear.ActiveQuery
 {
-    public class ActiveEnumerable<T> : DisposablePropertyChangeNotifier, INotifyCollectionChanged, ICollection, ICollection<T>, IEnumerable, IEnumerable<T>, IList, IList<T>, IReadOnlyCollection<T>, IReadOnlyList<T>
+    public class ActiveEnumerable<T> : SyncDisposablePropertyChangeNotifier, INotifyCollectionChanged, ICollection, ICollection<T>, IEnumerable, IEnumerable<T>, IList, IList<T>, IReadOnlyCollection<T>, IReadOnlyList<T>
     {
         internal ActiveEnumerable(IList<T> list, Action<bool> onDispose = null)
         {
@@ -80,8 +80,6 @@ namespace Gear.ActiveQuery
         T IList<T>.this[int index] { get => readOnlyObservableCollection[index]; set => throw new NotSupportedException(); }
 
         public int Count => readOnlyObservableCollection.Count;
-
-        protected override bool IsDisposable => true;
 
         bool ICollection<T>.IsReadOnly => true;
 

@@ -1,4 +1,4 @@
-﻿using Gear.Components;
+using Gear.Components;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -9,7 +9,7 @@ using System.Reflection;
 
 namespace Gear.ActiveQuery
 {
-    public class ActiveCollectionMonitor : Disposable
+    public class ActiveCollectionMonitor : SyncDisposable
     {
         static readonly Dictionary<IList, ActiveCollectionMonitor> monitors = new Dictionary<IList, ActiveCollectionMonitor>();
         static readonly object instanceManagementLock = new object();
@@ -111,11 +111,9 @@ namespace Gear.ActiveQuery
         protected virtual void OnElementsRemoved(ElementMembershipEventArgs<object> e) => ElementsRemoved?.Invoke(this, e);
 
         void OnElementsRemoved(IEnumerable<object> elements, int index, int count) => OnElementsRemoved(new ElementMembershipEventArgs<object>(elements, index, count));
-
-        protected override bool IsDisposable => true;
     }
 
-    public class ActiveCollectionMonitor<T> : Disposable where T : class
+    public class ActiveCollectionMonitor<T> : SyncDisposable where T : class
     {
         static Dictionary<(IList<T> collection, string relevantProperties), object> monitors = new Dictionary<(IList<T> collection, string relevantProperties), object>();
         static object instanceManagementLock = new object();
@@ -311,7 +309,5 @@ namespace Gear.ActiveQuery
         public bool ElementsNotifyChanged { get; }
 
         public bool ElementsNotifyChanging { get; }
-
-        protected override bool IsDisposable => true;
     }
 }
