@@ -1,4 +1,4 @@
-﻿using NUnit.Framework;
+using NUnit.Framework;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
@@ -10,9 +10,9 @@ namespace Gear.Components.Tests
     {
         #region Helper Classes
 
-        class AsyncDisposable : Disposable
+        class AsyncDisposable : Components.AsyncDisposable
         {
-            protected override async Task DisposeAsync(bool disposing, CancellationToken cancellationToken = default(CancellationToken))
+            protected override async Task DisposeAsync(bool disposing, CancellationToken cancellationToken = default)
             {
                 for (var i = 0; i < 10; ++i)
                 {
@@ -22,30 +22,15 @@ namespace Gear.Components.Tests
             }
 
             public void RequiresNotDisposed() => ThrowIfDisposed();
-
-            protected override bool IsAsyncDisposable => true;
         }
 
-        class IncompleteImplementationDisposable : Disposable
-        {
-            protected override bool IsAsyncDisposable => true;
-
-            protected override bool IsDisposable => true;
-        }
-
-        class SyncDisposable : Disposable
+        class SyncDisposable : Components.SyncDisposable
         {
             protected override void Dispose(bool disposing)
             {
             }
 
             public void RequiresNotDisposed() => ThrowIfDisposed();
-
-            protected override bool IsDisposable => true;
-        }
-
-        class UnimplementedDisposable : Disposable
-        {
         }
 
         #endregion Helper Classes
@@ -96,44 +81,6 @@ namespace Gear.Components.Tests
         }
 
         [Test]
-        public void IncompleteImplementationDisposableDoesNotDispose()
-        {
-            var disposable = new IncompleteImplementationDisposable();
-            Assert.IsFalse(disposable.IsDisposed);
-            var threwNotImplemented = false;
-            try
-            {
-                using (disposable)
-                {
-                }
-            }
-            catch (NotImplementedException)
-            {
-                threwNotImplemented = true;
-            }
-            Assert.IsTrue(threwNotImplemented);
-            Assert.IsFalse(disposable.IsDisposed);
-        }
-
-        [Test]
-        public async Task IncompleteImplementationDisposableDoesNotDisposeAsync()
-        {
-            var disposable = new IncompleteImplementationDisposable();
-            Assert.IsFalse(disposable.IsDisposed);
-            var threwNotImplemented = false;
-            try
-            {
-                await disposable.UsingAsync(() => { });
-            }
-            catch (NotImplementedException)
-            {
-                threwNotImplemented = true;
-            }
-            Assert.IsTrue(threwNotImplemented);
-            Assert.IsFalse(disposable.IsDisposed);
-        }
-
-        [Test]
         public void SyncDisposableDisposes()
         {
             var disposable = new SyncDisposable();
@@ -161,44 +108,6 @@ namespace Gear.Components.Tests
                 threwObjectDisposed = true;
             }
             Assert.IsTrue(threwObjectDisposed);
-        }
-
-        [Test]
-        public void UnimplementedDisposableDoesNotDispose()
-        {
-            var disposable = new UnimplementedDisposable();
-            Assert.IsFalse(disposable.IsDisposed);
-            var threwInvalidOperation = false;
-            try
-            {
-                using (disposable)
-                {
-                }
-            }
-            catch (InvalidOperationException)
-            {
-                threwInvalidOperation = true;
-            }
-            Assert.IsTrue(threwInvalidOperation);
-            Assert.IsFalse(disposable.IsDisposed);
-        }
-
-        [Test]
-        public async Task UnimplementedDisposableDoesNotDisposeAsync()
-        {
-            var disposable = new UnimplementedDisposable();
-            Assert.IsFalse(disposable.IsDisposed);
-            var threwInvalidOperation = false;
-            try
-            {
-                await disposable.UsingAsync(() => { });
-            }
-            catch (InvalidOperationException)
-            {
-                threwInvalidOperation = true;
-            }
-            Assert.IsTrue(threwInvalidOperation);
-            Assert.IsFalse(disposable.IsDisposed);
         }
     }
 }

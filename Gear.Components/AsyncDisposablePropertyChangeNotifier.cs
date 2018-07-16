@@ -6,33 +6,14 @@ using System.Threading.Tasks;
 namespace Gear.Components
 {
     /// <summary>
-    /// Provides a mechanism for releasing unmanaged resources asynchronously or synchronously
+    /// Provides a mechanism for releasing unmanaged resources asynchronously and notifying about property changes
     /// </summary>
-    public abstract class Disposable : IDisposable, IAsyncDisposable
+    public abstract class AsyncDisposablePropertyChangeNotifier : PropertyChangeNotifier, IAsyncDisposable
     {
-        ~Disposable() => Dispose(false);
+        ~AsyncDisposablePropertyChangeNotifier() => DisposeAsync(false).Wait();
 
         readonly AsyncLock disposalAccess = new AsyncLock();
-
-        /// <summary>
-        /// Performs application-defined tasks associated with freeing, releasing, or resetting unmanaged resources
-        /// </summary>
-        public void Dispose()
-        {
-            lock (disposalAccess.Lock())
-                if (!IsDisposed)
-                {
-                    Dispose(true);
-                    IsDisposed = true;
-                    GC.SuppressFinalize(this);
-                }
-        }
-
-        /// <summary>
-        /// Frees, releases, or resets unmanaged resources
-        /// </summary>
-        /// <param name="disposing">false if invoked by the finalizer because the object is being garbage collected; otherwise, true</param>
-        protected abstract void Dispose(bool disposing);
+        bool isDisposed;
 
         /// <summary>
         /// Performs application-defined tasks associated with freeing, releasing, or resetting unmanaged resources
@@ -42,7 +23,7 @@ namespace Gear.Components
         public async Task DisposeAsync(CancellationToken cancellationToken = default)
         {
             using (await disposalAccess.LockAsync(cancellationToken).ConfigureAwait(false))
-                if (!IsDisposed)
+                if (!isDisposed)
                 {
                     await DisposeAsync(true, cancellationToken).ConfigureAwait(false);
                     IsDisposed = true;
@@ -63,13 +44,17 @@ namespace Gear.Components
 		/// <exception cref="ObjectDisposedException">The object has already been disposed</exception>
 		protected void ThrowIfDisposed()
         {
-            if (IsDisposed)
+            if (isDisposed)
                 throw new ObjectDisposedException(GetType().Name);
         }
 
         /// <summary>
         /// Gets whether this object has been disposed
         /// </summary>
-		public bool IsDisposed { get; private set; }
+        public bool IsDisposed
+        {
+            get => isDisposed;
+            private set => SetBackedProperty(ref isDisposed, in value);
+        }
     }
 }

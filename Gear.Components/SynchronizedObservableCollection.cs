@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Runtime.ExceptionServices;
@@ -82,18 +82,7 @@ namespace Gear.Components
                 return Task.CompletedTask;
             }
             var completion = new TaskCompletionSource<object>();
-            SynchronizationContext.Post(state =>
-            {
-                try
-                {
-                    action();
-                    completion.SetResult(null);
-                }
-                catch (Exception ex)
-                {
-                    completion.SetException(ex);
-                }
-            }, null);
+            SynchronizationContext.Post(state => completion.AttemptSetResult(action), null);
             return completion.Task;
         }
 
@@ -102,17 +91,7 @@ namespace Gear.Components
             if (!IsSynchronized || SynchronizationContext == null || SynchronizationContext.Current == SynchronizationContext)
                 return Task.FromResult(func());
             var completion = new TaskCompletionSource<TResult>();
-            SynchronizationContext.Post(state =>
-            {
-                try
-                {
-                    completion.SetResult(func());
-                }
-                catch (Exception ex)
-                {
-                    completion.SetException(ex);
-                }
-            }, null);
+            SynchronizationContext.Post(state => completion.AttemptSetResult(func), null);
             return completion.Task;
         }
 

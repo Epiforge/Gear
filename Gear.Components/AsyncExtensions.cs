@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Threading.Tasks;
 
 namespace Gear.Components
@@ -78,6 +78,80 @@ namespace Gear.Components
             catch (Exception ex)
             {
                 taskCompletionSource.SetException(ex);
+            }
+        }
+
+        /// <summary>
+        /// Invokes a void method and then <see cref="TaskCompletionSource{TResult}.TrySetResult(TResult)"/> with the default value of <typeparamref name="TResult"/> if it succeeds, returning the result; otherwise invokes <see cref="TaskCompletionSource{TResult}.TrySetException(Exception)"/> with the exception thrown by the method, returning the result
+        /// </summary>
+        /// <typeparam name="TResult">The generic type argument of the task completion source</typeparam>
+        /// <param name="taskCompletionSource">The task completion source</param>
+        /// <param name="action">The void method to invoke</param>
+        public static bool AttemptTrySetResult<TResult>(this TaskCompletionSource<TResult> taskCompletionSource, Action action)
+        {
+            try
+            {
+                action();
+                return taskCompletionSource.TrySetResult(default);
+            }
+            catch (Exception ex)
+            {
+                return taskCompletionSource.TrySetException(ex);
+            }
+        }
+
+        /// <summary>
+        /// Invokes a method with a return value and then <see cref="TaskCompletionSource{TResult}.TrySetResult(TResult)"/> with what it returned, returning the result; otherwise invokes <see cref="TaskCompletionSource{TResult}.TrySetException(Exception)"/> with the exception thrown by the method, returning the result
+        /// </summary>
+        /// <typeparam name="TResult">The generic type argument of the task completion source</typeparam>
+        /// <param name="taskCompletionSource">The task completion source</param>
+        /// <param name="func">The method with a return value to invoke</param>
+        public static bool AttemptTrySetResult<TResult>(this TaskCompletionSource<TResult> taskCompletionSource, Func<TResult> func)
+        {
+            try
+            {
+                return taskCompletionSource.TrySetResult(func());
+            }
+            catch (Exception ex)
+            {
+                return taskCompletionSource.TrySetException(ex);
+            }
+        }
+
+        /// <summary>
+        /// Invokes a void async method and then <see cref="TaskCompletionSource{TResult}.TrySetResult(TResult)"/> with the default value of <typeparamref name="TResult"/> if it succeeds, returning the result; otherwise invokes <see cref="TaskCompletionSource{TResult}.TrySetException(Exception)"/> with the exception thrown by the method, returning the result
+        /// </summary>
+        /// <typeparam name="TResult">The generic type argument of the task completion source</typeparam>
+        /// <param name="taskCompletionSource">The task completion source</param>
+        /// <param name="asyncAction">The void async method to invoke</param>
+        public static async Task<bool> AttemptTrySetResultAsync<TResult>(this TaskCompletionSource<TResult> taskCompletionSource, Func<Task> asyncAction)
+        {
+            try
+            {
+                await asyncAction().ConfigureAwait(false);
+                return taskCompletionSource.TrySetResult(default);
+            }
+            catch (Exception ex)
+            {
+                return taskCompletionSource.TrySetException(ex);
+            }
+        }
+
+        /// <summary>
+        /// Invokes an async method with a return value and then <see cref="TaskCompletionSource{TResult}.TrySetResult(TResult)"/> with what it returned, returning the result; otherwise invokes <see cref="TaskCompletionSource{TResult}.TrySetException(Exception)"/> with the exception thrown by the method, returning the result
+        /// </summary>
+        /// <typeparam name="TResult">The generic type argument of the task completion source</typeparam>
+        /// <param name="taskCompletionSource">The task completion source</param>
+        /// <param name="asyncFunc">The async method with a return value to invoke</param>
+        public static async Task<bool> AttemptTrySetResultAsync<TResult>(this TaskCompletionSource<TResult> taskCompletionSource, Func<Task<TResult>> asyncFunc)
+        {
+            try
+            {
+                return taskCompletionSource.TrySetResult(await asyncFunc().ConfigureAwait(false));
+            }
+            catch (Exception ex)
+            {
+                return taskCompletionSource.TrySetException(ex);
             }
         }
 

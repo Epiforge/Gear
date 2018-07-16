@@ -1,13 +1,13 @@
-﻿using System;
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace Gear.Components
 {
 	/// <summary>
-	/// Provides extensions for dealing with instances of <see cref="Disposable"/>
+	/// Provides extensions for dealing with instances of <see cref="IAsyncDisposable"/>
     /// </summary>
-    public static class DisposableExtensions
+    public static class AsyncDisposableExtensions
 	{
 		/// <summary>
         /// Executes an action and then asynchronously disposes of an object
@@ -17,7 +17,7 @@ namespace Gear.Components
         /// <param name="cancellationToken">The cancellation token used to cancel the disposal</param>
         /// <exception cref="ArgumentNullException"><paramref name="action"/> is null</exception>
         /// <exception cref="OperationCanceledException">disposal was interrupted by a cancellation request</exception>
-		public static Task UsingAsync(this IAsyncDisposable asyncDisposable, Action action, CancellationToken cancellationToken = default) => Disposable.UsingAsync(asyncDisposable, action, cancellationToken);
+		public static Task UsingAsync(this IAsyncDisposable asyncDisposable, Action action, CancellationToken cancellationToken = default) => AsyncDisposable.UsingAsync(asyncDisposable, action, cancellationToken);
 
         /// <summary>
         /// Executes an action and then asynchronously disposes of an object
@@ -27,6 +27,6 @@ namespace Gear.Components
         /// <param name="cancellationToken">The cancellation token used to cancel the disposal</param>
         /// <exception cref="ArgumentNullException"><paramref name="asyncAction"/> is null</exception>
         /// <exception cref="OperationCanceledException">disposal was interrupted by a cancellation request</exception>      
-		public static Task UsingAsync(this IAsyncDisposable asyncDisposable, Func<Task> asyncAction, CancellationToken cancellationToken = default) => Disposable.UsingAsync(asyncDisposable, asyncAction, cancellationToken);
+		public static Task UsingAsync(this IAsyncDisposable asyncDisposable, Func<Task> asyncAction, CancellationToken cancellationToken = default) => AsyncDisposable.UsingAsync(asyncDisposable, asyncAction, cancellationToken);
     }
 }

@@ -17,7 +17,12 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Documentation", "Documentat
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gear.Components.Tests", "Gear.Components.Tests\Gear.Components.Tests.csproj", "{2A33CDE4-C5F9-4864-8EE0-72D04EAAA27B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gear.ActiveQuery", "Gear.ActiveQuery\Gear.ActiveQuery.csproj", "{FB29A1EF-7348-4139-B4EC-B60BF31DB5FF}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Gear.ActiveQuery", "Gear.ActiveQuery\Gear.ActiveQuery.csproj", "{FB29A1EF-7348-4139-B4EC-B60BF31DB5FF}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{BB0E4A60-B4AD-4340-97BC-145B1DE4BAA8}"
+	ProjectSection(SolutionItems) = preProject
+		.editorconfig = .editorconfig
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
