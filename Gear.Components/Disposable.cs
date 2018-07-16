@@ -8,7 +8,7 @@ namespace Gear.Components
     /// <summary>
     /// Provides a mechanism for releasing unmanaged resources
     /// </summary>
-    public abstract class Disposable : IDisposable
+    public abstract class Disposable : IDisposable, IAsyncDisposable
     {
         /// <summary>
         /// Executes an action and then asynchronously disposes of an object
@@ -18,7 +18,7 @@ namespace Gear.Components
         /// <param name="cancellationToken">The cancellation token used to cancel the disposal</param>
 		/// <exception cref="ArgumentNullException"><paramref name="action"/> is null</exception>
 		/// <exception cref="OperationCanceledException">disposal was interrupted by a cancellation request</exception>
-        public static async Task UsingAsync(Disposable disposable, Action action, CancellationToken cancellationToken = default)
+        public static async Task UsingAsync(IAsyncDisposable disposable, Action action, CancellationToken cancellationToken = default)
         {
             if (action == null)
                 throw new ArgumentNullException(nameof(action));
@@ -41,7 +41,7 @@ namespace Gear.Components
 		/// <param name="cancellationToken">The cancellation token used to cancel the disposal</param>
 		/// <exception cref="ArgumentNullException"><paramref name="asyncAction"/> is null</exception>
         /// <exception cref="OperationCanceledException">disposal was interrupted by a cancellation request</exception>
-        public static async Task UsingAsync(Disposable disposable, Func<Task> asyncAction, CancellationToken cancellationToken = default)
+        public static async Task UsingAsync(IAsyncDisposable disposable, Func<Task> asyncAction, CancellationToken cancellationToken = default)
         {
             if (asyncAction == null)
                 throw new ArgumentNullException(nameof(asyncAction));
@@ -56,8 +56,6 @@ namespace Gear.Components
             }
         }
 
-#pragma warning disable CS1591
-
 		~Disposable()
         {
             if (IsDisposable)
@@ -66,9 +64,6 @@ namespace Gear.Components
                 DisposeAsync(false).Wait();
         }
 
-#pragma warning restore CS1591
-
-		bool isDisposed;
         AsyncLock disposalAccess = new AsyncLock();
 
         /// <summary>
@@ -81,10 +76,10 @@ namespace Gear.Components
             if (!IsDisposable)
                 throw new InvalidOperationException();
             using (disposalAccess.Lock())
-                if (!isDisposed)
+                if (!IsDisposed)
                 {
                     Dispose(true);
-                    isDisposed = true;
+                    IsDisposed = true;
                     GC.SuppressFinalize(this);
                 }
         }
@@ -108,10 +103,10 @@ namespace Gear.Components
             if (!IsAsyncDisposable)
                 throw new InvalidOperationException();
             using (await disposalAccess.LockAsync().ConfigureAwait(false))
-                if (!isDisposed)
+                if (!IsDisposed)
                 {
                     await DisposeAsync(true, cancellationToken).ConfigureAwait(false);
-                    isDisposed = true;
+                    IsDisposed = true;
                     GC.SuppressFinalize(this);
                 }
         }
@@ -130,7 +125,7 @@ namespace Gear.Components
 		/// <exception cref="ObjectDisposedException">The object has already been disposed</exception>
 		protected void ThrowIfDisposed()
 		{         
-			if (isDisposed)
+			if (IsDisposed)
 				throw new ObjectDisposedException(GetType().Name);
 		}
 
@@ -147,6 +142,6 @@ namespace Gear.Components
         /// <summary>
         /// Gets whether this object has been disposed
         /// </summary>
-		protected bool IsDisposed => isDisposed;
+		public bool IsDisposed { get; private set; }
     }
 }

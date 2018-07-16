@@ -1,111 +1,106 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Runtime.CompilerServices;
+﻿using Nito.AsyncEx;
+using System;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Gear.Components
 {
     /// <summary>
     /// Provides a mechanism for releasing unmanaged resources and notifying about property changes
     /// </summary>
-    public abstract class DisposablePropertyChangeNotifier : Disposable, INotifyPropertyChanged, INotifyPropertyChanging
+    public abstract class DisposablePropertyChangeNotifier : PropertyChangeNotifier, IDisposable, IAsyncDisposable
     {
-        /// <summary>
-        /// Occurs when a property value changes
-        /// </summary>
-        public event PropertyChangedEventHandler PropertyChanged;
-
-        /// <summary>
-        /// Occurs when a property value is changing
-        /// </summary>
-        public event PropertyChangingEventHandler PropertyChanging;
-
-        /// <summary>
-        /// Raises the <see cref="PropertyChanged"/> event
-        /// </summary>
-		/// <param name="e">The arguments of the event</param>
-        /// <exception cref="ArgumentNullException"><paramref name="e"/> is null</exception>
-        protected virtual void OnPropertyChanged(PropertyChangedEventArgs e)
+        ~DisposablePropertyChangeNotifier()
         {
-            if (e == null)
-                throw new ArgumentNullException(nameof(e));
-            PropertyChanged?.Invoke(this, e);
+            if (IsDisposable)
+                Dispose(false);
+            else if (IsAsyncDisposable)
+                DisposeAsync(false).Wait();
+        }
+
+        AsyncLock disposalAccess = new AsyncLock();
+        bool isDisposed;
+
+        /// <summary>
+        /// Performs application-defined tasks associated with freeing, releasing, or resetting unmanaged resources
+        /// </summary>
+		/// <exception cref="InvalidOperationException">Synchronous disposal is not supported</exception>
+		/// <exception cref="NotImplementedException">The deriving class failed to properly override <see cref="Dispose(bool)"/></exception>
+        public void Dispose()
+        {
+            if (!IsDisposable)
+                throw new InvalidOperationException();
+            using (disposalAccess.Lock())
+                if (!IsDisposed)
+                {
+                    Dispose(true);
+                    IsDisposed = true;
+                    GC.SuppressFinalize(this);
+                }
         }
 
         /// <summary>
-        /// Notifies that a property changed
+        /// Frees, releases, or resets unmanaged resources
         /// </summary>
-		/// <param name="propertyName">The name of the property that changed</param>
-        /// <exception cref="ArgumentNullException"><paramref name="propertyName"/> is null</exception>
-        protected void OnPropertyChanged([CallerMemberName] string propertyName = null)
+        /// <param name="disposing">false if invoked by the finalizer because the object is being garbage collected; otherwise, true</param>
+        /// <exception cref="NotImplementedException">The deriving class has failed to properly override this method</exception>
+        protected virtual void Dispose(bool disposing) => throw new NotImplementedException();
+
+        /// <summary>
+        /// Performs application-defined tasks associated with freeing, releasing, or resetting unmanaged resources
+        /// </summary>
+        /// <param name="cancellationToken">A token that can be used to attempt to cancel disposal</param>
+		/// <exception cref="InvalidOperationException">Asyncronous disposal is not supported</exception>
+        /// <exception cref="NotImplementedException">The deriving class failed to properly override <see cref="DisposeAsync(bool, CancellationToken)"/></exception>
+        /// <exception cref="OperationCanceledException">Disposal was interrupted by a cancellation request</exception>
+        public async Task DisposeAsync(CancellationToken cancellationToken = default)
         {
-            if (propertyName == null)
-                throw new ArgumentNullException(nameof(propertyName));
-            OnPropertyChanged(new PropertyChangedEventArgs(propertyName));
+            if (!IsAsyncDisposable)
+                throw new InvalidOperationException();
+            using (await disposalAccess.LockAsync().ConfigureAwait(false))
+                if (!IsDisposed)
+                {
+                    await DisposeAsync(true, cancellationToken).ConfigureAwait(false);
+                    IsDisposed = true;
+                    GC.SuppressFinalize(this);
+                }
         }
 
         /// <summary>
-        /// Raises the <see cref="PropertyChanging"/> event
+        /// Frees, releases, or resets unmanaged resources
         /// </summary>
-		/// <param name="e">The arguments of the event</param>
-        /// <exception cref="ArgumentNullException"><paramref name="e"/> is null</exception>
-        protected virtual void OnPropertyChanging(PropertyChangingEventArgs e)
+        /// <param name="disposing">false if invoked by the finalizer because the object is being garbage collected; otherwise, true</param>
+        /// <param name="cancellationToken">A token that can be used to attempt to cancel disposal</param>
+        /// <exception cref="NotImplementedException">The deriving class has failed to properly override this method</exception>
+        protected virtual Task DisposeAsync(bool disposing, CancellationToken cancellationToken = default) => throw new NotImplementedException();
+
+        /// <summary>
+        /// Ensure the object has not been disposed
+        /// </summary>
+		/// <exception cref="ObjectDisposedException">The object has already been disposed</exception>
+		protected void ThrowIfDisposed()
         {
-            if (e == null)
-                throw new ArgumentNullException(nameof(e));
-            PropertyChanging?.Invoke(this, e);
+            if (IsDisposed)
+                throw new ObjectDisposedException(GetType().Name);
         }
 
         /// <summary>
-        /// Notifies that a property is changing
-        /// </summary>
-		/// <param name="propertyName">The name of the property that is changing</param>
-        /// <exception cref="ArgumentNullException"><paramref name="propertyName"/> is null</exception>
-        protected void OnPropertyChanging([CallerMemberName] string propertyName = null)
-        {
-            if (propertyName == null)
-                throw new ArgumentNullException(nameof(propertyName));
-            OnPropertyChanging(new PropertyChangingEventArgs(propertyName));
-        }
+        /// Gets whether this class supports asynchronous disposal
+		/// </summary>
+        protected virtual bool IsAsyncDisposable => false;
 
         /// <summary>
-        /// Compares a property's backing field and a new value for inequality, and when they are unequal, raises the <see cref="PropertyChanging"/> event, sets the backing field to the new value, and then raises the <see cref="PropertyChanged"/> event
+        /// Gets whether this class supports synchronous disposal
         /// </summary>
-        /// <typeparam name="TValue">The type of the property</typeparam>
-        /// <param name="backingField">A reference to the backing field of the property</param>
-        /// <param name="value">The new value</param>
-        /// <param name="propertyName">The name of the property</param>
-        /// <returns>true if <paramref name="backingField"/> was unequal to <paramref name="value"/>; otherwise, false</returns>
-        protected bool SetBackedProperty<TValue>(ref TValue backingField, TValue value, [CallerMemberName] string propertyName = null)
-        {
-            if (!EqualityComparer<TValue>.Default.Equals(backingField, value))
-            {
-                OnPropertyChanging(propertyName);
-                backingField = value;
-                OnPropertyChanged(propertyName);
-                return true;
-            }
-            return false;
-        }
+        protected virtual bool IsDisposable => false;
 
         /// <summary>
-        /// Compares a property's backing field and a new value for inequality, and when they are unequal, raises the <see cref="PropertyChanging"/> event, sets the backing field to the new value, and then raises the <see cref="PropertyChanged"/> event
+        /// Gets whether this object has been disposed
         /// </summary>
-        /// <typeparam name="TValue">The type of the property</typeparam>
-        /// <param name="backingField">A reference to the backing field of the property</param>
-        /// <param name="value">The new value</param>
-        /// <param name="propertyName">The name of the property</param>
-        /// <returns>true if <paramref name="backingField"/> was unequal to <paramref name="value"/>; otherwise, false</returns>
-        protected bool SetBackedProperty<TValue>(ref TValue backingField, in TValue value, [CallerMemberName] string propertyName = null)
+        public bool IsDisposed
         {
-            if (!EqualityComparer<TValue>.Default.Equals(backingField, value))
-            {
-                OnPropertyChanging(propertyName);
-                backingField = value;
-                OnPropertyChanged(propertyName);
-                return true;
-            }
-            return false;
+            get => isDisposed;
+            set => SetBackedProperty(ref isDisposed, in value);
         }
     }
 }

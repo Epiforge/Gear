@@ -24,8 +24,6 @@ namespace Gear.Components.Tests
             public void RequiresNotDisposed() => ThrowIfDisposed();
 
             protected override bool IsAsyncDisposable => true;
-
-            new public bool IsDisposed => base.IsDisposed;
         }
 
         class IncompleteImplementationDisposable : Disposable
@@ -33,8 +31,6 @@ namespace Gear.Components.Tests
             protected override bool IsAsyncDisposable => true;
 
             protected override bool IsDisposable => true;
-
-            new public bool IsDisposed => base.IsDisposed;
         }
 
         class SyncDisposable : Disposable
@@ -46,13 +42,10 @@ namespace Gear.Components.Tests
             public void RequiresNotDisposed() => ThrowIfDisposed();
 
             protected override bool IsDisposable => true;
-
-            new public bool IsDisposed => base.IsDisposed;
         }
 
         class UnimplementedDisposable : Disposable
         {
-            new public bool IsDisposed => base.IsDisposed;
         }
 
         #endregion Helper Classes
