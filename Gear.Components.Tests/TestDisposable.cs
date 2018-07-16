@@ -12,7 +12,7 @@ namespace Gear.Components.Tests
 
         class AsyncDisposable : Components.AsyncDisposable
         {
-            protected override async Task DisposeAsync(bool disposing, CancellationToken cancellationToken = default)
+            protected override async Task DisposeAsync(bool disposing, CancellationToken cancellationToken = default(CancellationToken))
             {
                 for (var i = 0; i < 10; ++i)
                 {
