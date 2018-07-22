@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
@@ -25,7 +25,7 @@ namespace Gear.Components
             var originalIndex = index;
             --index;
             var list = new List<T>();
-            foreach (T item in items)
+            foreach (var item in items)
             {
                 Items.Insert(++index, item);
                 list.Add(item);
@@ -80,7 +80,7 @@ namespace Gear.Components
 
         public void RemoveRange(IEnumerable<T> items)
         {
-            foreach (T item in items)
+            foreach (var item in items)
             {
                 var index = Items.IndexOf(item);
                 if (index >= 0)
@@ -115,7 +115,7 @@ namespace Gear.Components
             Items.CopyTo(oldItems, 0);
             Items.Clear();
             var list = new List<T>();
-            foreach (T element in collection)
+            foreach (var element in collection)
             {
                 Items.Add(element);
                 list.Add(element);
@@ -138,7 +138,7 @@ namespace Gear.Components
             }
             var list = new List<T>();
             index -= 1;
-            foreach (T element in collection)
+            foreach (var element in collection)
             {
                 Items.Insert(++index, element);
                 list.Add(element);
@@ -154,7 +154,7 @@ namespace Gear.Components
         {
             var previousCount = Items.Count;
             Items.Clear();
-            foreach (T element in newCollection)
+            foreach (var element in newCollection)
                 Items.Add(element);
             OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
             if (previousCount != Items.Count)

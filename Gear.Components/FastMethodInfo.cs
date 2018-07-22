@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Linq.Expressions;
 using System.Reflection;
 
@@ -32,9 +32,6 @@ namespace Gear.Components
 
         private ReturnValueDelegate Delegate { get; }
 
-        public object Invoke(object instance, params object[] arguments)
-        {
-            return Delegate(instance, arguments);
-        }
+        public object Invoke(object instance, params object[] arguments) => Delegate(instance, arguments);
     }
 }

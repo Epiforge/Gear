@@ -9,249 +9,351 @@ namespace Gear.Components
     {
         public ObservableDictionary()
         {
-            dictionary = new Dictionary<TKey, TValue>();
-            collectionInterface = dictionary;
-            dictionaryInterface = dictionary;
-            enumerableInterface = dictionary;
-            genericCollectionInterface = dictionary;
-            genericEnumerableInterface = dictionary;
+            gd = new Dictionary<TKey, TValue>();
+            ci = gd;
+            gci = gd;
+            di = gd;
+            gdi = gd;
+            ei = gd;
+            gei = gd;
+            grodi = gd;
         }
 
         public ObservableDictionary(IDictionary<TKey, TValue> dictionary)
         {
-            this.dictionary = new Dictionary<TKey, TValue>(dictionary);
-            collectionInterface = this.dictionary;
-            dictionaryInterface = this.dictionary;
-            enumerableInterface = this.dictionary;
-            genericCollectionInterface = this.dictionary;
-            genericEnumerableInterface = this.dictionary;
+            gd = new Dictionary<TKey, TValue>(dictionary);
+            ci = gd;
+            gci = gd;
+            di = gd;
+            gdi = gd;
+            ei = gd;
+            gei = gd;
+            grodi = gd;
         }
 
         public ObservableDictionary(IEqualityComparer<TKey> comparer)
         {
-            dictionary = new Dictionary<TKey, TValue>(comparer);
-            collectionInterface = dictionary;
-            dictionaryInterface = dictionary;
-            enumerableInterface = dictionary;
-            genericCollectionInterface = dictionary;
-            genericEnumerableInterface = dictionary;
+            gd = new Dictionary<TKey, TValue>(comparer);
+            ci = gd;
+            gci = gd;
+            di = gd;
+            gdi = gd;
+            ei = gd;
+            gei = gd;
+            grodi = gd;
         }
 
         public ObservableDictionary(int capacity)
         {
-            dictionary = new Dictionary<TKey, TValue>(capacity);
-            collectionInterface = dictionary;
-            dictionaryInterface = dictionary;
-            enumerableInterface = dictionary;
-            genericCollectionInterface = dictionary;
-            genericEnumerableInterface = dictionary;
+            gd = new Dictionary<TKey, TValue>(capacity);
+            ci = gd;
+            gci = gd;
+            di = gd;
+            gdi = gd;
+            ei = gd;
+            gei = gd;
+            grodi = gd;
         }
 
         public ObservableDictionary(IDictionary<TKey, TValue> dictionary, IEqualityComparer<TKey> comparer)
         {
-            this.dictionary = new Dictionary<TKey, TValue>(dictionary, comparer);
-            collectionInterface = this.dictionary;
-            dictionaryInterface = this.dictionary;
-            enumerableInterface = this.dictionary;
-            genericCollectionInterface = this.dictionary;
-            genericEnumerableInterface = this.dictionary;
+            gd = new Dictionary<TKey, TValue>(dictionary, comparer);
+            ci = gd;
+            gci = gd;
+            di = gd;
+            gdi = gd;
+            ei = gd;
+            gei = gd;
+            grodi = gd;
         }
 
         public ObservableDictionary(int capacity, IEqualityComparer<TKey> comparer)
         {
-            dictionary = new Dictionary<TKey, TValue>(capacity, comparer);
-            collectionInterface = dictionary;
-            dictionaryInterface = dictionary;
-            enumerableInterface = dictionary;
-            genericCollectionInterface = dictionary;
-            genericEnumerableInterface = dictionary;
+            gd = new Dictionary<TKey, TValue>(capacity, comparer);
+            ci = gd;
+            gci = gd;
+            di = gd;
+            gdi = gd;
+            ei = gd;
+            gei = gd;
+            grodi = gd;
         }
 
-        readonly Dictionary<TKey, TValue> dictionary;
-        readonly ICollection collectionInterface;
-        readonly IDictionary dictionaryInterface;
-        readonly IEnumerable enumerableInterface;
-        readonly ICollection<KeyValuePair<TKey, TValue>> genericCollectionInterface;
-        readonly IEnumerable<KeyValuePair<TKey, TValue>> genericEnumerableInterface;
+        readonly Dictionary<TKey, TValue> gd;
+        readonly ICollection ci;
+        readonly ICollection<KeyValuePair<TKey, TValue>> gci;
+        readonly IDictionary di;
+        readonly IDictionary<TKey, TValue> gdi;
+        readonly IEnumerable ei;
+        readonly IEnumerable<KeyValuePair<TKey, TValue>> gei;
+        readonly IReadOnlyDictionary<TKey, TValue> grodi;
 
-        public event EventHandler<NotifyDictionaryChangedEventArgs<TKey, TValue>> DictionaryChanged;
+        public event EventHandler<NotifyDictionaryValueEventArgs<TKey, TValue>> ValueAdded;
+        public event EventHandler<NotifyDictionaryValueEventArgs<TKey, TValue>> ValueRemoved;
+        public event EventHandler<NotifyDictionaryValueReplacedEventArgs<TKey, TValue>> ValueReplaced;
+        public event EventHandler<NotifyDictionaryValuesEventArgs<TKey, TValue>> ValuesAdded;
+        public event EventHandler<NotifyDictionaryValuesEventArgs<TKey, TValue>> ValuesRemoved;
 
         public virtual void Add(TKey key, TValue value)
         {
-            if (!dictionary.ContainsKey(key))
-                OnKeysChanging();
-            dictionary.Add(key, value);
-            OnKeyValuePairsAdded(new List<KeyValuePair<TKey, TValue>> { new KeyValuePair<TKey, TValue>(key, value) });
-            OnKeysChanged();
+            if (gd.ContainsKey(key))
+                NotifyCountChanging();
+            gd.Add(key, value);
+            OnValueAdded(key, value);
+            NotifyCountChanged();
         }
 
-        void ICollection<KeyValuePair<TKey, TValue>>.Add(KeyValuePair<TKey, TValue> item)
+        void ICollection<KeyValuePair<TKey, TValue>>.Add(KeyValuePair<TKey, TValue> item) => Add(item);
+
+        void IDictionary.Add(object key, object value) => Add(key, value);
+
+        protected virtual void Add(object key, object value)
         {
-            if (!dictionary.ContainsKey(item.Key))
-                OnKeysChanging();
-            genericCollectionInterface.Add(item);
-            OnKeyValuePairsAdded(new List<KeyValuePair<TKey, TValue>> { item });
-            OnKeysChanged();
+            if (key is TKey typedKey && gd.ContainsKey(typedKey))
+                NotifyCountChanging();
+            di.Add(key, value);
+            OnValueAdded((TKey)key, (TValue)value);
+            NotifyCountChanged();
         }
 
-        void IDictionary.Add(object key, object value)
+        protected virtual void Add(KeyValuePair<TKey, TValue> item)
         {
-            if (!dictionaryInterface.Contains(key) && value is TValue)
-                OnKeysChanging();
-            dictionaryInterface.Add(key, value);
-            OnKeyValuePairsAdded(new List<KeyValuePair<TKey, TValue>> { new KeyValuePair<TKey, TValue>((TKey)key, (TValue)value) });
-            OnKeysChanged();
+            if (gd.ContainsKey(item.Key))
+                NotifyCountChanging();
+            gci.Add(item);
+            OnValueAdded(item.Key, item.Value);
+            NotifyCountChanged();
+        }
+
+        public virtual void AddRange(IReadOnlyList<KeyValuePair<TKey, TValue>> keyValuePairs)
+        {
+            if (keyValuePairs.Any(kvp => gd.ContainsKey(kvp.Key)))
+                throw new ArgumentException("One of the keys was already found in the dictionary", nameof(keyValuePairs));
+            NotifyCountChanging();
+            foreach (var keyValuePair in keyValuePairs)
+                gd.Add(keyValuePair.Key, keyValuePair.Value);
+            OnValuesAdded(new NotifyDictionaryValuesEventArgs<TKey, TValue>(keyValuePairs));
+            NotifyCountChanged();
         }
 
         public virtual void Clear()
         {
-            if (dictionary.Count > 0)
+            var removed = gd.ToList();
+            if (removed.Any())
+                NotifyCountChanging();
+            gd.Clear();
+            OnValuesRemoved(removed);
+            NotifyCountChanged();
+        }
+
+        bool ICollection<KeyValuePair<TKey, TValue>>.Contains(KeyValuePair<TKey, TValue> item) => Contains(item);
+
+        bool IDictionary.Contains(object key) => Contains(key);
+
+        protected virtual bool Contains(object key) => di.Contains(key);
+
+        protected virtual bool Contains(KeyValuePair<TKey, TValue> item) => gci.Contains(item);
+
+        public virtual bool ContainsKey(TKey key) => gd.ContainsKey(key);
+
+        public virtual bool ContainsValue(TValue value) => gd.ContainsValue(value);
+
+        void ICollection.CopyTo(Array array, int index) => CopyTo(array, index);
+
+        void ICollection<KeyValuePair<TKey, TValue>>.CopyTo(KeyValuePair<TKey, TValue>[] array, int arrayIndex) => CopyTo(array, arrayIndex);
+
+        protected virtual void CopyTo(Array array, int index) => ci.CopyTo(array, index);
+
+        protected virtual void CopyTo(KeyValuePair<TKey, TValue>[] array, int arrayIndex) => gci.CopyTo(array, arrayIndex);
+
+        public virtual Dictionary<TKey, TValue>.Enumerator GetEnumerator() => gd.GetEnumerator();
+
+        IDictionaryEnumerator IDictionary.GetEnumerator() => GetDictionaryEnumerator();
+
+        IEnumerator IEnumerable.GetEnumerator() => GetNonGenericEnumerator();
+
+        IEnumerator<KeyValuePair<TKey, TValue>> IEnumerable<KeyValuePair<TKey, TValue>>.GetEnumerator() => GetKeyValuePairEnumerator();
+
+        protected virtual IDictionaryEnumerator GetDictionaryEnumerator() => di.GetEnumerator();
+
+        protected virtual IEnumerator<KeyValuePair<TKey, TValue>> GetKeyValuePairEnumerator() => gei.GetEnumerator();
+
+        protected virtual IEnumerator GetNonGenericEnumerator() => ei.GetEnumerator();
+
+        protected virtual object GetValue(object key) => di[key];
+
+        protected void NotifyCountChanged() => OnPropertyChanged(nameof(Count));
+
+        protected void NotifyCountChanging() => OnPropertyChanging(nameof(Count));
+
+        protected virtual void OnValueAdded(NotifyDictionaryValueEventArgs<TKey, TValue> e) => ValueAdded?.Invoke(this, e);
+
+        protected void OnValueAdded(TKey key, TValue value) => OnValueAdded(new NotifyDictionaryValueEventArgs<TKey, TValue>(key, value));
+
+        protected virtual void OnValueRemoved(NotifyDictionaryValueEventArgs<TKey, TValue> e) => ValueRemoved?.Invoke(this, e);
+
+        protected void OnValueRemoved(TKey key, TValue value) => OnValueRemoved(new NotifyDictionaryValueEventArgs<TKey, TValue>(key, value));
+
+        protected virtual void OnValueReplaced(NotifyDictionaryValueReplacedEventArgs<TKey, TValue> e) => ValueReplaced?.Invoke(this, e);
+
+        protected void OnValueReplaced(TKey key, TValue oldValue, TValue newValue) => OnValueReplaced(new NotifyDictionaryValueReplacedEventArgs<TKey, TValue>(key, oldValue, newValue));
+
+        protected virtual void OnValuesAdded(NotifyDictionaryValuesEventArgs<TKey, TValue> e) => ValuesAdded?.Invoke(this, e);
+
+        protected virtual void OnValuesRemoved(NotifyDictionaryValuesEventArgs<TKey, TValue> e) => ValuesRemoved?.Invoke(this, e);
+
+        protected void OnValuesRemoved(IReadOnlyList<KeyValuePair<TKey, TValue>> keyValuePairs) => OnValuesRemoved(new NotifyDictionaryValuesEventArgs<TKey, TValue>(keyValuePairs));
+
+        public virtual bool Remove(TKey key)
+        {
+            if (gd.TryGetValue(key, out var value))
             {
-                OnKeysChanging();
-                var keyValuePairs = dictionary.ToList();
-                dictionary.Clear();
-                OnKeyValuePairsRemoved(keyValuePairs);
-                OnKeysChanged();
-            }
-        }
-
-        bool ICollection<KeyValuePair<TKey, TValue>>.Contains(KeyValuePair<TKey, TValue> item) => genericCollectionInterface.Contains(item);
-
-        bool IDictionary.Contains(object key) => dictionaryInterface.Contains(key);
-
-        public virtual bool ContainsKey(TKey key) => dictionary.ContainsKey(key);
-
-        public virtual bool ContainsValue(TValue value) => dictionary.ContainsValue(value);
-
-        void ICollection.CopyTo(Array array, int index) => collectionInterface.CopyTo(array, index);
-
-        void ICollection<KeyValuePair<TKey, TValue>>.CopyTo(KeyValuePair<TKey, TValue>[] array, int arrayIndex) => genericCollectionInterface.CopyTo(array, arrayIndex);
-
-        public Dictionary<TKey, TValue>.Enumerator GetEnumerator() => dictionary.GetEnumerator();
-
-        IDictionaryEnumerator IDictionary.GetEnumerator() => dictionaryInterface.GetEnumerator();
-
-        IEnumerator IEnumerable.GetEnumerator() => enumerableInterface.GetEnumerator();
-
-        IEnumerator<KeyValuePair<TKey, TValue>> IEnumerable<KeyValuePair<TKey, TValue>>.GetEnumerator() => genericEnumerableInterface.GetEnumerator();
-
-        protected virtual void OnDictionaryChanged(NotifyDictionaryChangedEventArgs<TKey, TValue> e) => DictionaryChanged?.Invoke(this, e);
-
-        void OnKeysChanged()
-        {
-            OnPropertyChanged(nameof(Count));
-            OnPropertyChanged(nameof(Keys));
-            OnPropertyChanged(nameof(Values));
-        }
-
-        void OnKeysChanging()
-        {
-            OnPropertyChanging(nameof(Count));
-            OnPropertyChanging(nameof(Keys));
-            OnPropertyChanging(nameof(Values));
-        }
-
-        protected void OnKeyValuePairsAdded(IReadOnlyList<KeyValuePair<TKey, TValue>> added) => OnDictionaryChanged(new NotifyDictionaryChangedEventArgs<TKey, TValue>(added));
-
-        protected void OnKeyValuePairsAddedAndRemoved(IReadOnlyList<KeyValuePair<TKey, TValue>> added, IReadOnlyList<KeyValuePair<TKey, TValue>> removed) => OnDictionaryChanged(new NotifyDictionaryChangedEventArgs<TKey, TValue>(added, removed));
-
-        protected void OnKeyValuePairsRemoved(IReadOnlyList<KeyValuePair<TKey, TValue>> removed) => OnDictionaryChanged(new NotifyDictionaryChangedEventArgs<TKey, TValue>(removed: removed));
-
-        void OnValuesChanged() => OnPropertyChanged(nameof(Values));
-
-        void OnValuesChanging() => OnPropertyChanging(nameof(Values));
-
-        public bool Remove(TKey key)
-        {
-            if (dictionary.ContainsKey(key))
-            {
-                OnKeysChanging();
-                dictionary.Remove(key);
-                OnKeysChanged();
+                NotifyCountChanging();
+                gd.Remove(key);
+                OnValueRemoved(key, value);
+                NotifyCountChanged();
                 return true;
             }
             return false;
         }
 
-        bool ICollection<KeyValuePair<TKey, TValue>>.Remove(KeyValuePair<TKey, TValue> item)
+        bool ICollection<KeyValuePair<TKey, TValue>>.Remove(KeyValuePair<TKey, TValue> item) => Remove(item);
+
+        void IDictionary.Remove(object key) => Remove(key);
+
+        protected virtual void Remove(object key)
         {
-            if (genericCollectionInterface.Contains(item))
+            if (di.Contains(key))
             {
-                OnKeysChanging();
-                genericCollectionInterface.Remove(item);
-                OnKeysChanged();
+                var value = di[key];
+                NotifyCountChanging();
+                Remove(key);
+                OnValueRemoved((TKey)key, (TValue)value);
+                NotifyCountChanged();
+            }
+        }
+
+        protected virtual bool Remove(KeyValuePair<TKey, TValue> item)
+        {
+            if (gci.Contains(item))
+            {
+                NotifyCountChanging();
+                gci.Remove(item);
+                OnValueRemoved(item.Key, item.Value);
+                NotifyCountChanged();
                 return true;
             }
             return false;
         }
 
-        void IDictionary.Remove(object key)
+        public virtual IReadOnlyList<TKey> RemoveRange(IReadOnlyList<TKey> keys)
         {
-            if (dictionaryInterface.Contains(key))
+            var removingKeyValuePairs = new List<KeyValuePair<TKey, TValue>>();
+            foreach (var key in keys)
+                if (gd.TryGetValue(key, out var value))
+                    removingKeyValuePairs.Add(new KeyValuePair<TKey, TValue>(key, value));
+            var removedKeys = new List<TKey>();
+            if (removingKeyValuePairs.Any())
             {
-                OnKeysChanging();
-                dictionaryInterface.Remove(key);
-                OnKeysChanged();
+                NotifyCountChanging();
+                foreach (var removingKeyValuePair in removingKeyValuePairs)
+                {
+                    gd.Remove(removingKeyValuePair.Key);
+                    removedKeys.Add(removingKeyValuePair.Key);
+                }
+                OnValuesRemoved(new NotifyDictionaryValuesEventArgs<TKey, TValue>(removingKeyValuePairs));
+                NotifyCountChanged();
             }
+            return removedKeys;
         }
 
-        public virtual bool TryGetValue(TKey key, out TValue value) => dictionary.TryGetValue(key, out value);
+        protected virtual void SetValue(object key, object value)
+        {
+            var oldValue = GetValue(key);
+            di[key] = value;
+            OnValueReplaced((TKey)key, (TValue)oldValue, (TValue)value);
+        }
+
+        public bool TryGetValue(TKey key, out TValue value)
+        {
+            bool valueRetrieved;
+            (valueRetrieved, value) = TryGetValue(key);
+            return valueRetrieved;
+        }
+
+        protected virtual (bool valueRetrieved, TValue value) TryGetValue(TKey key)
+        {
+            var valueRetrieved = gd.TryGetValue(key, out var value);
+            return (valueRetrieved, value);
+        }
 
         public virtual TValue this[TKey key]
         {
-            get => dictionary[key];
+            get => gd[key];
             set
             {
-                var oldValue = dictionary[key];
-                OnValuesChanging();
-                dictionary[key] = value;
-                OnKeyValuePairsAddedAndRemoved(new List<KeyValuePair<TKey, TValue>> { new KeyValuePair<TKey, TValue>(key, value) }, new List<KeyValuePair<TKey, TValue>> { new KeyValuePair<TKey, TValue>(key, oldValue) });
-                OnValuesChanged();
+                var oldValue = gd[key];
+                gd[key] = value;
+                OnValueReplaced(key, oldValue, value);
             }
         }
 
         object IDictionary.this[object key]
         {
-            get => dictionaryInterface[key];
-            set
-            {
-                var oldValue = dictionaryInterface[key];
-                OnValuesChanging();
-                dictionaryInterface[key] = value;
-                var typedKey = (TKey)key;
-                OnKeyValuePairsAddedAndRemoved(new List<KeyValuePair<TKey, TValue>> { new KeyValuePair<TKey, TValue>(typedKey, (TValue)value) }, new List<KeyValuePair<TKey, TValue>> { new KeyValuePair<TKey, TValue>(typedKey, (TValue)oldValue) });
-                OnValuesChanged();
-            }
+            get => GetValue(key);
+            set => SetValue(key, value);
         }
 
-        public IEqualityComparer<TKey> Comparer => dictionary.Comparer;
+        public virtual IEqualityComparer<TKey> Comparer => gd.Comparer;
 
-        public virtual int Count => dictionary.Count;
+        public virtual int Count => gd.Count;
 
-        bool IDictionary.IsFixedSize => dictionaryInterface.IsFixedSize;
+        protected virtual bool DictionaryIsReadOnly => di.IsReadOnly;
 
-        bool ICollection<KeyValuePair<TKey, TValue>>.IsReadOnly => genericCollectionInterface.IsReadOnly;
+        protected virtual bool GenericCollectionIsReadOnly => gci.IsReadOnly;
 
-        bool IDictionary.IsReadOnly => dictionaryInterface.IsReadOnly;
+        public virtual Dictionary<TKey, TValue>.KeyCollection Keys => gd.Keys;
 
-        bool ICollection.IsSynchronized => collectionInterface.IsSynchronized;
+        ICollection IDictionary.Keys => KeysCollection;
 
-        public virtual Dictionary<TKey, TValue>.KeyCollection Keys => dictionary.Keys;
+        ICollection<TKey> IDictionary<TKey, TValue>.Keys => KeysGenericCollection;
 
-        ICollection<TKey> IDictionary<TKey, TValue>.Keys => dictionary.Keys;
+        IEnumerable<TKey> IReadOnlyDictionary<TKey, TValue>.Keys => KeysGenericEnumerable;
 
-        ICollection IDictionary.Keys => dictionary.Keys;
+        protected virtual ICollection KeysCollection => di.Keys;
 
-        IEnumerable<TKey> IReadOnlyDictionary<TKey, TValue>.Keys => dictionary.Keys;
+        protected virtual ICollection<TKey> KeysGenericCollection => gdi.Keys;
 
-        object ICollection.SyncRoot => collectionInterface.SyncRoot;
+        protected virtual IEnumerable<TKey> KeysGenericEnumerable => grodi.Keys;
 
-        public virtual Dictionary<TKey, TValue>.ValueCollection Values => dictionary.Values;
+        bool IDictionary.IsFixedSize => IsFixedSize;
 
-        ICollection<TValue> IDictionary<TKey, TValue>.Values => dictionary.Values;
+        protected virtual bool IsFixedSize => di.IsFixedSize;
 
-        ICollection IDictionary.Values => dictionary.Values;
+        bool ICollection<KeyValuePair<TKey, TValue>>.IsReadOnly => GenericCollectionIsReadOnly;
 
-        IEnumerable<TValue> IReadOnlyDictionary<TKey, TValue>.Values => dictionary.Values;
+        bool IDictionary.IsReadOnly => DictionaryIsReadOnly;
+
+        bool ICollection.IsSynchronized => IsCollectionSynchronized;
+
+        protected virtual bool IsCollectionSynchronized => ci.IsSynchronized;
+
+        object ICollection.SyncRoot => SyncRoot;
+
+        protected virtual object SyncRoot => ci.SyncRoot;
+
+        public virtual Dictionary<TKey, TValue>.ValueCollection Values => gd.Values;
+
+        ICollection IDictionary.Values => ValuesCollection;
+
+        ICollection<TValue> IDictionary<TKey, TValue>.Values => ValuesGenericCollection;
+
+        IEnumerable<TValue> IReadOnlyDictionary<TKey, TValue>.Values => ValuesGenericEnumerable;
+
+        protected virtual ICollection ValuesCollection => di.Values;
+
+        protected virtual ICollection<TValue> ValuesGenericCollection => gdi.Values;
+
+        protected virtual IEnumerable<TValue> ValuesGenericEnumerable => grodi.Values;
     }
 }

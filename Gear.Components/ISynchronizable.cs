@@ -1,9 +1,10 @@
-﻿using System.Threading;
+using System.Threading;
 
 namespace Gear.Components
 {
-    public interface IsSynchronizable
+    public interface ISynchronizable
     {
+        bool IsSynchronized { get; set; }
         SynchronizationContext SynchronizationContext { get; }
     }
 }
