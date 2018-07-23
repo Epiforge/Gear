@@ -33,11 +33,11 @@ namespace Gear.ActiveQuery
             this.collection = collection;
             elementList = collection.Cast<object>().ToList();
             instances = 0;
-            if (this.collection is INotifyCollectionChanged)
-                ((INotifyCollectionChanged)this.collection).CollectionChanged += CollectionChangedHandler;
+            if (this.collection is INotifyCollectionChanged notifyingCollection)
+                notifyingCollection.CollectionChanged += CollectionChangedHandler;
         }
 
-        IList collection;
+        readonly IList collection;
         List<object> elementList;
         int instances;
 
@@ -115,8 +115,8 @@ namespace Gear.ActiveQuery
 
     public class ActiveCollectionMonitor<T> : SyncDisposable where T : class
     {
-        static Dictionary<(IList<T> collection, string relevantProperties), object> monitors = new Dictionary<(IList<T> collection, string relevantProperties), object>();
-        static object instanceManagementLock = new object();
+        static readonly Dictionary<(IList<T> collection, string relevantProperties), object> monitors = new Dictionary<(IList<T> collection, string relevantProperties), object>();
+        static readonly object instanceManagementLock = new object();
 
         public static ActiveCollectionMonitor<T> Monitor(IList<T> collection, params string[] relevantPropertyNames)
         {
@@ -139,10 +139,10 @@ namespace Gear.ActiveQuery
             }
         }
 
-        IList<T> collection;
+        readonly IList<T> collection;
         List<T> elementList;
         int instances;
-        List<string> relevantPropertyNames;
+        readonly IReadOnlyList<string> relevantPropertyNames;
 
         public event EventHandler<ElementPropertyChangeEventArgs<T>> ElementPropertyChanged;
         public event EventHandler<ElementPropertyChangeEventArgs<T>> ElementPropertyChanging;
@@ -159,8 +159,8 @@ namespace Gear.ActiveQuery
 
             this.collection = collection;
             elementList = this.collection.ToList();
-            if (this.collection is INotifyCollectionChanged)
-                ((INotifyCollectionChanged)this.collection).CollectionChanged += CollectionChangedHandler;
+            if (this.collection is INotifyCollectionChanged notifyingCollection)
+                notifyingCollection.CollectionChanged += CollectionChangedHandler;
             AttachToElements(elementList);
         }
 
@@ -259,8 +259,8 @@ namespace Gear.ActiveQuery
                 monitors.Remove((collection, relevantProperties));
                 if (disposing)
                 {
-                    if (collection is INotifyCollectionChanged notifyCollection)
-                        notifyCollection.CollectionChanged -= CollectionChangedHandler;
+                    if (collection is INotifyCollectionChanged notifyingCollection)
+                        notifyingCollection.CollectionChanged -= CollectionChangedHandler;
                     DetachFromElements(elementList);
                 }
             }
