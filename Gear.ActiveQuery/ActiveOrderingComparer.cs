@@ -1,14 +1,12 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 
 namespace Gear.ActiveQuery
 {
-    internal class ActiveOrderingComparer<T> : IComparer<T> where T : class
+    class ActiveOrderingComparer<T> : IComparer<T> where T : class
     {
-        private Func<T, T, int> ComparisonFunction;
-
         public ActiveOrderingComparer(IEnumerable<ActiveOrderingDescriptor<T>> orderingDescriptors)
         {
             var nullConstant = Expression.Constant(null, typeof(object));
@@ -35,9 +33,11 @@ namespace Gear.ActiveQuery
                     comparisonExpression = Expression.Multiply(comparisonExpression, Expression.Constant(-1));
                 expression = Expression.Condition(Expression.Equal(comparisonExpression, Expression.Constant(0)), expression, comparisonExpression);
             }
-            ComparisonFunction = Expression.Lambda<Func<T, T, int>>(expression, firstParameter, secondParameter).Compile();
+            comparisonFunction = Expression.Lambda<Func<T, T, int>>(expression, firstParameter, secondParameter).Compile();
         }
 
-        public int Compare(T x, T y) => ComparisonFunction(x, y);
+        readonly Func<T, T, int> comparisonFunction;
+
+        public int Compare(T x, T y) => comparisonFunction(x, y);
     }
 }

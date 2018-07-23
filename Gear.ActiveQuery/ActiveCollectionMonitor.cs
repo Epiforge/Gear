@@ -18,7 +18,7 @@ namespace Gear.ActiveQuery
         {
             lock (instanceManagementLock)
             {
-                if (!monitors.TryGetValue(collection, out ActiveCollectionMonitor monitor))
+                if (!monitors.TryGetValue(collection, out var monitor))
                 {
                     monitor = new ActiveCollectionMonitor(collection);
                     monitors.Add(collection, monitor);
@@ -128,7 +128,7 @@ namespace Gear.ActiveQuery
             var key = (collection, relevantProperties);
             lock (instanceManagementLock)
             {
-                if (!monitors.TryGetValue(key, out object obj))
+                if (!monitors.TryGetValue(key, out var obj))
                 {
                     obj = new ActiveCollectionMonitor<T>(collection, relevantPropertyNames);
                     monitors.Add(key, obj);

@@ -1,4 +1,4 @@
-﻿using Gear.Components;
+using Gear.Components;
 using Nito.AsyncEx;
 using System;
 using System.Collections;
@@ -12,7 +12,7 @@ namespace Gear.ActiveQuery
     public static class ActiveQueryExtensions
     {
         public static ActiveEnumerable<TResult> ActiveCast<TResult>(this IEnumerable source) =>
-            ActiveCast<TResult>(source, (source as IsSynchronizable)?.SynchronizationContext);
+            ActiveCast<TResult>(source, (source as ISynchronizable)?.SynchronizationContext);
 
         public static ActiveEnumerable<TResult> ActiveCast<TResult>(this IEnumerable source, SynchronizationContext synchronizationContext)
         {
@@ -52,7 +52,7 @@ namespace Gear.ActiveQuery
         }
 
         public static ActiveEnumerable<TSource> ActiveConcat<TSource>(this IList<TSource> first, IList<TSource> second) =>
-            ActiveConcat(first, second, (first as IsSynchronizable)?.SynchronizationContext ?? (second as IsSynchronizable)?.SynchronizationContext);
+            ActiveConcat(first, second, (first as ISynchronizable)?.SynchronizationContext ?? (second as ISynchronizable)?.SynchronizationContext);
 
         public static ActiveEnumerable<TSource> ActiveConcat<TSource>(this IList<TSource> first, IList<TSource> second, SynchronizationContext synchronizationContext)
         {
@@ -116,7 +116,7 @@ namespace Gear.ActiveQuery
         }
 
         public static ActiveEnumerable<TSource> ActiveDistinct<TSource>(this IList<TSource> source) =>
-            ActiveDistinct(source, (source as IsSynchronizable)?.SynchronizationContext);
+            ActiveDistinct(source, (source as ISynchronizable)?.SynchronizationContext);
 
         public static ActiveEnumerable<TSource> ActiveDistinct<TSource>(this IList<TSource> source, SynchronizationContext synchronizationContext)
         {
@@ -125,7 +125,7 @@ namespace Gear.ActiveQuery
             var distinctCounts = new Dictionary<TSource, int>();
             foreach (var element in source)
             {
-                if (distinctCounts.TryGetValue(element, out int distinctCount))
+                if (distinctCounts.TryGetValue(element, out var distinctCount))
                     distinctCounts[element] = ++distinctCount;
                 else
                 {
@@ -157,7 +157,7 @@ namespace Gear.ActiveQuery
                         if (e.NewItems != null && e.NewStartingIndex >= 0)
                             foreach (TSource newItem in e.NewItems)
                             {
-                                if (distinctCounts.TryGetValue(newItem, out int distinctCount))
+                                if (distinctCounts.TryGetValue(newItem, out var distinctCount))
                                     distinctCounts[newItem] = ++distinctCount;
                                 else
                                 {
@@ -184,7 +184,7 @@ namespace Gear.ActiveQuery
         }
 
         public static ActiveEnumerable<ActiveGrouping<TKey, TSource>> ActiveGroupBy<TKey, TSource>(this IList<TSource> source, Func<TSource, TKey> keySelector, params string[] keySelectorProperties) where TKey : IEquatable<TKey> where TSource : class =>
-            ActiveGroupBy(source, (source as IsSynchronizable)?.SynchronizationContext, keySelector, keySelectorProperties);
+            ActiveGroupBy(source, (source as ISynchronizable)?.SynchronizationContext, keySelector, keySelectorProperties);
 
         public static ActiveEnumerable<ActiveGrouping<TKey, TSource>> ActiveGroupBy<TKey, TSource>(this IList<TSource> source, SynchronizationContext synchronizationContext, Func<TSource, TKey> keySelector, params string[] keySelectorProperties) where TKey : IEquatable<TKey> where TSource : class
         {
@@ -201,7 +201,7 @@ namespace Gear.ActiveQuery
                 if (!monitor.ElementsNotifyChanging)
                     keyDictionary.Add(element, key);
                 SynchronizedRangeObservableCollection<TSource> groupingObservableCollection;
-                if (!collectionAndGroupingDictionary.TryGetValue(key, out (SynchronizedRangeObservableCollection<TSource> groupingObservableCollection, ActiveGrouping<TKey, TSource> grouping) collectionAndGrouping))
+                if (!collectionAndGroupingDictionary.TryGetValue(key, out var collectionAndGrouping))
                 {
                     groupingObservableCollection = new SynchronizedRangeObservableCollection<TSource>(synchronizationContext);
                     var grouping = new ActiveGrouping<TKey, TSource>(key, groupingObservableCollection);
@@ -232,7 +232,7 @@ namespace Gear.ActiveQuery
                         if ((await oldCollectionAndGrouping.groupingObservableCollection.CountAsync.ConfigureAwait(false)) == 0)
                             collectionAndGroupingDictionary.Remove(oldKey);
                         SynchronizedRangeObservableCollection<TSource> groupingObservableCollection;
-                        if (!collectionAndGroupingDictionary.TryGetValue(newKey, out (SynchronizedRangeObservableCollection<TSource> groupingObservableCollection, ActiveGrouping<TKey, TSource> grouping) collectionAndGrouping))
+                        if (!collectionAndGroupingDictionary.TryGetValue(newKey, out var collectionAndGrouping))
                         {
                             groupingObservableCollection = new SynchronizedRangeObservableCollection<TSource>(synchronizationContext);
                             var grouping = new ActiveGrouping<TKey, TSource>(newKey, groupingObservableCollection);
@@ -299,25 +299,25 @@ namespace Gear.ActiveQuery
         }
 
         public static ActiveEnumerable<TSource> ActiveGroupBy<TSource>(this IList<TSource> source, Func<TSource, IComparable> ascendingOrderSelector, IEnumerable<string> ascendingSelectorProperties = null, bool indexed = false) where TSource : class =>
-            ActiveGroupBy(source, (source as IsSynchronizable)?.SynchronizationContext, ascendingOrderSelector, ascendingSelectorProperties, indexed);
+            ActiveGroupBy(source, (source as ISynchronizable)?.SynchronizationContext, ascendingOrderSelector, ascendingSelectorProperties, indexed);
 
         public static ActiveEnumerable<TSource> ActiveGroupBy<TSource>(this IList<TSource> source, SynchronizationContext synchronizationContext, Func<TSource, IComparable> ascendingOrderSelector, IEnumerable<string> ascendingSelectorProperties = null, bool indexed = false) where TSource : class =>
             ActiveGroupBy(source, synchronizationContext, new Func<TSource, IComparable>[] { ascendingOrderSelector }, ascendingSelectorProperties, indexed);
 
         public static ActiveEnumerable<TSource> ActiveGroupBy<TSource>(this IList<TSource> source, IEnumerable<Func<TSource, IComparable>> ascendingOrderSelectors, IEnumerable<string> ascendingSelectorsProperties = null, bool indexed = false) where TSource : class =>
-            ActiveGroupBy(source, (source as IsSynchronizable)?.SynchronizationContext, ascendingOrderSelectors, ascendingSelectorsProperties, indexed);
+            ActiveGroupBy(source, (source as ISynchronizable)?.SynchronizationContext, ascendingOrderSelectors, ascendingSelectorsProperties, indexed);
 
         public static ActiveEnumerable<TSource> ActiveGroupBy<TSource>(this IList<TSource> source, SynchronizationContext synchronizationContext, IEnumerable<Func<TSource, IComparable>> ascendingOrderSelectors, IEnumerable<string> ascendingSelectorsProperties = null, bool indexed = false) where TSource : class =>
             ActiveGroupBy(source, synchronizationContext, ascendingOrderSelectors.Select(aos => new ActiveOrderingDescriptor<TSource>(aos, false)), ascendingSelectorsProperties, indexed);
 
         public static ActiveEnumerable<TSource> ActiveGroupBy<TSource>(this IList<TSource> source, ActiveOrderingDescriptor<TSource> orderingDescriptor, IEnumerable<string> selectorProperties = null, bool indexed = false) where TSource : class =>
-            ActiveGroupBy(source, (source as IsSynchronizable)?.SynchronizationContext, orderingDescriptor, selectorProperties, indexed);
+            ActiveGroupBy(source, (source as ISynchronizable)?.SynchronizationContext, orderingDescriptor, selectorProperties, indexed);
 
         public static ActiveEnumerable<TSource> ActiveGroupBy<TSource>(this IList<TSource> source, SynchronizationContext synchronizationContext, ActiveOrderingDescriptor<TSource> orderingDescriptor, IEnumerable<string> selectorProperties = null, bool indexed = false) where TSource : class =>
             ActiveGroupBy(source, synchronizationContext, new ActiveOrderingDescriptor<TSource>[] { orderingDescriptor }, selectorProperties, indexed);
 
         public static ActiveEnumerable<TSource> ActiveGroupBy<TSource>(this IList<TSource> source, IEnumerable<ActiveOrderingDescriptor<TSource>> orderingDescriptors, IEnumerable<string> selectorsProperties = null, bool indexed = false) where TSource : class =>
-            ActiveGroupBy(source, (source as IsSynchronizable)?.SynchronizationContext, orderingDescriptors, selectorsProperties, indexed);
+            ActiveGroupBy(source, (source as ISynchronizable)?.SynchronizationContext, orderingDescriptors, selectorsProperties, indexed);
 
         public static ActiveEnumerable<TSource> ActiveGroupBy<TSource>(this IList<TSource> source, SynchronizationContext synchronizationContext, IEnumerable<ActiveOrderingDescriptor<TSource>> orderingDescriptors, IEnumerable<string> selectorsProperties = null, bool indexed = false) where TSource : class
         {
@@ -420,7 +420,7 @@ namespace Gear.ActiveQuery
                         var elementsRemovedByIndex = new List<(TSource element, int index)>();
                         if (indexed)
                             foreach (var element in e.Elements)
-                                elementsRemovedByIndex.Add((element, sortingIndicies.TryGetValue(element, out int index) ? index : -1));
+                                elementsRemovedByIndex.Add((element, sortingIndicies.TryGetValue(element, out var index) ? index : -1));
                         else
                             foreach (var element in e.Elements)
                                 elementsRemovedByIndex.Add((element, await rangeObservableCollection.IndexOfAsync(element).ConfigureAwait(false)));
@@ -482,7 +482,7 @@ namespace Gear.ActiveQuery
             EventHandler<ElementPropertyChangeEventArgs<TSource>> elementPropertyChanged = null;
             EventHandler<ElementMembershipEventArgs<TSource>> elementsAdded = null;
             EventHandler<ElementMembershipEventArgs<TSource>> elementsRemoved = null;
-            var result = new ActiveAggregateValue<TValue>(firstIsValid, firstMax, out Action<bool> setValidity, out Action<TValue> setValue, disposing =>
+            var result = new ActiveAggregateValue<TValue>(firstIsValid, firstMax, out var setValidity, out var setValue, disposing =>
             {
                 monitor.ElementPropertyChanged -= elementPropertyChanged;
                 monitor.ElementsAdded -= elementsAdded;
@@ -547,7 +547,7 @@ namespace Gear.ActiveQuery
                     var maxRemoved = false;
                     foreach (var element in e.Elements)
                     {
-                        if (selectorValues.TryGetValue(element, out TValue selectorValue))
+                        if (selectorValues.TryGetValue(element, out var selectorValue))
                         {
                             if (selectorValue.CompareTo(currentMax) == 0)
                                 maxRemoved = true;
@@ -587,7 +587,7 @@ namespace Gear.ActiveQuery
             EventHandler<ElementPropertyChangeEventArgs<TSource>> elementPropertyChanged = null;
             EventHandler<ElementMembershipEventArgs<TSource>> elementsAdded = null;
             EventHandler<ElementMembershipEventArgs<TSource>> elementsRemoved = null;
-            var result = new ActiveAggregateValue<TValue?>(firstIsValid, firstMax, out Action<bool> setValidity, out Action<TValue?> setValue, disposing =>
+            var result = new ActiveAggregateValue<TValue?>(firstIsValid, firstMax, out var setValidity, out var setValue, disposing =>
             {
                 monitor.ElementPropertyChanged -= elementPropertyChanged;
                 monitor.ElementsAdded -= elementsAdded;
@@ -651,7 +651,7 @@ namespace Gear.ActiveQuery
                     var maxRemoved = false;
                     foreach (var element in e.Elements)
                     {
-                        if (selectorValues.TryGetValue(element, out TValue? selectorValue))
+                        if (selectorValues.TryGetValue(element, out var selectorValue))
                         {
                             if (currentMax != null && selectorValue != null && selectorValue.Value.CompareTo(currentMax.Value) == 0)
                                 maxRemoved = true;
@@ -691,7 +691,7 @@ namespace Gear.ActiveQuery
             EventHandler<ElementPropertyChangeEventArgs<TSource>> elementPropertyChanged = null;
             EventHandler<ElementMembershipEventArgs<TSource>> elementsAdded = null;
             EventHandler<ElementMembershipEventArgs<TSource>> elementsRemoved = null;
-            var result = new ActiveAggregateValue<TValue>(firstIsValid, firstMin, out Action<bool> setValidity, out Action<TValue> setValue, disposing =>
+            var result = new ActiveAggregateValue<TValue>(firstIsValid, firstMin, out var setValidity, out var setValue, disposing =>
             {
                 monitor.ElementPropertyChanged -= elementPropertyChanged;
                 monitor.ElementsAdded -= elementsAdded;
@@ -756,7 +756,7 @@ namespace Gear.ActiveQuery
                     var minRemoved = false;
                     foreach (var element in e.Elements)
                     {
-                        if (selectorValues.TryGetValue(element, out TValue selectorValue))
+                        if (selectorValues.TryGetValue(element, out var selectorValue))
                         {
                             if (selectorValue.CompareTo(currentMin) == 0)
                                 minRemoved = true;
@@ -796,7 +796,7 @@ namespace Gear.ActiveQuery
             EventHandler<ElementPropertyChangeEventArgs<TSource>> elementPropertyChanged = null;
             EventHandler<ElementMembershipEventArgs<TSource>> elementsAdded = null;
             EventHandler<ElementMembershipEventArgs<TSource>> elementsRemoved = null;
-            var result = new ActiveAggregateValue<TValue?>(firstIsValid, firstMin, out Action<bool> setValidity, out Action<TValue?> setValue, disposing =>
+            var result = new ActiveAggregateValue<TValue?>(firstIsValid, firstMin, out var setValidity, out var setValue, disposing =>
             {
                 monitor.ElementPropertyChanged -= elementPropertyChanged;
                 monitor.ElementsAdded -= elementsAdded;
@@ -860,7 +860,7 @@ namespace Gear.ActiveQuery
                     var minRemoved = false;
                     foreach (var element in e.Elements)
                     {
-                        if (selectorValues.TryGetValue(element, out TValue? selectorValue))
+                        if (selectorValues.TryGetValue(element, out var selectorValue))
                         {
                             if (currentMin != null && selectorValue != null && selectorValue.Value.CompareTo(currentMin.Value) == 0)
                                 minRemoved = true;
@@ -878,7 +878,7 @@ namespace Gear.ActiveQuery
         }
 
         public static ActiveEnumerable<TResult> ActiveSelect<TSource, TResult>(this IList<TSource> source, Func<TSource, TResult> selector, Action<TResult> releaser = null, Action<TSource, string, TResult> updater = null, bool indexed = false, params string[] selectorProperties) where TSource : class =>
-            ActiveSelect(source, (source as IsSynchronizable)?.SynchronizationContext, selector, releaser, updater, indexed, selectorProperties);
+            ActiveSelect(source, (source as ISynchronizable)?.SynchronizationContext, selector, releaser, updater, indexed, selectorProperties);
 
         public static ActiveEnumerable<TResult> ActiveSelect<TSource, TResult>(this IList<TSource> source, SynchronizationContext synchronizationContext, Func<TSource, TResult> selector, Action<TResult> releaser = null, Action<TSource, string, TResult> updater = null, bool indexed = false, params string[] selectorProperties) where TSource : class
         {
@@ -972,7 +972,7 @@ namespace Gear.ActiveQuery
         }
 
         public static ActiveEnumerable<TResult> ActiveSelectMany<TSource, TResult>(this IList<TSource> source, Func<TSource, IEnumerable<TResult>> selector, Action<TResult> releaser = null, Action<TSource, string, IList<TResult>> updater = null, params string[] selectorProperties) where TSource : class =>
-            ActiveSelectMany(source, (source as IsSynchronizable)?.SynchronizationContext, selector, releaser, updater, selectorProperties);
+            ActiveSelectMany(source, (source as ISynchronizable)?.SynchronizationContext, selector, releaser, updater, selectorProperties);
 
         public static ActiveEnumerable<TResult> ActiveSelectMany<TSource, TResult>(this IList<TSource> source, SynchronizationContext synchronizationContext, Func<TSource, IEnumerable<TResult>> selector, Action<TResult> releaser = null, Action<TSource, string, IList<TResult>> updater = null, params string[] selectorProperties) where TSource : class
         {
@@ -998,7 +998,7 @@ namespace Gear.ActiveQuery
                 using (await rangeObservableCollectionAccess.LockAsync().ConfigureAwait(false))
                 {
                     var sourceElement = e.Element;
-                    if (!sourceToSourceIndex.TryGetValue(sourceElement, out int sourceIndex))
+                    if (!sourceToSourceIndex.TryGetValue(sourceElement, out var sourceIndex))
                         return;
                     var pastResultsList = selectedResults[sourceElement];
                     if (updater == null)
@@ -1158,7 +1158,7 @@ namespace Gear.ActiveQuery
             EventHandler<ElementPropertyChangeEventArgs<TSource>> elementPropertyChangingHandler = null;
             EventHandler<ElementMembershipEventArgs<TSource>> elementsAddedHandler = null;
             EventHandler<ElementMembershipEventArgs<TSource>> elementsRemovedHandler = null;
-            var result = new ActiveAggregateValue<decimal>(true, firstSum, out Action<bool> setValidity, out Action<decimal> setValue, disposing =>
+            var result = new ActiveAggregateValue<decimal>(true, firstSum, out var setValidity, out var setValue, disposing =>
             {
                 monitor.ElementPropertyChanged -= elementPropertyChangedHandler;
                 monitor.ElementPropertyChanging -= elementPropertyChangingHandler;
@@ -1245,7 +1245,7 @@ namespace Gear.ActiveQuery
             EventHandler<ElementPropertyChangeEventArgs<TSource>> elementPropertyChangingHandler = null;
             EventHandler<ElementMembershipEventArgs<TSource>> elementsAddedHandler = null;
             EventHandler<ElementMembershipEventArgs<TSource>> elementsRemovedHandler = null;
-            var result = new ActiveAggregateValue<decimal?>(true, firstSum, out Action<bool> setValidity, out Action<decimal?> setValue, disposing =>
+            var result = new ActiveAggregateValue<decimal?>(true, firstSum, out var setValidity, out var setValue, disposing =>
             {
                 monitor.ElementPropertyChanged -= elementPropertyChangedHandler;
                 monitor.ElementPropertyChanging -= elementPropertyChangingHandler;
@@ -1332,7 +1332,7 @@ namespace Gear.ActiveQuery
             EventHandler<ElementPropertyChangeEventArgs<TSource>> elementPropertyChangingHandler = null;
             EventHandler<ElementMembershipEventArgs<TSource>> elementsAddedHandler = null;
             EventHandler<ElementMembershipEventArgs<TSource>> elementsRemovedHandler = null;
-            var result = new ActiveAggregateValue<double>(true, firstSum, out Action<bool> setValidity, out Action<double> setValue, disposing =>
+            var result = new ActiveAggregateValue<double>(true, firstSum, out var setValidity, out var setValue, disposing =>
             {
                 monitor.ElementPropertyChanged -= elementPropertyChangedHandler;
                 monitor.ElementPropertyChanging -= elementPropertyChangingHandler;
@@ -1419,7 +1419,7 @@ namespace Gear.ActiveQuery
             EventHandler<ElementPropertyChangeEventArgs<TSource>> elementPropertyChangingHandler = null;
             EventHandler<ElementMembershipEventArgs<TSource>> elementsAddedHandler = null;
             EventHandler<ElementMembershipEventArgs<TSource>> elementsRemovedHandler = null;
-            var result = new ActiveAggregateValue<double?>(true, firstSum, out Action<bool> setValidity, out Action<double?> setValue, disposing =>
+            var result = new ActiveAggregateValue<double?>(true, firstSum, out var setValidity, out var setValue, disposing =>
             {
                 monitor.ElementPropertyChanged -= elementPropertyChangedHandler;
                 monitor.ElementPropertyChanging -= elementPropertyChangingHandler;
@@ -1506,7 +1506,7 @@ namespace Gear.ActiveQuery
             EventHandler<ElementPropertyChangeEventArgs<TSource>> elementPropertyChangingHandler = null;
             EventHandler<ElementMembershipEventArgs<TSource>> elementsAddedHandler = null;
             EventHandler<ElementMembershipEventArgs<TSource>> elementsRemovedHandler = null;
-            var result = new ActiveAggregateValue<float>(true, firstSum, out Action<bool> setValidity, out Action<float> setValue, disposing =>
+            var result = new ActiveAggregateValue<float>(true, firstSum, out var setValidity, out var setValue, disposing =>
             {
                 monitor.ElementPropertyChanged -= elementPropertyChangedHandler;
                 monitor.ElementPropertyChanging -= elementPropertyChangingHandler;
@@ -1593,7 +1593,7 @@ namespace Gear.ActiveQuery
             EventHandler<ElementPropertyChangeEventArgs<TSource>> elementPropertyChangingHandler = null;
             EventHandler<ElementMembershipEventArgs<TSource>> elementsAddedHandler = null;
             EventHandler<ElementMembershipEventArgs<TSource>> elementsRemovedHandler = null;
-            var result = new ActiveAggregateValue<float?>(true, firstSum, out Action<bool> setValidity, out Action<float?> setValue, disposing =>
+            var result = new ActiveAggregateValue<float?>(true, firstSum, out var setValidity, out var setValue, disposing =>
             {
                 monitor.ElementPropertyChanged -= elementPropertyChangedHandler;
                 monitor.ElementPropertyChanging -= elementPropertyChangingHandler;
@@ -1680,7 +1680,7 @@ namespace Gear.ActiveQuery
             EventHandler<ElementPropertyChangeEventArgs<TSource>> elementPropertyChangingHandler = null;
             EventHandler<ElementMembershipEventArgs<TSource>> elementsAddedHandler = null;
             EventHandler<ElementMembershipEventArgs<TSource>> elementsRemovedHandler = null;
-            var result = new ActiveAggregateValue<int>(true, firstSum, out Action<bool> setValidity, out Action<int> setValue, disposing =>
+            var result = new ActiveAggregateValue<int>(true, firstSum, out var setValidity, out var setValue, disposing =>
             {
                 monitor.ElementPropertyChanged -= elementPropertyChangedHandler;
                 monitor.ElementPropertyChanging -= elementPropertyChangingHandler;
@@ -1767,7 +1767,7 @@ namespace Gear.ActiveQuery
             EventHandler<ElementPropertyChangeEventArgs<TSource>> elementPropertyChangingHandler = null;
             EventHandler<ElementMembershipEventArgs<TSource>> elementsAddedHandler = null;
             EventHandler<ElementMembershipEventArgs<TSource>> elementsRemovedHandler = null;
-            var result = new ActiveAggregateValue<int?>(true, firstSum, out Action<bool> setValidity, out Action<int?> setValue, disposing =>
+            var result = new ActiveAggregateValue<int?>(true, firstSum, out var setValidity, out var setValue, disposing =>
             {
                 monitor.ElementPropertyChanged -= elementPropertyChangedHandler;
                 monitor.ElementPropertyChanging -= elementPropertyChangingHandler;
@@ -1854,7 +1854,7 @@ namespace Gear.ActiveQuery
             EventHandler<ElementPropertyChangeEventArgs<TSource>> elementPropertyChangingHandler = null;
             EventHandler<ElementMembershipEventArgs<TSource>> elementsAddedHandler = null;
             EventHandler<ElementMembershipEventArgs<TSource>> elementsRemovedHandler = null;
-            var result = new ActiveAggregateValue<long>(true, firstSum, out Action<bool> setValidity, out Action<long> setValue, disposing =>
+            var result = new ActiveAggregateValue<long>(true, firstSum, out var setValidity, out var setValue, disposing =>
             {
                 monitor.ElementPropertyChanged -= elementPropertyChangedHandler;
                 monitor.ElementPropertyChanging -= elementPropertyChangingHandler;
@@ -1941,7 +1941,7 @@ namespace Gear.ActiveQuery
             EventHandler<ElementPropertyChangeEventArgs<TSource>> elementPropertyChangingHandler = null;
             EventHandler<ElementMembershipEventArgs<TSource>> elementsAddedHandler = null;
             EventHandler<ElementMembershipEventArgs<TSource>> elementsRemovedHandler = null;
-            var result = new ActiveAggregateValue<long?>(true, firstSum, out Action<bool> setValidity, out Action<long?> setValue, disposing =>
+            var result = new ActiveAggregateValue<long?>(true, firstSum, out var setValidity, out var setValue, disposing =>
             {
                 monitor.ElementPropertyChanged -= elementPropertyChangedHandler;
                 monitor.ElementPropertyChanging -= elementPropertyChangingHandler;
@@ -2012,7 +2012,7 @@ namespace Gear.ActiveQuery
         public static ActiveEnumerable<TSource> ToActiveEnumerable<TSource>(this IList<TSource> source) => new ActiveEnumerable<TSource>(source);
 
         public static ActiveEnumerable<TSource> ActiveWhere<TSource>(this IList<TSource> source, Func<TSource, bool> predicate, params string[] predicateProperties) where TSource : class =>
-            ActiveWhere(source, (source as IsSynchronizable)?.SynchronizationContext, predicate, predicateProperties);
+            ActiveWhere(source, (source as ISynchronizable)?.SynchronizationContext, predicate, predicateProperties);
 
         public static ActiveEnumerable<TSource> ActiveWhere<TSource>(this IList<TSource> source, SynchronizationContext synchronizationContext, Func<TSource, bool> predicate, params string[] predicateProperties) where TSource : class
         {
