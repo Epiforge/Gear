@@ -51,10 +51,10 @@ namespace Gear.ActiveQuery
             return result;
         }
 
-        public static ActiveEnumerable<TSource> ActiveConcat<TSource>(this IList<TSource> first, IList<TSource> second) =>
+        public static ActiveEnumerable<TSource> ActiveConcat<TSource>(this IReadOnlyList<TSource> first, IReadOnlyList<TSource> second) =>
             ActiveConcat(first, second, (first as ISynchronizable)?.SynchronizationContext ?? (second as ISynchronizable)?.SynchronizationContext);
 
-        public static ActiveEnumerable<TSource> ActiveConcat<TSource>(this IList<TSource> first, IList<TSource> second, SynchronizationContext synchronizationContext)
+        public static ActiveEnumerable<TSource> ActiveConcat<TSource>(this IReadOnlyList<TSource> first, IReadOnlyList<TSource> second, SynchronizationContext synchronizationContext)
         {
             var rangeObservableCollection = new SynchronizedRangeObservableCollection<TSource>(synchronizationContext, first.Concat(second), false);
             var rangeObservableCollectionAccess = new AsyncLock();
@@ -115,10 +115,10 @@ namespace Gear.ActiveQuery
             return result;
         }
 
-        public static ActiveEnumerable<TSource> ActiveDistinct<TSource>(this IList<TSource> source) =>
+        public static ActiveEnumerable<TSource> ActiveDistinct<TSource>(this IReadOnlyList<TSource> source) =>
             ActiveDistinct(source, (source as ISynchronizable)?.SynchronizationContext);
 
-        public static ActiveEnumerable<TSource> ActiveDistinct<TSource>(this IList<TSource> source, SynchronizationContext synchronizationContext)
+        public static ActiveEnumerable<TSource> ActiveDistinct<TSource>(this IReadOnlyList<TSource> source, SynchronizationContext synchronizationContext)
         {
             var rangeObservableCollection = new SynchronizedRangeObservableCollection<TSource>(synchronizationContext, false);
             var rangeObservableCollectionAccess = new AsyncLock();
@@ -183,17 +183,17 @@ namespace Gear.ActiveQuery
             return result;
         }
 
-        public static ActiveEnumerable<ActiveGrouping<TKey, TSource>> ActiveGroupBy<TKey, TSource>(this IList<TSource> source, Func<TSource, TKey> keySelector, params string[] keySelectorProperties) where TKey : IEquatable<TKey> where TSource : class =>
+        public static ActiveEnumerable<ActiveGrouping<TKey, TSource>> ActiveGroupBy<TKey, TSource>(this IReadOnlyList<TSource> source, Func<TSource, TKey> keySelector, params string[] keySelectorProperties) where TKey : IEquatable<TKey> where TSource : class =>
             ActiveGroupBy(source, (source as ISynchronizable)?.SynchronizationContext, keySelector, keySelectorProperties);
 
-        public static ActiveEnumerable<ActiveGrouping<TKey, TSource>> ActiveGroupBy<TKey, TSource>(this IList<TSource> source, SynchronizationContext synchronizationContext, Func<TSource, TKey> keySelector, params string[] keySelectorProperties) where TKey : IEquatable<TKey> where TSource : class
+        public static ActiveEnumerable<ActiveGrouping<TKey, TSource>> ActiveGroupBy<TKey, TSource>(this IReadOnlyList<TSource> source, SynchronizationContext synchronizationContext, Func<TSource, TKey> keySelector, params string[] keySelectorProperties) where TKey : IEquatable<TKey> where TSource : class
         {
             var rangeObservableCollection = new SynchronizedRangeObservableCollection<ActiveGrouping<TKey, TSource>>(synchronizationContext, false);
             var rangeObservableCollectionAccess = new AsyncLock();
             var collectionAndGroupingDictionary = new Dictionary<TKey, (SynchronizedRangeObservableCollection<TSource> groupingObservableCollection, ActiveGrouping<TKey, TSource> grouping)>();
             var keyDictionary = new Dictionary<TSource, TKey>();
 
-            var monitor = ActiveCollectionMonitor<TSource>.Monitor(source, keySelectorProperties);
+            var monitor = ActiveListMonitor<TSource>.Monitor(source, keySelectorProperties);
 
             void addElement(TSource element)
             {
@@ -298,35 +298,35 @@ namespace Gear.ActiveQuery
             return result;
         }
 
-        public static ActiveEnumerable<TSource> ActiveGroupBy<TSource>(this IList<TSource> source, Func<TSource, IComparable> ascendingOrderSelector, IEnumerable<string> ascendingSelectorProperties = null, bool indexed = false) where TSource : class =>
+        public static ActiveEnumerable<TSource> ActiveGroupBy<TSource>(this IReadOnlyList<TSource> source, Func<TSource, IComparable> ascendingOrderSelector, IEnumerable<string> ascendingSelectorProperties = null, bool indexed = false) where TSource : class =>
             ActiveGroupBy(source, (source as ISynchronizable)?.SynchronizationContext, ascendingOrderSelector, ascendingSelectorProperties, indexed);
 
-        public static ActiveEnumerable<TSource> ActiveGroupBy<TSource>(this IList<TSource> source, SynchronizationContext synchronizationContext, Func<TSource, IComparable> ascendingOrderSelector, IEnumerable<string> ascendingSelectorProperties = null, bool indexed = false) where TSource : class =>
+        public static ActiveEnumerable<TSource> ActiveGroupBy<TSource>(this IReadOnlyList<TSource> source, SynchronizationContext synchronizationContext, Func<TSource, IComparable> ascendingOrderSelector, IEnumerable<string> ascendingSelectorProperties = null, bool indexed = false) where TSource : class =>
             ActiveGroupBy(source, synchronizationContext, new Func<TSource, IComparable>[] { ascendingOrderSelector }, ascendingSelectorProperties, indexed);
 
-        public static ActiveEnumerable<TSource> ActiveGroupBy<TSource>(this IList<TSource> source, IEnumerable<Func<TSource, IComparable>> ascendingOrderSelectors, IEnumerable<string> ascendingSelectorsProperties = null, bool indexed = false) where TSource : class =>
+        public static ActiveEnumerable<TSource> ActiveGroupBy<TSource>(this IReadOnlyList<TSource> source, IEnumerable<Func<TSource, IComparable>> ascendingOrderSelectors, IEnumerable<string> ascendingSelectorsProperties = null, bool indexed = false) where TSource : class =>
             ActiveGroupBy(source, (source as ISynchronizable)?.SynchronizationContext, ascendingOrderSelectors, ascendingSelectorsProperties, indexed);
 
-        public static ActiveEnumerable<TSource> ActiveGroupBy<TSource>(this IList<TSource> source, SynchronizationContext synchronizationContext, IEnumerable<Func<TSource, IComparable>> ascendingOrderSelectors, IEnumerable<string> ascendingSelectorsProperties = null, bool indexed = false) where TSource : class =>
+        public static ActiveEnumerable<TSource> ActiveGroupBy<TSource>(this IReadOnlyList<TSource> source, SynchronizationContext synchronizationContext, IEnumerable<Func<TSource, IComparable>> ascendingOrderSelectors, IEnumerable<string> ascendingSelectorsProperties = null, bool indexed = false) where TSource : class =>
             ActiveGroupBy(source, synchronizationContext, ascendingOrderSelectors.Select(aos => new ActiveOrderingDescriptor<TSource>(aos, false)), ascendingSelectorsProperties, indexed);
 
-        public static ActiveEnumerable<TSource> ActiveGroupBy<TSource>(this IList<TSource> source, ActiveOrderingDescriptor<TSource> orderingDescriptor, IEnumerable<string> selectorProperties = null, bool indexed = false) where TSource : class =>
+        public static ActiveEnumerable<TSource> ActiveGroupBy<TSource>(this IReadOnlyList<TSource> source, ActiveOrderingDescriptor<TSource> orderingDescriptor, IEnumerable<string> selectorProperties = null, bool indexed = false) where TSource : class =>
             ActiveGroupBy(source, (source as ISynchronizable)?.SynchronizationContext, orderingDescriptor, selectorProperties, indexed);
 
-        public static ActiveEnumerable<TSource> ActiveGroupBy<TSource>(this IList<TSource> source, SynchronizationContext synchronizationContext, ActiveOrderingDescriptor<TSource> orderingDescriptor, IEnumerable<string> selectorProperties = null, bool indexed = false) where TSource : class =>
+        public static ActiveEnumerable<TSource> ActiveGroupBy<TSource>(this IReadOnlyList<TSource> source, SynchronizationContext synchronizationContext, ActiveOrderingDescriptor<TSource> orderingDescriptor, IEnumerable<string> selectorProperties = null, bool indexed = false) where TSource : class =>
             ActiveGroupBy(source, synchronizationContext, new ActiveOrderingDescriptor<TSource>[] { orderingDescriptor }, selectorProperties, indexed);
 
-        public static ActiveEnumerable<TSource> ActiveGroupBy<TSource>(this IList<TSource> source, IEnumerable<ActiveOrderingDescriptor<TSource>> orderingDescriptors, IEnumerable<string> selectorsProperties = null, bool indexed = false) where TSource : class =>
+        public static ActiveEnumerable<TSource> ActiveGroupBy<TSource>(this IReadOnlyList<TSource> source, IEnumerable<ActiveOrderingDescriptor<TSource>> orderingDescriptors, IEnumerable<string> selectorsProperties = null, bool indexed = false) where TSource : class =>
             ActiveGroupBy(source, (source as ISynchronizable)?.SynchronizationContext, orderingDescriptors, selectorsProperties, indexed);
 
-        public static ActiveEnumerable<TSource> ActiveGroupBy<TSource>(this IList<TSource> source, SynchronizationContext synchronizationContext, IEnumerable<ActiveOrderingDescriptor<TSource>> orderingDescriptors, IEnumerable<string> selectorsProperties = null, bool indexed = false) where TSource : class
+        public static ActiveEnumerable<TSource> ActiveGroupBy<TSource>(this IReadOnlyList<TSource> source, SynchronizationContext synchronizationContext, IEnumerable<ActiveOrderingDescriptor<TSource>> orderingDescriptors, IEnumerable<string> selectorsProperties = null, bool indexed = false) where TSource : class
         {
             var comparer = new ActiveOrderingComparer<TSource>(orderingDescriptors);
             var sortedSource = source.ToList();
             sortedSource.Sort(comparer);
             Dictionary<TSource, int> sortingIndicies = null;
 
-            void rebuildSortingIndicies(IList<TSource> fromSort)
+            void rebuildSortingIndicies(IReadOnlyList<TSource> fromSort)
             {
                 sortingIndicies = new Dictionary<TSource, int>();
                 for (var i = 0; i < fromSort.Count; ++i)
@@ -364,7 +364,7 @@ namespace Gear.ActiveQuery
                 }
             }
 
-            var monitor = ActiveCollectionMonitor<TSource>.Monitor(source, selectorsProperties == null ? new string[0] : selectorsProperties.ToArray());
+            var monitor = ActiveListMonitor<TSource>.Monitor(source, selectorsProperties == null ? new string[0] : selectorsProperties.ToArray());
 
             async void elementPropertyChangedHandler(object sender, ElementPropertyChangeEventArgs<TSource> e)
             {
@@ -459,7 +459,7 @@ namespace Gear.ActiveQuery
             return result;
         }
 
-        public static ActiveAggregateValue<TValue> ActiveMax<TSource, TValue>(this IList<TSource> source, Func<TSource, TValue> selector, params string[] selectorProperties) where TSource : class where TValue : IComparable<TValue>
+        public static ActiveAggregateValue<TValue> ActiveMax<TSource, TValue>(this IReadOnlyList<TSource> source, Func<TSource, TValue> selector, params string[] selectorProperties) where TSource : class where TValue : IComparable<TValue>
         {
             var selectorValues = new Dictionary<object, TValue>();
             var firstIsValid = false;
@@ -478,7 +478,7 @@ namespace Gear.ActiveQuery
                     selectorValues.Add(element, selectorValue);
                 }
             }
-            var monitor = ActiveCollectionMonitor<TSource>.Monitor(source, selectorProperties);
+            var monitor = ActiveListMonitor<TSource>.Monitor(source, selectorProperties);
             EventHandler<ElementPropertyChangeEventArgs<TSource>> elementPropertyChanged = null;
             EventHandler<ElementMembershipEventArgs<TSource>> elementsAdded = null;
             EventHandler<ElementMembershipEventArgs<TSource>> elementsRemoved = null;
@@ -564,7 +564,7 @@ namespace Gear.ActiveQuery
             return result;
         }
 
-        public static ActiveAggregateValue<TValue?> ActiveMax<TSource, TValue>(this IList<TSource> source, Func<TSource, TValue?> selector, params string[] selectorProperties) where TSource : class where TValue : struct, IComparable<TValue>
+        public static ActiveAggregateValue<TValue?> ActiveMax<TSource, TValue>(this IReadOnlyList<TSource> source, Func<TSource, TValue?> selector, params string[] selectorProperties) where TSource : class where TValue : struct, IComparable<TValue>
         {
             var selectorValues = new Dictionary<object, TValue?>();
             var firstIsValid = false;
@@ -583,7 +583,7 @@ namespace Gear.ActiveQuery
                     selectorValues.Add(element, selectorValue);
                 }
             }
-            var monitor = ActiveCollectionMonitor<TSource>.Monitor(source, selectorProperties);
+            var monitor = ActiveListMonitor<TSource>.Monitor(source, selectorProperties);
             EventHandler<ElementPropertyChangeEventArgs<TSource>> elementPropertyChanged = null;
             EventHandler<ElementMembershipEventArgs<TSource>> elementsAdded = null;
             EventHandler<ElementMembershipEventArgs<TSource>> elementsRemoved = null;
@@ -668,7 +668,7 @@ namespace Gear.ActiveQuery
             return result;
         }
 
-        public static ActiveAggregateValue<TValue> ActiveMin<TSource, TValue>(this IList<TSource> source, Func<TSource, TValue> selector, params string[] selectorProperties) where TSource : class where TValue : IComparable<TValue>
+        public static ActiveAggregateValue<TValue> ActiveMin<TSource, TValue>(this IReadOnlyList<TSource> source, Func<TSource, TValue> selector, params string[] selectorProperties) where TSource : class where TValue : IComparable<TValue>
         {
             var selectorValues = new Dictionary<object, TValue>();
             var firstIsValid = false;
@@ -687,7 +687,7 @@ namespace Gear.ActiveQuery
                     selectorValues.Add(element, selectorValue);
                 }
             }
-            var monitor = ActiveCollectionMonitor<TSource>.Monitor(source, selectorProperties);
+            var monitor = ActiveListMonitor<TSource>.Monitor(source, selectorProperties);
             EventHandler<ElementPropertyChangeEventArgs<TSource>> elementPropertyChanged = null;
             EventHandler<ElementMembershipEventArgs<TSource>> elementsAdded = null;
             EventHandler<ElementMembershipEventArgs<TSource>> elementsRemoved = null;
@@ -773,7 +773,7 @@ namespace Gear.ActiveQuery
             return result;
         }
 
-        public static ActiveAggregateValue<TValue?> ActiveMin<TSource, TValue>(this IList<TSource> source, Func<TSource, TValue?> selector, params string[] selectorProperties) where TSource : class where TValue : struct, IComparable<TValue>
+        public static ActiveAggregateValue<TValue?> ActiveMin<TSource, TValue>(this IReadOnlyList<TSource> source, Func<TSource, TValue?> selector, params string[] selectorProperties) where TSource : class where TValue : struct, IComparable<TValue>
         {
             var selectorValues = new Dictionary<object, TValue?>();
             var firstIsValid = false;
@@ -792,7 +792,7 @@ namespace Gear.ActiveQuery
                     selectorValues.Add(element, selectorValue);
                 }
             }
-            var monitor = ActiveCollectionMonitor<TSource>.Monitor(source, selectorProperties);
+            var monitor = ActiveListMonitor<TSource>.Monitor(source, selectorProperties);
             EventHandler<ElementPropertyChangeEventArgs<TSource>> elementPropertyChanged = null;
             EventHandler<ElementMembershipEventArgs<TSource>> elementsAdded = null;
             EventHandler<ElementMembershipEventArgs<TSource>> elementsRemoved = null;
@@ -877,10 +877,10 @@ namespace Gear.ActiveQuery
             return result;
         }
 
-        public static ActiveEnumerable<TResult> ActiveSelect<TSource, TResult>(this IList<TSource> source, Func<TSource, TResult> selector, Action<TResult> releaser = null, Action<TSource, string, TResult> updater = null, bool indexed = false, params string[] selectorProperties) where TSource : class =>
+        public static ActiveEnumerable<TResult> ActiveSelect<TSource, TResult>(this IReadOnlyList<TSource> source, Func<TSource, TResult> selector, Action<TResult> releaser = null, Action<TSource, string, TResult> updater = null, bool indexed = false, params string[] selectorProperties) where TSource : class =>
             ActiveSelect(source, (source as ISynchronizable)?.SynchronizationContext, selector, releaser, updater, indexed, selectorProperties);
 
-        public static ActiveEnumerable<TResult> ActiveSelect<TSource, TResult>(this IList<TSource> source, SynchronizationContext synchronizationContext, Func<TSource, TResult> selector, Action<TResult> releaser = null, Action<TSource, string, TResult> updater = null, bool indexed = false, params string[] selectorProperties) where TSource : class
+        public static ActiveEnumerable<TResult> ActiveSelect<TSource, TResult>(this IReadOnlyList<TSource> source, SynchronizationContext synchronizationContext, Func<TSource, TResult> selector, Action<TResult> releaser = null, Action<TSource, string, TResult> updater = null, bool indexed = false, params string[] selectorProperties) where TSource : class
         {
             var sourceToIndex = indexed ? new Dictionary<TSource, int>() : null;
             var rangeObservableCollection = new SynchronizedRangeObservableCollection<TResult>(synchronizationContext, indexed ? source.Select((element, index) =>
@@ -889,7 +889,7 @@ namespace Gear.ActiveQuery
                 return selector(element);
             }) : source.Select(element => selector(element)), false);
             var rangeObservableCollectionAccess = new AsyncLock();
-            var monitor = ActiveCollectionMonitor<TSource>.Monitor(source, selectorProperties);
+            var monitor = ActiveListMonitor<TSource>.Monitor(source, selectorProperties);
 
             async void elementPropertyChangedHandler(object sender, ElementPropertyChangeEventArgs<TSource> e)
             {
@@ -971,10 +971,10 @@ namespace Gear.ActiveQuery
             return result;
         }
 
-        public static ActiveEnumerable<TResult> ActiveSelectMany<TSource, TResult>(this IList<TSource> source, Func<TSource, IEnumerable<TResult>> selector, Action<TResult> releaser = null, Action<TSource, string, IList<TResult>> updater = null, params string[] selectorProperties) where TSource : class =>
+        public static ActiveEnumerable<TResult> ActiveSelectMany<TSource, TResult>(this IReadOnlyList<TSource> source, Func<TSource, IEnumerable<TResult>> selector, Action<TResult> releaser = null, Action<TSource, string, IList<TResult>> updater = null, params string[] selectorProperties) where TSource : class =>
             ActiveSelectMany(source, (source as ISynchronizable)?.SynchronizationContext, selector, releaser, updater, selectorProperties);
 
-        public static ActiveEnumerable<TResult> ActiveSelectMany<TSource, TResult>(this IList<TSource> source, SynchronizationContext synchronizationContext, Func<TSource, IEnumerable<TResult>> selector, Action<TResult> releaser = null, Action<TSource, string, IList<TResult>> updater = null, params string[] selectorProperties) where TSource : class
+        public static ActiveEnumerable<TResult> ActiveSelectMany<TSource, TResult>(this IReadOnlyList<TSource> source, SynchronizationContext synchronizationContext, Func<TSource, IEnumerable<TResult>> selector, Action<TResult> releaser = null, Action<TSource, string, IList<TResult>> updater = null, params string[] selectorProperties) where TSource : class
         {
             var sourceToSourceIndex = new Dictionary<TSource, int>();
             var sourceToResultsIndex = new Dictionary<TSource, int>();
@@ -991,7 +991,7 @@ namespace Gear.ActiveQuery
                 return results;
             }), false);
             var rangeObservableCollectionAccess = new AsyncLock();
-            var monitor = ActiveCollectionMonitor<TSource>.Monitor(source, selectorProperties);
+            var monitor = ActiveListMonitor<TSource>.Monitor(source, selectorProperties);
 
             async void elementPropertyChangedHandler(object sender, ElementPropertyChangeEventArgs<TSource> e)
             {
@@ -1139,11 +1139,11 @@ namespace Gear.ActiveQuery
             return result;
         }
 
-        public static ActiveAggregateValue<decimal> ActiveSum<TSource>(this IList<TSource> source, Func<TSource, decimal> selector, params string[] selectorProperties) where TSource : class
+        public static ActiveAggregateValue<decimal> ActiveSum<TSource>(this IReadOnlyList<TSource> source, Func<TSource, decimal> selector, params string[] selectorProperties) where TSource : class
         {
             var selectorValues = new Dictionary<TSource, decimal>();
             var firstSum = (decimal)0;
-            var monitor = ActiveCollectionMonitor<TSource>.Monitor(source, selectorProperties);
+            var monitor = ActiveListMonitor<TSource>.Monitor(source, selectorProperties);
             if (monitor.ElementsNotifyChanging)
                 foreach (var item in source)
                     firstSum += selector(item);
@@ -1226,11 +1226,11 @@ namespace Gear.ActiveQuery
             return result;
         }
 
-        public static ActiveAggregateValue<decimal?> ActiveSum<TSource>(this IList<TSource> source, Func<TSource, decimal?> selector, params string[] selectorProperties) where TSource : class
+        public static ActiveAggregateValue<decimal?> ActiveSum<TSource>(this IReadOnlyList<TSource> source, Func<TSource, decimal?> selector, params string[] selectorProperties) where TSource : class
         {
             var selectorValues = new Dictionary<TSource, decimal?>();
             var firstSum = (decimal?)0;
-            var monitor = ActiveCollectionMonitor<TSource>.Monitor(source, selectorProperties);
+            var monitor = ActiveListMonitor<TSource>.Monitor(source, selectorProperties);
             if (monitor.ElementsNotifyChanging)
                 foreach (var item in source)
                     firstSum += selector(item);
@@ -1313,11 +1313,11 @@ namespace Gear.ActiveQuery
             return result;
         }
 
-        public static ActiveAggregateValue<double> ActiveSum<TSource>(this IList<TSource> source, Func<TSource, double> selector, params string[] selectorProperties) where TSource : class
+        public static ActiveAggregateValue<double> ActiveSum<TSource>(this IReadOnlyList<TSource> source, Func<TSource, double> selector, params string[] selectorProperties) where TSource : class
         {
             var selectorValues = new Dictionary<TSource, double>();
             var firstSum = (double)0;
-            var monitor = ActiveCollectionMonitor<TSource>.Monitor(source, selectorProperties);
+            var monitor = ActiveListMonitor<TSource>.Monitor(source, selectorProperties);
             if (monitor.ElementsNotifyChanging)
                 foreach (var item in source)
                     firstSum += selector(item);
@@ -1400,11 +1400,11 @@ namespace Gear.ActiveQuery
             return result;
         }
 
-        public static ActiveAggregateValue<double?> ActiveSum<TSource>(this IList<TSource> source, Func<TSource, double?> selector, params string[] selectorProperties) where TSource : class
+        public static ActiveAggregateValue<double?> ActiveSum<TSource>(this IReadOnlyList<TSource> source, Func<TSource, double?> selector, params string[] selectorProperties) where TSource : class
         {
             var selectorValues = new Dictionary<TSource, double?>();
             var firstSum = (double?)0;
-            var monitor = ActiveCollectionMonitor<TSource>.Monitor(source, selectorProperties);
+            var monitor = ActiveListMonitor<TSource>.Monitor(source, selectorProperties);
             if (monitor.ElementsNotifyChanging)
                 foreach (var item in source)
                     firstSum += selector(item);
@@ -1487,11 +1487,11 @@ namespace Gear.ActiveQuery
             return result;
         }
 
-        public static ActiveAggregateValue<float> ActiveSum<TSource>(this IList<TSource> source, Func<TSource, float> selector, params string[] selectorProperties) where TSource : class
+        public static ActiveAggregateValue<float> ActiveSum<TSource>(this IReadOnlyList<TSource> source, Func<TSource, float> selector, params string[] selectorProperties) where TSource : class
         {
             var selectorValues = new Dictionary<TSource, float>();
             var firstSum = (float)0;
-            var monitor = ActiveCollectionMonitor<TSource>.Monitor(source, selectorProperties);
+            var monitor = ActiveListMonitor<TSource>.Monitor(source, selectorProperties);
             if (monitor.ElementsNotifyChanging)
                 foreach (var item in source)
                     firstSum += selector(item);
@@ -1574,11 +1574,11 @@ namespace Gear.ActiveQuery
             return result;
         }
 
-        public static ActiveAggregateValue<float?> ActiveSum<TSource>(this IList<TSource> source, Func<TSource, float?> selector, params string[] selectorProperties) where TSource : class
+        public static ActiveAggregateValue<float?> ActiveSum<TSource>(this IReadOnlyList<TSource> source, Func<TSource, float?> selector, params string[] selectorProperties) where TSource : class
         {
             var selectorValues = new Dictionary<TSource, float?>();
             var firstSum = (float?)0;
-            var monitor = ActiveCollectionMonitor<TSource>.Monitor(source, selectorProperties);
+            var monitor = ActiveListMonitor<TSource>.Monitor(source, selectorProperties);
             if (monitor.ElementsNotifyChanging)
                 foreach (var item in source)
                     firstSum += selector(item);
@@ -1661,11 +1661,11 @@ namespace Gear.ActiveQuery
             return result;
         }
 
-        public static ActiveAggregateValue<int> ActiveSum<TSource>(this IList<TSource> source, Func<TSource, int> selector, params string[] selectorProperties) where TSource : class
+        public static ActiveAggregateValue<int> ActiveSum<TSource>(this IReadOnlyList<TSource> source, Func<TSource, int> selector, params string[] selectorProperties) where TSource : class
         {
             var selectorValues = new Dictionary<TSource, int>();
             var firstSum = 0;
-            var monitor = ActiveCollectionMonitor<TSource>.Monitor(source, selectorProperties);
+            var monitor = ActiveListMonitor<TSource>.Monitor(source, selectorProperties);
             if (monitor.ElementsNotifyChanging)
                 foreach (var item in source)
                     firstSum += selector(item);
@@ -1748,11 +1748,11 @@ namespace Gear.ActiveQuery
             return result;
         }
 
-        public static ActiveAggregateValue<int?> ActiveSum<TSource>(this IList<TSource> source, Func<TSource, int?> selector, params string[] selectorProperties) where TSource : class
+        public static ActiveAggregateValue<int?> ActiveSum<TSource>(this IReadOnlyList<TSource> source, Func<TSource, int?> selector, params string[] selectorProperties) where TSource : class
         {
             var selectorValues = new Dictionary<TSource, int?>();
             var firstSum = (int?)0;
-            var monitor = ActiveCollectionMonitor<TSource>.Monitor(source, selectorProperties);
+            var monitor = ActiveListMonitor<TSource>.Monitor(source, selectorProperties);
             if (monitor.ElementsNotifyChanging)
                 foreach (var item in source)
                     firstSum += selector(item);
@@ -1835,11 +1835,11 @@ namespace Gear.ActiveQuery
             return result;
         }
 
-        public static ActiveAggregateValue<long> ActiveSum<TSource>(this IList<TSource> source, Func<TSource, long> selector, params string[] selectorProperties) where TSource : class
+        public static ActiveAggregateValue<long> ActiveSum<TSource>(this IReadOnlyList<TSource> source, Func<TSource, long> selector, params string[] selectorProperties) where TSource : class
         {
             var selectorValues = new Dictionary<TSource, long>();
             var firstSum = (long)0;
-            var monitor = ActiveCollectionMonitor<TSource>.Monitor(source, selectorProperties);
+            var monitor = ActiveListMonitor<TSource>.Monitor(source, selectorProperties);
             if (monitor.ElementsNotifyChanging)
                 foreach (var item in source)
                     firstSum += selector(item);
@@ -1922,11 +1922,11 @@ namespace Gear.ActiveQuery
             return result;
         }
 
-        public static ActiveAggregateValue<long?> ActiveSum<TSource>(this IList<TSource> source, Func<TSource, long?> selector, params string[] selectorProperties) where TSource : class
+        public static ActiveAggregateValue<long?> ActiveSum<TSource>(this IReadOnlyList<TSource> source, Func<TSource, long?> selector, params string[] selectorProperties) where TSource : class
         {
             var selectorValues = new Dictionary<TSource, long?>();
             var firstSum = (long?)0;
-            var monitor = ActiveCollectionMonitor<TSource>.Monitor(source, selectorProperties);
+            var monitor = ActiveListMonitor<TSource>.Monitor(source, selectorProperties);
             if (monitor.ElementsNotifyChanging)
                 foreach (var item in source)
                     firstSum += selector(item);
@@ -2009,16 +2009,16 @@ namespace Gear.ActiveQuery
             return result;
         }
 
-        public static ActiveEnumerable<TSource> ToActiveEnumerable<TSource>(this IList<TSource> source) => new ActiveEnumerable<TSource>(source);
+        public static ActiveEnumerable<TSource> ToActiveEnumerable<TSource>(this IReadOnlyList<TSource> source) => new ActiveEnumerable<TSource>(source);
 
-        public static ActiveEnumerable<TSource> ActiveWhere<TSource>(this IList<TSource> source, Func<TSource, bool> predicate, params string[] predicateProperties) where TSource : class =>
+        public static ActiveEnumerable<TSource> ActiveWhere<TSource>(this IReadOnlyList<TSource> source, Func<TSource, bool> predicate, params string[] predicateProperties) where TSource : class =>
             ActiveWhere(source, (source as ISynchronizable)?.SynchronizationContext, predicate, predicateProperties);
 
-        public static ActiveEnumerable<TSource> ActiveWhere<TSource>(this IList<TSource> source, SynchronizationContext synchronizationContext, Func<TSource, bool> predicate, params string[] predicateProperties) where TSource : class
+        public static ActiveEnumerable<TSource> ActiveWhere<TSource>(this IReadOnlyList<TSource> source, SynchronizationContext synchronizationContext, Func<TSource, bool> predicate, params string[] predicateProperties) where TSource : class
         {
             var rangeObservableCollection = new SynchronizedRangeObservableCollection<TSource>(synchronizationContext, source.Where(predicate));
             var rangeObservableCollectionAccess = new AsyncLock();
-            var monitor = ActiveCollectionMonitor<TSource>.Monitor(source, predicateProperties);
+            var monitor = ActiveListMonitor<TSource>.Monitor(source, predicateProperties);
             HashSet<TSource> currentItems;
             if (monitor.ElementsNotifyChanging)
                 currentItems = new HashSet<TSource>();

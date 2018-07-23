@@ -9,10 +9,10 @@ namespace Gear.ActiveQuery
 {
     public class ActiveDictionaryMonitor<TKey, TValue> : SyncDisposable
     {
-        static readonly Dictionary<(IDictionary<TKey, TValue> dictionary, string relevantProperties), object> monitors = new Dictionary<(IDictionary<TKey, TValue> dictionary, string relevantProperties), object>();
+        static readonly Dictionary<(IReadOnlyDictionary<TKey, TValue> dictionary, string relevantProperties), object> monitors = new Dictionary<(IReadOnlyDictionary<TKey, TValue> dictionary, string relevantProperties), object>();
         static readonly object instanceManagementLock = new object();
 
-        public static ActiveDictionaryMonitor<TKey, TValue> Monitor(IDictionary<TKey, TValue> dictionary, params string[] relevantPropertyNames)
+        public static ActiveDictionaryMonitor<TKey, TValue> Monitor(IReadOnlyDictionary<TKey, TValue> dictionary, params string[] relevantPropertyNames)
         {
             string relevantProperties;
             if (relevantPropertyNames?.Any() ?? false)
@@ -33,7 +33,7 @@ namespace Gear.ActiveQuery
             }
         }
 
-        readonly IDictionary<TKey, TValue> dictionary;
+        readonly IReadOnlyDictionary<TKey, TValue> readOnlyDictionary;
         int instances;
         readonly Dictionary<TKey, PropertyChangedEventHandler> valuePropertyChangedEventHandlers = new Dictionary<TKey, PropertyChangedEventHandler>();
         readonly Dictionary<TKey, PropertyChangingEventHandler> valuePropertyChangingEventHandlers = new Dictionary<TKey, PropertyChangingEventHandler>();
@@ -47,15 +47,15 @@ namespace Gear.ActiveQuery
         public event EventHandler<NotifyDictionaryValuesEventArgs<TKey, TValue>> ValuesAdded;
         public event EventHandler<NotifyDictionaryValuesEventArgs<TKey, TValue>> ValuesRemoved;
 
-        ActiveDictionaryMonitor(IDictionary<TKey, TValue> dictionary, params string[] relevantPropertyNames)
+        ActiveDictionaryMonitor(IReadOnlyDictionary<TKey, TValue> readOnlyDictionary, params string[] relevantPropertyNames)
         {
             var valueTypeInfo = typeof(TValue).GetTypeInfo();
             ValuesNotifyChanging = typeof(INotifyPropertyChanging).GetTypeInfo().IsAssignableFrom(valueTypeInfo);
             ValuesNotifyChanged = typeof(INotifyPropertyChanged).GetTypeInfo().IsAssignableFrom(valueTypeInfo);
             this.relevantPropertyNames = relevantPropertyNames.ToList();
 
-            this.dictionary = dictionary;
-            if (this.dictionary is INotifyDictionaryChanged<TKey, TValue> notifyingDictionary)
+            this.readOnlyDictionary = readOnlyDictionary;
+            if (this.readOnlyDictionary is INotifyDictionaryChanged<TKey, TValue> notifyingDictionary)
             {
                 notifyingDictionary.ValueAdded += ValueAddedHandler;
                 notifyingDictionary.ValueRemoved += ValueRemovedHandler;
@@ -63,7 +63,7 @@ namespace Gear.ActiveQuery
                 notifyingDictionary.ValuesAdded += ValuesAddedHandler;
                 notifyingDictionary.ValuesRemoved += ValuesRemovedHandler;
             }
-            AttachToValues(dictionary);
+            AttachToValues(readOnlyDictionary);
         }
 
         void AttachToValue(TKey key, TValue value)
@@ -185,10 +185,10 @@ namespace Gear.ActiveQuery
                     relevantProperties = string.Join("|", relevantPropertyNames.OrderBy(s => s));
                 else
                     relevantProperties = null;
-                monitors.Remove((dictionary, relevantProperties));
+                monitors.Remove((readOnlyDictionary, relevantProperties));
                 if (disposing)
                 {
-                    if (dictionary is INotifyDictionaryChanged<TKey, TValue> notifyingDictionary)
+                    if (readOnlyDictionary is INotifyDictionaryChanged<TKey, TValue> notifyingDictionary)
                     {
                         notifyingDictionary.ValueAdded -= ValueAddedHandler;
                         notifyingDictionary.ValueRemoved -= ValueRemovedHandler;
@@ -196,7 +196,7 @@ namespace Gear.ActiveQuery
                         notifyingDictionary.ValuesAdded -= ValuesAddedHandler;
                         notifyingDictionary.ValuesRemoved -= ValuesRemovedHandler;
                     }
-                    DetachFromValues(dictionary);
+                    DetachFromValues(readOnlyDictionary);
                 }
             }
         }
