@@ -14,7 +14,7 @@ namespace Gear.Components
                 action();
                 return;
             }
-            ExceptionDispatchInfo edi = null;
+            ExceptionDispatchInfo edi = default;
             synchronizable.SynchronizationContext.Send(state =>
             {
                 try
@@ -34,7 +34,7 @@ namespace Gear.Components
             if (!synchronizable.IsSynchronized || synchronizable.SynchronizationContext == null || SynchronizationContext.Current == synchronizable.SynchronizationContext)
                 return func();
             TReturn result = default;
-            ExceptionDispatchInfo edi = null;
+            ExceptionDispatchInfo edi = default;
             synchronizable.SynchronizationContext.Send(state =>
             {
                 try

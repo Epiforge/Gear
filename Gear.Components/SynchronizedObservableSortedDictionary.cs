@@ -6,39 +6,27 @@ using System.Threading.Tasks;
 
 namespace Gear.Components
 {
-    public class SynchronizedObservableDictionary<TKey, TValue> : ObservableDictionary<TKey, TValue>, ISynchronizable
+    public class SynchronizedObservableSortedDictionary<TKey, TValue> : ObservableSortedDictionary<TKey, TValue>, ISynchronizable
     {
-        public SynchronizedObservableDictionary(SynchronizationContext synchronizationContext, bool isSynchronized = true) : base()
+        public SynchronizedObservableSortedDictionary(SynchronizationContext synchronizationContext, bool isSynchronized = true) : base()
         {
             SynchronizationContext = synchronizationContext;
             this.isSynchronized = isSynchronized;
         }
 
-        public SynchronizedObservableDictionary(SynchronizationContext synchronizationContext, IDictionary<TKey, TValue> dictionary, bool isSynchronized = true)
+        public SynchronizedObservableSortedDictionary(SynchronizationContext synchronizationContext, IComparer<TKey> comparer, bool isSynchronized = true) : base(comparer)
         {
             SynchronizationContext = synchronizationContext;
             this.isSynchronized = isSynchronized;
         }
 
-        public SynchronizedObservableDictionary(SynchronizationContext synchronizationContext, IEqualityComparer<TKey> comparer, bool isSynchronized = true)
+        public SynchronizedObservableSortedDictionary(SynchronizationContext synchronizationContext, IDictionary<TKey, TValue> dictionary, bool isSynchronized = true) : base(dictionary)
         {
             SynchronizationContext = synchronizationContext;
             this.isSynchronized = isSynchronized;
         }
 
-        public SynchronizedObservableDictionary(SynchronizationContext synchronizationContext, int capacity, bool isSynchronized = true)
-        {
-            SynchronizationContext = synchronizationContext;
-            this.isSynchronized = isSynchronized;
-        }
-
-        public SynchronizedObservableDictionary(SynchronizationContext synchronizationContext, IDictionary<TKey, TValue> dictionary, IEqualityComparer<TKey> comparer, bool isSynchronized = true)
-        {
-            SynchronizationContext = synchronizationContext;
-            this.isSynchronized = isSynchronized;
-        }
-
-        public SynchronizedObservableDictionary(SynchronizationContext synchronizationContext, int capacity, IEqualityComparer<TKey> comparer, bool isSynchronized = true)
+        public SynchronizedObservableSortedDictionary(SynchronizationContext synchronizationContext, IDictionary<TKey, TValue> dictionary, IComparer<TKey> comparer, bool isSynchronized = true) : base(dictionary, comparer)
         {
             SynchronizationContext = synchronizationContext;
             this.isSynchronized = isSynchronized;
@@ -76,13 +64,15 @@ namespace Gear.Components
 
         protected override void CopyTo(Array array, int index) => this.Execute(() => base.CopyTo(array, index));
 
-        protected override void CopyTo(KeyValuePair<TKey, TValue>[] array, int arrayIndex) => this.Execute(() => base.CopyTo(array, arrayIndex));
+        public override void CopyTo(KeyValuePair<TKey, TValue>[] array, int index) => this.Execute(() => base.CopyTo(array, index));
+
+        public virtual Task CopyToAsync(KeyValuePair<TKey, TValue>[] array, int index) => this.ExecuteAsync(() => base.CopyTo(array, index));
 
         protected override IDictionaryEnumerator GetDictionaryEnumerator() => this.Execute(() => base.GetDictionaryEnumerator());
 
-        public override Dictionary<TKey, TValue>.Enumerator GetEnumerator() => this.Execute(() => base.GetEnumerator());
+        public override SortedDictionary<TKey, TValue>.Enumerator GetEnumerator() => this.Execute(() => base.GetEnumerator());
 
-        public virtual Task<Dictionary<TKey, TValue>.Enumerator> GetEnumeratorAsync() => this.ExecuteAsync(() => base.GetEnumerator());
+        public virtual Task<SortedDictionary<TKey, TValue>.Enumerator> GetEnumeratorAsync() => this.ExecuteAsync(() => base.GetEnumerator());
 
         protected override IEnumerator<KeyValuePair<TKey, TValue>> GetKeyValuePairEnumerator() => this.Execute(() => base.GetKeyValuePairEnumerator());
 
@@ -106,7 +96,7 @@ namespace Gear.Components
 
         protected override void SetValue(object key, object value) => this.Execute(() => base.SetValue(key, value));
 
-        public virtual Task SetValueAsync(TKey key, TValue value) => this.ExecuteAsync(() => base[key] = value);
+        public virtual Task SetValue(TKey key, TValue value) => this.ExecuteAsync(() => base[key] = value);
 
         protected override (bool valueRetrieved, TValue value) TryGetValue(TKey key) => this.Execute(() => base.TryGetValue(key));
 
@@ -118,9 +108,9 @@ namespace Gear.Components
             set => this.Execute(() => base[key] = value);
         }
 
-        public override IEqualityComparer<TKey> Comparer => this.Execute(() => base.Comparer);
+        public override IComparer<TKey> Comparer => this.Execute(() => base.Comparer);
 
-        public virtual Task<IEqualityComparer<TKey>> ComparerAsync => this.ExecuteAsync(() => base.Comparer);
+        public virtual Task<IComparer<TKey>> ComparerAsync => this.ExecuteAsync(() => base.Comparer);
 
         public override int Count => this.Execute(() => base.Count);
 
@@ -140,9 +130,9 @@ namespace Gear.Components
             set => SetBackedProperty(ref isSynchronized, in value);
         }
 
-        public override Dictionary<TKey, TValue>.KeyCollection Keys => this.Execute(() => base.Keys);
+        public override SortedDictionary<TKey, TValue>.KeyCollection Keys => this.Execute(() => base.Keys);
 
-        public virtual Task<Dictionary<TKey, TValue>.KeyCollection> KeysAsync => this.ExecuteAsync(() => base.Keys);
+        public virtual Task<SortedDictionary<TKey, TValue>.KeyCollection> KeysAsync => this.ExecuteAsync(() => base.Keys);
 
         protected override ICollection KeysCollection => this.Execute(() => base.KeysCollection);
 
@@ -154,9 +144,9 @@ namespace Gear.Components
 
         protected override object SyncRoot => this.Execute(() => base.SyncRoot);
 
-        public override Dictionary<TKey, TValue>.ValueCollection Values => this.Execute(() => base.Values);
+        public override SortedDictionary<TKey, TValue>.ValueCollection Values => this.Execute(() => base.Values);
 
-        public virtual Task<Dictionary<TKey, TValue>.ValueCollection> ValuesAsync => this.ExecuteAsync(() => base.Values);
+        public virtual Task<SortedDictionary<TKey, TValue>.ValueCollection> ValuesAsync => this.ExecuteAsync(() => base.Values);
 
         protected override ICollection ValuesCollection => this.Execute(() => base.ValuesCollection);
 

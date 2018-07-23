@@ -5,81 +5,57 @@ using System.Linq;
 
 namespace Gear.Components
 {
-    public class ObservableDictionary<TKey, TValue> : PropertyChangeNotifier, ICollection, ICollection<KeyValuePair<TKey, TValue>>, IDictionary, IDictionary<TKey, TValue>, IEnumerable, IEnumerable<KeyValuePair<TKey, TValue>>, INotifyDictionaryChanged<TKey, TValue>, IReadOnlyCollection<KeyValuePair<TKey, TValue>>, IReadOnlyDictionary<TKey, TValue>
+    public class ObservableSortedDictionary<TKey, TValue> : PropertyChangeNotifier, ICollection, ICollection<KeyValuePair<TKey, TValue>>, IDictionary, IDictionary<TKey, TValue>, IEnumerable, IEnumerable<KeyValuePair<TKey, TValue>>, INotifyDictionaryChanged<TKey, TValue>, IReadOnlyCollection<KeyValuePair<TKey, TValue>>, IReadOnlyDictionary<TKey, TValue>
     {
-        public ObservableDictionary()
+        public ObservableSortedDictionary()
         {
-            gd = new Dictionary<TKey, TValue>();
-            ci = gd;
-            gci = gd;
-            di = gd;
-            gdi = gd;
-            ei = gd;
-            gei = gd;
-            grodi = gd;
+            gsd = new SortedDictionary<TKey, TValue>();
+            ci = gsd;
+            gci = gsd;
+            di = gsd;
+            gdi = gsd;
+            ei = gsd;
+            gei = gsd;
+            grodi = gsd;
         }
 
-        public ObservableDictionary(IDictionary<TKey, TValue> dictionary)
+        public ObservableSortedDictionary(IComparer<TKey> comparer)
         {
-            gd = new Dictionary<TKey, TValue>(dictionary);
-            ci = gd;
-            gci = gd;
-            di = gd;
-            gdi = gd;
-            ei = gd;
-            gei = gd;
-            grodi = gd;
+            gsd = new SortedDictionary<TKey, TValue>(comparer);
+            ci = gsd;
+            gci = gsd;
+            di = gsd;
+            gdi = gsd;
+            ei = gsd;
+            gei = gsd;
+            grodi = gsd;
         }
 
-        public ObservableDictionary(IEqualityComparer<TKey> comparer)
+        public ObservableSortedDictionary(IDictionary<TKey, TValue> dictionary)
         {
-            gd = new Dictionary<TKey, TValue>(comparer);
-            ci = gd;
-            gci = gd;
-            di = gd;
-            gdi = gd;
-            ei = gd;
-            gei = gd;
-            grodi = gd;
+            gsd = new SortedDictionary<TKey, TValue>(dictionary);
+            ci = gsd;
+            gci = gsd;
+            di = gsd;
+            gdi = gsd;
+            ei = gsd;
+            gei = gsd;
+            grodi = gsd;
         }
 
-        public ObservableDictionary(int capacity)
+        public ObservableSortedDictionary(IDictionary<TKey, TValue> dictionary, IComparer<TKey> comparer)
         {
-            gd = new Dictionary<TKey, TValue>(capacity);
-            ci = gd;
-            gci = gd;
-            di = gd;
-            gdi = gd;
-            ei = gd;
-            gei = gd;
-            grodi = gd;
+            gsd = new SortedDictionary<TKey, TValue>(dictionary, comparer);
+            ci = gsd;
+            gci = gsd;
+            di = gsd;
+            gdi = gsd;
+            ei = gsd;
+            gei = gsd;
+            grodi = gsd;
         }
 
-        public ObservableDictionary(IDictionary<TKey, TValue> dictionary, IEqualityComparer<TKey> comparer)
-        {
-            gd = new Dictionary<TKey, TValue>(dictionary, comparer);
-            ci = gd;
-            gci = gd;
-            di = gd;
-            gdi = gd;
-            ei = gd;
-            gei = gd;
-            grodi = gd;
-        }
-
-        public ObservableDictionary(int capacity, IEqualityComparer<TKey> comparer)
-        {
-            gd = new Dictionary<TKey, TValue>(capacity, comparer);
-            ci = gd;
-            gci = gd;
-            di = gd;
-            gdi = gd;
-            ei = gd;
-            gei = gd;
-            grodi = gd;
-        }
-
-        readonly Dictionary<TKey, TValue> gd;
+        readonly SortedDictionary<TKey, TValue> gsd;
         readonly ICollection ci;
         readonly ICollection<KeyValuePair<TKey, TValue>> gci;
         readonly IDictionary di;
@@ -96,9 +72,9 @@ namespace Gear.Components
 
         public virtual void Add(TKey key, TValue value)
         {
-            if (gd.ContainsKey(key))
+            if (gsd.ContainsKey(key))
                 NotifyCountChanging();
-            gd.Add(key, value);
+            gsd.Add(key, value);
             OnValueAdded(key, value);
             NotifyCountChanged();
         }
@@ -109,7 +85,7 @@ namespace Gear.Components
 
         protected virtual void Add(object key, object value)
         {
-            if (key is TKey typedKey && gd.ContainsKey(typedKey))
+            if (key is TKey typedKey && gsd.ContainsKey(typedKey))
                 NotifyCountChanging();
             di.Add(key, value);
             OnValueAdded((TKey)key, (TValue)value);
@@ -118,7 +94,7 @@ namespace Gear.Components
 
         protected virtual void Add(KeyValuePair<TKey, TValue> item)
         {
-            if (gd.ContainsKey(item.Key))
+            if (gsd.ContainsKey(item.Key))
                 NotifyCountChanging();
             gci.Add(item);
             OnValueAdded(item.Key, item.Value);
@@ -127,21 +103,21 @@ namespace Gear.Components
 
         public virtual void AddRange(IReadOnlyList<KeyValuePair<TKey, TValue>> keyValuePairs)
         {
-            if (keyValuePairs.Any(kvp => gd.ContainsKey(kvp.Key)))
+            if (keyValuePairs.Any(kvp => gsd.ContainsKey(kvp.Key)))
                 throw new ArgumentException("One of the keys was already found in the dictionary", nameof(keyValuePairs));
             NotifyCountChanging();
             foreach (var keyValuePair in keyValuePairs)
-                gd.Add(keyValuePair.Key, keyValuePair.Value);
+                gsd.Add(keyValuePair.Key, keyValuePair.Value);
             OnValuesAdded(new NotifyDictionaryValuesEventArgs<TKey, TValue>(keyValuePairs));
             NotifyCountChanged();
         }
 
         public virtual void Clear()
         {
-            var removed = gd.ToList();
+            var removed = gsd.ToList();
             if (removed.Any())
                 NotifyCountChanging();
-            gd.Clear();
+            gsd.Clear();
             OnValuesRemoved(removed);
             NotifyCountChanged();
         }
@@ -154,21 +130,19 @@ namespace Gear.Components
 
         protected virtual bool Contains(KeyValuePair<TKey, TValue> item) => gci.Contains(item);
 
-        public virtual bool ContainsKey(TKey key) => gd.ContainsKey(key);
+        public virtual bool ContainsKey(TKey key) => gsd.ContainsKey(key);
 
-        public virtual bool ContainsValue(TValue value) => gd.ContainsValue(value);
+        public virtual bool ContainsValue(TValue value) => gsd.ContainsValue(value);
+
+        public virtual void CopyTo(KeyValuePair<TKey, TValue>[] array, int index) => gsd.CopyTo(array, index);
 
         void ICollection.CopyTo(Array array, int index) => CopyTo(array, index);
 
-        void ICollection<KeyValuePair<TKey, TValue>>.CopyTo(KeyValuePair<TKey, TValue>[] array, int arrayIndex) => CopyTo(array, arrayIndex);
-
         protected virtual void CopyTo(Array array, int index) => ci.CopyTo(array, index);
-
-        protected virtual void CopyTo(KeyValuePair<TKey, TValue>[] array, int arrayIndex) => gci.CopyTo(array, arrayIndex);
 
         protected virtual IDictionaryEnumerator GetDictionaryEnumerator() => di.GetEnumerator();
 
-        public virtual Dictionary<TKey, TValue>.Enumerator GetEnumerator() => gd.GetEnumerator();
+        public virtual SortedDictionary<TKey, TValue>.Enumerator GetEnumerator() => gsd.GetEnumerator();
 
         IDictionaryEnumerator IDictionary.GetEnumerator() => GetDictionaryEnumerator();
 
@@ -206,10 +180,10 @@ namespace Gear.Components
 
         public virtual bool Remove(TKey key)
         {
-            if (gd.TryGetValue(key, out var value))
+            if (gsd.TryGetValue(key, out var value))
             {
                 NotifyCountChanging();
-                gd.Remove(key);
+                gsd.Remove(key);
                 OnValueRemoved(key, value);
                 NotifyCountChanged();
                 return true;
@@ -250,7 +224,7 @@ namespace Gear.Components
         {
             var removingKeyValuePairs = new List<KeyValuePair<TKey, TValue>>();
             foreach (var key in keys)
-                if (gd.TryGetValue(key, out var value))
+                if (gsd.TryGetValue(key, out var value))
                     removingKeyValuePairs.Add(new KeyValuePair<TKey, TValue>(key, value));
             var removedKeys = new List<TKey>();
             if (removingKeyValuePairs.Any())
@@ -258,7 +232,7 @@ namespace Gear.Components
                 NotifyCountChanging();
                 foreach (var removingKeyValuePair in removingKeyValuePairs)
                 {
-                    gd.Remove(removingKeyValuePair.Key);
+                    gsd.Remove(removingKeyValuePair.Key);
                     removedKeys.Add(removingKeyValuePair.Key);
                 }
                 OnValuesRemoved(new NotifyDictionaryValuesEventArgs<TKey, TValue>(removingKeyValuePairs));
@@ -283,19 +257,14 @@ namespace Gear.Components
 
         protected virtual (bool valueRetrieved, TValue value) TryGetValue(TKey key)
         {
-            var valueRetrieved = gd.TryGetValue(key, out var value);
+            var valueRetrieved = gsd.TryGetValue(key, out var value);
             return (valueRetrieved, value);
         }
 
         public virtual TValue this[TKey key]
         {
-            get => gd[key];
-            set
-            {
-                var oldValue = gd[key];
-                gd[key] = value;
-                OnValueReplaced(key, oldValue, value);
-            }
+            get => gsd[key];
+            set => gsd[key] = value;
         }
 
         object IDictionary.this[object key]
@@ -304,15 +273,15 @@ namespace Gear.Components
             set => SetValue(key, value);
         }
 
-        public virtual IEqualityComparer<TKey> Comparer => gd.Comparer;
+        public virtual IComparer<TKey> Comparer => gsd.Comparer;
 
-        public virtual int Count => gd.Count;
+        public virtual int Count => gsd.Count;
 
         protected virtual bool DictionaryIsReadOnly => di.IsReadOnly;
 
         protected virtual bool GenericCollectionIsReadOnly => gci.IsReadOnly;
 
-        public virtual Dictionary<TKey, TValue>.KeyCollection Keys => gd.Keys;
+        public virtual SortedDictionary<TKey, TValue>.KeyCollection Keys => gsd.Keys;
 
         ICollection IDictionary.Keys => KeysCollection;
 
@@ -342,7 +311,7 @@ namespace Gear.Components
 
         protected virtual object SyncRoot => ci.SyncRoot;
 
-        public virtual Dictionary<TKey, TValue>.ValueCollection Values => gd.Values;
+        public virtual SortedDictionary<TKey, TValue>.ValueCollection Values => gsd.Values;
 
         ICollection IDictionary.Values => ValuesCollection;
 
