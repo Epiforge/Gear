@@ -189,9 +189,9 @@ namespace Gear.Components
 
         public IReadOnlyList<T> ReplaceRange(int index, int count, IList<T> list) => ReplaceRange(index, count, (IEnumerable<T>)list);
 
-        public Task ReplaceRangeAsync(int index, int count, IEnumerable<T> collection) => this.ExecuteAsync(() => ReplaceRange(index, count, collection));
+        public Task<IReadOnlyList<T>> ReplaceRangeAsync(int index, int count, IEnumerable<T> collection) => this.ExecuteAsync(() => ReplaceRange(index, count, collection));
 
-        public Task ReplaceRangeAsync(int index, int count, IList<T> list) => this.ExecuteAsync(() => ReplaceRange(index, count, list));
+        public Task<IReadOnlyList<T>> ReplaceRangeAsync(int index, int count, IList<T> list) => this.ExecuteAsync(() => ReplaceRange(index, count, list));
 
         public void Reset(IEnumerable<T> newCollection) => this.Execute(() =>
         {
