@@ -161,7 +161,7 @@ namespace Gear.Components
 
         public Task ReplaceAllAsync(IList<T> list) => this.ExecuteAsync(() => ReplaceAll(list));
 
-        public void ReplaceRange(int index, int count, IEnumerable<T> collection) => this.Execute(() =>
+        public IReadOnlyList<T> ReplaceRange(int index, int count, IEnumerable<T> collection = null) => this.Execute(() =>
         {
             var originalIndex = index;
             var oldItems = new T[count];
@@ -172,17 +172,22 @@ namespace Gear.Components
             }
             var list = new List<T>();
             index -= 1;
-            foreach (var element in collection)
-            {
-                Items.Insert(++index, element);
-                list.Add(element);
-            }
-            OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Replace, list, oldItems, originalIndex));
+            if (collection != null)
+                foreach (var element in collection)
+                {
+                    Items.Insert(++index, element);
+                    list.Add(element);
+                }
+            if (list.Count > 0)
+                OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Replace, list, oldItems, originalIndex));
+            else
+                OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, oldItems, originalIndex));
             if (oldItems.Length != list.Count)
                 OnPropertyChanged(new PropertyChangedEventArgs(nameof(Count)));
+            return oldItems;
         });
 
-        public void ReplaceRange(int index, int count, IList<T> list) => ReplaceRange(index, count, (IEnumerable<T>)list);
+        public IReadOnlyList<T> ReplaceRange(int index, int count, IList<T> list) => ReplaceRange(index, count, (IEnumerable<T>)list);
 
         public Task ReplaceRangeAsync(int index, int count, IEnumerable<T> collection) => this.ExecuteAsync(() => ReplaceRange(index, count, collection));
 
