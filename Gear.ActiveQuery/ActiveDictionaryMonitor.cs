@@ -20,17 +20,22 @@ namespace Gear.ActiveQuery
             else
                 relevantProperties = null;
             var key = (dictionary, relevantProperties);
+            ActiveDictionaryMonitor<TKey, TValue> monitor;
+            bool monitorCreated;
             lock (instanceManagementLock)
             {
-                if (!monitors.TryGetValue(key, out var obj))
+                monitorCreated = !monitors.TryGetValue(key, out var obj);
+                if (monitorCreated)
                 {
                     obj = new ActiveDictionaryMonitor<TKey, TValue>(dictionary, relevantPropertyNames);
                     monitors.Add(key, obj);
                 }
-                var monitor = obj as ActiveDictionaryMonitor<TKey, TValue>;
+                monitor = obj as ActiveDictionaryMonitor<TKey, TValue>;
                 ++monitor.instances;
-                return monitor;
             }
+            if (monitorCreated)
+                monitor.Initialize();
+            return monitor;
         }
 
         readonly ActiveDictionaryMonitor<TKey, TValue> baseMonitor;
@@ -78,7 +83,6 @@ namespace Gear.ActiveQuery
                     notifyingDictionary.ValuesAdded += ValuesAddedHandler;
                     notifyingDictionary.ValuesRemoved += ValuesRemovedHandler;
                 }
-                AttachToValues(readOnlyDictionary);
             }
         }
 
@@ -251,6 +255,12 @@ namespace Gear.ActiveQuery
                     DetachFromValues(readOnlyDictionary);
                 }
             }
+        }
+
+        void Initialize()
+        {
+            if (baseMonitor == null)
+                AttachToValues(readOnlyDictionary);
         }
 
         protected virtual void OnValueAdded(NotifyDictionaryValueEventArgs<TKey, TValue> e) => ValueAdded?.Invoke(this, e);

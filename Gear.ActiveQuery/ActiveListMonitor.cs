@@ -21,17 +21,22 @@ namespace Gear.ActiveQuery
             else
                 relevantProperties = null;
             var key = (readOnlyList, relevantProperties);
+            ActiveListMonitor<T> monitor;
+            bool monitorCreated;
             lock (instanceManagementLock)
             {
-                if (!monitors.TryGetValue(key, out var obj))
+                monitorCreated = !monitors.TryGetValue(key, out var obj);
+                if (monitorCreated)
                 {
                     obj = new ActiveListMonitor<T>(readOnlyList, relevantPropertyNames);
                     monitors.Add(key, obj);
                 }
-                var monitor = obj as ActiveListMonitor<T>;
+                monitor = obj as ActiveListMonitor<T>;
                 ++monitor.instances;
-                return monitor;
             }
+            if (monitorCreated)
+                monitor.Initialize();
+            return monitor;
         }
 
         readonly ActiveListMonitor<T> baseMonitor;
@@ -69,7 +74,6 @@ namespace Gear.ActiveQuery
                 elementList = this.readOnlyList.ToList();
                 if (this.readOnlyList is INotifyCollectionChanged notifyingCollection)
                     notifyingCollection.CollectionChanged += CollectionChangedHandler;
-                AttachToElements(elementList);
             }
         }
 
@@ -215,6 +219,12 @@ namespace Gear.ActiveQuery
         {
             if (sender is T element)
                 OnElementPropertyChanged(element, e.PropertyName);
+        }
+
+        void Initialize()
+        {
+            if (baseMonitor == null)
+                AttachToElements(readOnlyList);
         }
 
         protected virtual void OnElementPropertyChanged(ElementPropertyChangeEventArgs<T> e) => ElementPropertyChanged?.Invoke(this, e);
