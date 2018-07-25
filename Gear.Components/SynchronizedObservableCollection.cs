@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Threading;
 using System.Threading.Tasks;
@@ -49,6 +50,16 @@ namespace Gear.Components
         public Task RemoveAtAsync(int index) => this.ExecuteAsync(() => RemoveAt(index));
 
         protected override void RemoveItem(int index) => this.Execute(() => base.RemoveItem(index));
+
+        public T Replace(int index, T item) => this.Execute(() =>
+        {
+            var replacedItem = Items[index];
+            Items[index] = item;
+            OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Replace, item, replacedItem, index));
+            return replacedItem;
+        });
+
+        public Task<T> ReplaceAsync(int index, T item) => this.ExecuteAsync(() => Replace(index, item));
 
         protected override void SetItem(int index, T item) => this.Execute(() => base.SetItem(index, item));
 

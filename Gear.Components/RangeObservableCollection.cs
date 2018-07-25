@@ -109,6 +109,14 @@ namespace Gear.Components
             }
         }
 
+        public T Replace(int index, T item)
+        {
+            var replacedItem = Items[index];
+            Items[index] = item;
+            OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Replace, item, replacedItem, index));
+            return replacedItem;
+        }
+
         public void ReplaceAll(IEnumerable<T> collection)
         {
             var oldItems = new T[Items.Count];
