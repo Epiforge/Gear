@@ -20,6 +20,13 @@ namespace Gear.Components
 
         public void AddRange(IList<T> items) => AddRange((IEnumerable<T>)items);
 
+        public T GetAndRemoveAt(int index)
+        {
+            var item = Items[index];
+            RemoveAt(index);
+            return item;
+        }
+
         public void InsertRange(int index, IEnumerable<T> items)
         {
             var originalIndex = index;

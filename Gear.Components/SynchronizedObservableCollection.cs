@@ -33,6 +33,15 @@ namespace Gear.Components
 
         public Task CopyToAsync(T[] array, int index) => this.ExecuteAsync(() => CopyTo(array, index));
 
+        public T GetAndRemoveAt(int index) => this.Execute(() =>
+        {
+            var item = Items[index];
+            RemoveAt(index);
+            return item;
+        });
+
+        public Task<T> GetAndRemoveAtAsync(int index) => this.ExecuteAsync(() => GetAndRemoveAt(index));
+
         public Task<T> GetItemAsync(int index) => this.ExecuteAsync(() => this[index]);
 
         public Task<int> IndexOfAsync(T item) => this.ExecuteAsync(() => IndexOf(item));
