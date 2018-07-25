@@ -29,10 +29,20 @@ namespace Gear.ActiveQuery
                         await rangeObservableCollection.MoveRangeAsync(e.OldStartingIndex, e.NewStartingIndex, e.OldItems.Count).ConfigureAwait(false);
                     else
                     {
-                        if (e.OldItems != null && e.OldStartingIndex >= 0)
-                            await rangeObservableCollection.RemoveRangeAsync(e.OldStartingIndex, e.OldItems.Count).ConfigureAwait(false);
-                        if (e.NewItems != null && e.NewStartingIndex >= 0)
-                            await rangeObservableCollection.InsertRangeAsync(e.NewStartingIndex, e.NewItems.Cast<TResult>()).ConfigureAwait(false);
+                        if (e.OldItems != null && e.NewItems != null && e.OldStartingIndex >= 0 && e.OldStartingIndex == e.NewStartingIndex)
+                        {
+                            if (e.OldItems.Count == 1 && e.NewItems.Count == 1)
+                                await rangeObservableCollection.ReplaceAsync(e.OldStartingIndex, (TResult)e.NewItems[0]).ConfigureAwait(false);
+                            else
+                                await rangeObservableCollection.ReplaceRangeAsync(e.OldStartingIndex, e.OldItems.Count, e.NewItems.Cast<TResult>()).ConfigureAwait(false);
+                        }
+                        else
+                        {
+                            if (e.OldItems != null && e.OldStartingIndex >= 0)
+                                await rangeObservableCollection.RemoveRangeAsync(e.OldStartingIndex, e.OldItems.Count).ConfigureAwait(false);
+                            if (e.NewItems != null && e.NewStartingIndex >= 0)
+                                await rangeObservableCollection.InsertRangeAsync(e.NewStartingIndex, e.NewItems.Cast<TResult>()).ConfigureAwait(false);
+                        }
                     }
                 }
             }
