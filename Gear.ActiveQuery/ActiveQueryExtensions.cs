@@ -2009,8 +2009,6 @@ namespace Gear.ActiveQuery
             return result;
         }
 
-        public static ActiveEnumerable<TSource> ToActiveEnumerable<TSource>(this IReadOnlyList<TSource> source) => new ActiveEnumerable<TSource>(source);
-
         public static ActiveEnumerable<TSource> ActiveWhere<TSource>(this IReadOnlyList<TSource> source, Func<TSource, bool> predicate, params string[] predicateProperties) where TSource : class =>
             ActiveWhere(source, (source as ISynchronizable)?.SynchronizationContext, predicate, predicateProperties);
 
@@ -2093,5 +2091,154 @@ namespace Gear.ActiveQuery
                 rangeObservableCollection.IsSynchronized = true;
             return result;
         }
+
+        public static ActiveEnumerable<TResult> ToActiveEnumerable<TKey, TValue, TResult>(this IReadOnlyDictionary<TKey, TValue> source, Func<TKey, TValue, TResult> selector, Action<TResult> releaser = null, Action<TKey, TValue, string, TResult> updater = null, params string[] selectorProperties) =>
+            ToActiveEnumerable(source, (source as ISynchronizable)?.SynchronizationContext, selector, releaser, updater, selectorProperties);
+
+        public static ActiveEnumerable<TResult> ToActiveEnumerable<TKey, TValue, TResult>(this IReadOnlyDictionary<TKey, TValue> source, SynchronizationContext synchronizationContext, Func<TKey, TValue, TResult> selector, Action<TResult> releaser = null, Action<TKey, TValue, string, TResult> updater = null, params string[] selectorProperties)
+        {
+            var keyToIndex = source is SortedDictionary<TKey, TValue> || source is ObservableSortedDictionary<TKey, TValue> || source is SynchronizedObservableSortedDictionary<TKey, TValue> ? (IDictionary<TKey, int>)new SortedDictionary<TKey, TValue>() : (IDictionary<TKey, int>)new Dictionary<TKey, TValue>();
+            var rangeObservableCollection = new SynchronizedRangeObservableCollection<TResult>(synchronizationContext, source.Select((element, index) =>
+            {
+                keyToIndex.Add(element.Key, index);
+                return selector(element.Key, element.Value);
+            }), false);
+            var rangeObservableCollectionAccess = new AsyncLock();
+            var monitor = ActiveDictionaryMonitor<TKey, TValue>.Monitor(source, selectorProperties);
+
+            async void valueAddedHandler(object sender, NotifyDictionaryValueEventArgs<TKey, TValue> e)
+            {
+                using (await rangeObservableCollectionAccess.LockAsync().ConfigureAwait(false))
+                {
+                    keyToIndex.Add(e.Key, keyToIndex.Count);
+                    await rangeObservableCollection.AddAsync(selector(e.Key, e.Value)).ConfigureAwait(false);
+                }
+            }
+
+            async void valuePropertyChangedHandler(object sender, ValuePropertyChangeEventArgs<TKey, TValue> e)
+            {
+                TResult element;
+                using (await rangeObservableCollectionAccess.LockAsync().ConfigureAwait(false))
+                {
+                    if (updater == null)
+                        element = await rangeObservableCollection.ReplaceAsync(keyToIndex[e.Key], selector(e.Key, e.Value)).ConfigureAwait(false);
+                    else
+                        element = await rangeObservableCollection.GetItemAsync(keyToIndex[e.Key]).ConfigureAwait(false);
+                }
+                if (updater == null)
+                    releaser?.Invoke(element);
+                else
+                    updater(e.Key, e.Value, e.PropertyName, element);
+            }
+
+            async void valueRemovedHandler(object sender, NotifyDictionaryValueEventArgs<TKey, TValue> e)
+            {
+                using (await rangeObservableCollectionAccess.LockAsync().ConfigureAwait(false))
+                {
+                    var removingIndex = keyToIndex[e.Key];
+                    keyToIndex.Remove(e.Key);
+                    foreach (var key in keyToIndex.Keys)
+                    {
+                        var index = keyToIndex[key];
+                        if (index > removingIndex)
+                            keyToIndex[key] = index - 1;
+                    }
+                    TResult removedElement = default;
+                    if (releaser != null)
+                        removedElement = await rangeObservableCollection.GetItemAsync(removingIndex).ConfigureAwait(false);
+                    await rangeObservableCollection.RemoveAtAsync(removingIndex).ConfigureAwait(false);
+                    releaser?.Invoke(removedElement);
+                }
+            }
+
+            async void valueReplacedHandler(object sender, NotifyDictionaryValueReplacedEventArgs<TKey, TValue> e)
+            {
+                using (await rangeObservableCollectionAccess.LockAsync().ConfigureAwait(false))
+                {
+                    var index = keyToIndex[e.Key];
+                    releaser?.Invoke(await rangeObservableCollection.GetItemAsync(index).ConfigureAwait(false));
+                    await rangeObservableCollection.SetItemAsync(index, selector(e.Key, e.NewValue)).ConfigureAwait(false);
+                }
+            }
+
+            async void valuesAddedHandler(object sender, NotifyDictionaryValuesEventArgs<TKey, TValue> e)
+            {
+                if (e.KeyValuePairs.Any())
+                    using (await rangeObservableCollectionAccess.LockAsync().ConfigureAwait(false))
+                    {
+                        var lastIndex = keyToIndex.Count - 1;
+                        foreach (var keyValuePair in e.KeyValuePairs)
+                            keyToIndex.Add(keyValuePair.Key, ++lastIndex);
+                        await rangeObservableCollection.AddRangeAsync(e.KeyValuePairs.Select(kvp => selector(kvp.Key, kvp.Value))).ConfigureAwait(false);
+                    }
+            }
+
+            async void valuesRemovedHandler(object sender, NotifyDictionaryValuesEventArgs<TKey, TValue> e)
+            {
+                if (e.KeyValuePairs.Any())
+                    using (await rangeObservableCollectionAccess.LockAsync().ConfigureAwait(false))
+                    {
+                        var removingIndicies = new List<int>();
+                        foreach (var kvp in e.KeyValuePairs)
+                        {
+                            removingIndicies.Add(keyToIndex[kvp.Key]);
+                            keyToIndex.Remove(kvp.Key);
+                        }
+                        removingIndicies.Sort();
+                        var indexLowerBound = removingIndicies[0];
+                        var indexUpperBound = removingIndicies.Count == 1 ? (int?)null : removingIndicies[1];
+                        var decrementAmount = 1;
+                        var removedElements = releaser != null ? new List<TResult>() : null;
+                        foreach (var kvp in keyToIndex.Where(kvp => kvp.Value > indexLowerBound).OrderBy(kvp => kvp.Value))
+                        {
+                            if (kvp.Value > indexUpperBound)
+                            {
+                                var currentLowerBound = indexLowerBound;
+                                var removingIndexCount = 0;
+                                while (kvp.Value > indexUpperBound)
+                                {
+                                    ++removingIndexCount;
+                                    removingIndicies.RemoveAt(0);
+                                    ++decrementAmount;
+                                    indexLowerBound = indexUpperBound.Value;
+                                    indexUpperBound = removingIndicies.Count == 1 ? (int?)null : removingIndicies[1];
+                                }
+                                if (removingIndexCount == 1)
+                                {
+                                    await rangeObservableCollection.RemoveAtAsync(currentLowerBound).ConfigureAwait(false);
+                                }
+                                else
+                                {
+                                    await rangeObservableCollection.RemoveRangeAsync(currentLowerBound, removingIndexCount).ConfigureAwait(false);
+                                }
+                            }
+                            keyToIndex[kvp.Key] = kvp.Value - decrementAmount;
+                        }
+                    }
+            }
+
+            monitor.ValueAdded += valueAddedHandler;
+            monitor.ValuePropertyChanged += valuePropertyChangedHandler;
+            monitor.ValueRemoved += valueRemovedHandler;
+            monitor.ValueReplaced += valueReplacedHandler;
+            monitor.ValuesAdded += valuesAddedHandler;
+            monitor.ValuesRemoved += valuesRemovedHandler;
+            var result = new ActiveEnumerable<TResult>(rangeObservableCollection, disposing =>
+            {
+                monitor.ValueAdded -= valueAddedHandler;
+                monitor.ValuePropertyChanged -= valuePropertyChangedHandler;
+                monitor.ValueRemoved -= valueRemovedHandler;
+                monitor.ValueReplaced -= valueReplacedHandler;
+                monitor.ValuesAdded -= valuesAddedHandler;
+                monitor.ValuesRemoved -= valuesRemovedHandler;
+                if (disposing)
+                    monitor.Dispose();
+            });
+            if (synchronizationContext != null)
+                rangeObservableCollection.IsSynchronized = true;
+            return result;
+        }
+
+        public static ActiveEnumerable<TSource> ToActiveEnumerable<TSource>(this IReadOnlyList<TSource> source) => new ActiveEnumerable<TSource>(source);
     }
 }

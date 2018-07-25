@@ -1,9 +1,9 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace Gear.ActiveQuery
 {
-    public class ElementMembershipEventArgs<T> : EventArgs where T : class
+    public class ElementMembershipEventArgs<T> : EventArgs
     {
         public ElementMembershipEventArgs(IEnumerable<T> elements, int index, int count)
         {

@@ -1,9 +1,9 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace Gear.ActiveQuery
 {
-    public class ElementsMovedEventArgs<T> : EventArgs where T : class
+    public class ElementsMovedEventArgs<T> : EventArgs
     {
         public ElementsMovedEventArgs(IEnumerable<T> elements, int fromIndex, int toIndex, int count)
         {

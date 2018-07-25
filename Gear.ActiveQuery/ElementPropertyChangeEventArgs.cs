@@ -1,8 +1,8 @@
-﻿using System;
+using System;
 
 namespace Gear.ActiveQuery
 {
-    public class ElementPropertyChangeEventArgs<T> : EventArgs where T : class
+    public class ElementPropertyChangeEventArgs<T> : EventArgs
     {
         public ElementPropertyChangeEventArgs(T element, string propertyName)
         {
