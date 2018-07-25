@@ -33,11 +33,12 @@ namespace Gear.ActiveQuery
             }
         }
 
-        readonly IReadOnlyDictionary<TKey, TValue> readOnlyDictionary;
+        readonly ActiveDictionaryMonitor<TKey, TValue> baseMonitor;
         int instances;
+        readonly IReadOnlyDictionary<TKey, TValue> readOnlyDictionary;
+        readonly IReadOnlyList<string> relevantPropertyNames;
         readonly Dictionary<TKey, PropertyChangedEventHandler> valuePropertyChangedEventHandlers = new Dictionary<TKey, PropertyChangedEventHandler>();
         readonly Dictionary<TKey, PropertyChangingEventHandler> valuePropertyChangingEventHandlers = new Dictionary<TKey, PropertyChangingEventHandler>();
-        readonly IReadOnlyList<string> relevantPropertyNames;
 
         public event EventHandler<NotifyDictionaryValueEventArgs<TKey, TValue>> ValueAdded;
         public event EventHandler<ValuePropertyChangeEventArgs<TKey, TValue>> ValuePropertyChanged;
@@ -49,21 +50,36 @@ namespace Gear.ActiveQuery
 
         ActiveDictionaryMonitor(IReadOnlyDictionary<TKey, TValue> readOnlyDictionary, params string[] relevantPropertyNames)
         {
-            var valueTypeInfo = typeof(TValue).GetTypeInfo();
-            ValuesNotifyChanging = typeof(INotifyPropertyChanging).GetTypeInfo().IsAssignableFrom(valueTypeInfo);
-            ValuesNotifyChanged = typeof(INotifyPropertyChanged).GetTypeInfo().IsAssignableFrom(valueTypeInfo);
-            this.relevantPropertyNames = relevantPropertyNames.ToList();
-
-            this.readOnlyDictionary = readOnlyDictionary;
-            if (this.readOnlyDictionary is INotifyDictionaryChanged<TKey, TValue> notifyingDictionary)
+            if (relevantPropertyNames?.Any() ?? false)
             {
-                notifyingDictionary.ValueAdded += ValueAddedHandler;
-                notifyingDictionary.ValueRemoved += ValueRemovedHandler;
-                notifyingDictionary.ValueReplaced += ValueReplacedHandler;
-                notifyingDictionary.ValuesAdded += ValuesAddedHandler;
-                notifyingDictionary.ValuesRemoved += ValuesRemovedHandler;
+                this.relevantPropertyNames = relevantPropertyNames.ToList();
+                baseMonitor = Monitor(readOnlyDictionary);
+                baseMonitor.ValueAdded += BaseMonitor_ValueAdded;
+                baseMonitor.ValuePropertyChanged += BaseMonitor_ValuePropertyChanged;
+                baseMonitor.ValuePropertyChanging += BaseMonitor_ValuePropertyChanging;
+                baseMonitor.ValueRemoved += BaseMonitor_ValueRemoved;
+                baseMonitor.ValueReplaced += BaseMonitor_ValueReplaced;
+                baseMonitor.ValuesAdded += BaseMonitor_ValuesAdded;
+                baseMonitor.ValuesRemoved += BaseMonitor_ValuesRemoved;
+                ValuesNotifyChanged = baseMonitor.ValuesNotifyChanged;
+                ValuesNotifyChanging = baseMonitor.ValuesNotifyChanging;
             }
-            AttachToValues(readOnlyDictionary);
+            else
+            {
+                var valueTypeInfo = typeof(TValue).GetTypeInfo();
+                ValuesNotifyChanging = typeof(INotifyPropertyChanging).GetTypeInfo().IsAssignableFrom(valueTypeInfo);
+                ValuesNotifyChanged = typeof(INotifyPropertyChanged).GetTypeInfo().IsAssignableFrom(valueTypeInfo);
+                this.readOnlyDictionary = readOnlyDictionary;
+                if (this.readOnlyDictionary is INotifyDictionaryChanged<TKey, TValue> notifyingDictionary)
+                {
+                    notifyingDictionary.ValueAdded += ValueAddedHandler;
+                    notifyingDictionary.ValueRemoved += ValueRemovedHandler;
+                    notifyingDictionary.ValueReplaced += ValueReplacedHandler;
+                    notifyingDictionary.ValuesAdded += ValuesAddedHandler;
+                    notifyingDictionary.ValuesRemoved += ValuesRemovedHandler;
+                }
+                AttachToValues(readOnlyDictionary);
+            }
         }
 
         void AttachToValue(TKey key, TValue value)
@@ -124,6 +140,28 @@ namespace Gear.ActiveQuery
                     ((INotifyPropertyChanged)value).PropertyChanged += valuePropertyChangedEventHandler;
                 }
         }
+
+        void BaseMonitor_ValueAdded(object sender, NotifyDictionaryValueEventArgs<TKey, TValue> e) => OnValueAdded(e);
+
+        void BaseMonitor_ValuePropertyChanged(object sender, ValuePropertyChangeEventArgs<TKey, TValue> e)
+        {
+            if (relevantPropertyNames.Count == 0 || relevantPropertyNames.Contains(e.PropertyName))
+                OnValuePropertyChanged(e);
+        }
+
+        void BaseMonitor_ValuePropertyChanging(object sender, ValuePropertyChangeEventArgs<TKey, TValue> e)
+        {
+            if (relevantPropertyNames.Count == 0 || relevantPropertyNames.Contains(e.PropertyName))
+                OnValuePropertyChanging(e);
+        }
+
+        void BaseMonitor_ValueRemoved(object sender, NotifyDictionaryValueEventArgs<TKey, TValue> e) => OnValueRemoved(e);
+
+        void BaseMonitor_ValueReplaced(object sender, NotifyDictionaryValueReplacedEventArgs<TKey, TValue> e) => OnValueReplaced(e);
+
+        void BaseMonitor_ValuesAdded(object sender, NotifyDictionaryValuesEventArgs<TKey, TValue> e) => OnValuesAdded(e);
+
+        void BaseMonitor_ValuesRemoved(object sender, NotifyDictionaryValuesEventArgs<TKey, TValue> e) => OnValuesRemoved(e);
 
         void DetachFromValue(TKey key, TValue value)
         {
@@ -186,7 +224,21 @@ namespace Gear.ActiveQuery
                 else
                     relevantProperties = null;
                 monitors.Remove((readOnlyDictionary, relevantProperties));
-                if (disposing)
+            }
+            if (disposing)
+            {
+                if (baseMonitor != null)
+                {
+                    baseMonitor.ValueAdded -= BaseMonitor_ValueAdded;
+                    baseMonitor.ValuePropertyChanged -= BaseMonitor_ValuePropertyChanged;
+                    baseMonitor.ValuePropertyChanging -= BaseMonitor_ValuePropertyChanging;
+                    baseMonitor.ValueRemoved -= BaseMonitor_ValueRemoved;
+                    baseMonitor.ValueReplaced -= BaseMonitor_ValueReplaced;
+                    baseMonitor.ValuesAdded -= BaseMonitor_ValuesAdded;
+                    baseMonitor.ValuesRemoved -= BaseMonitor_ValuesRemoved;
+                    baseMonitor.Dispose();
+                }
+                else
                 {
                     if (readOnlyDictionary is INotifyDictionaryChanged<TKey, TValue> notifyingDictionary)
                     {

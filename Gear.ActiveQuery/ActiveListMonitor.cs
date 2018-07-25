@@ -8,24 +8,24 @@ using System.Reflection;
 
 namespace Gear.ActiveQuery
 {
-    public class ActiveListMonitor<T> : SyncDisposable where T : class
+    public class ActiveListMonitor<T> : SyncDisposable
     {
-        static readonly Dictionary<(IReadOnlyList<T> collection, string relevantProperties), object> monitors = new Dictionary<(IReadOnlyList<T> collection, string relevantProperties), object>();
+        static readonly Dictionary<(IReadOnlyList<T> list, string relevantProperties), object> monitors = new Dictionary<(IReadOnlyList<T> list, string relevantProperties), object>();
         static readonly object instanceManagementLock = new object();
 
-        public static ActiveListMonitor<T> Monitor(IReadOnlyList<T> collection, params string[] relevantPropertyNames)
+        public static ActiveListMonitor<T> Monitor(IReadOnlyList<T> readOnlyList, params string[] relevantPropertyNames)
         {
             string relevantProperties;
             if (relevantPropertyNames?.Any() ?? false)
                 relevantProperties = string.Join("|", relevantPropertyNames.OrderBy(s => s));
             else
                 relevantProperties = null;
-            var key = (collection, relevantProperties);
+            var key = (readOnlyList, relevantProperties);
             lock (instanceManagementLock)
             {
                 if (!monitors.TryGetValue(key, out var obj))
                 {
-                    obj = new ActiveListMonitor<T>(collection, relevantPropertyNames);
+                    obj = new ActiveListMonitor<T>(readOnlyList, relevantPropertyNames);
                     monitors.Add(key, obj);
                 }
                 var monitor = obj as ActiveListMonitor<T>;
@@ -34,9 +34,10 @@ namespace Gear.ActiveQuery
             }
         }
 
-        readonly IReadOnlyList<T> readOnlyList;
+        readonly ActiveListMonitor<T> baseMonitor;
         List<T> elementList;
         int instances;
+        readonly IReadOnlyList<T> readOnlyList;
         readonly IReadOnlyList<string> relevantPropertyNames;
 
         public event EventHandler<ElementPropertyChangeEventArgs<T>> ElementPropertyChanged;
@@ -47,16 +48,29 @@ namespace Gear.ActiveQuery
 
         ActiveListMonitor(IReadOnlyList<T> readOnlyList, params string[] relevantPropertyNames)
         {
-            var elementTypeInfo = typeof(T).GetTypeInfo();
-            ElementsNotifyChanging = typeof(INotifyPropertyChanging).GetTypeInfo().IsAssignableFrom(elementTypeInfo);
-            ElementsNotifyChanged = typeof(INotifyPropertyChanged).GetTypeInfo().IsAssignableFrom(elementTypeInfo);
-            this.relevantPropertyNames = relevantPropertyNames.ToList();
-
-            this.readOnlyList = readOnlyList;
-            elementList = this.readOnlyList.ToList();
-            if (this.readOnlyList is INotifyCollectionChanged notifyingCollection)
-                notifyingCollection.CollectionChanged += CollectionChangedHandler;
-            AttachToElements(elementList);
+            if (relevantPropertyNames?.Any() ?? false)
+            {
+                this.relevantPropertyNames = relevantPropertyNames.ToList();
+                baseMonitor = Monitor(readOnlyList);
+                baseMonitor.ElementPropertyChanged += BaseMonitor_ElementPropertyChanged;
+                baseMonitor.ElementPropertyChanging += BaseMonitor_ElementPropertyChanging;
+                baseMonitor.ElementsAdded += BaseMonitor_ElementsAdded;
+                baseMonitor.ElementsMoved += BaseMonitor_ElementsMoved;
+                baseMonitor.ElementsRemoved += BaseMonitor_ElementsRemoved;
+                ElementsNotifyChanged = baseMonitor.ElementsNotifyChanged;
+                ElementsNotifyChanging = baseMonitor.ElementsNotifyChanging;
+            }
+            else
+            {
+                var elementTypeInfo = typeof(T).GetTypeInfo();
+                ElementsNotifyChanging = typeof(INotifyPropertyChanging).GetTypeInfo().IsAssignableFrom(elementTypeInfo);
+                ElementsNotifyChanged = typeof(INotifyPropertyChanged).GetTypeInfo().IsAssignableFrom(elementTypeInfo);
+                this.readOnlyList = readOnlyList;
+                elementList = this.readOnlyList.ToList();
+                if (this.readOnlyList is INotifyCollectionChanged notifyingCollection)
+                    notifyingCollection.CollectionChanged += CollectionChangedHandler;
+                AttachToElements(elementList);
+            }
         }
 
         void AttachToElements(IEnumerable<T> elements)
@@ -74,6 +88,24 @@ namespace Gear.ActiveQuery
                 foreach (var element in elements)
                     ((INotifyPropertyChanged)element).PropertyChanged += ElementPropertyChangedHandler;
         }
+
+        void BaseMonitor_ElementPropertyChanged(object sender, ElementPropertyChangeEventArgs<T> e)
+        {
+            if (relevantPropertyNames.Count == 0 || relevantPropertyNames.Contains(e.PropertyName))
+                OnElementPropertyChanged(e);
+        }
+
+        void BaseMonitor_ElementPropertyChanging(object sender, ElementPropertyChangeEventArgs<T> e)
+        {
+            if (relevantPropertyNames.Count == 0 || relevantPropertyNames.Contains(e.PropertyName))
+                OnElementPropertyChanging(e);
+        }
+
+        void BaseMonitor_ElementsAdded(object sender, ElementMembershipEventArgs<T> e) => OnElementsAdded(e);
+
+        void BaseMonitor_ElementsMoved(object sender, ElementsMovedEventArgs<T> e) => OnElementsMoved(e);
+
+        void BaseMonitor_ElementsRemoved(object sender, ElementMembershipEventArgs<T> e) => OnElementsRemoved(e);
 
         void CollectionChangedHandler(object sender, NotifyCollectionChangedEventArgs e)
         {
@@ -152,7 +184,19 @@ namespace Gear.ActiveQuery
                 else
                     relevantProperties = null;
                 monitors.Remove((readOnlyList, relevantProperties));
-                if (disposing)
+            }
+            if (disposing)
+            {
+                if (baseMonitor != null)
+                {
+                    baseMonitor.ElementPropertyChanged -= BaseMonitor_ElementPropertyChanged;
+                    baseMonitor.ElementPropertyChanging -= BaseMonitor_ElementPropertyChanging;
+                    baseMonitor.ElementsAdded -= BaseMonitor_ElementsAdded;
+                    baseMonitor.ElementsMoved -= BaseMonitor_ElementsMoved;
+                    baseMonitor.ElementsRemoved -= BaseMonitor_ElementsRemoved;
+                    baseMonitor.Dispose();
+                }
+                else
                 {
                     if (readOnlyList is INotifyCollectionChanged notifyingCollection)
                         notifyingCollection.CollectionChanged -= CollectionChangedHandler;
@@ -175,19 +219,11 @@ namespace Gear.ActiveQuery
 
         protected virtual void OnElementPropertyChanged(ElementPropertyChangeEventArgs<T> e) => ElementPropertyChanged?.Invoke(this, e);
 
-        void OnElementPropertyChanged(T element, string propertyName)
-        {
-            if (relevantPropertyNames.Count == 0 || relevantPropertyNames.Contains(propertyName))
-                OnElementPropertyChanged(new ElementPropertyChangeEventArgs<T>(element, propertyName));
-        }
+        void OnElementPropertyChanged(T element, string propertyName) => OnElementPropertyChanged(new ElementPropertyChangeEventArgs<T>(element, propertyName));
 
         protected virtual void OnElementPropertyChanging(ElementPropertyChangeEventArgs<T> e) => ElementPropertyChanging?.Invoke(this, e);
 
-        void OnElementPropertyChanging(T element, string propertyName)
-        {
-            if (relevantPropertyNames.Count == 0 || relevantPropertyNames.Contains(propertyName))
-                OnElementPropertyChanging(new ElementPropertyChangeEventArgs<T>(element, propertyName));
-        }
+        void OnElementPropertyChanging(T element, string propertyName) => OnElementPropertyChanging(new ElementPropertyChangeEventArgs<T>(element, propertyName));
 
         protected virtual void OnElementsAdded(ElementMembershipEventArgs<T> e) => ElementsAdded?.Invoke(this, e);
 
