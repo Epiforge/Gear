@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Gear.Components
 {
-    public class SynchronizedObservableSortedDictionary<TKey, TValue> : ObservableSortedDictionary<TKey, TValue>, ISynchronizable
+    public class SynchronizedObservableSortedDictionary<TKey, TValue> : ObservableSortedDictionary<TKey, TValue>, IAsyncRangeDictionary<TKey, TValue>, ISynchronizable
     {
         public SynchronizedObservableSortedDictionary(SynchronizationContext synchronizationContext, bool isSynchronized = true) : base()
         {
@@ -96,7 +96,7 @@ namespace Gear.Components
 
         protected override void SetValue(object key, object value) => this.Execute(() => base.SetValue(key, value));
 
-        public virtual Task SetValue(TKey key, TValue value) => this.ExecuteAsync(() => base[key] = value);
+        public virtual Task SetValueAsync(TKey key, TValue value) => this.ExecuteAsync(() => base[key] = value);
 
         protected override (bool valueRetrieved, TValue value) TryGetValue(TKey key) => this.Execute(() => base.TryGetValue(key));
 
