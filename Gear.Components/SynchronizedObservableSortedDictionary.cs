@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Gear.Components
 {
-    public class SynchronizedObservableSortedDictionary<TKey, TValue> : ObservableSortedDictionary<TKey, TValue>, IAsyncRangeDictionary<TKey, TValue>, ISynchronizable
+    public class SynchronizedObservableSortedDictionary<TKey, TValue> : ObservableSortedDictionary<TKey, TValue>, ISynchronizableRangeDictionary<TKey, TValue>
     {
         public SynchronizedObservableSortedDictionary(SynchronizationContext synchronizationContext, bool isSynchronized = true) : base()
         {
