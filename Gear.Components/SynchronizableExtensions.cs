@@ -70,5 +70,26 @@ namespace Gear.Components
             synchronizable.SynchronizationContext.Post(state => completion.AttemptSetResult(func), null);
             return completion.Task;
         }
+
+        public static async Task ExecuteAsync(this ISynchronizable synchronizable, Func<Task> asyncAction)
+        {
+            if (!synchronizable.IsSynchronized || synchronizable.SynchronizationContext == null || SynchronizationContext.Current == synchronizable.SynchronizationContext)
+            {
+                await asyncAction().ConfigureAwait(false);
+                return;
+            }
+            var completion = new TaskCompletionSource<object>();
+            synchronizable.SynchronizationContext.Post(async state => await completion.AttemptSetResultAsync(asyncAction).ConfigureAwait(false), null);
+            await completion.Task.ConfigureAwait(false);
+        }
+
+        public static async Task<TResult> ExecuteAsync<TResult>(this ISynchronizable synchronizable, Func<Task<TResult>> asyncFunc)
+        {
+            if (!synchronizable.IsSynchronized || synchronizable.SynchronizationContext == null || SynchronizationContext.Current == synchronizable.SynchronizationContext)
+                return await asyncFunc().ConfigureAwait(false);
+            var completion = new TaskCompletionSource<TResult>();
+            synchronizable.SynchronizationContext.Post(async state => await completion.AttemptSetResultAsync(asyncFunc).ConfigureAwait(false), null);
+            return await completion.Task.ConfigureAwait(false);
+        }
     }
 }
