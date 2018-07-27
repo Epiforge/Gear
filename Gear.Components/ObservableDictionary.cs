@@ -125,6 +125,9 @@ namespace Gear.Components
             NotifyCountChanged();
         }
 
+        public virtual void AddRange(IEnumerable<KeyValuePair<TKey, TValue>> keyValuePairs) =>
+            AddRange(keyValuePairs.ToList());
+
         public virtual void AddRange(IReadOnlyList<KeyValuePair<TKey, TValue>> keyValuePairs)
         {
             if (keyValuePairs.Any(kvp => gd.ContainsKey(kvp.Key)))
@@ -246,7 +249,7 @@ namespace Gear.Components
             return false;
         }
 
-        public virtual IReadOnlyList<TKey> RemoveRange(IReadOnlyList<TKey> keys)
+        public virtual IReadOnlyList<TKey> RemoveRange(IEnumerable<TKey> keys)
         {
             var removingKeyValuePairs = new List<KeyValuePair<TKey, TValue>>();
             foreach (var key in keys)

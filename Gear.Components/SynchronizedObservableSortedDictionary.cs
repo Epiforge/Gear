@@ -42,7 +42,11 @@ namespace Gear.Components
 
         public virtual Task AddAsync(TKey key, TValue value) => this.ExecuteAsync(() => base.Add(key, value));
 
+        public override void AddRange(IEnumerable<KeyValuePair<TKey, TValue>> keyValuePairs) => this.Execute(() => base.AddRange(keyValuePairs));
+
         public override void AddRange(IReadOnlyList<KeyValuePair<TKey, TValue>> keyValuePairs) => this.Execute(() => base.AddRange(keyValuePairs));
+
+        public virtual Task AddRangeAsync(IEnumerable<KeyValuePair<TKey, TValue>> keyValuePairs) => this.ExecuteAsync(() => base.AddRange(keyValuePairs));
 
         public virtual Task AddRangeAsync(IReadOnlyList<KeyValuePair<TKey, TValue>> keyValuePairs) => this.ExecuteAsync(() => base.AddRange(keyValuePairs));
 
@@ -90,9 +94,9 @@ namespace Gear.Components
 
         public virtual Task<bool> RemoveAsync(TKey key) => this.ExecuteAsync(() => base.Remove(key));
 
-        public override IReadOnlyList<TKey> RemoveRange(IReadOnlyList<TKey> keys) => this.Execute(() => base.RemoveRange(keys));
+        public override IReadOnlyList<TKey> RemoveRange(IEnumerable<TKey> keys) => this.Execute(() => base.RemoveRange(keys));
 
-        public virtual Task<IReadOnlyList<TKey>> RemoveRangeAsync(IReadOnlyList<TKey> keys) => this.ExecuteAsync(() => base.RemoveRange(keys));
+        public virtual Task<IReadOnlyList<TKey>> RemoveRangeAsync(IEnumerable<TKey> keys) => this.ExecuteAsync(() => base.RemoveRange(keys));
 
         protected override void SetValue(object key, object value) => this.Execute(() => base.SetValue(key, value));
 
