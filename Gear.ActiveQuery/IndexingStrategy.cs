@@ -2,7 +2,7 @@ namespace Gear.ActiveQuery
 {
     public enum IndexingStrategy
     {
-        None,
+        NoneOrInherit,
         HashTable,
         SelfBalancingBinarySearchTree
     }

@@ -915,10 +915,10 @@ namespace Gear.ActiveQuery
             return result;
         }
 
-        public static ActiveEnumerable<TResult> ActiveSelect<TSource, TResult>(this IReadOnlyList<TSource> source, Func<TSource, TResult> selector, Action<TResult> releaser = null, Action<TSource, string, TResult> updater = null, IndexingStrategy indexingStrategy = IndexingStrategy.None, params string[] selectorProperties) where TSource : class =>
+        public static ActiveEnumerable<TResult> ActiveSelect<TSource, TResult>(this IReadOnlyList<TSource> source, Func<TSource, TResult> selector, Action<TResult> releaser = null, Action<TSource, string, TResult> updater = null, IndexingStrategy indexingStrategy = IndexingStrategy.NoneOrInherit, params string[] selectorProperties) where TSource : class =>
             ActiveSelect(source, (source as ISynchronizable)?.SynchronizationContext, selector, releaser, updater, indexingStrategy, selectorProperties);
 
-        public static ActiveEnumerable<TResult> ActiveSelect<TSource, TResult>(this IReadOnlyList<TSource> source, SynchronizationContext synchronizationContext, Func<TSource, TResult> selector, Action<TResult> releaser = null, Action<TSource, string, TResult> updater = null, IndexingStrategy indexingStrategy = IndexingStrategy.None, params string[] selectorProperties) where TSource : class
+        public static ActiveEnumerable<TResult> ActiveSelect<TSource, TResult>(this IReadOnlyList<TSource> source, SynchronizationContext synchronizationContext, Func<TSource, TResult> selector, Action<TResult> releaser = null, Action<TSource, string, TResult> updater = null, IndexingStrategy indexingStrategy = IndexingStrategy.NoneOrInherit, params string[] selectorProperties) where TSource : class
         {
             IDictionary<TSource, int> sourceToIndex;
             switch (indexingStrategy)
@@ -933,7 +933,7 @@ namespace Gear.ActiveQuery
                     sourceToIndex = null;
                     break;
             }
-            var rangeObservableCollection = new SynchronizedRangeObservableCollection<TResult>(synchronizationContext, indexingStrategy != IndexingStrategy.None ? source.Select((element, index) =>
+            var rangeObservableCollection = new SynchronizedRangeObservableCollection<TResult>(synchronizationContext, indexingStrategy != IndexingStrategy.NoneOrInherit ? source.Select((element, index) =>
             {
                 sourceToIndex.Add(element, index);
                 return selector(element);
@@ -947,7 +947,7 @@ namespace Gear.ActiveQuery
                 TResult targetElement;
                 using (await rangeObservableCollectionAccess.LockAsync().ConfigureAwait(false))
                 {
-                    var index = indexingStrategy != IndexingStrategy.None ? sourceToIndex[sourceElement] : source.IndexOf(sourceElement);
+                    var index = indexingStrategy != IndexingStrategy.NoneOrInherit ? sourceToIndex[sourceElement] : source.IndexOf(sourceElement);
                     if (updater == null)
                         targetElement = await rangeObservableCollection.ReplaceAsync(index, selector(sourceElement)).ConfigureAwait(false);
                     else
@@ -963,7 +963,7 @@ namespace Gear.ActiveQuery
             {
                 using (await rangeObservableCollectionAccess.LockAsync().ConfigureAwait(false))
                 {
-                    if (indexingStrategy != IndexingStrategy.None)
+                    if (indexingStrategy != IndexingStrategy.NoneOrInherit)
                     {
                         var index = e.Index - 1;
                         foreach (var element in e.Elements)
@@ -979,7 +979,7 @@ namespace Gear.ActiveQuery
             {
                 using (await rangeObservableCollectionAccess.LockAsync().ConfigureAwait(false))
                 {
-                    if (indexingStrategy != IndexingStrategy.None)
+                    if (indexingStrategy != IndexingStrategy.NoneOrInherit)
                     {
                         var endIndex = (e.FromIndex > e.ToIndex ? e.FromIndex : e.ToIndex) + e.Count;
                         for (var i = e.FromIndex < e.ToIndex ? e.FromIndex : e.ToIndex; i < endIndex; ++i)
@@ -995,7 +995,7 @@ namespace Gear.ActiveQuery
                 using (await rangeObservableCollectionAccess.LockAsync().ConfigureAwait(false))
                 {
                     removedItems = await rangeObservableCollection.ReplaceRangeAsync(e.Index, e.Count).ConfigureAwait(false);
-                    if (indexingStrategy != IndexingStrategy.None)
+                    if (indexingStrategy != IndexingStrategy.NoneOrInherit)
                         for (var i = e.Index; i < source.Count; ++i)
                             sourceToIndex[source[i]] = i;
                 }
@@ -2153,6 +2153,119 @@ namespace Gear.ActiveQuery
             return result;
         }
 
+        public static ActiveLookup<TKey, TValue> ActiveWhere<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, Func<TKey, TValue, bool> predicate, IndexingStrategy indexingStrategy = IndexingStrategy.NoneOrInherit, params string[] predicateProperties) =>
+            ActiveWhere(source, (source as ISynchronizable)?.SynchronizationContext, predicate, indexingStrategy, predicateProperties);
+
+        public static ActiveLookup<TKey, TValue> ActiveWhere<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, SynchronizationContext synchronizationContext, Func<TKey, TValue, bool> predicate, IndexingStrategy indexingStrategy = IndexingStrategy.NoneOrInherit, params string[] predicateProperties)
+        {
+            bool selfBalancingBinarySearchTree;
+            switch (indexingStrategy)
+            {
+                case IndexingStrategy.HashTable:
+                    selfBalancingBinarySearchTree = false;
+                    break;
+                case IndexingStrategy.SelfBalancingBinarySearchTree:
+                    selfBalancingBinarySearchTree = true;
+                    break;
+                default:
+                    selfBalancingBinarySearchTree = source is SortedDictionary<TKey, TValue> || source is ObservableSortedDictionary<TKey, TValue> || source is SynchronizedObservableSortedDictionary<TKey, TValue>;
+                    break;
+            }
+            var rangeObservableDictionary = selfBalancingBinarySearchTree ? (ISynchronizableRangeDictionary<TKey, TValue>)new SynchronizedObservableSortedDictionary<TKey, TValue>(synchronizationContext, false) : new SynchronizedObservableDictionary<TKey, TValue>(synchronizationContext, false);
+            rangeObservableDictionary.AddRange(source.Where(kvp => predicate(kvp.Key, kvp.Value)));
+            var rangeDictionaryAccess = new AsyncLock();
+            var monitor = ActiveDictionaryMonitor<TKey, TValue>.Monitor(source, predicateProperties);
+
+            async void valueAddedHandler(object sender, NotifyDictionaryValueEventArgs<TKey, TValue> e)
+            {
+                var key = e.Key;
+                var value = e.Value;
+                var match = predicate(key, value);
+                if (match)
+                    using (await rangeDictionaryAccess.LockAsync().ConfigureAwait(false))
+                        await rangeObservableDictionary.AddAsync(key, value).ConfigureAwait(false);
+            }
+
+            async void valuePropertyChangedHandler(object sender, ValuePropertyChangeEventArgs<TKey, TValue> e)
+            {
+                var key = e.Key;
+                var value = e.Value;
+                var currentMatch = predicate(key, value);
+                using (await rangeDictionaryAccess.LockAsync().ConfigureAwait(false))
+                    await rangeObservableDictionary.ExecuteAsync(() =>
+                    {
+                        var previousMatch = rangeObservableDictionary.ContainsKey(key);
+                        if (previousMatch && !currentMatch)
+                            rangeObservableDictionary.Remove(key);
+                        else if (!previousMatch && currentMatch)
+                            rangeObservableDictionary.Add(key, value);
+                    }).ConfigureAwait(false);
+            }
+
+            async void valueRemovedHandler(object sender, NotifyDictionaryValueEventArgs<TKey, TValue> e)
+            {
+                using (await rangeDictionaryAccess.LockAsync().ConfigureAwait(false))
+                    await rangeObservableDictionary.RemoveAsync(e.Key).ConfigureAwait(false);
+            }
+
+            async void valueReplacedHandler(object sender, NotifyDictionaryValueReplacedEventArgs<TKey, TValue> e)
+            {
+                var key = e.Key;
+                var value = e.NewValue;
+                var currentMatch = predicate(key, value);
+                using (await rangeDictionaryAccess.LockAsync().ConfigureAwait(false))
+                    await rangeObservableDictionary.ExecuteAsync(() =>
+                    {
+                        var previousMatch = rangeObservableDictionary.ContainsKey(key);
+                        if (previousMatch && !currentMatch)
+                            rangeObservableDictionary.Remove(key);
+                        else if (!previousMatch && currentMatch)
+                            rangeObservableDictionary.Add(key, value);
+                    }).ConfigureAwait(false);
+            }
+
+            async void valuesAddedHandler(object sender, NotifyDictionaryValuesEventArgs<TKey, TValue> e)
+            {
+                var matches = e.KeyValuePairs.Where(kvp => predicate(kvp.Key, kvp.Value)).ToList();
+                using (await rangeDictionaryAccess.LockAsync().ConfigureAwait(false))
+                    await rangeObservableDictionary.AddRangeAsync(matches).ConfigureAwait(false);
+            }
+
+            async void valuesRemovedHandler(object sender, NotifyDictionaryValuesEventArgs<TKey, TValue> e)
+            {
+                var keys = e.KeyValuePairs.Select(kvp => kvp.Key).ToList();
+                using (await rangeDictionaryAccess.LockAsync().ConfigureAwait(false))
+                    await rangeObservableDictionary.RemoveRangeAsync(keys).ConfigureAwait(false);
+            }
+
+            monitor.ValueAdded += valueAddedHandler;
+            monitor.ValuePropertyChanged += valuePropertyChangedHandler;
+            monitor.ValueRemoved += valueRemovedHandler;
+            monitor.ValueReplaced += valueReplacedHandler;
+            monitor.ValuesAdded += valuesAddedHandler;
+            monitor.ValuesRemoved += valuesRemovedHandler;
+            var result = new ActiveLookup<TKey, TValue>(rangeObservableDictionary, disposing =>
+            {
+                monitor.ValueAdded -= valueAddedHandler;
+                monitor.ValuePropertyChanged -= valuePropertyChangedHandler;
+                monitor.ValueRemoved -= valueRemovedHandler;
+                monitor.ValueReplaced -= valueReplacedHandler;
+                monitor.ValuesAdded -= valuesAddedHandler;
+                monitor.ValuesRemoved -= valuesRemovedHandler;
+                if (disposing)
+                    monitor.Dispose();
+            });
+            if (synchronizationContext != null)
+                rangeObservableDictionary.IsSynchronized = true;
+            return result;
+        }
+
+        public static ActiveEnumerable<TValue> ToActiveEnumerable<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source) =>
+            ToActiveEnumerable(source, (source as ISynchronizable)?.SynchronizationContext);
+
+        public static ActiveEnumerable<TValue> ToActiveEnumerable<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, SynchronizationContext synchronizationContext) =>
+            ToActiveEnumerable(source, synchronizationContext, (key, value) => value);
+
         public static ActiveEnumerable<TResult> ToActiveEnumerable<TKey, TValue, TResult>(this IReadOnlyDictionary<TKey, TValue> source, Func<TKey, TValue, TResult> selector, Action<TResult> releaser = null, Action<TKey, TValue, string, TResult> updater = null, params string[] selectorProperties) =>
             ToActiveEnumerable(source, (source as ISynchronizable)?.SynchronizationContext, selector, releaser, updater, selectorProperties);
 
@@ -2199,7 +2312,7 @@ namespace Gear.ActiveQuery
                 {
                     var removingIndex = keyToIndex[e.Key];
                     keyToIndex.Remove(e.Key);
-                    foreach (var key in keyToIndex.Keys)
+                    foreach (var key in keyToIndex.Keys.ToList())
                     {
                         var index = keyToIndex[key];
                         if (index > removingIndex)
@@ -2241,32 +2354,35 @@ namespace Gear.ActiveQuery
                             removingIndicies.Add(keyToIndex[kvp.Key]);
                             keyToIndex.Remove(kvp.Key);
                         }
-                        removingIndicies.Sort();
-                        var indexLowerBound = removingIndicies[0];
-                        var indexUpperBound = removingIndicies.Count == 1 ? (int?)null : removingIndicies[1];
-                        var decrementAmount = 1;
-                        var removedElements = releaser != null ? new List<TResult>() : null;
-                        foreach (var kvp in keyToIndex.Where(kvp => kvp.Value > indexLowerBound).OrderBy(kvp => kvp.Value))
+                        var rangeStart = -1;
+                        var rangeCount = 0;
+                        await rangeObservableCollection.ExecuteAsync(() =>
                         {
-                            if (kvp.Value > indexUpperBound)
+                            foreach (var removingIndex in removingIndicies.OrderByDescending(i => i))
                             {
-                                var currentLowerBound = indexLowerBound;
-                                var removingIndexCount = 0;
-                                while (kvp.Value > indexUpperBound)
+                                if (removingIndex != rangeStart - 1 && rangeStart != -1)
                                 {
-                                    ++removingIndexCount;
-                                    removingIndicies.RemoveAt(0);
-                                    ++decrementAmount;
-                                    indexLowerBound = indexUpperBound.Value;
-                                    indexUpperBound = removingIndicies.Count == 1 ? (int?)null : removingIndicies[1];
+                                    if (rangeCount == 1)
+                                        rangeObservableCollection.RemoveAt(rangeStart);
+                                    else
+                                        rangeObservableCollection.RemoveRange(rangeStart, rangeCount);
+                                    rangeCount = 0;
                                 }
-                                if (removingIndexCount == 1)
-                                    await rangeObservableCollection.RemoveAtAsync(currentLowerBound).ConfigureAwait(false);
-                                else
-                                    await rangeObservableCollection.RemoveRangeAsync(currentLowerBound, removingIndexCount).ConfigureAwait(false);
+                                rangeStart = removingIndex;
+                                ++rangeCount;
                             }
-                            keyToIndex[kvp.Key] = kvp.Value - decrementAmount;
-                        }
+                            if (rangeStart != -1)
+                            {
+                                if (rangeCount == 1)
+                                    rangeObservableCollection.RemoveAt(rangeStart);
+                                else
+                                    rangeObservableCollection.RemoveRange(rangeStart, rangeCount);
+                            }
+                        }).ConfigureAwait(false);
+                        var revisedKeyedIndicies = keyToIndex.OrderBy(kvp => kvp.Value).Select((element, index) => (element.Key, index));
+                        keyToIndex = source is SortedDictionary<TKey, TValue> || source is ObservableSortedDictionary<TKey, TValue> || source is SynchronizedObservableSortedDictionary<TKey, TValue> ? (IDictionary<TKey, int>)new SortedDictionary<TKey, TValue>() : (IDictionary<TKey, int>)new Dictionary<TKey, TValue>();
+                        foreach (var (key, index) in revisedKeyedIndicies)
+                            keyToIndex.Add(key, index);
                     }
             }
 
