@@ -321,6 +321,8 @@ namespace Gear.Components
 
         ICollection<TKey> IDictionary<TKey, TValue>.Keys => KeysGenericCollection;
 
+        IEnumerable<TKey> IRangeDictionary<TKey, TValue>.Keys => KeysGenericEnumerable;
+
         IEnumerable<TKey> IReadOnlyDictionary<TKey, TValue>.Keys => KeysGenericEnumerable;
 
         protected virtual ICollection KeysCollection => di.Keys;
@@ -350,6 +352,8 @@ namespace Gear.Components
         ICollection IDictionary.Values => ValuesCollection;
 
         ICollection<TValue> IDictionary<TKey, TValue>.Values => ValuesGenericCollection;
+
+        IEnumerable<TValue> IRangeDictionary<TKey, TValue>.Values => ValuesGenericEnumerable;
 
         IEnumerable<TValue> IReadOnlyDictionary<TKey, TValue>.Values => ValuesGenericEnumerable;
 
