@@ -2,7 +2,7 @@ using System.Collections.Generic;
 
 namespace Gear.Components
 {
-    public interface IRangeDictionary<TKey, TValue> : IDictionary<TKey, TValue>
+    public interface IRangeDictionary<TKey, TValue> : IDictionary<TKey, TValue>, IReadOnlyDictionary<TKey, TValue>
     {
         void AddRange(IEnumerable<KeyValuePair<TKey, TValue>> keyValuePairs);
         void AddRange(IReadOnlyList<KeyValuePair<TKey, TValue>> keyValuePairs);
