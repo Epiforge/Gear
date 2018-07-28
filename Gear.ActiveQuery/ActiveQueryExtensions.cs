@@ -332,6 +332,765 @@ namespace Gear.ActiveQuery
             return result;
         }
 
+        public static ActiveAggregateValue<TResult> ActiveMax<TKey, TValue, TResult>(this IReadOnlyDictionary<TKey, TValue> source, Func<TKey, TValue, TResult> selector, params string[] selectorProperties) where TResult : IComparable<TResult>
+        {
+            var selectorValues = source is SortedDictionary<TKey, TValue> || source is ObservableSortedDictionary<TKey, TValue> || source is SynchronizedObservableSortedDictionary<TKey, TValue> ? (IDictionary<TKey, TResult>)new SortedDictionary<TKey, TResult>() : new Dictionary<TKey, TResult>();
+            var firstIsValid = false;
+            TResult firstMax = default;
+            if (source.Count > 0)
+            {
+                firstIsValid = true;
+                var firstKeyValuePair = source.First();
+                var firstKey = firstKeyValuePair.Key;
+                firstMax = selector(firstKey, firstKeyValuePair.Value);
+                selectorValues.Add(firstKey, firstMax);
+                foreach (var keyValuePair in source.Skip(1))
+                {
+                    var key = keyValuePair.Key;
+                    var selectorValue = selector(key, keyValuePair.Value);
+                    if (selectorValue.CompareTo(firstMax) > 0)
+                        firstMax = selectorValue;
+                    selectorValues.Add(key, selectorValue);
+                }
+            }
+            var monitor = ActiveDictionaryMonitor<TKey, TValue>.Monitor(source, selectorProperties);
+            EventHandler<NotifyDictionaryValueEventArgs<TKey, TValue>> valueAdded = null;
+            EventHandler<ValuePropertyChangeEventArgs<TKey, TValue>> valuePropertyChanged = null;
+            EventHandler<NotifyDictionaryValueEventArgs<TKey, TValue>> valueRemoved = null;
+            EventHandler<NotifyDictionaryValueReplacedEventArgs<TKey, TValue>> valueReplaced = null;
+            EventHandler<NotifyDictionaryValuesEventArgs<TKey, TValue>> valuesAdded = null;
+            EventHandler<NotifyDictionaryValuesEventArgs<TKey, TValue>> valuesRemoved = null;
+            var result = new ActiveAggregateValue<TResult>(firstIsValid, firstMax, out var setValidity, out var setValue, disposing =>
+            {
+                monitor.ValueAdded -= valueAdded;
+                monitor.ValuePropertyChanged -= valuePropertyChanged;
+                monitor.ValueRemoved -= valueRemoved;
+                monitor.ValueReplaced -= valueReplaced;
+                monitor.ValuesAdded -= valuesAdded;
+                monitor.ValuesRemoved -= valuesRemoved;
+                if (disposing)
+                    monitor.Dispose();
+            });
+            valueAdded = (sender, e) =>
+            {
+                var key = e.Key;
+                if (selectorValues.Count == 0)
+                {
+                    var currentMax = selector(key, e.Value);
+                    selectorValues.Add(key, currentMax);
+                    setValidity(true);
+                    setValue(currentMax);
+                }
+                else
+                {
+                    var selectorValue = selector(key, e.Value);
+                    selectorValues.Add(key, selectorValue);
+                    if (selectorValue.CompareTo(result.Value) > 0)
+                        setValue(selectorValue);
+                }
+            };
+            valuePropertyChanged = (sender, e) =>
+            {
+                var key = e.Key;
+                var previousSelectorValue = selectorValues[key];
+                var newSelectorValue = selector(key, e.Value);
+                selectorValues[key] = newSelectorValue;
+                var currentMax = result.Value;
+                var comparison = newSelectorValue.CompareTo(currentMax);
+                if (comparison > 0)
+                    setValue(newSelectorValue);
+                else if (comparison < 0 && previousSelectorValue.CompareTo(currentMax) == 0)
+                    setValue(selectorValues.Values.Max());
+            };
+            valueRemoved = (sender, e) =>
+            {
+                if (selectorValues.Count == 1)
+                {
+                    selectorValues = source is SortedDictionary<TKey, TResult> || source is ObservableSortedDictionary<TKey, TValue> || source is SynchronizedObservableSortedDictionary<TKey, TValue> ? (IDictionary<TKey, TResult>)new SortedDictionary<TKey, TResult>() : (IDictionary<TKey, TResult>)new Dictionary<TKey, TResult>();
+                    setValidity(false);
+                }
+                else
+                {
+                    var key = e.Key;
+                    if (selectorValues.TryGetValue(key, out var selectorValue))
+                    {
+                        selectorValues.Remove(key);
+                        if (selectorValue.CompareTo(result.Value) == 0)
+                            setValue(selectorValues.Values.Max());
+                    }
+                }
+            };
+            valueReplaced = (sender, e) =>
+            {
+                var key = e.Key;
+                var previousSelectorValue = selectorValues[key];
+                var currentSelectorValue = selector(key, e.NewValue);
+                selectorValues[key] = currentSelectorValue;
+                var previousToCurrent = previousSelectorValue.CompareTo(currentSelectorValue);
+                if (previousToCurrent < 0 && currentSelectorValue.CompareTo(result.Value) > 0)
+                    setValue(currentSelectorValue);
+                else if (previousToCurrent > 0 && previousSelectorValue.CompareTo(result.Value) == 0)
+                    setValue(selectorValues.Values.Max());
+            };
+            valuesAdded = (sender, e) =>
+            {
+                if (selectorValues.Count == 0)
+                {
+                    var firstKeyValuePair = e.KeyValuePairs.First();
+                    var currentMax = selector(firstKeyValuePair.Key, firstKeyValuePair.Value);
+                    selectorValues.Add(firstKeyValuePair.Key, currentMax);
+                    foreach (var keyValuePair in e.KeyValuePairs.Skip(1))
+                    {
+                        var key = keyValuePair.Key;
+                        var selectorValue = selector(key, keyValuePair.Value);
+                        if (selectorValue.CompareTo(currentMax) > 0)
+                            currentMax = selectorValue;
+                        selectorValues.Add(key, selectorValue);
+                    }
+                    setValidity(true);
+                    setValue(currentMax);
+                }
+                else
+                {
+                    var currentMax = result.Value;
+                    foreach (var keyValuePair in e.KeyValuePairs)
+                    {
+                        var key = keyValuePair.Key;
+                        var selectorValue = selector(key, keyValuePair.Value);
+                        selectorValues.Add(key, selectorValue);
+                        if (selectorValue.CompareTo(currentMax) > 0)
+                            currentMax = selectorValue;
+                    }
+                    if (currentMax.CompareTo(result.Value) > 0)
+                        setValue(currentMax);
+                }
+            };
+            valuesRemoved = (sender, e) =>
+            {
+                if (selectorValues.Count == e.KeyValuePairs.Count)
+                {
+                    selectorValues = source is SortedDictionary<TKey, TValue> || source is ObservableSortedDictionary<TKey, TValue> || source is SynchronizedObservableSortedDictionary<TKey, TValue> ? (IDictionary<TKey, TResult>)new SortedDictionary<TKey, TResult>() : (IDictionary<TKey, TResult>)new Dictionary<TKey, TResult>();
+                    setValidity(false);
+                }
+                else
+                {
+                    var currentMax = result.Value;
+                    var maxRemoved = false;
+                    foreach (var keyValuePair in e.KeyValuePairs)
+                    {
+                        var key = keyValuePair.Key;
+                        if (selectorValues.TryGetValue(key, out var selectorValue))
+                        {
+                            if (selectorValue.CompareTo(currentMax) == 0)
+                                maxRemoved = true;
+                            selectorValues.Remove(key);
+                        }
+                    }
+                    if (maxRemoved)
+                        setValue(selectorValues.Values.Max());
+                }
+            };
+            monitor.ValueAdded += valueAdded;
+            monitor.ValuePropertyChanged += valuePropertyChanged;
+            monitor.ValueRemoved += valueRemoved;
+            monitor.ValueReplaced += valueReplaced;
+            monitor.ValuesAdded += valuesAdded;
+            monitor.ValuesRemoved += valuesRemoved;
+            return result;
+        }
+
+        public static ActiveAggregateValue<TResult?> ActiveMax<TKey, TValue, TResult>(this IReadOnlyDictionary<TKey, TValue> source, Func<TKey, TValue, TResult?> selector, params string[] selectorProperties) where TResult : struct, IComparable<TResult>
+        {
+            var selectorValues = source is SortedDictionary<TKey, TValue> || source is ObservableSortedDictionary<TKey, TValue> || source is SynchronizedObservableSortedDictionary<TKey, TValue> ? (IDictionary<TKey, TResult?>)new SortedDictionary<TKey, TResult?>() : new Dictionary<TKey, TResult?>();
+            var firstIsValid = false;
+            TResult? firstMax = default;
+            if (source.Count > 0)
+            {
+                firstIsValid = true;
+                var firstKeyValuePair = source.First();
+                var firstKey = firstKeyValuePair.Key;
+                firstMax = selector(firstKey, firstKeyValuePair.Value);
+                selectorValues.Add(firstKey, firstMax);
+                foreach (var keyValuePair in source.Skip(1))
+                {
+                    var key = keyValuePair.Key;
+                    var selectorValue = selector(key, keyValuePair.Value);
+                    if (selectorValue != null && (firstMax == null || selectorValue.Value.CompareTo(firstMax.Value) > 0))
+                        firstMax = selectorValue;
+                    selectorValues.Add(key, selectorValue);
+                }
+            }
+            var monitor = ActiveDictionaryMonitor<TKey, TValue>.Monitor(source, selectorProperties);
+            EventHandler<NotifyDictionaryValueEventArgs<TKey, TValue>> valueAdded = null;
+            EventHandler<ValuePropertyChangeEventArgs<TKey, TValue>> valuePropertyChanged = null;
+            EventHandler<NotifyDictionaryValueEventArgs<TKey, TValue>> valueRemoved = null;
+            EventHandler<NotifyDictionaryValueReplacedEventArgs<TKey, TValue>> valueReplaced = null;
+            EventHandler<NotifyDictionaryValuesEventArgs<TKey, TValue>> valuesAdded = null;
+            EventHandler<NotifyDictionaryValuesEventArgs<TKey, TValue>> valuesRemoved = null;
+            var result = new ActiveAggregateValue<TResult?>(firstIsValid, firstMax, out var setValidity, out var setValue, disposing =>
+            {
+                monitor.ValueAdded -= valueAdded;
+                monitor.ValuePropertyChanged -= valuePropertyChanged;
+                monitor.ValueRemoved -= valueRemoved;
+                monitor.ValueReplaced -= valueReplaced;
+                monitor.ValuesAdded -= valuesAdded;
+                monitor.ValuesRemoved -= valuesRemoved;
+                if (disposing)
+                    monitor.Dispose();
+            });
+            valueAdded = (sender, e) =>
+            {
+                var key = e.Key;
+                if (selectorValues.Count == 0)
+                {
+                    var selectorValue = selector(key, e.Value);
+                    selectorValues.Add(key, selectorValue);
+                    setValidity(true);
+                    setValue(selectorValue);
+                }
+                else
+                {
+                    var currentMax = result.Value;
+                    var selectorValue = selector(key, e.Value);
+                    selectorValues.Add(key, selectorValue);
+                    if (selectorValue != null && (currentMax == null || selectorValue.Value.CompareTo(currentMax.Value) > 0))
+                        currentMax = selectorValue;
+                    if (((currentMax == null) != (result.Value == null)) || (currentMax != null && result.Value != null && currentMax.Value.CompareTo(result.Value.Value) > 0))
+                        setValue(currentMax);
+                }
+            };
+            valuePropertyChanged = (sender, e) =>
+            {
+                var key = e.Key;
+                var previousSelectorValue = selectorValues[key];
+                var newSelectorValue = selector(key, e.Value);
+                selectorValues[key] = newSelectorValue;
+                var currentMax = result.Value;
+                if (newSelectorValue != null && (currentMax == null || newSelectorValue.Value.CompareTo(currentMax.Value) > 0))
+                    setValue(newSelectorValue);
+                else if (previousSelectorValue != null && currentMax != null && previousSelectorValue.Value.CompareTo(currentMax.Value) == 0 && (newSelectorValue == null || newSelectorValue.Value.CompareTo(previousSelectorValue.Value) < 0))
+                    setValue(selectorValues.Values.Max());
+            };
+            valueRemoved = (sender, e) =>
+            {
+                if (selectorValues.Count == 1)
+                {
+                    selectorValues = source is SortedDictionary<TKey, TValue> || source is ObservableSortedDictionary<TKey, TValue> || source is SynchronizedObservableSortedDictionary<TKey, TValue> ? (IDictionary<TKey, TResult?>)new SortedDictionary<TKey, TResult?>() : new Dictionary<TKey, TResult?>();
+                    setValidity(false);
+                }
+                else
+                {
+                    var currentMax = result.Value;
+                    var maxRemoved = false;
+                    var key = e.Key;
+                    if (selectorValues.TryGetValue(key, out var selectorValue))
+                    {
+                        if (currentMax != null && selectorValue != null && selectorValue.Value.CompareTo(currentMax.Value) == 0)
+                            maxRemoved = true;
+                        selectorValues.Remove(key);
+                    }
+                    if (maxRemoved)
+                        setValue(selectorValues.Values.Max());
+                }
+            };
+            valueReplaced = (sender, e) =>
+            {
+                var key = e.Key;
+                var previousSelectorValue = selectorValues[key];
+                var currentSelectorValue = selector(key, e.NewValue);
+                selectorValues[key] = currentSelectorValue;
+                var previousToCurrent = (previousSelectorValue ?? default).CompareTo(currentSelectorValue ?? default);
+                if (currentSelectorValue != null && (previousSelectorValue == null || previousToCurrent < 0) && (result.Value == null || currentSelectorValue.Value.CompareTo(result.Value.Value) > 0))
+                    setValue(currentSelectorValue);
+                else if (previousSelectorValue != null && (currentSelectorValue == null || (previousToCurrent > 0 && previousSelectorValue.Value.CompareTo(result.Value.Value) == 0)))
+                    setValue(selectorValues.Values.Max());
+            };
+            valuesAdded = (sender, e) =>
+            {
+                if (selectorValues.Count == 0)
+                {
+                    var firstKeyValuePair = source.First();
+                    var firstKey = firstKeyValuePair.Key;
+                    var currentMax = selector(firstKey, firstKeyValuePair.Value);
+                    selectorValues.Add(firstKey, currentMax);
+                    foreach (var keyValuePair in source.Skip(1))
+                    {
+                        var key = keyValuePair.Key;
+                        var selectorValue = selector(key, keyValuePair.Value);
+                        if (selectorValue != null && (currentMax == null || selectorValue.Value.CompareTo(currentMax.Value) > 0))
+                            currentMax = selectorValue;
+                        selectorValues.Add(key, selectorValue);
+                    }
+                    setValidity(true);
+                    setValue(currentMax);
+                }
+                else
+                {
+                    var currentMax = result.Value;
+                    foreach (var keyValuePair in e.KeyValuePairs)
+                    {
+                        var key = keyValuePair.Key;
+                        var selectorValue = selector(key, keyValuePair.Value);
+                        selectorValues.Add(key, selectorValue);
+                        if (selectorValue != null && (currentMax == null || selectorValue.Value.CompareTo(currentMax.Value) > 0))
+                            currentMax = selectorValue;
+                    }
+                    if (((currentMax == null) != (result.Value == null)) || (currentMax != null && result.Value != null && currentMax.Value.CompareTo(result.Value.Value) > 0))
+                        setValue(currentMax);
+                }
+            };
+            valuesRemoved = (sender, e) =>
+            {
+                if (selectorValues.Count == e.KeyValuePairs.Count)
+                {
+                    selectorValues = source is SortedDictionary<TKey, TValue> || source is ObservableSortedDictionary<TKey, TValue> || source is SynchronizedObservableSortedDictionary<TKey, TValue> ? (IDictionary<TKey, TResult?>)new SortedDictionary<TKey, TResult?>() : new Dictionary<TKey, TResult?>();
+                    setValidity(false);
+                }
+                else
+                {
+                    var currentMax = result.Value;
+                    var maxRemoved = false;
+                    foreach (var keyValuePair in e.KeyValuePairs)
+                    {
+                        var key = keyValuePair.Key;
+                        if (selectorValues.TryGetValue(key, out var selectorValue))
+                        {
+                            if (currentMax != null && selectorValue != null && selectorValue.Value.CompareTo(currentMax.Value) == 0)
+                                maxRemoved = true;
+                            selectorValues.Remove(key);
+                        }
+                    }
+                    if (maxRemoved)
+                        setValue(selectorValues.Values.Max());
+                }
+            };
+            monitor.ValueAdded += valueAdded;
+            monitor.ValuePropertyChanged += valuePropertyChanged;
+            monitor.ValueRemoved += valueRemoved;
+            monitor.ValueReplaced += valueReplaced;
+            monitor.ValuesAdded += valuesAdded;
+            monitor.ValuesRemoved += valuesRemoved;
+            return result;
+        }
+
+        public static ActiveAggregateValue<TResult> ActiveMax<TSource, TResult>(this IReadOnlyList<TSource> source, Func<TSource, TResult> selector, params string[] selectorProperties) where TSource : class where TResult : IComparable<TResult>
+        {
+            var selectorValues = new Dictionary<object, TResult>();
+            var firstIsValid = false;
+            TResult firstMax = default;
+            if (source.Count > 0)
+            {
+                firstIsValid = true;
+                var firstElement = source.First();
+                firstMax = selector(firstElement);
+                selectorValues.Add(firstElement, firstMax);
+                foreach (var element in source.Skip(1))
+                {
+                    var selectorValue = selector(element);
+                    if (selectorValue.CompareTo(firstMax) > 0)
+                        firstMax = selectorValue;
+                    selectorValues.Add(element, selectorValue);
+                }
+            }
+            var monitor = ActiveListMonitor<TSource>.Monitor(source, selectorProperties);
+            EventHandler<ElementPropertyChangeEventArgs<TSource>> elementPropertyChanged = null;
+            EventHandler<ElementMembershipEventArgs<TSource>> elementsAdded = null;
+            EventHandler<ElementMembershipEventArgs<TSource>> elementsRemoved = null;
+            var result = new ActiveAggregateValue<TResult>(firstIsValid, firstMax, out var setValidity, out var setValue, disposing =>
+            {
+                monitor.ElementPropertyChanged -= elementPropertyChanged;
+                monitor.ElementsAdded -= elementsAdded;
+                monitor.ElementsRemoved -= elementsRemoved;
+                if (disposing)
+                    monitor.Dispose();
+            });
+            elementPropertyChanged = (sender, e) =>
+            {
+                var element = e.Element;
+                var previousSelectorValue = selectorValues[element];
+                var newSelectorValue = selector(element);
+                selectorValues[element] = newSelectorValue;
+                var currentMax = result.Value;
+                var comparison = newSelectorValue.CompareTo(currentMax);
+                if (comparison > 0)
+                    setValue(newSelectorValue);
+                else if (comparison < 0 && previousSelectorValue.CompareTo(currentMax) == 0)
+                    setValue(selectorValues.Values.Max());
+            };
+            elementsAdded = (sender, e) =>
+            {
+                if (selectorValues.Count == 0)
+                {
+                    var firstElement = e.Elements.First();
+                    var currentMax = selector(firstElement);
+                    selectorValues.Add(firstElement, currentMax);
+                    foreach (var element in e.Elements.Skip(1))
+                    {
+                        var selectorValue = selector(element);
+                        if (selectorValue.CompareTo(currentMax) > 0)
+                            currentMax = selectorValue;
+                        selectorValues.Add(element, selectorValue);
+                    }
+                    setValidity(true);
+                    setValue(currentMax);
+                }
+                else
+                {
+                    var currentMax = result.Value;
+                    foreach (var element in e.Elements)
+                    {
+                        var selectorValue = selector(element);
+                        selectorValues.Add(element, selectorValue);
+                        if (selectorValue.CompareTo(currentMax) > 0)
+                            currentMax = selectorValue;
+                    }
+                    if (currentMax.CompareTo(result.Value) > 0)
+                        setValue(currentMax);
+                }
+            };
+            elementsRemoved = (sender, e) =>
+            {
+                if (selectorValues.Count == e.Count)
+                {
+                    selectorValues = new Dictionary<object, TResult>();
+                    setValidity(false);
+                }
+                else
+                {
+                    var currentMax = result.Value;
+                    var maxRemoved = false;
+                    foreach (var element in e.Elements)
+                    {
+                        if (selectorValues.TryGetValue(element, out var selectorValue))
+                        {
+                            if (selectorValue.CompareTo(currentMax) == 0)
+                                maxRemoved = true;
+                            selectorValues.Remove(element);
+                        }
+                    }
+                    if (maxRemoved)
+                        setValue(selectorValues.Values.Max());
+                }
+            };
+            monitor.ElementPropertyChanged += elementPropertyChanged;
+            monitor.ElementsAdded += elementsAdded;
+            monitor.ElementsRemoved += elementsRemoved;
+            return result;
+        }
+
+        public static ActiveAggregateValue<TResult?> ActiveMax<TSource, TResult>(this IReadOnlyList<TSource> source, Func<TSource, TResult?> selector, params string[] selectorProperties) where TSource : class where TResult : struct, IComparable<TResult>
+        {
+            var selectorValues = new Dictionary<object, TResult?>();
+            var firstIsValid = false;
+            TResult? firstMax = default;
+            if (source.Count > 0)
+            {
+                firstIsValid = true;
+                var firstElement = source.First();
+                firstMax = selector(firstElement);
+                selectorValues.Add(firstElement, firstMax);
+                foreach (var element in source.Skip(1))
+                {
+                    var selectorValue = selector(element);
+                    if (selectorValue != null && (firstMax == null || selectorValue.Value.CompareTo(firstMax.Value) > 0))
+                        firstMax = selectorValue;
+                    selectorValues.Add(element, selectorValue);
+                }
+            }
+            var monitor = ActiveListMonitor<TSource>.Monitor(source, selectorProperties);
+            EventHandler<ElementPropertyChangeEventArgs<TSource>> elementPropertyChanged = null;
+            EventHandler<ElementMembershipEventArgs<TSource>> elementsAdded = null;
+            EventHandler<ElementMembershipEventArgs<TSource>> elementsRemoved = null;
+            var result = new ActiveAggregateValue<TResult?>(firstIsValid, firstMax, out var setValidity, out var setValue, disposing =>
+            {
+                monitor.ElementPropertyChanged -= elementPropertyChanged;
+                monitor.ElementsAdded -= elementsAdded;
+                monitor.ElementsRemoved -= elementsRemoved;
+                if (disposing)
+                    monitor.Dispose();
+            });
+            elementPropertyChanged = (sender, e) =>
+            {
+                var element = e.Element;
+                var previousSelectorValue = selectorValues[element];
+                var newSelectorValue = selector(element);
+                selectorValues[element] = newSelectorValue;
+                var currentMax = result.Value;
+                if (newSelectorValue != null && (currentMax == null || newSelectorValue.Value.CompareTo(currentMax.Value) > 0))
+                    setValue(newSelectorValue);
+                else if (previousSelectorValue != null && currentMax != null && previousSelectorValue.Value.CompareTo(currentMax.Value) == 0 && (newSelectorValue == null || newSelectorValue.Value.CompareTo(previousSelectorValue.Value) < 0))
+                    setValue(selectorValues.Values.Max());
+            };
+            elementsAdded = (sender, e) =>
+            {
+                if (selectorValues.Count == 0)
+                {
+                    var firstElement = source.First();
+                    var currentMax = selector(firstElement);
+                    selectorValues.Add(firstElement, currentMax);
+                    foreach (var element in source.Skip(1))
+                    {
+                        var selectorValue = selector(element);
+                        if (selectorValue != null && (currentMax == null || selectorValue.Value.CompareTo(currentMax.Value) > 0))
+                            currentMax = selectorValue;
+                        selectorValues.Add(element, selectorValue);
+                    }
+                    setValidity(true);
+                    setValue(currentMax);
+                }
+                else
+                {
+                    var currentMax = result.Value;
+                    foreach (var element in e.Elements)
+                    {
+                        var selectorValue = selector(element);
+                        selectorValues.Add(element, selectorValue);
+                        if (selectorValue != null && (currentMax == null || selectorValue.Value.CompareTo(currentMax.Value) > 0))
+                            currentMax = selectorValue;
+                    }
+                    if (((currentMax == null) != (result.Value == null)) || (currentMax != null && result.Value != null && currentMax.Value.CompareTo(result.Value.Value) > 0))
+                        setValue(currentMax);
+                }
+            };
+            elementsRemoved = (sender, e) =>
+            {
+                if (selectorValues.Count == e.Count)
+                {
+                    selectorValues = new Dictionary<object, TResult?>();
+                    setValidity(false);
+                }
+                else
+                {
+                    var currentMax = result.Value;
+                    var maxRemoved = false;
+                    foreach (var element in e.Elements)
+                    {
+                        if (selectorValues.TryGetValue(element, out var selectorValue))
+                        {
+                            if (currentMax != null && selectorValue != null && selectorValue.Value.CompareTo(currentMax.Value) == 0)
+                                maxRemoved = true;
+                            selectorValues.Remove(element);
+                        }
+                    }
+                    if (maxRemoved)
+                        setValue(selectorValues.Values.Max());
+                }
+            };
+            monitor.ElementPropertyChanged += elementPropertyChanged;
+            monitor.ElementsAdded += elementsAdded;
+            monitor.ElementsRemoved += elementsRemoved;
+            return result;
+        }
+
+        public static ActiveAggregateValue<TResult> ActiveMin<TSource, TResult>(this IReadOnlyList<TSource> source, Func<TSource, TResult> selector, params string[] selectorProperties) where TSource : class where TResult : IComparable<TResult>
+        {
+            var selectorValues = new Dictionary<object, TResult>();
+            var firstIsValid = false;
+            TResult firstMin = default;
+            if (source.Count > 0)
+            {
+                firstIsValid = true;
+                var firstElement = source.First();
+                firstMin = selector(firstElement);
+                selectorValues.Add(firstElement, firstMin);
+                foreach (var element in source.Skip(1))
+                {
+                    var selectorValue = selector(element);
+                    if (selectorValue.CompareTo(firstMin) < 0)
+                        firstMin = selectorValue;
+                    selectorValues.Add(element, selectorValue);
+                }
+            }
+            var monitor = ActiveListMonitor<TSource>.Monitor(source, selectorProperties);
+            EventHandler<ElementPropertyChangeEventArgs<TSource>> elementPropertyChanged = null;
+            EventHandler<ElementMembershipEventArgs<TSource>> elementsAdded = null;
+            EventHandler<ElementMembershipEventArgs<TSource>> elementsRemoved = null;
+            var result = new ActiveAggregateValue<TResult>(firstIsValid, firstMin, out var setValidity, out var setValue, disposing =>
+            {
+                monitor.ElementPropertyChanged -= elementPropertyChanged;
+                monitor.ElementsAdded -= elementsAdded;
+                monitor.ElementsRemoved -= elementsRemoved;
+                if (disposing)
+                    monitor.Dispose();
+            });
+            elementPropertyChanged = (sender, e) =>
+            {
+                var element = e.Element;
+                var previousSelectorValue = selectorValues[element];
+                var newSelectorValue = selector(element);
+                selectorValues[element] = newSelectorValue;
+                var currentMin = result.Value;
+                var comparison = newSelectorValue.CompareTo(currentMin);
+                if (comparison < 0)
+                    setValue(newSelectorValue);
+                else if (comparison > 0 && previousSelectorValue.CompareTo(currentMin) == 0)
+                    setValue(selectorValues.Values.Min());
+            };
+            elementsAdded = (sender, e) =>
+            {
+                if (selectorValues.Count == 0)
+                {
+                    var firstElement = e.Elements.First();
+                    var currentMin = selector(firstElement);
+                    selectorValues.Add(firstElement, currentMin);
+                    foreach (var element in e.Elements.Skip(1))
+                    {
+                        var selectorValue = selector(element);
+                        if (selectorValue.CompareTo(currentMin) < 0)
+                            currentMin = selectorValue;
+                        selectorValues.Add(element, selectorValue);
+                    }
+                    setValidity(true);
+                    setValue(currentMin);
+                }
+                else
+                {
+                    var currentMin = result.Value;
+                    foreach (var element in e.Elements)
+                    {
+                        var selectorValue = selector(element);
+                        selectorValues.Add(element, selectorValue);
+                        if (selectorValue.CompareTo(currentMin) < 0)
+                            currentMin = selectorValue;
+                    }
+                    if (currentMin.CompareTo(result.Value) < 0)
+                        setValue(currentMin);
+                }
+            };
+            elementsRemoved = (sender, e) =>
+            {
+                if (selectorValues.Count == e.Count)
+                {
+                    selectorValues = new Dictionary<object, TResult>();
+                    setValidity(false);
+                }
+                else
+                {
+                    var currentMin = result.Value;
+                    var minRemoved = false;
+                    foreach (var element in e.Elements)
+                    {
+                        if (selectorValues.TryGetValue(element, out var selectorValue))
+                        {
+                            if (selectorValue.CompareTo(currentMin) == 0)
+                                minRemoved = true;
+                            selectorValues.Remove(element);
+                        }
+                    }
+                    if (minRemoved)
+                        setValue(selectorValues.Values.Min());
+                }
+            };
+            monitor.ElementPropertyChanged += elementPropertyChanged;
+            monitor.ElementsAdded += elementsAdded;
+            monitor.ElementsRemoved += elementsRemoved;
+            return result;
+        }
+
+        public static ActiveAggregateValue<TResult?> ActiveMin<TSource, TResult>(this IReadOnlyList<TSource> source, Func<TSource, TResult?> selector, params string[] selectorProperties) where TSource : class where TResult : struct, IComparable<TResult>
+        {
+            var selectorValues = new Dictionary<object, TResult?>();
+            var firstIsValid = false;
+            TResult? firstMin = default;
+            if (source.Count > 0)
+            {
+                firstIsValid = true;
+                var firstElement = source.First();
+                firstMin = selector(firstElement);
+                selectorValues.Add(firstElement, firstMin);
+                foreach (var element in source.Skip(1))
+                {
+                    var selectorValue = selector(element);
+                    if (selectorValue != null && (firstMin == null || selectorValue.Value.CompareTo(firstMin.Value) < 0))
+                        firstMin = selectorValue;
+                    selectorValues.Add(element, selectorValue);
+                }
+            }
+            var monitor = ActiveListMonitor<TSource>.Monitor(source, selectorProperties);
+            EventHandler<ElementPropertyChangeEventArgs<TSource>> elementPropertyChanged = null;
+            EventHandler<ElementMembershipEventArgs<TSource>> elementsAdded = null;
+            EventHandler<ElementMembershipEventArgs<TSource>> elementsRemoved = null;
+            var result = new ActiveAggregateValue<TResult?>(firstIsValid, firstMin, out var setValidity, out var setValue, disposing =>
+            {
+                monitor.ElementPropertyChanged -= elementPropertyChanged;
+                monitor.ElementsAdded -= elementsAdded;
+                monitor.ElementsRemoved -= elementsRemoved;
+                if (disposing)
+                    monitor.Dispose();
+            });
+            elementPropertyChanged = (sender, e) =>
+            {
+                var element = e.Element;
+                var previousSelectorValue = selectorValues[element];
+                var newSelectorValue = selector(element);
+                selectorValues[element] = newSelectorValue;
+                var currentMin = result.Value;
+                if (newSelectorValue != null && (currentMin == null || newSelectorValue.Value.CompareTo(currentMin.Value) < 0))
+                    setValue(newSelectorValue);
+                else if (previousSelectorValue != null && currentMin != null && previousSelectorValue.Value.CompareTo(currentMin.Value) == 0 && (newSelectorValue == null || newSelectorValue.Value.CompareTo(previousSelectorValue.Value) > 0))
+                    setValue(selectorValues.Values.Min());
+            };
+            elementsAdded = (sender, e) =>
+            {
+                if (selectorValues.Count == 0)
+                {
+                    var firstElement = e.Elements.First();
+                    var currentMin = selector(firstElement);
+                    selectorValues.Add(firstElement, currentMin);
+                    foreach (var element in e.Elements.Skip(1))
+                    {
+                        var selectorValue = selector(element);
+                        if (selectorValue != null && (currentMin == null || selectorValue.Value.CompareTo(currentMin.Value) < 0))
+                            currentMin = selectorValue;
+                        selectorValues.Add(element, selectorValue);
+                    }
+                    setValidity(true);
+                    setValue(currentMin);
+                }
+                else
+                {
+                    var currentMin = result.Value;
+                    foreach (var element in e.Elements)
+                    {
+                        var selectorValue = selector(element);
+                        selectorValues.Add(element, selectorValue);
+                        if (selectorValue != null && (currentMin == null || selectorValue.Value.CompareTo(currentMin.Value) < 0))
+                            currentMin = selectorValue;
+                    }
+                    if (((currentMin == null) != (result.Value == null)) || (currentMin != null && result.Value != null && currentMin.Value.CompareTo(result.Value.Value) != 0))
+                        setValue(currentMin);
+                }
+            };
+            elementsRemoved = (sender, e) =>
+            {
+                if (selectorValues.Count == e.Count)
+                {
+                    selectorValues = new Dictionary<object, TResult?>();
+                    setValidity(false);
+                }
+                else
+                {
+                    var currentMin = result.Value;
+                    var minRemoved = false;
+                    foreach (var element in e.Elements)
+                    {
+                        if (selectorValues.TryGetValue(element, out var selectorValue))
+                        {
+                            if (currentMin != null && selectorValue != null && selectorValue.Value.CompareTo(currentMin.Value) == 0)
+                                minRemoved = true;
+                            selectorValues.Remove(element);
+                        }
+                    }
+                    if (minRemoved)
+                        setValue(selectorValues.Values.Min());
+                }
+            };
+            monitor.ElementPropertyChanged += elementPropertyChanged;
+            monitor.ElementsAdded += elementsAdded;
+            monitor.ElementsRemoved += elementsRemoved;
+            return result;
+        }
+
         public static ActiveEnumerable<TSource> ActiveOrderBy<TSource>(this IReadOnlyList<TSource> source, Func<TSource, IComparable> ascendingOrderSelector, IEnumerable<string> ascendingSelectorProperties = null, bool indexed = false) where TSource : class =>
             ActiveOrderBy(source, (source as ISynchronizable)?.SynchronizationContext, ascendingOrderSelector, ascendingSelectorProperties, indexed);
 
@@ -494,424 +1253,6 @@ namespace Gear.ActiveQuery
             });
             if (synchronizationContext != null)
                 rangeObservableCollection.IsSynchronized = true;
-            return result;
-        }
-
-        public static ActiveAggregateValue<TValue> ActiveMax<TSource, TValue>(this IReadOnlyList<TSource> source, Func<TSource, TValue> selector, params string[] selectorProperties) where TSource : class where TValue : IComparable<TValue>
-        {
-            var selectorValues = new Dictionary<object, TValue>();
-            var firstIsValid = false;
-            TValue firstMax = default;
-            if (source.Count > 0)
-            {
-                firstIsValid = true;
-                var firstElement = source.First();
-                firstMax = selector(firstElement);
-                selectorValues.Add(firstElement, firstMax);
-                foreach (var element in source.Skip(1))
-                {
-                    var selectorValue = selector(element);
-                    if (selectorValue.CompareTo(firstMax) > 0)
-                        firstMax = selectorValue;
-                    selectorValues.Add(element, selectorValue);
-                }
-            }
-            var monitor = ActiveListMonitor<TSource>.Monitor(source, selectorProperties);
-            EventHandler<ElementPropertyChangeEventArgs<TSource>> elementPropertyChanged = null;
-            EventHandler<ElementMembershipEventArgs<TSource>> elementsAdded = null;
-            EventHandler<ElementMembershipEventArgs<TSource>> elementsRemoved = null;
-            var result = new ActiveAggregateValue<TValue>(firstIsValid, firstMax, out var setValidity, out var setValue, disposing =>
-            {
-                monitor.ElementPropertyChanged -= elementPropertyChanged;
-                monitor.ElementsAdded -= elementsAdded;
-                monitor.ElementsRemoved -= elementsRemoved;
-                if (disposing)
-                    monitor.Dispose();
-            });
-            elementPropertyChanged = (sender, e) =>
-            {
-                var element = e.Element;
-                var previousSelectorValue = selectorValues[element];
-                var newSelectorValue = selector(element);
-                selectorValues[element] = newSelectorValue;
-                var currentMax = result.Value;
-                var comparison = newSelectorValue.CompareTo(currentMax);
-                if (comparison > 0)
-                    setValue(newSelectorValue);
-                else if (comparison > 0 && previousSelectorValue.CompareTo(currentMax) == 0)
-                    setValue(selectorValues.Values.Max());
-            };
-            elementsAdded = (sender, e) =>
-            {
-                if (selectorValues.Count == 0)
-                {
-                    var firstElement = e.Elements.First();
-                    var currentMax = selector(firstElement);
-                    selectorValues.Add(firstElement, currentMax);
-                    foreach (var element in e.Elements.Skip(1))
-                    {
-                        var selectorValue = selector(element);
-                        if (selectorValue.CompareTo(currentMax) > 0)
-                            currentMax = selectorValue;
-                        selectorValues.Add(element, selectorValue);
-                    }
-                    setValidity(true);
-                    setValue(currentMax);
-                }
-                else
-                {
-                    var currentMax = result.Value;
-                    foreach (var element in e.Elements)
-                    {
-                        var selectorValue = selector(element);
-                        selectorValues.Add(element, selectorValue);
-                        if (selectorValue.CompareTo(currentMax) > 0)
-                            currentMax = selectorValue;
-                    }
-                    if (currentMax.CompareTo(result.Value) != 0)
-                        setValue(currentMax);
-                }
-            };
-            elementsRemoved = (sender, e) =>
-            {
-                if (selectorValues.Count == e.Count)
-                {
-                    selectorValues = new Dictionary<object, TValue>();
-                    setValidity(false);
-                }
-                else
-                {
-                    var currentMax = result.Value;
-                    var maxRemoved = false;
-                    foreach (var element in e.Elements)
-                    {
-                        if (selectorValues.TryGetValue(element, out var selectorValue))
-                        {
-                            if (selectorValue.CompareTo(currentMax) == 0)
-                                maxRemoved = true;
-                            selectorValues.Remove(element);
-                        }
-                    }
-                    if (maxRemoved)
-                        setValue(selectorValues.Values.Max());
-                }
-            };
-            monitor.ElementPropertyChanged += elementPropertyChanged;
-            monitor.ElementsAdded += elementsAdded;
-            monitor.ElementsRemoved += elementsRemoved;
-            return result;
-        }
-
-        public static ActiveAggregateValue<TValue?> ActiveMax<TSource, TValue>(this IReadOnlyList<TSource> source, Func<TSource, TValue?> selector, params string[] selectorProperties) where TSource : class where TValue : struct, IComparable<TValue>
-        {
-            var selectorValues = new Dictionary<object, TValue?>();
-            var firstIsValid = false;
-            TValue? firstMax = default;
-            if (source.Count > 0)
-            {
-                firstIsValid = true;
-                var firstElement = source.First();
-                firstMax = selector(firstElement);
-                selectorValues.Add(firstElement, firstMax);
-                foreach (var element in source.Skip(1))
-                {
-                    var selectorValue = selector(element);
-                    if (selectorValue != null && (firstMax == null || selectorValue.Value.CompareTo(firstMax.Value) > 0))
-                        firstMax = selectorValue;
-                    selectorValues.Add(element, selectorValue);
-                }
-            }
-            var monitor = ActiveListMonitor<TSource>.Monitor(source, selectorProperties);
-            EventHandler<ElementPropertyChangeEventArgs<TSource>> elementPropertyChanged = null;
-            EventHandler<ElementMembershipEventArgs<TSource>> elementsAdded = null;
-            EventHandler<ElementMembershipEventArgs<TSource>> elementsRemoved = null;
-            var result = new ActiveAggregateValue<TValue?>(firstIsValid, firstMax, out var setValidity, out var setValue, disposing =>
-            {
-                monitor.ElementPropertyChanged -= elementPropertyChanged;
-                monitor.ElementsAdded -= elementsAdded;
-                monitor.ElementsRemoved -= elementsRemoved;
-                if (disposing)
-                    monitor.Dispose();
-            });
-            elementPropertyChanged = (sender, e) =>
-            {
-                var element = e.Element;
-                var previousSelectorValue = selectorValues[element];
-                var newSelectorValue = selector(element);
-                selectorValues[element] = newSelectorValue;
-                var currentMax = result.Value;
-                if (newSelectorValue != null && (currentMax == null || newSelectorValue.Value.CompareTo(currentMax.Value) > 0))
-                    setValue(newSelectorValue);
-                else if (previousSelectorValue != null && currentMax != null && previousSelectorValue.Value.CompareTo(currentMax.Value) == 0 && (newSelectorValue == null || newSelectorValue.Value.CompareTo(previousSelectorValue.Value) < 0))
-                    setValue(selectorValues.Values.Max());
-            };
-            elementsAdded = (sender, e) =>
-            {
-                if (selectorValues.Count == 0)
-                {
-                    var firstElement = source.First();
-                    var currentMax = selector(firstElement);
-                    selectorValues.Add(firstElement, currentMax);
-                    foreach (var element in source.Skip(1))
-                    {
-                        var selectorValue = selector(element);
-                        if (selectorValue != null && (currentMax == null || selectorValue.Value.CompareTo(currentMax.Value) > 0))
-                            currentMax = selectorValue;
-                        selectorValues.Add(element, selectorValue);
-                    }
-                    setValidity(true);
-                    setValue(currentMax);
-                }
-                else
-                {
-                    var currentMax = result.Value;
-                    foreach (var element in e.Elements)
-                    {
-                        var selectorValue = selector(element);
-                        selectorValues.Add(element, selectorValue);
-                        if (selectorValue != null && (currentMax == null || selectorValue.Value.CompareTo(currentMax.Value) > 0))
-                            currentMax = selectorValue;
-                    }
-                    if (((currentMax == null) != (result.Value == null)) || (currentMax != null && result.Value != null && currentMax.Value.CompareTo(result.Value.Value) != 0))
-                        setValue(currentMax);
-                }
-            };
-            elementsRemoved = (sender, e) =>
-            {
-                if (selectorValues.Count == e.Count)
-                {
-                    selectorValues = new Dictionary<object, TValue?>();
-                    setValidity(false);
-                }
-                else
-                {
-                    var currentMax = result.Value;
-                    var maxRemoved = false;
-                    foreach (var element in e.Elements)
-                    {
-                        if (selectorValues.TryGetValue(element, out var selectorValue))
-                        {
-                            if (currentMax != null && selectorValue != null && selectorValue.Value.CompareTo(currentMax.Value) == 0)
-                                maxRemoved = true;
-                            selectorValues.Remove(element);
-                        }
-                    }
-                    if (maxRemoved)
-                        setValue(selectorValues.Values.Max());
-                }
-            };
-            monitor.ElementPropertyChanged += elementPropertyChanged;
-            monitor.ElementsAdded += elementsAdded;
-            monitor.ElementsRemoved += elementsRemoved;
-            return result;
-        }
-
-        public static ActiveAggregateValue<TValue> ActiveMin<TSource, TValue>(this IReadOnlyList<TSource> source, Func<TSource, TValue> selector, params string[] selectorProperties) where TSource : class where TValue : IComparable<TValue>
-        {
-            var selectorValues = new Dictionary<object, TValue>();
-            var firstIsValid = false;
-            TValue firstMin = default;
-            if (source.Count > 0)
-            {
-                firstIsValid = true;
-                var firstElement = source.First();
-                firstMin = selector(firstElement);
-                selectorValues.Add(firstElement, firstMin);
-                foreach (var element in source.Skip(1))
-                {
-                    var selectorValue = selector(element);
-                    if (selectorValue.CompareTo(firstMin) < 0)
-                        firstMin = selectorValue;
-                    selectorValues.Add(element, selectorValue);
-                }
-            }
-            var monitor = ActiveListMonitor<TSource>.Monitor(source, selectorProperties);
-            EventHandler<ElementPropertyChangeEventArgs<TSource>> elementPropertyChanged = null;
-            EventHandler<ElementMembershipEventArgs<TSource>> elementsAdded = null;
-            EventHandler<ElementMembershipEventArgs<TSource>> elementsRemoved = null;
-            var result = new ActiveAggregateValue<TValue>(firstIsValid, firstMin, out var setValidity, out var setValue, disposing =>
-            {
-                monitor.ElementPropertyChanged -= elementPropertyChanged;
-                monitor.ElementsAdded -= elementsAdded;
-                monitor.ElementsRemoved -= elementsRemoved;
-                if (disposing)
-                    monitor.Dispose();
-            });
-            elementPropertyChanged = (sender, e) =>
-            {
-                var element = e.Element;
-                var previousSelectorValue = selectorValues[element];
-                var newSelectorValue = selector(element);
-                selectorValues[element] = newSelectorValue;
-                var currentMin = result.Value;
-                var comparison = newSelectorValue.CompareTo(currentMin);
-                if (comparison < 0)
-                    setValue(newSelectorValue);
-                else if (comparison > 0 && previousSelectorValue.CompareTo(currentMin) == 0)
-                    setValue(selectorValues.Values.Min());
-            };
-            elementsAdded = (sender, e) =>
-            {
-                if (selectorValues.Count == 0)
-                {
-                    var firstElement = e.Elements.First();
-                    var currentMin = selector(firstElement);
-                    selectorValues.Add(firstElement, currentMin);
-                    foreach (var element in e.Elements.Skip(1))
-                    {
-                        var selectorValue = selector(element);
-                        if (selectorValue.CompareTo(currentMin) < 0)
-                            currentMin = selectorValue;
-                        selectorValues.Add(element, selectorValue);
-                    }
-                    setValidity(true);
-                    setValue(currentMin);
-                }
-                else
-                {
-                    var currentMin = result.Value;
-                    foreach (var element in e.Elements)
-                    {
-                        var selectorValue = selector(element);
-                        selectorValues.Add(element, selectorValue);
-                        if (selectorValue.CompareTo(currentMin) < 0)
-                            currentMin = selectorValue;
-                    }
-                    if (currentMin.CompareTo(result.Value) != 0)
-                        setValue(currentMin);
-                }
-            };
-            elementsRemoved = (sender, e) =>
-            {
-                if (selectorValues.Count == e.Count)
-                {
-                    selectorValues = new Dictionary<object, TValue>();
-                    setValidity(false);
-                }
-                else
-                {
-                    var currentMin = result.Value;
-                    var minRemoved = false;
-                    foreach (var element in e.Elements)
-                    {
-                        if (selectorValues.TryGetValue(element, out var selectorValue))
-                        {
-                            if (selectorValue.CompareTo(currentMin) == 0)
-                                minRemoved = true;
-                            selectorValues.Remove(element);
-                        }
-                    }
-                    if (minRemoved)
-                        setValue(selectorValues.Values.Min());
-                }
-            };
-            monitor.ElementPropertyChanged += elementPropertyChanged;
-            monitor.ElementsAdded += elementsAdded;
-            monitor.ElementsRemoved += elementsRemoved;
-            return result;
-        }
-
-        public static ActiveAggregateValue<TValue?> ActiveMin<TSource, TValue>(this IReadOnlyList<TSource> source, Func<TSource, TValue?> selector, params string[] selectorProperties) where TSource : class where TValue : struct, IComparable<TValue>
-        {
-            var selectorValues = new Dictionary<object, TValue?>();
-            var firstIsValid = false;
-            TValue? firstMin = default;
-            if (source.Count > 0)
-            {
-                firstIsValid = true;
-                var firstElement = source.First();
-                firstMin = selector(firstElement);
-                selectorValues.Add(firstElement, firstMin);
-                foreach (var element in source.Skip(1))
-                {
-                    var selectorValue = selector(element);
-                    if (selectorValue != null && (firstMin == null || selectorValue.Value.CompareTo(firstMin.Value) < 0))
-                        firstMin = selectorValue;
-                    selectorValues.Add(element, selectorValue);
-                }
-            }
-            var monitor = ActiveListMonitor<TSource>.Monitor(source, selectorProperties);
-            EventHandler<ElementPropertyChangeEventArgs<TSource>> elementPropertyChanged = null;
-            EventHandler<ElementMembershipEventArgs<TSource>> elementsAdded = null;
-            EventHandler<ElementMembershipEventArgs<TSource>> elementsRemoved = null;
-            var result = new ActiveAggregateValue<TValue?>(firstIsValid, firstMin, out var setValidity, out var setValue, disposing =>
-            {
-                monitor.ElementPropertyChanged -= elementPropertyChanged;
-                monitor.ElementsAdded -= elementsAdded;
-                monitor.ElementsRemoved -= elementsRemoved;
-                if (disposing)
-                    monitor.Dispose();
-            });
-            elementPropertyChanged = (sender, e) =>
-            {
-                var element = e.Element;
-                var previousSelectorValue = selectorValues[element];
-                var newSelectorValue = selector(element);
-                selectorValues[element] = newSelectorValue;
-                var currentMin = result.Value;
-                if (newSelectorValue != null && (currentMin == null || newSelectorValue.Value.CompareTo(currentMin.Value) < 0))
-                    setValue(newSelectorValue);
-                else if (previousSelectorValue != null && currentMin != null && previousSelectorValue.Value.CompareTo(currentMin.Value) == 0 && (newSelectorValue == null || newSelectorValue.Value.CompareTo(previousSelectorValue.Value) > 0))
-                    setValue(selectorValues.Values.Min());
-            };
-            elementsAdded = (sender, e) =>
-            {
-                if (selectorValues.Count == 0)
-                {
-                    var firstElement = e.Elements.First();
-                    var currentMin = selector(firstElement);
-                    selectorValues.Add(firstElement, currentMin);
-                    foreach (var element in e.Elements.Skip(1))
-                    {
-                        var selectorValue = selector(element);
-                        if (selectorValue != null && (currentMin == null || selectorValue.Value.CompareTo(currentMin.Value) < 0))
-                            currentMin = selectorValue;
-                        selectorValues.Add(element, selectorValue);
-                    }
-                    setValidity(true);
-                    setValue(currentMin);
-                }
-                else
-                {
-                    var currentMin = result.Value;
-                    foreach (var element in e.Elements)
-                    {
-                        var selectorValue = selector(element);
-                        selectorValues.Add(element, selectorValue);
-                        if (selectorValue != null && (currentMin == null || selectorValue.Value.CompareTo(currentMin.Value) < 0))
-                            currentMin = selectorValue;
-                    }
-                    if (((currentMin == null) != (result.Value == null)) || (currentMin != null && result.Value != null && currentMin.Value.CompareTo(result.Value.Value) != 0))
-                        setValue(currentMin);
-                }
-            };
-            elementsRemoved = (sender, e) =>
-            {
-                if (selectorValues.Count == e.Count)
-                {
-                    selectorValues = new Dictionary<object, TValue?>();
-                    setValidity(false);
-                }
-                else
-                {
-                    var currentMin = result.Value;
-                    var minRemoved = false;
-                    foreach (var element in e.Elements)
-                    {
-                        if (selectorValues.TryGetValue(element, out var selectorValue))
-                        {
-                            if (currentMin != null && selectorValue != null && selectorValue.Value.CompareTo(currentMin.Value) == 0)
-                                minRemoved = true;
-                            selectorValues.Remove(element);
-                        }
-                    }
-                    if (minRemoved)
-                        setValue(selectorValues.Values.Min());
-                }
-            };
-            monitor.ElementPropertyChanged += elementPropertyChanged;
-            monitor.ElementsAdded += elementsAdded;
-            monitor.ElementsRemoved += elementsRemoved;
             return result;
         }
 
