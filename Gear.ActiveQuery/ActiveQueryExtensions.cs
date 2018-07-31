@@ -332,7 +332,7 @@ namespace Gear.ActiveQuery
             return result;
         }
 
-        public static ActiveAggregateValue<TResult> ActiveMax<TKey, TValue, TResult>(this IReadOnlyDictionary<TKey, TValue> source, Func<TKey, TValue, TResult> selector, params string[] selectorProperties) where TResult : IComparable<TResult>
+        public static ActiveAggregateValue<TResult> ActiveMax<TKey, TValue, TResult>(this IReadOnlyDictionary<TKey, TValue> source, Func<TKey, TValue, TResult> selector, bool isThreadSafe = false, params string[] selectorProperties) where TResult : IComparable<TResult>
         {
             var selectorValues = source is SortedDictionary<TKey, TValue> || source is ObservableSortedDictionary<TKey, TValue> || source is SynchronizedObservableSortedDictionary<TKey, TValue> ? (IDictionary<TKey, TResult>)new SortedDictionary<TKey, TResult>() : new Dictionary<TKey, TResult>();
             var firstIsValid = false;
@@ -360,6 +360,7 @@ namespace Gear.ActiveQuery
             EventHandler<NotifyDictionaryValueReplacedEventArgs<TKey, TValue>> valueReplaced = null;
             EventHandler<NotifyDictionaryValuesEventArgs<TKey, TValue>> valuesAdded = null;
             EventHandler<NotifyDictionaryValuesEventArgs<TKey, TValue>> valuesRemoved = null;
+            var resultAccess = isThreadSafe ? new object() : null;
             var result = new ActiveAggregateValue<TResult>(firstIsValid, firstMax, out var setValidity, out var setValue, disposing =>
             {
                 monitor.ValueAdded -= valueAdded;
@@ -371,7 +372,8 @@ namespace Gear.ActiveQuery
                 if (disposing)
                     monitor.Dispose();
             });
-            valueAdded = (sender, e) =>
+
+            void valueAddedLogic(NotifyDictionaryValueEventArgs<TKey, TValue> e)
             {
                 var key = e.Key;
                 if (selectorValues.Count == 0)
@@ -388,8 +390,9 @@ namespace Gear.ActiveQuery
                     if (selectorValue.CompareTo(result.Value) > 0)
                         setValue(selectorValue);
                 }
-            };
-            valuePropertyChanged = (sender, e) =>
+            }
+
+            void valuePropertyChangedLogic(ValuePropertyChangeEventArgs<TKey, TValue> e)
             {
                 var key = e.Key;
                 var previousSelectorValue = selectorValues[key];
@@ -401,12 +404,13 @@ namespace Gear.ActiveQuery
                     setValue(newSelectorValue);
                 else if (comparison < 0 && previousSelectorValue.CompareTo(currentMax) == 0)
                     setValue(selectorValues.Values.Max());
-            };
-            valueRemoved = (sender, e) =>
+            }
+
+            void valueRemovedLogic(NotifyDictionaryValueEventArgs<TKey, TValue> e)
             {
                 if (selectorValues.Count == 1)
                 {
-                    selectorValues = source is SortedDictionary<TKey, TResult> || source is ObservableSortedDictionary<TKey, TValue> || source is SynchronizedObservableSortedDictionary<TKey, TValue> ? (IDictionary<TKey, TResult>)new SortedDictionary<TKey, TResult>() : (IDictionary<TKey, TResult>)new Dictionary<TKey, TResult>();
+                    selectorValues = source is SortedDictionary<TKey, TResult> || source is ObservableSortedDictionary<TKey, TValue> || source is SynchronizedObservableSortedDictionary<TKey, TValue> ? (IDictionary<TKey, TResult>)new SortedDictionary<TKey, TResult>() : new Dictionary<TKey, TResult>();
                     setValidity(false);
                 }
                 else
@@ -419,8 +423,9 @@ namespace Gear.ActiveQuery
                             setValue(selectorValues.Values.Max());
                     }
                 }
-            };
-            valueReplaced = (sender, e) =>
+            }
+
+            void valueReplacedLogic(NotifyDictionaryValueReplacedEventArgs<TKey, TValue> e)
             {
                 var key = e.Key;
                 var previousSelectorValue = selectorValues[key];
@@ -431,8 +436,9 @@ namespace Gear.ActiveQuery
                     setValue(currentSelectorValue);
                 else if (previousToCurrent > 0 && previousSelectorValue.CompareTo(result.Value) == 0)
                     setValue(selectorValues.Values.Max());
-            };
-            valuesAdded = (sender, e) =>
+            }
+
+            void valuesAddedLogic(NotifyDictionaryValuesEventArgs<TKey, TValue> e)
             {
                 if (selectorValues.Count == 0)
                 {
@@ -464,12 +470,13 @@ namespace Gear.ActiveQuery
                     if (currentMax.CompareTo(result.Value) > 0)
                         setValue(currentMax);
                 }
-            };
-            valuesRemoved = (sender, e) =>
+            }
+
+            void valuesRemovedLogic(NotifyDictionaryValuesEventArgs<TKey, TValue> e)
             {
                 if (selectorValues.Count == e.KeyValuePairs.Count)
                 {
-                    selectorValues = source is SortedDictionary<TKey, TValue> || source is ObservableSortedDictionary<TKey, TValue> || source is SynchronizedObservableSortedDictionary<TKey, TValue> ? (IDictionary<TKey, TResult>)new SortedDictionary<TKey, TResult>() : (IDictionary<TKey, TResult>)new Dictionary<TKey, TResult>();
+                    selectorValues = source is SortedDictionary<TKey, TValue> || source is ObservableSortedDictionary<TKey, TValue> || source is SynchronizedObservableSortedDictionary<TKey, TValue> ? (IDictionary<TKey, TResult>)new SortedDictionary<TKey, TResult>() : new Dictionary<TKey, TResult>();
                     setValidity(false);
                 }
                 else
@@ -489,7 +496,51 @@ namespace Gear.ActiveQuery
                     if (maxRemoved)
                         setValue(selectorValues.Values.Max());
                 }
-            };
+            }
+
+            if (isThreadSafe)
+            {
+                valueAdded = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        valueAddedLogic(e);
+                };
+                valuePropertyChanged = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        valuePropertyChangedLogic(e);
+                };
+                valueRemoved = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        valueRemovedLogic(e);
+                };
+                valueReplaced = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        valueReplacedLogic(e);
+                };
+                valuesAdded = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        valuesAddedLogic(e);
+                };
+                valuesRemoved = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        valuesRemovedLogic(e);
+                };
+            }
+            else
+            {
+                valueAdded = (sender, e) => valueAddedLogic(e);
+                valuePropertyChanged = (sender, e) => valuePropertyChangedLogic(e);
+                valueRemoved = (sender, e) => valueRemovedLogic(e);
+                valueReplaced = (sender, e) => valueReplacedLogic(e);
+                valuesAdded = (sender, e) => valuesAddedLogic(e);
+                valuesRemoved = (sender, e) => valuesRemovedLogic(e);
+            }
+
             monitor.ValueAdded += valueAdded;
             monitor.ValuePropertyChanged += valuePropertyChanged;
             monitor.ValueRemoved += valueRemoved;
@@ -499,7 +550,7 @@ namespace Gear.ActiveQuery
             return result;
         }
 
-        public static ActiveAggregateValue<TResult?> ActiveMax<TKey, TValue, TResult>(this IReadOnlyDictionary<TKey, TValue> source, Func<TKey, TValue, TResult?> selector, params string[] selectorProperties) where TResult : struct, IComparable<TResult>
+        public static ActiveAggregateValue<TResult?> ActiveMax<TKey, TValue, TResult>(this IReadOnlyDictionary<TKey, TValue> source, Func<TKey, TValue, TResult?> selector, bool isThreadSafe = false, params string[] selectorProperties) where TResult : struct, IComparable<TResult>
         {
             var selectorValues = source is SortedDictionary<TKey, TValue> || source is ObservableSortedDictionary<TKey, TValue> || source is SynchronizedObservableSortedDictionary<TKey, TValue> ? (IDictionary<TKey, TResult?>)new SortedDictionary<TKey, TResult?>() : new Dictionary<TKey, TResult?>();
             var firstIsValid = false;
@@ -527,6 +578,7 @@ namespace Gear.ActiveQuery
             EventHandler<NotifyDictionaryValueReplacedEventArgs<TKey, TValue>> valueReplaced = null;
             EventHandler<NotifyDictionaryValuesEventArgs<TKey, TValue>> valuesAdded = null;
             EventHandler<NotifyDictionaryValuesEventArgs<TKey, TValue>> valuesRemoved = null;
+            var resultAccess = isThreadSafe ? new object() : null;
             var result = new ActiveAggregateValue<TResult?>(firstIsValid, firstMax, out var setValidity, out var setValue, disposing =>
             {
                 monitor.ValueAdded -= valueAdded;
@@ -538,7 +590,8 @@ namespace Gear.ActiveQuery
                 if (disposing)
                     monitor.Dispose();
             });
-            valueAdded = (sender, e) =>
+
+            void valueAddedLogic(NotifyDictionaryValueEventArgs<TKey, TValue> e)
             {
                 var key = e.Key;
                 if (selectorValues.Count == 0)
@@ -558,8 +611,9 @@ namespace Gear.ActiveQuery
                     if (((currentMax == null) != (result.Value == null)) || (currentMax != null && result.Value != null && currentMax.Value.CompareTo(result.Value.Value) > 0))
                         setValue(currentMax);
                 }
-            };
-            valuePropertyChanged = (sender, e) =>
+            }
+
+            void valuePropertyChangedLogic(ValuePropertyChangeEventArgs<TKey, TValue> e)
             {
                 var key = e.Key;
                 var previousSelectorValue = selectorValues[key];
@@ -570,8 +624,9 @@ namespace Gear.ActiveQuery
                     setValue(newSelectorValue);
                 else if (previousSelectorValue != null && currentMax != null && previousSelectorValue.Value.CompareTo(currentMax.Value) == 0 && (newSelectorValue == null || newSelectorValue.Value.CompareTo(previousSelectorValue.Value) < 0))
                     setValue(selectorValues.Values.Max());
-            };
-            valueRemoved = (sender, e) =>
+            }
+
+            void valueRemovedLogic(NotifyDictionaryValueEventArgs<TKey, TValue> e)
             {
                 if (selectorValues.Count == 1)
                 {
@@ -592,8 +647,9 @@ namespace Gear.ActiveQuery
                     if (maxRemoved)
                         setValue(selectorValues.Values.Max());
                 }
-            };
-            valueReplaced = (sender, e) =>
+            }
+
+            void valueReplacedLogic(NotifyDictionaryValueReplacedEventArgs<TKey, TValue> e)
             {
                 var key = e.Key;
                 var previousSelectorValue = selectorValues[key];
@@ -604,8 +660,9 @@ namespace Gear.ActiveQuery
                     setValue(currentSelectorValue);
                 else if (previousSelectorValue != null && (currentSelectorValue == null || (previousToCurrent > 0 && previousSelectorValue.Value.CompareTo(result.Value.Value) == 0)))
                     setValue(selectorValues.Values.Max());
-            };
-            valuesAdded = (sender, e) =>
+            }
+
+            void valuesAddedLogic(NotifyDictionaryValuesEventArgs<TKey, TValue> e)
             {
                 if (selectorValues.Count == 0)
                 {
@@ -638,8 +695,9 @@ namespace Gear.ActiveQuery
                     if (((currentMax == null) != (result.Value == null)) || (currentMax != null && result.Value != null && currentMax.Value.CompareTo(result.Value.Value) > 0))
                         setValue(currentMax);
                 }
-            };
-            valuesRemoved = (sender, e) =>
+            }
+
+            void valuesRemovedLogic(NotifyDictionaryValuesEventArgs<TKey, TValue> e)
             {
                 if (selectorValues.Count == e.KeyValuePairs.Count)
                 {
@@ -663,7 +721,51 @@ namespace Gear.ActiveQuery
                     if (maxRemoved)
                         setValue(selectorValues.Values.Max());
                 }
-            };
+            }
+
+            if (isThreadSafe)
+            {
+                valueAdded = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        valueAddedLogic(e);
+                };
+                valuePropertyChanged = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        valuePropertyChangedLogic(e);
+                };
+                valueRemoved = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        valueRemovedLogic(e);
+                };
+                valueReplaced = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        valueReplacedLogic(e);
+                };
+                valuesAdded = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        valuesAddedLogic(e);
+                };
+                valuesRemoved = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        valuesRemovedLogic(e);
+                };
+            }
+            else
+            {
+                valueAdded = (sender, e) => valueAddedLogic(e);
+                valuePropertyChanged = (sender, e) => valuePropertyChangedLogic(e);
+                valueRemoved = (sender, e) => valueRemovedLogic(e);
+                valueReplaced = (sender, e) => valueReplacedLogic(e);
+                valuesAdded = (sender, e) => valuesAddedLogic(e);
+                valuesRemoved = (sender, e) => valuesRemovedLogic(e);
+            }
+
             monitor.ValueAdded += valueAdded;
             monitor.ValuePropertyChanged += valuePropertyChanged;
             monitor.ValueRemoved += valueRemoved;
@@ -673,7 +775,7 @@ namespace Gear.ActiveQuery
             return result;
         }
 
-        public static ActiveAggregateValue<TResult> ActiveMax<TSource, TResult>(this IReadOnlyList<TSource> source, Func<TSource, TResult> selector, params string[] selectorProperties) where TSource : class where TResult : IComparable<TResult>
+        public static ActiveAggregateValue<TResult> ActiveMax<TSource, TResult>(this IReadOnlyList<TSource> source, Func<TSource, TResult> selector, bool isThreadSafe = false, params string[] selectorProperties) where TSource : class where TResult : IComparable<TResult>
         {
             var selectorValues = new Dictionary<object, TResult>();
             var firstIsValid = false;
@@ -696,6 +798,7 @@ namespace Gear.ActiveQuery
             EventHandler<ElementPropertyChangeEventArgs<TSource>> elementPropertyChanged = null;
             EventHandler<ElementMembershipEventArgs<TSource>> elementsAdded = null;
             EventHandler<ElementMembershipEventArgs<TSource>> elementsRemoved = null;
+            var resultAccess = isThreadSafe ? new object() : null;
             var result = new ActiveAggregateValue<TResult>(firstIsValid, firstMax, out var setValidity, out var setValue, disposing =>
             {
                 monitor.ElementPropertyChanged -= elementPropertyChanged;
@@ -704,7 +807,8 @@ namespace Gear.ActiveQuery
                 if (disposing)
                     monitor.Dispose();
             });
-            elementPropertyChanged = (sender, e) =>
+
+            void elementPropertyChangedLogic(ElementPropertyChangeEventArgs<TSource> e)
             {
                 var element = e.Element;
                 var previousSelectorValue = selectorValues[element];
@@ -716,8 +820,9 @@ namespace Gear.ActiveQuery
                     setValue(newSelectorValue);
                 else if (comparison < 0 && previousSelectorValue.CompareTo(currentMax) == 0)
                     setValue(selectorValues.Values.Max());
-            };
-            elementsAdded = (sender, e) =>
+            }
+
+            void elementsAddedLogic(ElementMembershipEventArgs<TSource> e)
             {
                 if (selectorValues.Count == 0)
                 {
@@ -747,8 +852,9 @@ namespace Gear.ActiveQuery
                     if (currentMax.CompareTo(result.Value) > 0)
                         setValue(currentMax);
                 }
-            };
-            elementsRemoved = (sender, e) =>
+            }
+
+            void elementsRemovedLogic(ElementMembershipEventArgs<TSource> e)
             {
                 if (selectorValues.Count == e.Count)
                 {
@@ -771,14 +877,40 @@ namespace Gear.ActiveQuery
                     if (maxRemoved)
                         setValue(selectorValues.Values.Max());
                 }
-            };
+            }
+
+            if (isThreadSafe)
+            {
+                elementPropertyChanged = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        elementPropertyChangedLogic(e);
+                };
+                elementsAdded = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        elementsAddedLogic(e);
+                };
+                elementsRemoved = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        elementsRemovedLogic(e);
+                };
+            }
+            else
+            {
+                elementPropertyChanged = (sender, e) => elementPropertyChangedLogic(e);
+                elementsAdded = (sender, e) => elementsAddedLogic(e);
+                elementsRemoved = (sender, e) => elementsRemovedLogic(e);
+            }
+
             monitor.ElementPropertyChanged += elementPropertyChanged;
             monitor.ElementsAdded += elementsAdded;
             monitor.ElementsRemoved += elementsRemoved;
             return result;
         }
 
-        public static ActiveAggregateValue<TResult?> ActiveMax<TSource, TResult>(this IReadOnlyList<TSource> source, Func<TSource, TResult?> selector, params string[] selectorProperties) where TSource : class where TResult : struct, IComparable<TResult>
+        public static ActiveAggregateValue<TResult?> ActiveMax<TSource, TResult>(this IReadOnlyList<TSource> source, Func<TSource, TResult?> selector, bool isThreadSafe = false, params string[] selectorProperties) where TSource : class where TResult : struct, IComparable<TResult>
         {
             var selectorValues = new Dictionary<object, TResult?>();
             var firstIsValid = false;
@@ -801,6 +933,7 @@ namespace Gear.ActiveQuery
             EventHandler<ElementPropertyChangeEventArgs<TSource>> elementPropertyChanged = null;
             EventHandler<ElementMembershipEventArgs<TSource>> elementsAdded = null;
             EventHandler<ElementMembershipEventArgs<TSource>> elementsRemoved = null;
+            var resultAccess = isThreadSafe ? new object() : null;
             var result = new ActiveAggregateValue<TResult?>(firstIsValid, firstMax, out var setValidity, out var setValue, disposing =>
             {
                 monitor.ElementPropertyChanged -= elementPropertyChanged;
@@ -809,7 +942,8 @@ namespace Gear.ActiveQuery
                 if (disposing)
                     monitor.Dispose();
             });
-            elementPropertyChanged = (sender, e) =>
+
+            void elementPropertyChangedLogic(ElementPropertyChangeEventArgs<TSource> e)
             {
                 var element = e.Element;
                 var previousSelectorValue = selectorValues[element];
@@ -820,8 +954,9 @@ namespace Gear.ActiveQuery
                     setValue(newSelectorValue);
                 else if (previousSelectorValue != null && currentMax != null && previousSelectorValue.Value.CompareTo(currentMax.Value) == 0 && (newSelectorValue == null || newSelectorValue.Value.CompareTo(previousSelectorValue.Value) < 0))
                     setValue(selectorValues.Values.Max());
-            };
-            elementsAdded = (sender, e) =>
+            }
+
+            void elementsAddedLogic(ElementMembershipEventArgs<TSource> e)
             {
                 if (selectorValues.Count == 0)
                 {
@@ -851,8 +986,9 @@ namespace Gear.ActiveQuery
                     if (((currentMax == null) != (result.Value == null)) || (currentMax != null && result.Value != null && currentMax.Value.CompareTo(result.Value.Value) > 0))
                         setValue(currentMax);
                 }
-            };
-            elementsRemoved = (sender, e) =>
+            }
+
+            void elementsRemovedLogic(ElementMembershipEventArgs<TSource> e)
             {
                 if (selectorValues.Count == e.Count)
                 {
@@ -875,14 +1011,483 @@ namespace Gear.ActiveQuery
                     if (maxRemoved)
                         setValue(selectorValues.Values.Max());
                 }
-            };
+            }
+
+            if (isThreadSafe)
+            {
+                elementPropertyChanged = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        elementPropertyChangedLogic(e);
+                };
+                elementsAdded = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        elementsAddedLogic(e);
+                };
+                elementsRemoved = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        elementsRemovedLogic(e);
+                };
+            }
+            else
+            {
+                elementPropertyChanged = (sender, e) => elementPropertyChangedLogic(e);
+                elementsAdded = (sender, e) => elementsAddedLogic(e);
+                elementsRemoved = (sender, e) => elementsRemovedLogic(e);
+            }
+
             monitor.ElementPropertyChanged += elementPropertyChanged;
             monitor.ElementsAdded += elementsAdded;
             monitor.ElementsRemoved += elementsRemoved;
             return result;
         }
 
-        public static ActiveAggregateValue<TResult> ActiveMin<TSource, TResult>(this IReadOnlyList<TSource> source, Func<TSource, TResult> selector, params string[] selectorProperties) where TSource : class where TResult : IComparable<TResult>
+        public static ActiveAggregateValue<TResult> ActiveMin<TKey, TValue, TResult>(this IReadOnlyDictionary<TKey, TValue> source, Func<TKey, TValue, TResult> selector, bool isThreadSafe = false, params string[] selectorProperties) where TResult : IComparable<TResult>
+        {
+            var selectorValues = source is SortedDictionary<TKey, TValue> || source is ObservableSortedDictionary<TKey, TValue> || source is SynchronizedObservableSortedDictionary<TKey, TValue> ? (IDictionary<TKey, TResult>)new SortedDictionary<TKey, TResult>() : new Dictionary<TKey, TResult>();
+            var firstIsValid = false;
+            TResult firstMin = default;
+            if (source.Count > 0)
+            {
+                firstIsValid = true;
+                var firstKeyValuePair = source.First();
+                var firstKey = firstKeyValuePair.Key;
+                firstMin = selector(firstKey, firstKeyValuePair.Value);
+                selectorValues.Add(firstKey, firstMin);
+                foreach (var keyValuePair in source.Skip(1))
+                {
+                    var key = keyValuePair.Key;
+                    var selectorValue = selector(key, keyValuePair.Value);
+                    if (selectorValue.CompareTo(firstMin) < 0)
+                        firstMin = selectorValue;
+                    selectorValues.Add(key, selectorValue);
+                }
+            }
+            var monitor = ActiveDictionaryMonitor<TKey, TValue>.Monitor(source, selectorProperties);
+            EventHandler<NotifyDictionaryValueEventArgs<TKey, TValue>> valueAdded = null;
+            EventHandler<ValuePropertyChangeEventArgs<TKey, TValue>> valuePropertyChanged = null;
+            EventHandler<NotifyDictionaryValueEventArgs<TKey, TValue>> valueRemoved = null;
+            EventHandler<NotifyDictionaryValueReplacedEventArgs<TKey, TValue>> valueReplaced = null;
+            EventHandler<NotifyDictionaryValuesEventArgs<TKey, TValue>> valuesAdded = null;
+            EventHandler<NotifyDictionaryValuesEventArgs<TKey, TValue>> valuesRemoved = null;
+            var resultAccess = isThreadSafe ? new object() : null;
+            var result = new ActiveAggregateValue<TResult>(firstIsValid, firstMin, out var setValidity, out var setValue, disposing =>
+            {
+                monitor.ValueAdded -= valueAdded;
+                monitor.ValuePropertyChanged -= valuePropertyChanged;
+                monitor.ValueRemoved -= valueRemoved;
+                monitor.ValueReplaced -= valueReplaced;
+                monitor.ValuesAdded -= valuesAdded;
+                monitor.ValuesRemoved -= valuesRemoved;
+                if (disposing)
+                    monitor.Dispose();
+            });
+
+            void valueAddedLogic(NotifyDictionaryValueEventArgs<TKey, TValue> e)
+            {
+                var key = e.Key;
+                if (selectorValues.Count == 0)
+                {
+                    var currentMin = selector(key, e.Value);
+                    selectorValues.Add(key, currentMin);
+                    setValidity(true);
+                    setValue(currentMin);
+                }
+                else
+                {
+                    var selectorValue = selector(key, e.Value);
+                    selectorValues.Add(key, selectorValue);
+                    if (selectorValue.CompareTo(result.Value) < 0)
+                        setValue(selectorValue);
+                }
+            }
+
+            void valuePropertyChangedLogic(ValuePropertyChangeEventArgs<TKey, TValue> e)
+            {
+                var key = e.Key;
+                var previousSelectorValue = selectorValues[key];
+                var newSelectorValue = selector(key, e.Value);
+                selectorValues[key] = newSelectorValue;
+                var currentMin = result.Value;
+                var comparison = newSelectorValue.CompareTo(currentMin);
+                if (comparison < 0)
+                    setValue(newSelectorValue);
+                else if (comparison > 0 && previousSelectorValue.CompareTo(currentMin) == 0)
+                    setValue(selectorValues.Values.Min());
+            }
+
+            void valueRemovedLogic(NotifyDictionaryValueEventArgs<TKey, TValue> e)
+            {
+                if (selectorValues.Count == 1)
+                {
+                    selectorValues = source is SortedDictionary<TKey, TResult> || source is ObservableSortedDictionary<TKey, TValue> || source is SynchronizedObservableSortedDictionary<TKey, TValue> ? (IDictionary<TKey, TResult>)new SortedDictionary<TKey, TResult>() : new Dictionary<TKey, TResult>();
+                    setValidity(false);
+                }
+                else
+                {
+                    var key = e.Key;
+                    if (selectorValues.TryGetValue(key, out var selectorValue))
+                    {
+                        selectorValues.Remove(key);
+                        if (selectorValue.CompareTo(result.Value) == 0)
+                            setValue(selectorValues.Values.Max());
+                    }
+                }
+            }
+
+            void valueReplacedLogic(NotifyDictionaryValueReplacedEventArgs<TKey, TValue> e)
+            {
+                var key = e.Key;
+                var previousSelectorValue = selectorValues[key];
+                var currentSelectorValue = selector(key, e.NewValue);
+                selectorValues[key] = currentSelectorValue;
+                var previousToCurrent = previousSelectorValue.CompareTo(currentSelectorValue);
+                if (previousToCurrent > 0 && currentSelectorValue.CompareTo(result.Value) < 0)
+                    setValue(currentSelectorValue);
+                else if (previousToCurrent < 0 && previousSelectorValue.CompareTo(result.Value) == 0)
+                    setValue(selectorValues.Values.Min());
+            }
+
+            void valuesAddedLogic(NotifyDictionaryValuesEventArgs<TKey, TValue> e)
+            {
+                if (selectorValues.Count == 0)
+                {
+                    var firstKeyValuePair = e.KeyValuePairs.First();
+                    var currentMin = selector(firstKeyValuePair.Key, firstKeyValuePair.Value);
+                    selectorValues.Add(firstKeyValuePair.Key, currentMin);
+                    foreach (var keyValuePair in e.KeyValuePairs.Skip(1))
+                    {
+                        var key = keyValuePair.Key;
+                        var selectorValue = selector(key, keyValuePair.Value);
+                        if (selectorValue.CompareTo(currentMin) < 0)
+                            currentMin = selectorValue;
+                        selectorValues.Add(key, selectorValue);
+                    }
+                    setValidity(true);
+                    setValue(currentMin);
+                }
+                else
+                {
+                    var currentMin = result.Value;
+                    foreach (var keyValuePair in e.KeyValuePairs)
+                    {
+                        var key = keyValuePair.Key;
+                        var selectorValue = selector(key, keyValuePair.Value);
+                        selectorValues.Add(key, selectorValue);
+                        if (selectorValue.CompareTo(currentMin) < 0)
+                            currentMin = selectorValue;
+                    }
+                    if (currentMin.CompareTo(result.Value) < 0)
+                        setValue(currentMin);
+                }
+            }
+
+            void valuesRemovedLogic(NotifyDictionaryValuesEventArgs<TKey, TValue> e)
+            {
+                if (selectorValues.Count == e.KeyValuePairs.Count)
+                {
+                    selectorValues = source is SortedDictionary<TKey, TValue> || source is ObservableSortedDictionary<TKey, TValue> || source is SynchronizedObservableSortedDictionary<TKey, TValue> ? (IDictionary<TKey, TResult>)new SortedDictionary<TKey, TResult>() : new Dictionary<TKey, TResult>();
+                    setValidity(false);
+                }
+                else
+                {
+                    var currentMin = result.Value;
+                    var minRemoved = false;
+                    foreach (var keyValuePair in e.KeyValuePairs)
+                    {
+                        var key = keyValuePair.Key;
+                        if (selectorValues.TryGetValue(key, out var selectorValue))
+                        {
+                            if (selectorValue.CompareTo(currentMin) == 0)
+                                minRemoved = true;
+                            selectorValues.Remove(key);
+                        }
+                    }
+                    if (minRemoved)
+                        setValue(selectorValues.Values.Min());
+                }
+            }
+
+            if (isThreadSafe)
+            {
+                valueAdded = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        valueAddedLogic(e);
+                };
+                valuePropertyChanged = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        valuePropertyChangedLogic(e);
+                };
+                valueRemoved = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        valueRemovedLogic(e);
+                };
+                valueReplaced = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        valueReplacedLogic(e);
+                };
+                valuesAdded = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        valuesAddedLogic(e);
+                };
+                valuesRemoved = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        valuesRemovedLogic(e);
+                };
+            }
+            else
+            {
+                valueAdded = (sender, e) => valueAddedLogic(e);
+                valuePropertyChanged = (sender, e) => valuePropertyChangedLogic(e);
+                valueRemoved = (sender, e) => valueRemovedLogic(e);
+                valueReplaced = (sender, e) => valueReplacedLogic(e);
+                valuesAdded = (sender, e) => valuesAddedLogic(e);
+                valuesRemoved = (sender, e) => valuesRemovedLogic(e);
+            }
+
+            monitor.ValueAdded += valueAdded;
+            monitor.ValuePropertyChanged += valuePropertyChanged;
+            monitor.ValueRemoved += valueRemoved;
+            monitor.ValueReplaced += valueReplaced;
+            monitor.ValuesAdded += valuesAdded;
+            monitor.ValuesRemoved += valuesRemoved;
+            return result;
+        }
+
+        public static ActiveAggregateValue<TResult?> ActiveMin<TKey, TValue, TResult>(this IReadOnlyDictionary<TKey, TValue> source, Func<TKey, TValue, TResult?> selector, bool isThreadSafe = false, params string[] selectorProperties) where TResult : struct, IComparable<TResult>
+        {
+            var selectorValues = source is SortedDictionary<TKey, TValue> || source is ObservableSortedDictionary<TKey, TValue> || source is SynchronizedObservableSortedDictionary<TKey, TValue> ? (IDictionary<TKey, TResult?>)new SortedDictionary<TKey, TResult?>() : new Dictionary<TKey, TResult?>();
+            var firstIsValid = false;
+            TResult? firstMin = default;
+            if (source.Count > 0)
+            {
+                firstIsValid = true;
+                var firstKeyValuePair = source.First();
+                var firstKey = firstKeyValuePair.Key;
+                firstMin = selector(firstKey, firstKeyValuePair.Value);
+                selectorValues.Add(firstKey, firstMin);
+                foreach (var keyValuePair in source.Skip(1))
+                {
+                    var key = keyValuePair.Key;
+                    var selectorValue = selector(key, keyValuePair.Value);
+                    if (selectorValue != null && (firstMin == null || selectorValue.Value.CompareTo(firstMin.Value) < 0))
+                        firstMin = selectorValue;
+                    selectorValues.Add(key, selectorValue);
+                }
+            }
+            var monitor = ActiveDictionaryMonitor<TKey, TValue>.Monitor(source, selectorProperties);
+            EventHandler<NotifyDictionaryValueEventArgs<TKey, TValue>> valueAdded = null;
+            EventHandler<ValuePropertyChangeEventArgs<TKey, TValue>> valuePropertyChanged = null;
+            EventHandler<NotifyDictionaryValueEventArgs<TKey, TValue>> valueRemoved = null;
+            EventHandler<NotifyDictionaryValueReplacedEventArgs<TKey, TValue>> valueReplaced = null;
+            EventHandler<NotifyDictionaryValuesEventArgs<TKey, TValue>> valuesAdded = null;
+            EventHandler<NotifyDictionaryValuesEventArgs<TKey, TValue>> valuesRemoved = null;
+            var resultAccess = isThreadSafe ? new object() : null;
+            var result = new ActiveAggregateValue<TResult?>(firstIsValid, firstMin, out var setValidity, out var setValue, disposing =>
+            {
+                monitor.ValueAdded -= valueAdded;
+                monitor.ValuePropertyChanged -= valuePropertyChanged;
+                monitor.ValueRemoved -= valueRemoved;
+                monitor.ValueReplaced -= valueReplaced;
+                monitor.ValuesAdded -= valuesAdded;
+                monitor.ValuesRemoved -= valuesRemoved;
+                if (disposing)
+                    monitor.Dispose();
+            });
+
+            void valueAddedLogic(NotifyDictionaryValueEventArgs<TKey, TValue> e)
+            {
+                var key = e.Key;
+                if (selectorValues.Count == 0)
+                {
+                    var selectorValue = selector(key, e.Value);
+                    selectorValues.Add(key, selectorValue);
+                    setValidity(true);
+                    setValue(selectorValue);
+                }
+                else
+                {
+                    var currentMin = result.Value;
+                    var selectorValue = selector(key, e.Value);
+                    selectorValues.Add(key, selectorValue);
+                    if (selectorValue != null && (currentMin == null || selectorValue.Value.CompareTo(currentMin.Value) < 0))
+                        currentMin = selectorValue;
+                    if (((currentMin == null) != (result.Value == null)) || (currentMin != null && result.Value != null && currentMin.Value.CompareTo(result.Value.Value) < 0))
+                        setValue(currentMin);
+                }
+            }
+
+            void valuePropertyChangedLogic(ValuePropertyChangeEventArgs<TKey, TValue> e)
+            {
+                var key = e.Key;
+                var previousSelectorValue = selectorValues[key];
+                var newSelectorValue = selector(key, e.Value);
+                selectorValues[key] = newSelectorValue;
+                var currentMin = result.Value;
+                if (newSelectorValue != null && (currentMin == null || newSelectorValue.Value.CompareTo(currentMin.Value) < 0))
+                    setValue(newSelectorValue);
+                else if (previousSelectorValue != null && currentMin != null && previousSelectorValue.Value.CompareTo(currentMin.Value) == 0 && (newSelectorValue == null || newSelectorValue.Value.CompareTo(previousSelectorValue.Value) > 0))
+                    setValue(selectorValues.Values.Min());
+            }
+
+            void valueRemovedLogic(NotifyDictionaryValueEventArgs<TKey, TValue> e)
+            {
+                if (selectorValues.Count == 1)
+                {
+                    selectorValues = source is SortedDictionary<TKey, TValue> || source is ObservableSortedDictionary<TKey, TValue> || source is SynchronizedObservableSortedDictionary<TKey, TValue> ? (IDictionary<TKey, TResult?>)new SortedDictionary<TKey, TResult?>() : new Dictionary<TKey, TResult?>();
+                    setValidity(false);
+                }
+                else
+                {
+                    var currentMin = result.Value;
+                    var minRemoved = false;
+                    var key = e.Key;
+                    if (selectorValues.TryGetValue(key, out var selectorValue))
+                    {
+                        if (currentMin != null && selectorValue != null && selectorValue.Value.CompareTo(currentMin.Value) == 0)
+                            minRemoved = true;
+                        selectorValues.Remove(key);
+                    }
+                    if (minRemoved)
+                        setValue(selectorValues.Values.Min());
+                }
+            }
+
+            void valueReplacedLogic(NotifyDictionaryValueReplacedEventArgs<TKey, TValue> e)
+            {
+                var key = e.Key;
+                var previousSelectorValue = selectorValues[key];
+                var currentSelectorValue = selector(key, e.NewValue);
+                selectorValues[key] = currentSelectorValue;
+                var previousToCurrent = (previousSelectorValue ?? default).CompareTo(currentSelectorValue ?? default);
+                if (currentSelectorValue != null && (previousSelectorValue == null || previousToCurrent > 0) && (result.Value == null || currentSelectorValue.Value.CompareTo(result.Value.Value) < 0))
+                    setValue(currentSelectorValue);
+                else if (previousSelectorValue != null && (currentSelectorValue == null || (previousToCurrent < 0 && previousSelectorValue.Value.CompareTo(result.Value.Value) == 0)))
+                    setValue(selectorValues.Values.Min());
+            }
+
+            void valuesAddedLogic(NotifyDictionaryValuesEventArgs<TKey, TValue> e)
+            {
+                if (selectorValues.Count == 0)
+                {
+                    var firstKeyValuePair = source.First();
+                    var firstKey = firstKeyValuePair.Key;
+                    var currentMin = selector(firstKey, firstKeyValuePair.Value);
+                    selectorValues.Add(firstKey, currentMin);
+                    foreach (var keyValuePair in source.Skip(1))
+                    {
+                        var key = keyValuePair.Key;
+                        var selectorValue = selector(key, keyValuePair.Value);
+                        if (selectorValue != null && (currentMin == null || selectorValue.Value.CompareTo(currentMin.Value) < 0))
+                            currentMin = selectorValue;
+                        selectorValues.Add(key, selectorValue);
+                    }
+                    setValidity(true);
+                    setValue(currentMin);
+                }
+                else
+                {
+                    var currentMin = result.Value;
+                    foreach (var keyValuePair in e.KeyValuePairs)
+                    {
+                        var key = keyValuePair.Key;
+                        var selectorValue = selector(key, keyValuePair.Value);
+                        selectorValues.Add(key, selectorValue);
+                        if (selectorValue != null && (currentMin == null || selectorValue.Value.CompareTo(currentMin.Value) < 0))
+                            currentMin = selectorValue;
+                    }
+                    if (((currentMin == null) != (result.Value == null)) || (currentMin != null && result.Value != null && currentMin.Value.CompareTo(result.Value.Value) < 0))
+                        setValue(currentMin);
+                }
+            }
+
+            void valuesRemovedLogic(NotifyDictionaryValuesEventArgs<TKey, TValue> e)
+            {
+                if (selectorValues.Count == e.KeyValuePairs.Count)
+                {
+                    selectorValues = source is SortedDictionary<TKey, TValue> || source is ObservableSortedDictionary<TKey, TValue> || source is SynchronizedObservableSortedDictionary<TKey, TValue> ? (IDictionary<TKey, TResult?>)new SortedDictionary<TKey, TResult?>() : new Dictionary<TKey, TResult?>();
+                    setValidity(false);
+                }
+                else
+                {
+                    var currentMin = result.Value;
+                    var minRemoved = false;
+                    foreach (var keyValuePair in e.KeyValuePairs)
+                    {
+                        var key = keyValuePair.Key;
+                        if (selectorValues.TryGetValue(key, out var selectorValue))
+                        {
+                            if (currentMin != null && selectorValue != null && selectorValue.Value.CompareTo(currentMin.Value) == 0)
+                                minRemoved = true;
+                            selectorValues.Remove(key);
+                        }
+                    }
+                    if (minRemoved)
+                        setValue(selectorValues.Values.Min());
+                }
+            }
+
+            if (isThreadSafe)
+            {
+                valueAdded = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        valueAddedLogic(e);
+                };
+                valuePropertyChanged = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        valuePropertyChangedLogic(e);
+                };
+                valueRemoved = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        valueRemovedLogic(e);
+                };
+                valueReplaced = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        valueReplacedLogic(e);
+                };
+                valuesAdded = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        valuesAddedLogic(e);
+                };
+                valuesRemoved = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        valuesRemovedLogic(e);
+                };
+            }
+            else
+            {
+                valueAdded = (sender, e) => valueAddedLogic(e);
+                valuePropertyChanged = (sender, e) => valuePropertyChangedLogic(e);
+                valueRemoved = (sender, e) => valueRemovedLogic(e);
+                valueReplaced = (sender, e) => valueReplacedLogic(e);
+                valuesAdded = (sender, e) => valuesAddedLogic(e);
+                valuesRemoved = (sender, e) => valuesRemovedLogic(e);
+            }
+
+            monitor.ValueAdded += valueAdded;
+            monitor.ValuePropertyChanged += valuePropertyChanged;
+            monitor.ValueRemoved += valueRemoved;
+            monitor.ValueReplaced += valueReplaced;
+            monitor.ValuesAdded += valuesAdded;
+            monitor.ValuesRemoved += valuesRemoved;
+            return result;
+        }
+
+        public static ActiveAggregateValue<TResult> ActiveMin<TSource, TResult>(this IReadOnlyList<TSource> source, Func<TSource, TResult> selector, bool isThreadSafe = false, params string[] selectorProperties) where TSource : class where TResult : IComparable<TResult>
         {
             var selectorValues = new Dictionary<object, TResult>();
             var firstIsValid = false;
@@ -905,6 +1510,7 @@ namespace Gear.ActiveQuery
             EventHandler<ElementPropertyChangeEventArgs<TSource>> elementPropertyChanged = null;
             EventHandler<ElementMembershipEventArgs<TSource>> elementsAdded = null;
             EventHandler<ElementMembershipEventArgs<TSource>> elementsRemoved = null;
+            var resultAccess = isThreadSafe ? new object() : null;
             var result = new ActiveAggregateValue<TResult>(firstIsValid, firstMin, out var setValidity, out var setValue, disposing =>
             {
                 monitor.ElementPropertyChanged -= elementPropertyChanged;
@@ -913,7 +1519,8 @@ namespace Gear.ActiveQuery
                 if (disposing)
                     monitor.Dispose();
             });
-            elementPropertyChanged = (sender, e) =>
+
+            void elementPropertyChangedLogic(ElementPropertyChangeEventArgs<TSource> e)
             {
                 var element = e.Element;
                 var previousSelectorValue = selectorValues[element];
@@ -925,8 +1532,9 @@ namespace Gear.ActiveQuery
                     setValue(newSelectorValue);
                 else if (comparison > 0 && previousSelectorValue.CompareTo(currentMin) == 0)
                     setValue(selectorValues.Values.Min());
-            };
-            elementsAdded = (sender, e) =>
+            }
+
+            void elementsAddedLogic(ElementMembershipEventArgs<TSource> e)
             {
                 if (selectorValues.Count == 0)
                 {
@@ -956,8 +1564,9 @@ namespace Gear.ActiveQuery
                     if (currentMin.CompareTo(result.Value) < 0)
                         setValue(currentMin);
                 }
-            };
-            elementsRemoved = (sender, e) =>
+            }
+
+            void elementsRemovedLogic(ElementMembershipEventArgs<TSource> e)
             {
                 if (selectorValues.Count == e.Count)
                 {
@@ -980,14 +1589,40 @@ namespace Gear.ActiveQuery
                     if (minRemoved)
                         setValue(selectorValues.Values.Min());
                 }
-            };
+            }
+
+            if (isThreadSafe)
+            {
+                elementPropertyChanged = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        elementPropertyChangedLogic(e);
+                };
+                elementsAdded = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        elementsAddedLogic(e);
+                };
+                elementsRemoved = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        elementsRemovedLogic(e);
+                };
+            }
+            else
+            {
+                elementPropertyChanged = (sender, e) => elementPropertyChangedLogic(e);
+                elementsAdded = (sender, e) => elementsAddedLogic(e);
+                elementsRemoved = (sender, e) => elementsRemovedLogic(e);
+            }
+
             monitor.ElementPropertyChanged += elementPropertyChanged;
             monitor.ElementsAdded += elementsAdded;
             monitor.ElementsRemoved += elementsRemoved;
             return result;
         }
 
-        public static ActiveAggregateValue<TResult?> ActiveMin<TSource, TResult>(this IReadOnlyList<TSource> source, Func<TSource, TResult?> selector, params string[] selectorProperties) where TSource : class where TResult : struct, IComparable<TResult>
+        public static ActiveAggregateValue<TResult?> ActiveMin<TSource, TResult>(this IReadOnlyList<TSource> source, Func<TSource, TResult?> selector, bool isThreadSafe = false, params string[] selectorProperties) where TSource : class where TResult : struct, IComparable<TResult>
         {
             var selectorValues = new Dictionary<object, TResult?>();
             var firstIsValid = false;
@@ -1010,6 +1645,7 @@ namespace Gear.ActiveQuery
             EventHandler<ElementPropertyChangeEventArgs<TSource>> elementPropertyChanged = null;
             EventHandler<ElementMembershipEventArgs<TSource>> elementsAdded = null;
             EventHandler<ElementMembershipEventArgs<TSource>> elementsRemoved = null;
+            var resultAccess = isThreadSafe ? new object() : null;
             var result = new ActiveAggregateValue<TResult?>(firstIsValid, firstMin, out var setValidity, out var setValue, disposing =>
             {
                 monitor.ElementPropertyChanged -= elementPropertyChanged;
@@ -1018,7 +1654,8 @@ namespace Gear.ActiveQuery
                 if (disposing)
                     monitor.Dispose();
             });
-            elementPropertyChanged = (sender, e) =>
+
+            void elementPropertyChangedLogic(ElementPropertyChangeEventArgs<TSource> e)
             {
                 var element = e.Element;
                 var previousSelectorValue = selectorValues[element];
@@ -1029,8 +1666,9 @@ namespace Gear.ActiveQuery
                     setValue(newSelectorValue);
                 else if (previousSelectorValue != null && currentMin != null && previousSelectorValue.Value.CompareTo(currentMin.Value) == 0 && (newSelectorValue == null || newSelectorValue.Value.CompareTo(previousSelectorValue.Value) > 0))
                     setValue(selectorValues.Values.Min());
-            };
-            elementsAdded = (sender, e) =>
+            }
+
+            void elementsAddedLogic(ElementMembershipEventArgs<TSource> e)
             {
                 if (selectorValues.Count == 0)
                 {
@@ -1060,8 +1698,9 @@ namespace Gear.ActiveQuery
                     if (((currentMin == null) != (result.Value == null)) || (currentMin != null && result.Value != null && currentMin.Value.CompareTo(result.Value.Value) != 0))
                         setValue(currentMin);
                 }
-            };
-            elementsRemoved = (sender, e) =>
+            }
+
+            void elementsRemovedLogic(ElementMembershipEventArgs<TSource> e)
             {
                 if (selectorValues.Count == e.Count)
                 {
@@ -1084,7 +1723,33 @@ namespace Gear.ActiveQuery
                     if (minRemoved)
                         setValue(selectorValues.Values.Min());
                 }
-            };
+            }
+
+            if (isThreadSafe)
+            {
+                elementPropertyChanged = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        elementPropertyChangedLogic(e);
+                };
+                elementsAdded = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        elementsAddedLogic(e);
+                };
+                elementsRemoved = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        elementsRemovedLogic(e);
+                };
+            }
+            else
+            {
+                elementPropertyChanged = (sender, e) => elementPropertyChangedLogic(e);
+                elementsAdded = (sender, e) => elementsAddedLogic(e);
+                elementsRemoved = (sender, e) => elementsRemovedLogic(e);
+            }
+
             monitor.ElementPropertyChanged += elementPropertyChanged;
             monitor.ElementsAdded += elementsAdded;
             monitor.ElementsRemoved += elementsRemoved;
