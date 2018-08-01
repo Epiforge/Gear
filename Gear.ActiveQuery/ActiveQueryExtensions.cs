@@ -1,5 +1,4 @@
 using Gear.Components;
-using Nito.AsyncEx;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -17,31 +16,31 @@ namespace Gear.ActiveQuery
         public static ActiveEnumerable<TResult> ActiveCast<TResult>(this IEnumerable source, SynchronizationContext synchronizationContext)
         {
             var rangeObservableCollection = new SynchronizedRangeObservableCollection<TResult>(synchronizationContext, source.Cast<TResult>(), false);
-            var rangeObservableCollectionAccess = new AsyncLock();
+            var rangeObservableCollectionAccess = new object();
 
-            async void notifyCollectionChangedEventHandler(object sender, NotifyCollectionChangedEventArgs e)
+            void notifyCollectionChangedEventHandler(object sender, NotifyCollectionChangedEventArgs e)
             {
-                using (await rangeObservableCollectionAccess.LockAsync().ConfigureAwait(false))
+                lock (rangeObservableCollectionAccess)
                 {
                     if (e.Action == NotifyCollectionChangedAction.Reset)
-                        await rangeObservableCollection.ReplaceAllAsync(source.Cast<TResult>()).ConfigureAwait(false);
+                        rangeObservableCollection.ReplaceAll(source.Cast<TResult>());
                     else if (e.Action == NotifyCollectionChangedAction.Move)
-                        await rangeObservableCollection.MoveRangeAsync(e.OldStartingIndex, e.NewStartingIndex, e.OldItems.Count).ConfigureAwait(false);
+                        rangeObservableCollection.MoveRange(e.OldStartingIndex, e.NewStartingIndex, e.OldItems.Count);
                     else
                     {
                         if (e.OldItems != null && e.NewItems != null && e.OldStartingIndex >= 0 && e.OldStartingIndex == e.NewStartingIndex)
                         {
                             if (e.OldItems.Count == 1 && e.NewItems.Count == 1)
-                                await rangeObservableCollection.ReplaceAsync(e.OldStartingIndex, (TResult)e.NewItems[0]).ConfigureAwait(false);
+                                rangeObservableCollection.Replace(e.OldStartingIndex, (TResult)e.NewItems[0]);
                             else
-                                await rangeObservableCollection.ReplaceRangeAsync(e.OldStartingIndex, e.OldItems.Count, e.NewItems.Cast<TResult>()).ConfigureAwait(false);
+                                rangeObservableCollection.ReplaceRange(e.OldStartingIndex, e.OldItems.Count, e.NewItems.Cast<TResult>());
                         }
                         else
                         {
                             if (e.OldItems != null && e.OldStartingIndex >= 0)
-                                await rangeObservableCollection.RemoveRangeAsync(e.OldStartingIndex, e.OldItems.Count).ConfigureAwait(false);
+                                rangeObservableCollection.RemoveRange(e.OldStartingIndex, e.OldItems.Count);
                             if (e.NewItems != null && e.NewStartingIndex >= 0)
-                                await rangeObservableCollection.InsertRangeAsync(e.NewStartingIndex, e.NewItems.Cast<TResult>()).ConfigureAwait(false);
+                                rangeObservableCollection.InsertRange(e.NewStartingIndex, e.NewItems.Cast<TResult>());
                         }
                     }
                 }
@@ -67,55 +66,55 @@ namespace Gear.ActiveQuery
         public static ActiveEnumerable<TSource> ActiveConcat<TSource>(this IReadOnlyList<TSource> first, IReadOnlyList<TSource> second, SynchronizationContext synchronizationContext)
         {
             var rangeObservableCollection = new SynchronizedRangeObservableCollection<TSource>(synchronizationContext, first.Concat(second), false);
-            var rangeObservableCollectionAccess = new AsyncLock();
+            var rangeObservableCollectionAccess = new object();
 
-            async void firstNotifyCollectionChangedEventHandler(object sender, NotifyCollectionChangedEventArgs e)
+            void firstNotifyCollectionChangedEventHandler(object sender, NotifyCollectionChangedEventArgs e)
             {
-                using (await rangeObservableCollectionAccess.LockAsync().ConfigureAwait(false))
+                lock (rangeObservableCollectionAccess)
                 {
                     if (e.Action == NotifyCollectionChangedAction.Reset)
-                        await rangeObservableCollection.ReplaceRangeAsync(0, (await rangeObservableCollection.CountAsync.ConfigureAwait(false)) - second.Count, first).ConfigureAwait(false);
+                        rangeObservableCollection.ReplaceRange(0, rangeObservableCollection.Count - second.Count, first);
                     else
                     {
                         if (e.OldItems != null && e.NewItems != null && e.OldStartingIndex >= 0 && e.OldStartingIndex == e.NewStartingIndex)
                         {
                             if (e.OldItems.Count == 1 && e.NewItems.Count == 1)
-                                await rangeObservableCollection.ReplaceAsync(e.OldStartingIndex, (TSource)e.NewItems[0]).ConfigureAwait(false);
+                                rangeObservableCollection.Replace(e.OldStartingIndex, (TSource)e.NewItems[0]);
                             else
-                                await rangeObservableCollection.ReplaceRangeAsync(e.OldStartingIndex, e.OldItems.Count, e.NewItems.Cast<TSource>()).ConfigureAwait(false);
+                                rangeObservableCollection.ReplaceRange(e.OldStartingIndex, e.OldItems.Count, e.NewItems.Cast<TSource>());
                         }
                         else
                         {
                             if (e.OldItems != null && e.OldStartingIndex >= 0)
-                                await rangeObservableCollection.RemoveRangeAsync(e.OldStartingIndex, e.OldItems.Count).ConfigureAwait(false);
+                                rangeObservableCollection.RemoveRange(e.OldStartingIndex, e.OldItems.Count);
                             if (e.NewItems != null && e.NewStartingIndex >= 0)
-                                await rangeObservableCollection.InsertRangeAsync(e.NewStartingIndex, e.NewItems.Cast<TSource>()).ConfigureAwait(false);
+                                rangeObservableCollection.InsertRange(e.NewStartingIndex, e.NewItems.Cast<TSource>());
                         }
                     }
                 }
             }
 
-            async void secondNotifyCollectionChangedEventHandler(object sender, NotifyCollectionChangedEventArgs e)
+            void secondNotifyCollectionChangedEventHandler(object sender, NotifyCollectionChangedEventArgs e)
             {
-                using (await rangeObservableCollectionAccess.LockAsync().ConfigureAwait(false))
+                lock (rangeObservableCollectionAccess)
                 {
                     if (e.Action == NotifyCollectionChangedAction.Reset)
-                        await rangeObservableCollection.ReplaceRangeAsync(first.Count, (await rangeObservableCollection.CountAsync.ConfigureAwait(false)) - first.Count, second).ConfigureAwait(false);
+                        rangeObservableCollection.ReplaceRange(first.Count, rangeObservableCollection.Count - first.Count, second);
                     else
                     {
                         if (e.OldItems != null && e.NewItems != null && e.OldStartingIndex >= 0 && e.OldStartingIndex == e.NewStartingIndex)
                         {
                             if (e.OldItems.Count == 1 && e.NewItems.Count == 1)
-                                await rangeObservableCollection.ReplaceAsync(first.Count + e.OldStartingIndex, (TSource)e.NewItems[0]).ConfigureAwait(false);
+                                rangeObservableCollection.Replace(first.Count + e.OldStartingIndex, (TSource)e.NewItems[0]);
                             else
-                                await rangeObservableCollection.ReplaceRangeAsync(first.Count + e.OldStartingIndex, e.OldItems.Count, e.NewItems.Cast<TSource>()).ConfigureAwait(false);
+                                rangeObservableCollection.ReplaceRange(first.Count + e.OldStartingIndex, e.OldItems.Count, e.NewItems.Cast<TSource>());
                         }
                         else
                         {
                             if (e.OldItems != null && e.OldStartingIndex >= 0)
-                                await rangeObservableCollection.RemoveRangeAsync(first.Count + e.OldStartingIndex, e.OldItems.Count).ConfigureAwait(false);
+                                rangeObservableCollection.RemoveRange(first.Count + e.OldStartingIndex, e.OldItems.Count);
                             if (e.NewItems != null && e.NewStartingIndex >= 0)
-                                await rangeObservableCollection.InsertRangeAsync(first.Count + e.NewStartingIndex, e.NewItems.Cast<TSource>()).ConfigureAwait(false);
+                                rangeObservableCollection.InsertRange(first.Count + e.NewStartingIndex, e.NewItems.Cast<TSource>());
                         }
                     }
                 }
@@ -145,7 +144,7 @@ namespace Gear.ActiveQuery
         public static ActiveEnumerable<TSource> ActiveDistinct<TSource>(this IReadOnlyList<TSource> source, SynchronizationContext synchronizationContext)
         {
             var rangeObservableCollection = new SynchronizedRangeObservableCollection<TSource>(synchronizationContext, false);
-            var rangeObservableCollectionAccess = new AsyncLock();
+            var rangeObservableCollectionAccess = new object();
             var distinctCounts = new Dictionary<TSource, int>();
             foreach (var element in source)
             {
@@ -158,14 +157,14 @@ namespace Gear.ActiveQuery
                 }
             }
 
-            async void collectionChangedHandler(object sender, NotifyCollectionChangedEventArgs e)
+            void collectionChangedHandler(object sender, NotifyCollectionChangedEventArgs e)
             {
-                using (await rangeObservableCollectionAccess.LockAsync().ConfigureAwait(false))
+                lock (rangeObservableCollectionAccess)
                 {
                     if (e.Action == NotifyCollectionChangedAction.Reset)
                     {
                         distinctCounts.Clear();
-                        await rangeObservableCollection.ClearAsync().ConfigureAwait(false);
+                        rangeObservableCollection.Clear();
                     }
                     else if (e.Action != NotifyCollectionChangedAction.Move)
                     {
@@ -181,7 +180,7 @@ namespace Gear.ActiveQuery
                                 }
                             }
                             if (removingResults.Count > 0)
-                                await rangeObservableCollection.RemoveRangeAsync(removingResults).ConfigureAwait(false);
+                                rangeObservableCollection.RemoveRange(removingResults);
                         }
                         if (e.NewItems != null && e.NewStartingIndex >= 0)
                         {
@@ -197,7 +196,7 @@ namespace Gear.ActiveQuery
                                 }
                             }
                             if (addingResults.Count > 0)
-                                await rangeObservableCollection.AddRangeAsync(addingResults).ConfigureAwait(false);
+                                rangeObservableCollection.AddRange(addingResults);
                         }
                     }
                 }
@@ -223,7 +222,7 @@ namespace Gear.ActiveQuery
         public static ActiveEnumerable<ActiveGrouping<TKey, TSource>> ActiveGroupBy<TKey, TSource>(this IReadOnlyList<TSource> source, SynchronizationContext synchronizationContext, Func<TSource, TKey> keySelector, params string[] keySelectorProperties) where TKey : IEquatable<TKey> where TSource : class
         {
             var rangeObservableCollection = new SynchronizedRangeObservableCollection<ActiveGrouping<TKey, TSource>>(synchronizationContext, false);
-            var rangeObservableCollectionAccess = new AsyncLock();
+            var rangeObservableCollectionAccess = new object();
             var collectionAndGroupingDictionary = new Dictionary<TKey, (SynchronizedRangeObservableCollection<TSource> groupingObservableCollection, ActiveGrouping<TKey, TSource> grouping)>();
             var keyDictionary = new Dictionary<TSource, TKey>();
 
@@ -250,9 +249,9 @@ namespace Gear.ActiveQuery
             foreach (var element in source)
                 addElement(element);
 
-            async void elementPropertyChangedHandler(object sender, ElementPropertyChangeEventArgs<TSource> e)
+            void elementPropertyChangedHandler(object sender, ElementPropertyChangeEventArgs<TSource> e)
             {
-                using (await rangeObservableCollectionAccess.LockAsync().ConfigureAwait(false))
+                lock (rangeObservableCollectionAccess)
                 {
                     var element = e.Element;
                     var oldKey = keyDictionary[element];
@@ -262,8 +261,8 @@ namespace Gear.ActiveQuery
                         if (!monitor.ElementsNotifyChanging)
                             keyDictionary[element] = newKey;
                         var oldCollectionAndGrouping = collectionAndGroupingDictionary[oldKey];
-                        await oldCollectionAndGrouping.groupingObservableCollection.RemoveAsync(element).ConfigureAwait(false);
-                        if ((await oldCollectionAndGrouping.groupingObservableCollection.CountAsync.ConfigureAwait(false)) == 0)
+                        oldCollectionAndGrouping.groupingObservableCollection.Remove(element);
+                        if (oldCollectionAndGrouping.groupingObservableCollection.Count == 0)
                             collectionAndGroupingDictionary.Remove(oldKey);
                         SynchronizedRangeObservableCollection<TSource> groupingObservableCollection;
                         if (!collectionAndGroupingDictionary.TryGetValue(newKey, out var collectionAndGrouping))
@@ -271,11 +270,11 @@ namespace Gear.ActiveQuery
                             groupingObservableCollection = new SynchronizedRangeObservableCollection<TSource>(synchronizationContext);
                             var grouping = new ActiveGrouping<TKey, TSource>(newKey, groupingObservableCollection);
                             collectionAndGrouping = (groupingObservableCollection, grouping);
-                            await rangeObservableCollection.AddAsync(grouping).ConfigureAwait(false);
+                            rangeObservableCollection.Add(grouping);
                         }
                         else
                             groupingObservableCollection = collectionAndGrouping.groupingObservableCollection;
-                        await groupingObservableCollection.AddAsync(element).ConfigureAwait(false);
+                        groupingObservableCollection.Add(element);
                     }
                     if (monitor.ElementsNotifyChanging)
                         keyDictionary.Remove(element);
@@ -292,25 +291,25 @@ namespace Gear.ActiveQuery
                     keyDictionary.Add(element, key);
             }
 
-            async void elementsAddedHandler(object sender, ElementMembershipEventArgs<TSource> e)
+            void elementsAddedHandler(object sender, ElementMembershipEventArgs<TSource> e)
             {
-                using (await rangeObservableCollectionAccess.LockAsync().ConfigureAwait(false))
+                lock (rangeObservableCollectionAccess)
                 {
                     foreach (var element in e.Elements)
                         addElement(element);
                 }
             }
 
-            async void elementsRemovedHandler(object sender, ElementMembershipEventArgs<TSource> e)
+            void elementsRemovedHandler(object sender, ElementMembershipEventArgs<TSource> e)
             {
-                using (await rangeObservableCollectionAccess.LockAsync().ConfigureAwait(false))
+                lock (rangeObservableCollectionAccess)
                     foreach (var element in e.Elements)
                     {
                         var key = keyDictionary[element];
                         keyDictionary.Remove(element);
                         var (groupingObservableCollection, grouping) = collectionAndGroupingDictionary[key];
-                        await groupingObservableCollection.RemoveAsync(element).ConfigureAwait(false);
-                        if ((await groupingObservableCollection.CountAsync.ConfigureAwait(false)) == 0)
+                        groupingObservableCollection.Remove(element);
+                        if (groupingObservableCollection.Count == 0)
                             collectionAndGroupingDictionary.Remove(key);
                     }
             }
@@ -1794,7 +1793,7 @@ namespace Gear.ActiveQuery
             if (indexed)
                 rebuildSortingIndicies(sortedSource);
             var rangeObservableCollection = new SynchronizedRangeObservableCollection<TSource>(synchronizationContext, sortedSource, false);
-            var rangeObservableCollectionAccess = new AsyncLock();
+            var rangeObservableCollectionAccess = new object();
 
             void repositionElement(TSource element)
             {
@@ -1824,16 +1823,16 @@ namespace Gear.ActiveQuery
 
             var monitor = ActiveListMonitor<TSource>.Monitor(source, selectorsProperties == null ? new string[0] : selectorsProperties.ToArray());
 
-            async void elementPropertyChangedHandler(object sender, ElementPropertyChangeEventArgs<TSource> e)
+            void elementPropertyChangedHandler(object sender, ElementPropertyChangeEventArgs<TSource> e)
             {
-                using (await rangeObservableCollectionAccess.LockAsync().ConfigureAwait(false))
-                    await rangeObservableCollection.ExecuteAsync(() => repositionElement(e.Element)).ConfigureAwait(false);
+                lock (rangeObservableCollectionAccess)
+                    rangeObservableCollection.Execute(() => repositionElement(e.Element));
             }
 
-            async void elementsAddedHandler(object sender, ElementMembershipEventArgs<TSource> e)
+            void elementsAddedHandler(object sender, ElementMembershipEventArgs<TSource> e)
             {
-                using (await rangeObservableCollectionAccess.LockAsync().ConfigureAwait(false))
-                    await rangeObservableCollection.ExecuteAsync(() =>
+                lock (rangeObservableCollectionAccess)
+                    rangeObservableCollection.Execute(() =>
                     {
                         {
                             if (rangeObservableCollection.Count == 0)
@@ -1863,13 +1862,13 @@ namespace Gear.ActiveQuery
                                     rangeObservableCollection.Insert(insertionPosition, element);
                                 }
                         }
-                    }).ConfigureAwait(false);
+                    });
             }
 
-            async void elementsRemovedHandler(object sender, ElementMembershipEventArgs<TSource> e)
+            void elementsRemovedHandler(object sender, ElementMembershipEventArgs<TSource> e)
             {
-                using (await rangeObservableCollectionAccess.LockAsync().ConfigureAwait(false))
-                    await rangeObservableCollection.ExecuteAsync(() =>
+                lock (rangeObservableCollectionAccess)
+                    rangeObservableCollection.Execute(() =>
                     {
                         if (rangeObservableCollection.Count == e.Count)
                         {
@@ -1902,7 +1901,7 @@ namespace Gear.ActiveQuery
                                     sortingIndicies[rangeObservableCollection[i]] = i;
                             }
                         }
-                    }).ConfigureAwait(false);
+                    });
             }
 
             monitor.ElementPropertyChanged += elementPropertyChangedHandler;
@@ -1944,20 +1943,20 @@ namespace Gear.ActiveQuery
                 sourceToIndex.Add(element, index);
                 return selector(element);
             }) : source.Select(element => selector(element)), false);
-            var rangeObservableCollectionAccess = new AsyncLock();
+            var rangeObservableCollectionAccess = new object();
             var monitor = ActiveListMonitor<TSource>.Monitor(source, selectorProperties);
 
-            async void elementPropertyChangedHandler(object sender, ElementPropertyChangeEventArgs<TSource> e)
+            void elementPropertyChangedHandler(object sender, ElementPropertyChangeEventArgs<TSource> e)
             {
                 var sourceElement = e.Element;
                 TResult targetElement;
-                using (await rangeObservableCollectionAccess.LockAsync().ConfigureAwait(false))
+                lock (rangeObservableCollectionAccess)
                 {
                     var index = indexingStrategy != IndexingStrategy.NoneOrInherit ? sourceToIndex[sourceElement] : source.IndexOf(sourceElement);
                     if (updater == null)
-                        targetElement = await rangeObservableCollection.ReplaceAsync(index, selector(sourceElement)).ConfigureAwait(false);
+                        targetElement = rangeObservableCollection.Replace(index, selector(sourceElement));
                     else
-                        targetElement = await rangeObservableCollection.GetItemAsync(index).ConfigureAwait(false);
+                        targetElement = rangeObservableCollection[index];
                 }
                 if (updater == null)
                     releaser?.Invoke(targetElement);
@@ -1965,9 +1964,9 @@ namespace Gear.ActiveQuery
                     updater(e.Element, e.PropertyName, targetElement);
             }
 
-            async void elementsAddedHandler(object sender, ElementMembershipEventArgs<TSource> e)
+            void elementsAddedHandler(object sender, ElementMembershipEventArgs<TSource> e)
             {
-                using (await rangeObservableCollectionAccess.LockAsync().ConfigureAwait(false))
+                lock (rangeObservableCollectionAccess)
                 {
                     if (indexingStrategy != IndexingStrategy.NoneOrInherit)
                     {
@@ -1977,13 +1976,13 @@ namespace Gear.ActiveQuery
                         for (var i = e.Index + e.Count; i < source.Count; ++i)
                             sourceToIndex[source[i]] = i;
                     }
-                    await rangeObservableCollection.InsertRangeAsync(e.Index, e.Elements.Select(selector)).ConfigureAwait(false);
+                    rangeObservableCollection.InsertRange(e.Index, e.Elements.Select(selector));
                 }
             }
 
-            async void elementsMovedHandler(object sender, ElementsMovedEventArgs<TSource> e)
+            void elementsMovedHandler(object sender, ElementsMovedEventArgs<TSource> e)
             {
-                using (await rangeObservableCollectionAccess.LockAsync().ConfigureAwait(false))
+                lock (rangeObservableCollectionAccess)
                 {
                     if (indexingStrategy != IndexingStrategy.NoneOrInherit)
                     {
@@ -1991,16 +1990,16 @@ namespace Gear.ActiveQuery
                         for (var i = e.FromIndex < e.ToIndex ? e.FromIndex : e.ToIndex; i < endIndex; ++i)
                             sourceToIndex[source[i]] = i;
                     }
-                    await rangeObservableCollection.MoveRangeAsync(e.FromIndex, e.ToIndex, e.Count).ConfigureAwait(false);
+                    rangeObservableCollection.MoveRange(e.FromIndex, e.ToIndex, e.Count);
                 }
             }
 
-            async void elementsRemovedHandler(object sender, ElementMembershipEventArgs<TSource> e)
+            void elementsRemovedHandler(object sender, ElementMembershipEventArgs<TSource> e)
             {
                 IReadOnlyList<TResult> removedItems;
-                using (await rangeObservableCollectionAccess.LockAsync().ConfigureAwait(false))
+                lock (rangeObservableCollectionAccess)
                 {
-                    removedItems = await rangeObservableCollection.ReplaceRangeAsync(e.Index, e.Count).ConfigureAwait(false);
+                    removedItems = rangeObservableCollection.ReplaceRange(e.Index, e.Count);
                     if (indexingStrategy != IndexingStrategy.NoneOrInherit)
                         for (var i = e.Index; i < source.Count; ++i)
                             sourceToIndex[source[i]] = i;
@@ -2047,13 +2046,13 @@ namespace Gear.ActiveQuery
                 resultsCount += resultsList.Count;
                 return results;
             }), false);
-            var rangeObservableCollectionAccess = new AsyncLock();
+            var rangeObservableCollectionAccess = new object();
             var monitor = ActiveListMonitor<TSource>.Monitor(source, selectorProperties);
 
-            async void elementPropertyChangedHandler(object sender, ElementPropertyChangeEventArgs<TSource> e)
+            void elementPropertyChangedHandler(object sender, ElementPropertyChangeEventArgs<TSource> e)
             {
                 IEnumerable<TResult> releasingItems = null;
-                using (await rangeObservableCollectionAccess.LockAsync().ConfigureAwait(false))
+                lock (rangeObservableCollectionAccess)
                 {
                     var sourceElement = e.Element;
                     if (!sourceToSourceIndex.TryGetValue(sourceElement, out var sourceIndex))
@@ -2068,7 +2067,7 @@ namespace Gear.ActiveQuery
                         if (lengthDiff != 0)
                             for (var i = sourceIndex + 1; i < source.Count; ++i)
                                 sourceToResultsIndex[source[i]] += lengthDiff;
-                        await rangeObservableCollection.ReplaceRangeAsync(sourceToResultsIndex[sourceElement], pastResultsList.Count, newResults).ConfigureAwait(false);
+                        rangeObservableCollection.ReplaceRange(sourceToResultsIndex[sourceElement], pastResultsList.Count, newResults);
                     }
                     else
                     {
@@ -2080,7 +2079,7 @@ namespace Gear.ActiveQuery
                             if (lengthDiff != 0)
                                 for (var i = sourceIndex + 1; i < source.Count; ++i)
                                     sourceToResultsIndex[source[i]] += lengthDiff;
-                            await rangeObservableCollection.ReplaceRangeAsync(sourceToResultsIndex[sourceElement], pastResults.Count, pastResultsList).ConfigureAwait(false);
+                            rangeObservableCollection.ReplaceRange(sourceToResultsIndex[sourceElement], pastResults.Count, pastResultsList);
                             if (releaser != null)
                             {
                                 var removedItems = pastResults.Except(pastResultsList);
@@ -2095,15 +2094,15 @@ namespace Gear.ActiveQuery
                         releaser(releasingItem);
             }
 
-            async void elementsAddedHandler(object sender, ElementMembershipEventArgs<TSource> e)
+            void elementsAddedHandler(object sender, ElementMembershipEventArgs<TSource> e)
             {
-                using (await rangeObservableCollectionAccess.LockAsync().ConfigureAwait(false))
+                lock (rangeObservableCollectionAccess)
                 {
                     var resultsIndex = 0;
                     if (sourceToResultsIndex.Count > 0)
                     {
                         if (e.Index == sourceToResultsIndex.Count)
-                            resultsIndex = await rangeObservableCollection.CountAsync.ConfigureAwait(false);
+                            resultsIndex = rangeObservableCollection.Count;
                         else
                             resultsIndex = sourceToResultsIndex[source[e.Index + e.Count]];
                     }
@@ -2123,13 +2122,13 @@ namespace Gear.ActiveQuery
                         sourceToSourceIndex[source[i]] = i;
                         sourceToResultsIndex[source[i]] += resultsAdded.Count;
                     }
-                    await rangeObservableCollection.InsertRangeAsync(resultsIndex, resultsAdded).ConfigureAwait(false);
+                    rangeObservableCollection.InsertRange(resultsIndex, resultsAdded);
                 }
             }
 
-            async void elementsMovedHandler(object sender, ElementsMovedEventArgs<TSource> e)
+            void elementsMovedHandler(object sender, ElementsMovedEventArgs<TSource> e)
             {
-                using (await rangeObservableCollectionAccess.LockAsync().ConfigureAwait(false))
+                lock (rangeObservableCollectionAccess)
                 {
                     var firstElement = e.Elements.First();
                     var resultFromIndex = sourceToResultsIndex[firstElement];
@@ -2151,14 +2150,14 @@ namespace Gear.ActiveQuery
                         iterativeResultIndex += results.Count;
                     }
                     var resultToIndex = sourceToResultsIndex[firstElement];
-                    await rangeObservableCollection.MoveRangeAsync(resultFromIndex, resultToIndex, e.Elements.Sum(element => selectedResults[element].Count)).ConfigureAwait(false);
+                    rangeObservableCollection.MoveRange(resultFromIndex, resultToIndex, e.Elements.Sum(element => selectedResults[element].Count));
                 }
             }
 
-            async void elementsRemovedHandler(object sender, ElementMembershipEventArgs<TSource> e)
+            void elementsRemovedHandler(object sender, ElementMembershipEventArgs<TSource> e)
             {
                 IEnumerable<TResult> releasingItems = null;
-                using (await rangeObservableCollectionAccess.LockAsync().ConfigureAwait(false))
+                lock (rangeObservableCollectionAccess)
                 {
                     var removedItems = new List<TResult>();
                     foreach (var sourceElement in e.Elements)
@@ -2179,7 +2178,7 @@ namespace Gear.ActiveQuery
                         sourceToResultsIndex[sourceElement] = iteratingResultIndex;
                         iteratingResultIndex += selectedResults[sourceElement].Count;
                     }
-                    await rangeObservableCollection.RemoveRangeAsync(resultIndex, removedItems.Count).ConfigureAwait(false);
+                    rangeObservableCollection.RemoveRange(resultIndex, removedItems.Count);
                     if (releaser != null && removedItems.Count > 0)
                         releasingItems = removedItems;
                 }
@@ -3076,89 +3075,6 @@ namespace Gear.ActiveQuery
             return result;
         }
 
-        public static ActiveEnumerable<TSource> ActiveWhere<TSource>(this IReadOnlyList<TSource> source, Func<TSource, bool> predicate, params string[] predicateProperties) where TSource : class =>
-            ActiveWhere(source, (source as ISynchronizable)?.SynchronizationContext, predicate, predicateProperties);
-
-        public static ActiveEnumerable<TSource> ActiveWhere<TSource>(this IReadOnlyList<TSource> source, SynchronizationContext synchronizationContext, Func<TSource, bool> predicate, params string[] predicateProperties) where TSource : class
-        {
-            var rangeObservableCollection = new SynchronizedRangeObservableCollection<TSource>(synchronizationContext, source.Where(predicate));
-            var rangeObservableCollectionAccess = new AsyncLock();
-            var monitor = ActiveListMonitor<TSource>.Monitor(source, predicateProperties);
-            HashSet<TSource> currentItems;
-            if (monitor.ElementsNotifyChanging)
-                currentItems = new HashSet<TSource>();
-            else
-                currentItems = new HashSet<TSource>(rangeObservableCollection);
-
-            async void elementPropertyChangedHandler(object sender, ElementPropertyChangeEventArgs<TSource> e)
-            {
-                using (await rangeObservableCollectionAccess.LockAsync().ConfigureAwait(false))
-                {
-                    var element = e.Element;
-                    if (predicate(element))
-                    {
-                        if (currentItems.Add(element))
-                        {
-                            await rangeObservableCollection.AddAsync(element).ConfigureAwait(false);
-                            if (monitor.ElementsNotifyChanging)
-                                currentItems.Remove(element);
-                        }
-                    }
-                    else if (currentItems.Remove(element))
-                        await rangeObservableCollection.RemoveAsync(element).ConfigureAwait(false);
-                }
-            }
-
-            async void elementPropertyChangingHandler(object sender, ElementPropertyChangeEventArgs<TSource> e)
-            {
-                using (await rangeObservableCollectionAccess.LockAsync().ConfigureAwait(false))
-                {
-                    var element = e.Element;
-                    if (predicate(element))
-                        currentItems.Add(element);
-                }
-            }
-
-            async void elementsAddedHandler(object sender, ElementMembershipEventArgs<TSource> e)
-            {
-                using (await rangeObservableCollectionAccess.LockAsync().ConfigureAwait(false))
-                {
-                    var matchingElements = e.Elements.Where(predicate);
-                    if (!monitor.ElementsNotifyChanging)
-                        currentItems.UnionWith(matchingElements);
-                    await rangeObservableCollection.AddRangeAsync(matchingElements).ConfigureAwait(false);
-                }
-            }
-
-            async void elementsRemovedHandler(object sender, ElementMembershipEventArgs<TSource> e)
-            {
-                using (await rangeObservableCollectionAccess.LockAsync().ConfigureAwait(false))
-                {
-                    var matchingElements = new HashSet<TSource>(currentItems);
-                    matchingElements.IntersectWith(e.Elements);
-                    currentItems.ExceptWith(e.Elements);
-                    await rangeObservableCollection.RemoveRangeAsync(matchingElements).ConfigureAwait(false);
-                }
-            }
-
-            monitor.ElementPropertyChanged += elementPropertyChangedHandler;
-            monitor.ElementPropertyChanging += elementPropertyChangingHandler;
-            monitor.ElementsAdded += elementsAddedHandler;
-            monitor.ElementsRemoved += elementsRemovedHandler;
-            var result = new ActiveEnumerable<TSource>(rangeObservableCollection, disposing =>
-            {
-                monitor.ElementPropertyChanged -= elementPropertyChangedHandler;
-                monitor.ElementPropertyChanging -= elementPropertyChangingHandler;
-                monitor.ElementsAdded -= elementsAddedHandler;
-                monitor.ElementsRemoved -= elementsRemovedHandler;
-                if (disposing)
-                    monitor.Dispose();
-            });
-            if (synchronizationContext != null)
-                rangeObservableCollection.IsSynchronized = true;
-            return result;
-        }
-
         public static ActiveLookup<TKey, TValue> ActiveWhere<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, Func<TKey, TValue, bool> predicate, IndexingStrategy indexingStrategy = IndexingStrategy.NoneOrInherit, params string[] predicateProperties) =>
             ActiveWhere(source, (source as ISynchronizable)?.SynchronizationContext, predicate, indexingStrategy, predicateProperties);
 
@@ -3179,69 +3095,69 @@ namespace Gear.ActiveQuery
             }
             var rangeObservableDictionary = selfBalancingBinarySearchTree ? (ISynchronizableRangeDictionary<TKey, TValue>)new SynchronizedObservableSortedDictionary<TKey, TValue>(synchronizationContext, false) : new SynchronizedObservableDictionary<TKey, TValue>(synchronizationContext, false);
             rangeObservableDictionary.AddRange(source.Where(kvp => predicate(kvp.Key, kvp.Value)));
-            var rangeDictionaryAccess = new AsyncLock();
+            var rangeDictionaryAccess = new object();
             var monitor = ActiveDictionaryMonitor<TKey, TValue>.Monitor(source, predicateProperties);
 
-            async void valueAddedHandler(object sender, NotifyDictionaryValueEventArgs<TKey, TValue> e)
+            void valueAddedHandler(object sender, NotifyDictionaryValueEventArgs<TKey, TValue> e)
             {
                 var key = e.Key;
                 var value = e.Value;
                 var match = predicate(key, value);
                 if (match)
-                    using (await rangeDictionaryAccess.LockAsync().ConfigureAwait(false))
-                        await rangeObservableDictionary.AddAsync(key, value).ConfigureAwait(false);
+                    lock (rangeDictionaryAccess)
+                        rangeObservableDictionary.Add(key, value);
             }
 
-            async void valuePropertyChangedHandler(object sender, ValuePropertyChangeEventArgs<TKey, TValue> e)
+            void valuePropertyChangedHandler(object sender, ValuePropertyChangeEventArgs<TKey, TValue> e)
             {
                 var key = e.Key;
                 var value = e.Value;
                 var currentMatch = predicate(key, value);
-                using (await rangeDictionaryAccess.LockAsync().ConfigureAwait(false))
-                    await rangeObservableDictionary.ExecuteAsync(() =>
+                lock (rangeDictionaryAccess)
+                    rangeObservableDictionary.Execute(() =>
                     {
                         var previousMatch = rangeObservableDictionary.ContainsKey(key);
                         if (previousMatch && !currentMatch)
                             rangeObservableDictionary.Remove(key);
                         else if (!previousMatch && currentMatch)
                             rangeObservableDictionary.Add(key, value);
-                    }).ConfigureAwait(false);
+                    });
             }
 
-            async void valueRemovedHandler(object sender, NotifyDictionaryValueEventArgs<TKey, TValue> e)
+            void valueRemovedHandler(object sender, NotifyDictionaryValueEventArgs<TKey, TValue> e)
             {
-                using (await rangeDictionaryAccess.LockAsync().ConfigureAwait(false))
-                    await rangeObservableDictionary.RemoveAsync(e.Key).ConfigureAwait(false);
+                lock (rangeDictionaryAccess)
+                    rangeObservableDictionary.Remove(e.Key);
             }
 
-            async void valueReplacedHandler(object sender, NotifyDictionaryValueReplacedEventArgs<TKey, TValue> e)
+            void valueReplacedHandler(object sender, NotifyDictionaryValueReplacedEventArgs<TKey, TValue> e)
             {
                 var key = e.Key;
                 var value = e.NewValue;
                 var currentMatch = predicate(key, value);
-                using (await rangeDictionaryAccess.LockAsync().ConfigureAwait(false))
-                    await rangeObservableDictionary.ExecuteAsync(() =>
+                lock (rangeDictionaryAccess)
+                    rangeObservableDictionary.Execute(() =>
                     {
                         var previousMatch = rangeObservableDictionary.ContainsKey(key);
                         if (previousMatch && !currentMatch)
                             rangeObservableDictionary.Remove(key);
                         else if (!previousMatch && currentMatch)
                             rangeObservableDictionary.Add(key, value);
-                    }).ConfigureAwait(false);
+                    });
             }
 
-            async void valuesAddedHandler(object sender, NotifyDictionaryValuesEventArgs<TKey, TValue> e)
+            void valuesAddedHandler(object sender, NotifyDictionaryValuesEventArgs<TKey, TValue> e)
             {
                 var matches = e.KeyValuePairs.Where(kvp => predicate(kvp.Key, kvp.Value)).ToList();
-                using (await rangeDictionaryAccess.LockAsync().ConfigureAwait(false))
-                    await rangeObservableDictionary.AddRangeAsync(matches).ConfigureAwait(false);
+                lock (rangeDictionaryAccess)
+                    rangeObservableDictionary.AddRange(matches);
             }
 
-            async void valuesRemovedHandler(object sender, NotifyDictionaryValuesEventArgs<TKey, TValue> e)
+            void valuesRemovedHandler(object sender, NotifyDictionaryValuesEventArgs<TKey, TValue> e)
             {
                 var keys = e.KeyValuePairs.Select(kvp => kvp.Key).ToList();
-                using (await rangeDictionaryAccess.LockAsync().ConfigureAwait(false))
-                    await rangeObservableDictionary.RemoveRangeAsync(keys).ConfigureAwait(false);
+                lock (rangeDictionaryAccess)
+                    rangeObservableDictionary.RemoveRange(keys);
             }
 
             monitor.ValueAdded += valueAddedHandler;
@@ -3266,6 +3182,89 @@ namespace Gear.ActiveQuery
             return result;
         }
 
+        public static ActiveEnumerable<TSource> ActiveWhere<TSource>(this IReadOnlyList<TSource> source, Func<TSource, bool> predicate, params string[] predicateProperties) where TSource : class =>
+            ActiveWhere(source, (source as ISynchronizable)?.SynchronizationContext, predicate, predicateProperties);
+
+        public static ActiveEnumerable<TSource> ActiveWhere<TSource>(this IReadOnlyList<TSource> source, SynchronizationContext synchronizationContext, Func<TSource, bool> predicate, params string[] predicateProperties) where TSource : class
+        {
+            var rangeObservableCollection = new SynchronizedRangeObservableCollection<TSource>(synchronizationContext, source.Where(predicate));
+            var rangeObservableCollectionAccess = new object();
+            var monitor = ActiveListMonitor<TSource>.Monitor(source, predicateProperties);
+            HashSet<TSource> currentItems;
+            if (monitor.ElementsNotifyChanging)
+                currentItems = new HashSet<TSource>();
+            else
+                currentItems = new HashSet<TSource>(rangeObservableCollection);
+
+            void elementPropertyChangedHandler(object sender, ElementPropertyChangeEventArgs<TSource> e)
+            {
+                lock (rangeObservableCollectionAccess)
+                {
+                    var element = e.Element;
+                    if (predicate(element))
+                    {
+                        if (currentItems.Add(element))
+                        {
+                            rangeObservableCollection.Add(element);
+                            if (monitor.ElementsNotifyChanging)
+                                currentItems.Remove(element);
+                        }
+                    }
+                    else if (currentItems.Remove(element))
+                        rangeObservableCollection.Remove(element);
+                }
+            }
+
+            void elementPropertyChangingHandler(object sender, ElementPropertyChangeEventArgs<TSource> e)
+            {
+                lock (rangeObservableCollectionAccess)
+                {
+                    var element = e.Element;
+                    if (predicate(element))
+                        currentItems.Add(element);
+                }
+            }
+
+            void elementsAddedHandler(object sender, ElementMembershipEventArgs<TSource> e)
+            {
+                lock (rangeObservableCollectionAccess)
+                {
+                    var matchingElements = e.Elements.Where(predicate);
+                    if (!monitor.ElementsNotifyChanging)
+                        currentItems.UnionWith(matchingElements);
+                    rangeObservableCollection.AddRange(matchingElements);
+                }
+            }
+
+            void elementsRemovedHandler(object sender, ElementMembershipEventArgs<TSource> e)
+            {
+                lock (rangeObservableCollectionAccess)
+                {
+                    var matchingElements = new HashSet<TSource>(currentItems);
+                    matchingElements.IntersectWith(e.Elements);
+                    currentItems.ExceptWith(e.Elements);
+                    rangeObservableCollection.RemoveRange(matchingElements);
+                }
+            }
+
+            monitor.ElementPropertyChanged += elementPropertyChangedHandler;
+            monitor.ElementPropertyChanging += elementPropertyChangingHandler;
+            monitor.ElementsAdded += elementsAddedHandler;
+            monitor.ElementsRemoved += elementsRemovedHandler;
+            var result = new ActiveEnumerable<TSource>(rangeObservableCollection, disposing =>
+            {
+                monitor.ElementPropertyChanged -= elementPropertyChangedHandler;
+                monitor.ElementPropertyChanging -= elementPropertyChangingHandler;
+                monitor.ElementsAdded -= elementsAddedHandler;
+                monitor.ElementsRemoved -= elementsRemovedHandler;
+                if (disposing)
+                    monitor.Dispose();
+            });
+            if (synchronizationContext != null)
+                rangeObservableCollection.IsSynchronized = true;
+            return result;
+        }
+
         public static ActiveEnumerable<TValue> ToActiveEnumerable<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source) =>
             ToActiveEnumerable(source, (source as ISynchronizable)?.SynchronizationContext);
 
@@ -3283,27 +3282,27 @@ namespace Gear.ActiveQuery
                 keyToIndex.Add(element.Key, index);
                 return selector(element.Key, element.Value);
             }), false);
-            var rangeObservableCollectionAccess = new AsyncLock();
+            var rangeObservableCollectionAccess = new object();
             var monitor = ActiveDictionaryMonitor<TKey, TValue>.Monitor(source, selectorProperties);
 
-            async void valueAddedHandler(object sender, NotifyDictionaryValueEventArgs<TKey, TValue> e)
+            void valueAddedHandler(object sender, NotifyDictionaryValueEventArgs<TKey, TValue> e)
             {
-                using (await rangeObservableCollectionAccess.LockAsync().ConfigureAwait(false))
+                lock (rangeObservableCollectionAccess)
                 {
                     keyToIndex.Add(e.Key, keyToIndex.Count);
-                    await rangeObservableCollection.AddAsync(selector(e.Key, e.Value)).ConfigureAwait(false);
+                    rangeObservableCollection.Add(selector(e.Key, e.Value));
                 }
             }
 
-            async void valuePropertyChangedHandler(object sender, ValuePropertyChangeEventArgs<TKey, TValue> e)
+            void valuePropertyChangedHandler(object sender, ValuePropertyChangeEventArgs<TKey, TValue> e)
             {
                 TResult element;
-                using (await rangeObservableCollectionAccess.LockAsync().ConfigureAwait(false))
+                lock (rangeObservableCollectionAccess)
                 {
                     if (updater == null)
-                        element = await rangeObservableCollection.ReplaceAsync(keyToIndex[e.Key], selector(e.Key, e.Value)).ConfigureAwait(false);
+                        element = rangeObservableCollection.Replace(keyToIndex[e.Key], selector(e.Key, e.Value));
                     else
-                        element = await rangeObservableCollection.GetItemAsync(keyToIndex[e.Key]).ConfigureAwait(false);
+                        element = rangeObservableCollection[keyToIndex[e.Key]];
                 }
                 if (updater == null)
                     releaser?.Invoke(element);
@@ -3311,10 +3310,10 @@ namespace Gear.ActiveQuery
                     updater(e.Key, e.Value, e.PropertyName, element);
             }
 
-            async void valueRemovedHandler(object sender, NotifyDictionaryValueEventArgs<TKey, TValue> e)
+            void valueRemovedHandler(object sender, NotifyDictionaryValueEventArgs<TKey, TValue> e)
             {
                 TResult removedElement;
-                using (await rangeObservableCollectionAccess.LockAsync().ConfigureAwait(false))
+                lock (rangeObservableCollectionAccess)
                 {
                     var removingIndex = keyToIndex[e.Key];
                     keyToIndex.Remove(e.Key);
@@ -3324,35 +3323,35 @@ namespace Gear.ActiveQuery
                         if (index > removingIndex)
                             keyToIndex[key] = index - 1;
                     }
-                    removedElement = await rangeObservableCollection.GetAndRemoveAtAsync(removingIndex).ConfigureAwait(false);
+                    removedElement = rangeObservableCollection.GetAndRemoveAt(removingIndex);
                 }
                 releaser?.Invoke(removedElement);
             }
 
-            async void valueReplacedHandler(object sender, NotifyDictionaryValueReplacedEventArgs<TKey, TValue> e)
+            void valueReplacedHandler(object sender, NotifyDictionaryValueReplacedEventArgs<TKey, TValue> e)
             {
                 TResult replacedElement;
-                using (await rangeObservableCollectionAccess.LockAsync().ConfigureAwait(false))
-                    replacedElement = await rangeObservableCollection.ReplaceAsync(keyToIndex[e.Key], selector(e.Key, e.NewValue)).ConfigureAwait(false);
+                lock (rangeObservableCollectionAccess)
+                    replacedElement = rangeObservableCollection.Replace(keyToIndex[e.Key], selector(e.Key, e.NewValue));
                 releaser?.Invoke(replacedElement);
             }
 
-            async void valuesAddedHandler(object sender, NotifyDictionaryValuesEventArgs<TKey, TValue> e)
+            void valuesAddedHandler(object sender, NotifyDictionaryValuesEventArgs<TKey, TValue> e)
             {
                 if (e.KeyValuePairs.Any())
-                    using (await rangeObservableCollectionAccess.LockAsync().ConfigureAwait(false))
+                    lock (rangeObservableCollectionAccess)
                     {
                         var lastIndex = keyToIndex.Count - 1;
                         foreach (var keyValuePair in e.KeyValuePairs)
                             keyToIndex.Add(keyValuePair.Key, ++lastIndex);
-                        await rangeObservableCollection.AddRangeAsync(e.KeyValuePairs.Select(kvp => selector(kvp.Key, kvp.Value))).ConfigureAwait(false);
+                        rangeObservableCollection.AddRange(e.KeyValuePairs.Select(kvp => selector(kvp.Key, kvp.Value)));
                     }
             }
 
-            async void valuesRemovedHandler(object sender, NotifyDictionaryValuesEventArgs<TKey, TValue> e)
+            void valuesRemovedHandler(object sender, NotifyDictionaryValuesEventArgs<TKey, TValue> e)
             {
                 if (e.KeyValuePairs.Any())
-                    using (await rangeObservableCollectionAccess.LockAsync().ConfigureAwait(false))
+                    lock (rangeObservableCollectionAccess)
                     {
                         var removingIndicies = new List<int>();
                         foreach (var kvp in e.KeyValuePairs)
@@ -3362,7 +3361,7 @@ namespace Gear.ActiveQuery
                         }
                         var rangeStart = -1;
                         var rangeCount = 0;
-                        await rangeObservableCollection.ExecuteAsync(() =>
+                        rangeObservableCollection.Execute(() =>
                         {
                             foreach (var removingIndex in removingIndicies.OrderByDescending(i => i))
                             {
@@ -3384,7 +3383,7 @@ namespace Gear.ActiveQuery
                                 else
                                     rangeObservableCollection.RemoveRange(rangeStart, rangeCount);
                             }
-                        }).ConfigureAwait(false);
+                        });
                         var revisedKeyedIndicies = keyToIndex.OrderBy(kvp => kvp.Value).Select((element, index) => (element.Key, index));
                         keyToIndex = source is SortedDictionary<TKey, TValue> || source is ObservableSortedDictionary<TKey, TValue> || source is SynchronizedObservableSortedDictionary<TKey, TValue> ? (IDictionary<TKey, int>)new SortedDictionary<TKey, TValue>() : (IDictionary<TKey, int>)new Dictionary<TKey, TValue>();
                         foreach (var (key, index) in revisedKeyedIndicies)
