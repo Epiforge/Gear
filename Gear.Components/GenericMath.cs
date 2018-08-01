@@ -6,17 +6,17 @@ namespace Gear.Components
 {
     public static class GenericMath
     {
-        static ConcurrentDictionary<(MathBinaryOperation operation, Type type), Delegate> compiledBinaryOperationMethods = new ConcurrentDictionary<(MathBinaryOperation operation, Type type), Delegate>();
+        internal static ConcurrentDictionary<(MathBinaryOperation operation, Type type), Delegate> CompiledBinaryOperationMethods = new ConcurrentDictionary<(MathBinaryOperation operation, Type type), Delegate>();
 
-        public static T Add<T>(T a, T b) => ((Func<T, T, T>)compiledBinaryOperationMethods.GetOrAdd((MathBinaryOperation.Add, typeof(T)), CompiledBinaryOperationMethodsValueFactory))(a, b);
+        public static T Add<T>(T a, T b) => ((Func<T, T, T>)CompiledBinaryOperationMethods.GetOrAdd((MathBinaryOperation.Add, typeof(T)), CompiledBinaryOperationMethodsValueFactory))(a, b);
 
-        public static T Divide<T>(T a, T b) => ((Func<T, T, T>)compiledBinaryOperationMethods.GetOrAdd((MathBinaryOperation.Divide, typeof(T)), CompiledBinaryOperationMethodsValueFactory))(a, b);
+        public static T Divide<T>(T a, T b) => ((Func<T, T, T>)CompiledBinaryOperationMethods.GetOrAdd((MathBinaryOperation.Divide, typeof(T)), CompiledBinaryOperationMethodsValueFactory))(a, b);
 
-        public static T Multiply<T>(T a, T b) => ((Func<T, T, T>)compiledBinaryOperationMethods.GetOrAdd((MathBinaryOperation.Multiply, typeof(T)), CompiledBinaryOperationMethodsValueFactory))(a, b);
+        public static T Multiply<T>(T a, T b) => ((Func<T, T, T>)CompiledBinaryOperationMethods.GetOrAdd((MathBinaryOperation.Multiply, typeof(T)), CompiledBinaryOperationMethodsValueFactory))(a, b);
 
-        public static T Subtract<T>(T a, T b) => ((Func<T, T, T>)compiledBinaryOperationMethods.GetOrAdd((MathBinaryOperation.Subtract, typeof(T)), CompiledBinaryOperationMethodsValueFactory))(a, b);
+        public static T Subtract<T>(T a, T b) => ((Func<T, T, T>)CompiledBinaryOperationMethods.GetOrAdd((MathBinaryOperation.Subtract, typeof(T)), CompiledBinaryOperationMethodsValueFactory))(a, b);
 
-        static Delegate CompiledBinaryOperationMethodsValueFactory((MathBinaryOperation operation, Type type) key)
+        internal static Delegate CompiledBinaryOperationMethodsValueFactory((MathBinaryOperation operation, Type type) key)
         {
             var (operation, type) = key;
             var leftHand = Expression.Parameter(type);
@@ -41,5 +41,30 @@ namespace Gear.Components
             }
             return Expression.Lambda(math, leftHand, rightHand).Compile();
         }
+    }
+
+    public class GenericMath<T>
+    {
+        public GenericMath()
+        {
+            var type = typeof(T);
+            add = (Func<T, T, T>)GenericMath.CompiledBinaryOperationMethods.GetOrAdd((MathBinaryOperation.Add, type), GenericMath.CompiledBinaryOperationMethodsValueFactory);
+            divide = (Func<T, T, T>)GenericMath.CompiledBinaryOperationMethods.GetOrAdd((MathBinaryOperation.Divide, type), GenericMath.CompiledBinaryOperationMethodsValueFactory);
+            multiply = (Func<T, T, T>)GenericMath.CompiledBinaryOperationMethods.GetOrAdd((MathBinaryOperation.Multiply, type), GenericMath.CompiledBinaryOperationMethodsValueFactory);
+            subtract = (Func<T, T, T>)GenericMath.CompiledBinaryOperationMethods.GetOrAdd((MathBinaryOperation.Subtract, type), GenericMath.CompiledBinaryOperationMethodsValueFactory);
+        }
+
+        Func<T, T, T> add;
+        Func<T, T, T> divide;
+        Func<T, T, T> multiply;
+        Func<T, T, T> subtract;
+
+        public T Add(T a, T b) => add(a, b);
+
+        public T Divide(T a, T b) => divide(a, b);
+
+        public T Multiply(T a, T b) => multiply(a, b);
+
+        public T Subtract(T a, T b) => subtract(a, b);
     }
 }
