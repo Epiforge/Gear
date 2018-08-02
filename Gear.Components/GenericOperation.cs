@@ -45,7 +45,7 @@ namespace Gear.Components
             }
             catch (Exception ex)
             {
-                return Expression.Lambda(Expression.Throw(Expression.Constant(ex)), leftHand, rightHand).Compile();
+                return Expression.Lambda(Expression.Block(Expression.Throw(Expression.Constant(ex)), Expression.Default(type)), leftHand, rightHand).Compile();
             }
         }
     }
