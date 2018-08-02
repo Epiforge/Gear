@@ -2205,26 +2205,28 @@ namespace Gear.ActiveQuery
             return result;
         }
 
-        public static ActiveAggregateValue<decimal> ActiveSum<TSource>(this IReadOnlyList<TSource> source, Func<TSource, decimal> selector, params string[] selectorProperties) where TSource : class
+        public static ActiveAggregateValue<TValue> ActiveSum<TSource, TValue>(this IReadOnlyList<TSource> source, Func<TSource, TValue> selector, bool isThreadSafe = false, params string[] selectorProperties) where TSource : class where TValue : IEquatable<TValue>
         {
-            var selectorValues = new Dictionary<TSource, decimal>();
-            var firstSum = (decimal)0;
+            var operations = new GenericOperations<TValue>();
+            var selectorValues = new Dictionary<TSource, TValue>();
+            TValue firstSum = default;
             var monitor = ActiveListMonitor<TSource>.Monitor(source, selectorProperties);
             if (monitor.ElementsNotifyChanging)
                 foreach (var item in source)
-                    firstSum += selector(item);
+                    firstSum = operations.Add(firstSum, selector(item));
             else
                 foreach (var item in source)
                 {
                     var selectorValue = selector(item);
-                    firstSum += selectorValue;
+                    firstSum = operations.Add(firstSum, selectorValue);
                     selectorValues.Add(item, selectorValue);
                 }
             EventHandler<ElementPropertyChangeEventArgs<TSource>> elementPropertyChangedHandler = null;
             EventHandler<ElementPropertyChangeEventArgs<TSource>> elementPropertyChangingHandler = null;
             EventHandler<ElementMembershipEventArgs<TSource>> elementsAddedHandler = null;
             EventHandler<ElementMembershipEventArgs<TSource>> elementsRemovedHandler = null;
-            var result = new ActiveAggregateValue<decimal>(true, firstSum, out var setValidity, out var setValue, disposing =>
+            var resultAccess = isThreadSafe ? new object() : null;
+            var result = new ActiveAggregateValue<TValue>(true, firstSum, out var setValidity, out var setValue, disposing =>
             {
                 monitor.ElementPropertyChanged -= elementPropertyChangedHandler;
                 monitor.ElementPropertyChanging -= elementPropertyChangingHandler;
@@ -2233,21 +2235,32 @@ namespace Gear.ActiveQuery
                 if (disposing)
                     monitor.Dispose();
             });
-            elementPropertyChangedHandler = (sender, e) =>
-            {
-                var element = e.Element;
-                var previousSelectorValue = selectorValues[element];
-                var newSelectorValue = selector(element);
-                if (previousSelectorValue != newSelectorValue)
+
+            Action<ElementPropertyChangeEventArgs<TSource>> elementPropertyChangedLogic;
+            if (monitor.ElementsNotifyChanging)
+                elementPropertyChangedLogic = e =>
                 {
-                    if (!monitor.ElementsNotifyChanging)
-                        selectorValues[element] = newSelectorValue;
-                    setValue(result.Value + (newSelectorValue - previousSelectorValue));
-                }
-                if (monitor.ElementsNotifyChanging)
+                    var element = e.Element;
+                    var previousSelectorValue = selectorValues[element];
+                    var newSelectorValue = selector(element);
+                    if (!previousSelectorValue.Equals(newSelectorValue))
+                        setValue(operations.Add(result.Value, operations.Subtract(newSelectorValue, previousSelectorValue)));
                     selectorValues.Remove(element);
-            };
-            elementPropertyChangingHandler = (sender, e) =>
+                };
+            else
+                elementPropertyChangedLogic = e =>
+                {
+                    var element = e.Element;
+                    var previousSelectorValue = selectorValues[element];
+                    var newSelectorValue = selector(element);
+                    if (!previousSelectorValue.Equals(newSelectorValue))
+                    {
+                        selectorValues[element] = newSelectorValue;
+                        setValue(operations.Add(result.Value, operations.Subtract(newSelectorValue, previousSelectorValue)));
+                    }
+                };
+
+            void elementPropertyChangingLogic(ElementPropertyChangeEventArgs<TSource> e)
             {
                 var element = e.Element;
                 var selectorValue = selector(element);
@@ -2255,36 +2268,70 @@ namespace Gear.ActiveQuery
                     selectorValues[element] = selectorValue;
                 else
                     selectorValues.Add(element, selectorValue);
-            };
-            elementsAddedHandler = (sender, e) =>
+            }
+
+            void elementsAddedLogic(ElementMembershipEventArgs<TSource> e)
             {
-                var delta = (decimal)0;
+                TValue delta = default;
                 if (monitor.ElementsNotifyChanging)
                     foreach (var element in e.Elements)
-                        delta += selector(element);
+                        delta = operations.Add(delta, selector(element));
                 else
                     foreach (var element in e.Elements)
                     {
                         var selectorValue = selector(element);
                         selectorValues.Add(element, selectorValue);
-                        delta += selectorValue;
+                        delta = operations.Add(delta, selectorValue);
                     }
-                setValue(result.Value + delta);
-            };
-            elementsRemovedHandler = (sender, e) =>
+                setValue(operations.Add(result.Value, delta));
+            }
+
+            void elementsRemovedLogic(ElementMembershipEventArgs<TSource> e)
             {
-                var delta = (decimal)0;
+                TValue delta = default;
                 if (monitor.ElementsNotifyChanging)
                     foreach (var element in e.Elements)
-                        delta -= selector(element);
+                        delta = operations.Subtract(delta, selector(element));
                 else
                     foreach (var element in e.Elements)
                     {
-                        delta -= selectorValues[element];
+                        delta = operations.Subtract(delta, selectorValues[element]);
                         selectorValues.Remove(element);
                     }
-                setValue(result.Value + delta);
-            };
+                setValue(operations.Add(result.Value, delta));
+            }
+
+            if (isThreadSafe)
+            {
+                elementPropertyChangedHandler = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        elementPropertyChangedLogic(e);
+                };
+                elementPropertyChangingHandler = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        elementPropertyChangingLogic(e);
+                };
+                elementsAddedHandler = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        elementsAddedLogic(e);
+                };
+                elementsRemovedHandler = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        elementsRemovedLogic(e);
+                };
+            }
+            else
+            {
+                elementPropertyChangedHandler = (sender, e) => elementPropertyChangedLogic(e);
+                elementPropertyChangingHandler = (sender, e) => elementPropertyChangingLogic(e);
+                elementsAddedHandler = (sender, e) => elementsAddedLogic(e);
+                elementsRemovedHandler = (sender, e) => elementsRemovedLogic(e);
+            }
+
             monitor.ElementPropertyChanged += elementPropertyChangedHandler;
             monitor.ElementPropertyChanging += elementPropertyChangingHandler;
             monitor.ElementsAdded += elementsAddedHandler;
@@ -2292,26 +2339,28 @@ namespace Gear.ActiveQuery
             return result;
         }
 
-        public static ActiveAggregateValue<decimal?> ActiveSum<TSource>(this IReadOnlyList<TSource> source, Func<TSource, decimal?> selector, params string[] selectorProperties) where TSource : class
+        public static ActiveAggregateValue<TValue?> ActiveSum<TSource, TValue>(this IReadOnlyList<TSource> source, Func<TSource, TValue?> selector, bool isThreadSafe = false, params string[] selectorProperties) where TSource : class where TValue : struct, IEquatable<TValue>
         {
-            var selectorValues = new Dictionary<TSource, decimal?>();
-            var firstSum = (decimal?)0;
+            var operations = new GenericOperations<TValue>();
+            var selectorValues = new Dictionary<TSource, TValue?>();
+            TValue firstSum = default;
             var monitor = ActiveListMonitor<TSource>.Monitor(source, selectorProperties);
             if (monitor.ElementsNotifyChanging)
                 foreach (var item in source)
-                    firstSum += selector(item);
+                    firstSum = operations.Add(firstSum, selector(item) ?? default);
             else
                 foreach (var item in source)
                 {
                     var selectorValue = selector(item);
-                    firstSum += selectorValue;
+                    firstSum = operations.Add(firstSum, selectorValue ?? default);
                     selectorValues.Add(item, selectorValue);
                 }
             EventHandler<ElementPropertyChangeEventArgs<TSource>> elementPropertyChangedHandler = null;
             EventHandler<ElementPropertyChangeEventArgs<TSource>> elementPropertyChangingHandler = null;
             EventHandler<ElementMembershipEventArgs<TSource>> elementsAddedHandler = null;
             EventHandler<ElementMembershipEventArgs<TSource>> elementsRemovedHandler = null;
-            var result = new ActiveAggregateValue<decimal?>(true, firstSum, out var setValidity, out var setValue, disposing =>
+            var resultAccess = isThreadSafe ? new object() : null;
+            var result = new ActiveAggregateValue<TValue?>(true, firstSum, out var setValidity, out var setValue, disposing =>
             {
                 monitor.ElementPropertyChanged -= elementPropertyChangedHandler;
                 monitor.ElementPropertyChanging -= elementPropertyChangingHandler;
@@ -2320,195 +2369,32 @@ namespace Gear.ActiveQuery
                 if (disposing)
                     monitor.Dispose();
             });
-            elementPropertyChangedHandler = (sender, e) =>
-            {
-                var element = e.Element;
-                var previousSelectorValue = selectorValues[element];
-                var newSelectorValue = selector(element);
-                if (previousSelectorValue != newSelectorValue)
-                {
-                    if (!monitor.ElementsNotifyChanging)
-                        selectorValues[element] = newSelectorValue;
-                    setValue(result.Value + (newSelectorValue - previousSelectorValue));
-                }
-                if (monitor.ElementsNotifyChanging)
-                    selectorValues.Remove(element);
-            };
-            elementPropertyChangingHandler = (sender, e) =>
-            {
-                var element = e.Element;
-                var selectorValue = selector(element);
-                if (selectorValues.ContainsKey(element))
-                    selectorValues[element] = selectorValue;
-                else
-                    selectorValues.Add(element, selectorValue);
-            };
-            elementsAddedHandler = (sender, e) =>
-            {
-                var delta = (decimal?)0;
-                if (monitor.ElementsNotifyChanging)
-                    foreach (var element in e.Elements)
-                        delta += selector(element);
-                else
-                    foreach (var element in e.Elements)
-                    {
-                        var selectorValue = selector(element);
-                        selectorValues.Add(element, selectorValue);
-                        delta += selectorValue;
-                    }
-                setValue(result.Value + delta);
-            };
-            elementsRemovedHandler = (sender, e) =>
-            {
-                var delta = (decimal?)0;
-                if (monitor.ElementsNotifyChanging)
-                    foreach (var element in e.Elements)
-                        delta -= selector(element);
-                else
-                    foreach (var element in e.Elements)
-                    {
-                        delta -= selectorValues[element];
-                        selectorValues.Remove(element);
-                    }
-                setValue(result.Value + delta);
-            };
-            monitor.ElementPropertyChanged += elementPropertyChangedHandler;
-            monitor.ElementPropertyChanging += elementPropertyChangingHandler;
-            monitor.ElementsAdded += elementsAddedHandler;
-            monitor.ElementsRemoved += elementsRemovedHandler;
-            return result;
-        }
 
-        public static ActiveAggregateValue<double> ActiveSum<TSource>(this IReadOnlyList<TSource> source, Func<TSource, double> selector, params string[] selectorProperties) where TSource : class
-        {
-            var selectorValues = new Dictionary<TSource, double>();
-            var firstSum = (double)0;
-            var monitor = ActiveListMonitor<TSource>.Monitor(source, selectorProperties);
+            Action<ElementPropertyChangeEventArgs<TSource>> elementPropertyChangedLogic;
             if (monitor.ElementsNotifyChanging)
-                foreach (var item in source)
-                    firstSum += selector(item);
-            else
-                foreach (var item in source)
+                elementPropertyChangedLogic = e =>
                 {
-                    var selectorValue = selector(item);
-                    firstSum += selectorValue;
-                    selectorValues.Add(item, selectorValue);
-                }
-            EventHandler<ElementPropertyChangeEventArgs<TSource>> elementPropertyChangedHandler = null;
-            EventHandler<ElementPropertyChangeEventArgs<TSource>> elementPropertyChangingHandler = null;
-            EventHandler<ElementMembershipEventArgs<TSource>> elementsAddedHandler = null;
-            EventHandler<ElementMembershipEventArgs<TSource>> elementsRemovedHandler = null;
-            var result = new ActiveAggregateValue<double>(true, firstSum, out var setValidity, out var setValue, disposing =>
-            {
-                monitor.ElementPropertyChanged -= elementPropertyChangedHandler;
-                monitor.ElementPropertyChanging -= elementPropertyChangingHandler;
-                monitor.ElementsAdded -= elementsAddedHandler;
-                monitor.ElementsRemoved -= elementsRemovedHandler;
-                if (disposing)
-                    monitor.Dispose();
-            });
-            elementPropertyChangedHandler = (sender, e) =>
-            {
-                var element = e.Element;
-                var previousSelectorValue = selectorValues[element];
-                var newSelectorValue = selector(element);
-                if (previousSelectorValue != newSelectorValue)
-                {
-                    if (!monitor.ElementsNotifyChanging)
-                        selectorValues[element] = newSelectorValue;
-                    setValue(result.Value + (newSelectorValue - previousSelectorValue));
-                }
-                if (monitor.ElementsNotifyChanging)
+                    var element = e.Element;
+                    var previousSelectorValue = selectorValues[element];
+                    var newSelectorValue = selector(element);
+                    if (!((previousSelectorValue == null && newSelectorValue == null) || (previousSelectorValue != null && newSelectorValue != null && previousSelectorValue.Value.Equals(newSelectorValue.Value))))
+                        setValue(operations.Add(result.Value ?? default, operations.Subtract(newSelectorValue ?? default, previousSelectorValue ?? default)));
                     selectorValues.Remove(element);
-            };
-            elementPropertyChangingHandler = (sender, e) =>
-            {
-                var element = e.Element;
-                var selectorValue = selector(element);
-                if (selectorValues.ContainsKey(element))
-                    selectorValues[element] = selectorValue;
-                else
-                    selectorValues.Add(element, selectorValue);
-            };
-            elementsAddedHandler = (sender, e) =>
-            {
-                var delta = (double)0;
-                if (monitor.ElementsNotifyChanging)
-                    foreach (var element in e.Elements)
-                        delta += selector(element);
-                else
-                    foreach (var element in e.Elements)
+                };
+            else
+                elementPropertyChangedLogic = e =>
+                {
+                    var element = e.Element;
+                    var previousSelectorValue = selectorValues[element];
+                    var newSelectorValue = selector(element);
+                    if (!((previousSelectorValue == null && newSelectorValue == null) || (previousSelectorValue != null && newSelectorValue != null && previousSelectorValue.Value.Equals(newSelectorValue.Value))))
                     {
-                        var selectorValue = selector(element);
-                        selectorValues.Add(element, selectorValue);
-                        delta += selectorValue;
+                        selectorValues[element] = newSelectorValue;
+                        setValue(operations.Add(result.Value ?? default, operations.Subtract(newSelectorValue ?? default, previousSelectorValue ?? default)));
                     }
-                setValue(result.Value + delta);
-            };
-            elementsRemovedHandler = (sender, e) =>
-            {
-                var delta = (double)0;
-                if (monitor.ElementsNotifyChanging)
-                    foreach (var element in e.Elements)
-                        delta -= selector(element);
-                else
-                    foreach (var element in e.Elements)
-                    {
-                        delta -= selectorValues[element];
-                        selectorValues.Remove(element);
-                    }
-                setValue(result.Value + delta);
-            };
-            monitor.ElementPropertyChanged += elementPropertyChangedHandler;
-            monitor.ElementPropertyChanging += elementPropertyChangingHandler;
-            monitor.ElementsAdded += elementsAddedHandler;
-            monitor.ElementsRemoved += elementsRemovedHandler;
-            return result;
-        }
+                };
 
-        public static ActiveAggregateValue<double?> ActiveSum<TSource>(this IReadOnlyList<TSource> source, Func<TSource, double?> selector, params string[] selectorProperties) where TSource : class
-        {
-            var selectorValues = new Dictionary<TSource, double?>();
-            var firstSum = (double?)0;
-            var monitor = ActiveListMonitor<TSource>.Monitor(source, selectorProperties);
-            if (monitor.ElementsNotifyChanging)
-                foreach (var item in source)
-                    firstSum += selector(item);
-            else
-                foreach (var item in source)
-                {
-                    var selectorValue = selector(item);
-                    firstSum += selectorValue;
-                    selectorValues.Add(item, selectorValue);
-                }
-            EventHandler<ElementPropertyChangeEventArgs<TSource>> elementPropertyChangedHandler = null;
-            EventHandler<ElementPropertyChangeEventArgs<TSource>> elementPropertyChangingHandler = null;
-            EventHandler<ElementMembershipEventArgs<TSource>> elementsAddedHandler = null;
-            EventHandler<ElementMembershipEventArgs<TSource>> elementsRemovedHandler = null;
-            var result = new ActiveAggregateValue<double?>(true, firstSum, out var setValidity, out var setValue, disposing =>
-            {
-                monitor.ElementPropertyChanged -= elementPropertyChangedHandler;
-                monitor.ElementPropertyChanging -= elementPropertyChangingHandler;
-                monitor.ElementsAdded -= elementsAddedHandler;
-                monitor.ElementsRemoved -= elementsRemovedHandler;
-                if (disposing)
-                    monitor.Dispose();
-            });
-            elementPropertyChangedHandler = (sender, e) =>
-            {
-                var element = e.Element;
-                var previousSelectorValue = selectorValues[element];
-                var newSelectorValue = selector(element);
-                if (previousSelectorValue != newSelectorValue)
-                {
-                    if (!monitor.ElementsNotifyChanging)
-                        selectorValues[element] = newSelectorValue;
-                    setValue(result.Value + (newSelectorValue - previousSelectorValue));
-                }
-                if (monitor.ElementsNotifyChanging)
-                    selectorValues.Remove(element);
-            };
-            elementPropertyChangingHandler = (sender, e) =>
+            void elementPropertyChangingLogic(ElementPropertyChangeEventArgs<TSource> e)
             {
                 var element = e.Element;
                 var selectorValue = selector(element);
@@ -2516,558 +2402,70 @@ namespace Gear.ActiveQuery
                     selectorValues[element] = selectorValue;
                 else
                     selectorValues.Add(element, selectorValue);
-            };
-            elementsAddedHandler = (sender, e) =>
-            {
-                var delta = (double?)0;
-                if (monitor.ElementsNotifyChanging)
-                    foreach (var element in e.Elements)
-                        delta += selector(element);
-                else
-                    foreach (var element in e.Elements)
-                    {
-                        var selectorValue = selector(element);
-                        selectorValues.Add(element, selectorValue);
-                        delta += selectorValue;
-                    }
-                setValue(result.Value + delta);
-            };
-            elementsRemovedHandler = (sender, e) =>
-            {
-                var delta = (double?)0;
-                if (monitor.ElementsNotifyChanging)
-                    foreach (var element in e.Elements)
-                        delta -= selector(element);
-                else
-                    foreach (var element in e.Elements)
-                    {
-                        delta -= selectorValues[element];
-                        selectorValues.Remove(element);
-                    }
-                setValue(result.Value + delta);
-            };
-            monitor.ElementPropertyChanged += elementPropertyChangedHandler;
-            monitor.ElementPropertyChanging += elementPropertyChangingHandler;
-            monitor.ElementsAdded += elementsAddedHandler;
-            monitor.ElementsRemoved += elementsRemovedHandler;
-            return result;
-        }
+            }
 
-        public static ActiveAggregateValue<float> ActiveSum<TSource>(this IReadOnlyList<TSource> source, Func<TSource, float> selector, params string[] selectorProperties) where TSource : class
-        {
-            var selectorValues = new Dictionary<TSource, float>();
-            var firstSum = (float)0;
-            var monitor = ActiveListMonitor<TSource>.Monitor(source, selectorProperties);
-            if (monitor.ElementsNotifyChanging)
-                foreach (var item in source)
-                    firstSum += selector(item);
-            else
-                foreach (var item in source)
-                {
-                    var selectorValue = selector(item);
-                    firstSum += selectorValue;
-                    selectorValues.Add(item, selectorValue);
-                }
-            EventHandler<ElementPropertyChangeEventArgs<TSource>> elementPropertyChangedHandler = null;
-            EventHandler<ElementPropertyChangeEventArgs<TSource>> elementPropertyChangingHandler = null;
-            EventHandler<ElementMembershipEventArgs<TSource>> elementsAddedHandler = null;
-            EventHandler<ElementMembershipEventArgs<TSource>> elementsRemovedHandler = null;
-            var result = new ActiveAggregateValue<float>(true, firstSum, out var setValidity, out var setValue, disposing =>
+            void elementsAddedLogic(ElementMembershipEventArgs<TSource> e)
             {
-                monitor.ElementPropertyChanged -= elementPropertyChangedHandler;
-                monitor.ElementPropertyChanging -= elementPropertyChangingHandler;
-                monitor.ElementsAdded -= elementsAddedHandler;
-                monitor.ElementsRemoved -= elementsRemovedHandler;
-                if (disposing)
-                    monitor.Dispose();
-            });
-            elementPropertyChangedHandler = (sender, e) =>
-            {
-                var element = e.Element;
-                var previousSelectorValue = selectorValues[element];
-                var newSelectorValue = selector(element);
-                if (previousSelectorValue != newSelectorValue)
-                {
-                    if (!monitor.ElementsNotifyChanging)
-                        selectorValues[element] = newSelectorValue;
-                    setValue(result.Value + (newSelectorValue - previousSelectorValue));
-                }
-                if (monitor.ElementsNotifyChanging)
-                    selectorValues.Remove(element);
-            };
-            elementPropertyChangingHandler = (sender, e) =>
-            {
-                var element = e.Element;
-                var selectorValue = selector(element);
-                if (selectorValues.ContainsKey(element))
-                    selectorValues[element] = selectorValue;
-                else
-                    selectorValues.Add(element, selectorValue);
-            };
-            elementsAddedHandler = (sender, e) =>
-            {
-                var delta = (float)0;
+                TValue delta = default;
                 if (monitor.ElementsNotifyChanging)
                     foreach (var element in e.Elements)
-                        delta += selector(element);
+                        delta = operations.Add(delta, selector(element) ?? default);
                 else
                     foreach (var element in e.Elements)
                     {
                         var selectorValue = selector(element);
                         selectorValues.Add(element, selectorValue);
-                        delta += selectorValue;
+                        delta = operations.Add(delta, selectorValue ?? default);
                     }
-                setValue(result.Value + delta);
-            };
-            elementsRemovedHandler = (sender, e) =>
-            {
-                var delta = (float)0;
-                if (monitor.ElementsNotifyChanging)
-                    foreach (var element in e.Elements)
-                        delta -= selector(element);
-                else
-                    foreach (var element in e.Elements)
-                    {
-                        delta -= selectorValues[element];
-                        selectorValues.Remove(element);
-                    }
-                setValue(result.Value + delta);
-            };
-            monitor.ElementPropertyChanged += elementPropertyChangedHandler;
-            monitor.ElementPropertyChanging += elementPropertyChangingHandler;
-            monitor.ElementsAdded += elementsAddedHandler;
-            monitor.ElementsRemoved += elementsRemovedHandler;
-            return result;
-        }
+                setValue(operations.Add(result.Value ?? default, delta));
+            }
 
-        public static ActiveAggregateValue<float?> ActiveSum<TSource>(this IReadOnlyList<TSource> source, Func<TSource, float?> selector, params string[] selectorProperties) where TSource : class
-        {
-            var selectorValues = new Dictionary<TSource, float?>();
-            var firstSum = (float?)0;
-            var monitor = ActiveListMonitor<TSource>.Monitor(source, selectorProperties);
-            if (monitor.ElementsNotifyChanging)
-                foreach (var item in source)
-                    firstSum += selector(item);
-            else
-                foreach (var item in source)
-                {
-                    var selectorValue = selector(item);
-                    firstSum += selectorValue;
-                    selectorValues.Add(item, selectorValue);
-                }
-            EventHandler<ElementPropertyChangeEventArgs<TSource>> elementPropertyChangedHandler = null;
-            EventHandler<ElementPropertyChangeEventArgs<TSource>> elementPropertyChangingHandler = null;
-            EventHandler<ElementMembershipEventArgs<TSource>> elementsAddedHandler = null;
-            EventHandler<ElementMembershipEventArgs<TSource>> elementsRemovedHandler = null;
-            var result = new ActiveAggregateValue<float?>(true, firstSum, out var setValidity, out var setValue, disposing =>
+            void elementsRemovedLogic(ElementMembershipEventArgs<TSource> e)
             {
-                monitor.ElementPropertyChanged -= elementPropertyChangedHandler;
-                monitor.ElementPropertyChanging -= elementPropertyChangingHandler;
-                monitor.ElementsAdded -= elementsAddedHandler;
-                monitor.ElementsRemoved -= elementsRemovedHandler;
-                if (disposing)
-                    monitor.Dispose();
-            });
-            elementPropertyChangedHandler = (sender, e) =>
-            {
-                var element = e.Element;
-                var previousSelectorValue = selectorValues[element];
-                var newSelectorValue = selector(element);
-                if (previousSelectorValue != newSelectorValue)
-                {
-                    if (!monitor.ElementsNotifyChanging)
-                        selectorValues[element] = newSelectorValue;
-                    setValue(result.Value + (newSelectorValue - previousSelectorValue));
-                }
-                if (monitor.ElementsNotifyChanging)
-                    selectorValues.Remove(element);
-            };
-            elementPropertyChangingHandler = (sender, e) =>
-            {
-                var element = e.Element;
-                var selectorValue = selector(element);
-                if (selectorValues.ContainsKey(element))
-                    selectorValues[element] = selectorValue;
-                else
-                    selectorValues.Add(element, selectorValue);
-            };
-            elementsAddedHandler = (sender, e) =>
-            {
-                var delta = (float?)0;
+                TValue delta = default;
                 if (monitor.ElementsNotifyChanging)
                     foreach (var element in e.Elements)
-                        delta += selector(element);
+                        delta = operations.Subtract(delta, selector(element) ?? default);
                 else
                     foreach (var element in e.Elements)
                     {
-                        var selectorValue = selector(element);
-                        selectorValues.Add(element, selectorValue);
-                        delta += selectorValue;
-                    }
-                setValue(result.Value + delta);
-            };
-            elementsRemovedHandler = (sender, e) =>
-            {
-                var delta = (float?)0;
-                if (monitor.ElementsNotifyChanging)
-                    foreach (var element in e.Elements)
-                        delta -= selector(element);
-                else
-                    foreach (var element in e.Elements)
-                    {
-                        delta -= selectorValues[element];
+                        delta = operations.Subtract(delta, selectorValues[element] ?? default);
                         selectorValues.Remove(element);
                     }
-                setValue(result.Value + delta);
-            };
-            monitor.ElementPropertyChanged += elementPropertyChangedHandler;
-            monitor.ElementPropertyChanging += elementPropertyChangingHandler;
-            monitor.ElementsAdded += elementsAddedHandler;
-            monitor.ElementsRemoved += elementsRemovedHandler;
-            return result;
-        }
+                setValue(operations.Add(result.Value ?? default, delta));
+            }
 
-        public static ActiveAggregateValue<int> ActiveSum<TSource>(this IReadOnlyList<TSource> source, Func<TSource, int> selector, params string[] selectorProperties) where TSource : class
-        {
-            var selectorValues = new Dictionary<TSource, int>();
-            var firstSum = 0;
-            var monitor = ActiveListMonitor<TSource>.Monitor(source, selectorProperties);
-            if (monitor.ElementsNotifyChanging)
-                foreach (var item in source)
-                    firstSum += selector(item);
+            if (isThreadSafe)
+            {
+                elementPropertyChangedHandler = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        elementPropertyChangedLogic(e);
+                };
+                elementPropertyChangingHandler = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        elementPropertyChangingLogic(e);
+                };
+                elementsAddedHandler = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        elementsAddedLogic(e);
+                };
+                elementsRemovedHandler = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        elementsRemovedLogic(e);
+                };
+            }
             else
-                foreach (var item in source)
-                {
-                    var selectorValue = selector(item);
-                    firstSum += selectorValue;
-                    selectorValues.Add(item, selectorValue);
-                }
-            EventHandler<ElementPropertyChangeEventArgs<TSource>> elementPropertyChangedHandler = null;
-            EventHandler<ElementPropertyChangeEventArgs<TSource>> elementPropertyChangingHandler = null;
-            EventHandler<ElementMembershipEventArgs<TSource>> elementsAddedHandler = null;
-            EventHandler<ElementMembershipEventArgs<TSource>> elementsRemovedHandler = null;
-            var result = new ActiveAggregateValue<int>(true, firstSum, out var setValidity, out var setValue, disposing =>
             {
-                monitor.ElementPropertyChanged -= elementPropertyChangedHandler;
-                monitor.ElementPropertyChanging -= elementPropertyChangingHandler;
-                monitor.ElementsAdded -= elementsAddedHandler;
-                monitor.ElementsRemoved -= elementsRemovedHandler;
-                if (disposing)
-                    monitor.Dispose();
-            });
-            elementPropertyChangedHandler = (sender, e) =>
-            {
-                var element = e.Element;
-                var previousSelectorValue = selectorValues[element];
-                var newSelectorValue = selector(element);
-                if (previousSelectorValue != newSelectorValue)
-                {
-                    if (!monitor.ElementsNotifyChanging)
-                        selectorValues[element] = newSelectorValue;
-                    setValue(result.Value + (newSelectorValue - previousSelectorValue));
-                }
-                if (monitor.ElementsNotifyChanging)
-                    selectorValues.Remove(element);
-            };
-            elementPropertyChangingHandler = (sender, e) =>
-            {
-                var element = e.Element;
-                var selectorValue = selector(element);
-                if (selectorValues.ContainsKey(element))
-                    selectorValues[element] = selectorValue;
-                else
-                    selectorValues.Add(element, selectorValue);
-            };
-            elementsAddedHandler = (sender, e) =>
-            {
-                var delta = 0;
-                if (monitor.ElementsNotifyChanging)
-                    foreach (var element in e.Elements)
-                        delta += selector(element);
-                else
-                    foreach (var element in e.Elements)
-                    {
-                        var selectorValue = selector(element);
-                        selectorValues.Add(element, selectorValue);
-                        delta += selectorValue;
-                    }
-                setValue(result.Value + delta);
-            };
-            elementsRemovedHandler = (sender, e) =>
-            {
-                var delta = 0;
-                if (monitor.ElementsNotifyChanging)
-                    foreach (var element in e.Elements)
-                        delta -= selector(element);
-                else
-                    foreach (var element in e.Elements)
-                    {
-                        delta -= selectorValues[element];
-                        selectorValues.Remove(element);
-                    }
-                setValue(result.Value + delta);
-            };
-            monitor.ElementPropertyChanged += elementPropertyChangedHandler;
-            monitor.ElementPropertyChanging += elementPropertyChangingHandler;
-            monitor.ElementsAdded += elementsAddedHandler;
-            monitor.ElementsRemoved += elementsRemovedHandler;
-            return result;
-        }
+                elementPropertyChangedHandler = (sender, e) => elementPropertyChangedLogic(e);
+                elementPropertyChangingHandler = (sender, e) => elementPropertyChangingLogic(e);
+                elementsAddedHandler = (sender, e) => elementsAddedLogic(e);
+                elementsRemovedHandler = (sender, e) => elementsRemovedLogic(e);
+            }
 
-        public static ActiveAggregateValue<int?> ActiveSum<TSource>(this IReadOnlyList<TSource> source, Func<TSource, int?> selector, params string[] selectorProperties) where TSource : class
-        {
-            var selectorValues = new Dictionary<TSource, int?>();
-            var firstSum = (int?)0;
-            var monitor = ActiveListMonitor<TSource>.Monitor(source, selectorProperties);
-            if (monitor.ElementsNotifyChanging)
-                foreach (var item in source)
-                    firstSum += selector(item);
-            else
-                foreach (var item in source)
-                {
-                    var selectorValue = selector(item);
-                    firstSum += selectorValue;
-                    selectorValues.Add(item, selectorValue);
-                }
-            EventHandler<ElementPropertyChangeEventArgs<TSource>> elementPropertyChangedHandler = null;
-            EventHandler<ElementPropertyChangeEventArgs<TSource>> elementPropertyChangingHandler = null;
-            EventHandler<ElementMembershipEventArgs<TSource>> elementsAddedHandler = null;
-            EventHandler<ElementMembershipEventArgs<TSource>> elementsRemovedHandler = null;
-            var result = new ActiveAggregateValue<int?>(true, firstSum, out var setValidity, out var setValue, disposing =>
-            {
-                monitor.ElementPropertyChanged -= elementPropertyChangedHandler;
-                monitor.ElementPropertyChanging -= elementPropertyChangingHandler;
-                monitor.ElementsAdded -= elementsAddedHandler;
-                monitor.ElementsRemoved -= elementsRemovedHandler;
-                if (disposing)
-                    monitor.Dispose();
-            });
-            elementPropertyChangedHandler = (sender, e) =>
-            {
-                var element = e.Element;
-                var previousSelectorValue = selectorValues[element];
-                var newSelectorValue = selector(element);
-                if (previousSelectorValue != newSelectorValue)
-                {
-                    if (!monitor.ElementsNotifyChanging)
-                        selectorValues[element] = newSelectorValue;
-                    setValue(result.Value + (newSelectorValue - previousSelectorValue));
-                }
-                if (monitor.ElementsNotifyChanging)
-                    selectorValues.Remove(element);
-            };
-            elementPropertyChangingHandler = (sender, e) =>
-            {
-                var element = e.Element;
-                var selectorValue = selector(element);
-                if (selectorValues.ContainsKey(element))
-                    selectorValues[element] = selectorValue;
-                else
-                    selectorValues.Add(element, selectorValue);
-            };
-            elementsAddedHandler = (sender, e) =>
-            {
-                var delta = (int?)0;
-                if (monitor.ElementsNotifyChanging)
-                    foreach (var element in e.Elements)
-                        delta += selector(element);
-                else
-                    foreach (var element in e.Elements)
-                    {
-                        var selectorValue = selector(element);
-                        selectorValues.Add(element, selectorValue);
-                        delta += selectorValue;
-                    }
-                setValue(result.Value + delta);
-            };
-            elementsRemovedHandler = (sender, e) =>
-            {
-                var delta = (int?)0;
-                if (monitor.ElementsNotifyChanging)
-                    foreach (var element in e.Elements)
-                        delta -= selector(element);
-                else
-                    foreach (var element in e.Elements)
-                    {
-                        delta -= selectorValues[element];
-                        selectorValues.Remove(element);
-                    }
-                setValue(result.Value + delta);
-            };
-            monitor.ElementPropertyChanged += elementPropertyChangedHandler;
-            monitor.ElementPropertyChanging += elementPropertyChangingHandler;
-            monitor.ElementsAdded += elementsAddedHandler;
-            monitor.ElementsRemoved += elementsRemovedHandler;
-            return result;
-        }
-
-        public static ActiveAggregateValue<long> ActiveSum<TSource>(this IReadOnlyList<TSource> source, Func<TSource, long> selector, params string[] selectorProperties) where TSource : class
-        {
-            var selectorValues = new Dictionary<TSource, long>();
-            var firstSum = (long)0;
-            var monitor = ActiveListMonitor<TSource>.Monitor(source, selectorProperties);
-            if (monitor.ElementsNotifyChanging)
-                foreach (var item in source)
-                    firstSum += selector(item);
-            else
-                foreach (var item in source)
-                {
-                    var selectorValue = selector(item);
-                    firstSum += selectorValue;
-                    selectorValues.Add(item, selectorValue);
-                }
-            EventHandler<ElementPropertyChangeEventArgs<TSource>> elementPropertyChangedHandler = null;
-            EventHandler<ElementPropertyChangeEventArgs<TSource>> elementPropertyChangingHandler = null;
-            EventHandler<ElementMembershipEventArgs<TSource>> elementsAddedHandler = null;
-            EventHandler<ElementMembershipEventArgs<TSource>> elementsRemovedHandler = null;
-            var result = new ActiveAggregateValue<long>(true, firstSum, out var setValidity, out var setValue, disposing =>
-            {
-                monitor.ElementPropertyChanged -= elementPropertyChangedHandler;
-                monitor.ElementPropertyChanging -= elementPropertyChangingHandler;
-                monitor.ElementsAdded -= elementsAddedHandler;
-                monitor.ElementsRemoved -= elementsRemovedHandler;
-                if (disposing)
-                    monitor.Dispose();
-            });
-            elementPropertyChangedHandler = (sender, e) =>
-            {
-                var element = e.Element;
-                var previousSelectorValue = selectorValues[element];
-                var newSelectorValue = selector(element);
-                if (previousSelectorValue != newSelectorValue)
-                {
-                    if (!monitor.ElementsNotifyChanging)
-                        selectorValues[element] = newSelectorValue;
-                    setValue(result.Value + (newSelectorValue - previousSelectorValue));
-                }
-                if (monitor.ElementsNotifyChanging)
-                    selectorValues.Remove(element);
-            };
-            elementPropertyChangingHandler = (sender, e) =>
-            {
-                var element = e.Element;
-                var selectorValue = selector(element);
-                if (selectorValues.ContainsKey(element))
-                    selectorValues[element] = selectorValue;
-                else
-                    selectorValues.Add(element, selectorValue);
-            };
-            elementsAddedHandler = (sender, e) =>
-            {
-                var delta = (long)0;
-                if (monitor.ElementsNotifyChanging)
-                    foreach (var element in e.Elements)
-                        delta += selector(element);
-                else
-                    foreach (var element in e.Elements)
-                    {
-                        var selectorValue = selector(element);
-                        selectorValues.Add(element, selectorValue);
-                        delta += selectorValue;
-                    }
-                setValue(result.Value + delta);
-            };
-            elementsRemovedHandler = (sender, e) =>
-            {
-                var delta = (long)0;
-                if (monitor.ElementsNotifyChanging)
-                    foreach (var element in e.Elements)
-                        delta -= selector(element);
-                else
-                    foreach (var element in e.Elements)
-                    {
-                        delta -= selectorValues[element];
-                        selectorValues.Remove(element);
-                    }
-                setValue(result.Value + delta);
-            };
-            monitor.ElementPropertyChanged += elementPropertyChangedHandler;
-            monitor.ElementPropertyChanging += elementPropertyChangingHandler;
-            monitor.ElementsAdded += elementsAddedHandler;
-            monitor.ElementsRemoved += elementsRemovedHandler;
-            return result;
-        }
-
-        public static ActiveAggregateValue<long?> ActiveSum<TSource>(this IReadOnlyList<TSource> source, Func<TSource, long?> selector, params string[] selectorProperties) where TSource : class
-        {
-            var selectorValues = new Dictionary<TSource, long?>();
-            var firstSum = (long?)0;
-            var monitor = ActiveListMonitor<TSource>.Monitor(source, selectorProperties);
-            if (monitor.ElementsNotifyChanging)
-                foreach (var item in source)
-                    firstSum += selector(item);
-            else
-                foreach (var item in source)
-                {
-                    var selectorValue = selector(item);
-                    firstSum += selectorValue;
-                    selectorValues.Add(item, selectorValue);
-                }
-            EventHandler<ElementPropertyChangeEventArgs<TSource>> elementPropertyChangedHandler = null;
-            EventHandler<ElementPropertyChangeEventArgs<TSource>> elementPropertyChangingHandler = null;
-            EventHandler<ElementMembershipEventArgs<TSource>> elementsAddedHandler = null;
-            EventHandler<ElementMembershipEventArgs<TSource>> elementsRemovedHandler = null;
-            var result = new ActiveAggregateValue<long?>(true, firstSum, out var setValidity, out var setValue, disposing =>
-            {
-                monitor.ElementPropertyChanged -= elementPropertyChangedHandler;
-                monitor.ElementPropertyChanging -= elementPropertyChangingHandler;
-                monitor.ElementsAdded -= elementsAddedHandler;
-                monitor.ElementsRemoved -= elementsRemovedHandler;
-                if (disposing)
-                    monitor.Dispose();
-            });
-            elementPropertyChangedHandler = (sender, e) =>
-            {
-                var element = e.Element;
-                var previousSelectorValue = selectorValues[element];
-                var newSelectorValue = selector(element);
-                if (previousSelectorValue != newSelectorValue)
-                {
-                    if (!monitor.ElementsNotifyChanging)
-                        selectorValues[element] = newSelectorValue;
-                    setValue(result.Value + (newSelectorValue - previousSelectorValue));
-                }
-                if (monitor.ElementsNotifyChanging)
-                    selectorValues.Remove(element);
-            };
-            elementPropertyChangingHandler = (sender, e) =>
-            {
-                var element = e.Element;
-                var selectorValue = selector(element);
-                if (selectorValues.ContainsKey(element))
-                    selectorValues[element] = selectorValue;
-                else
-                    selectorValues.Add(element, selectorValue);
-            };
-            elementsAddedHandler = (sender, e) =>
-            {
-                var delta = (long?)0;
-                if (monitor.ElementsNotifyChanging)
-                    foreach (var element in e.Elements)
-                        delta += selector(element);
-                else
-                    foreach (var element in e.Elements)
-                    {
-                        var selectorValue = selector(element);
-                        selectorValues.Add(element, selectorValue);
-                        delta += selectorValue;
-                    }
-                setValue(result.Value + delta);
-            };
-            elementsRemovedHandler = (sender, e) =>
-            {
-                var delta = (long?)0;
-                if (monitor.ElementsNotifyChanging)
-                    foreach (var element in e.Elements)
-                        delta -= selector(element);
-                else
-                    foreach (var element in e.Elements)
-                    {
-                        delta -= selectorValues[element];
-                        selectorValues.Remove(element);
-                    }
-                setValue(result.Value + delta);
-            };
             monitor.ElementPropertyChanged += elementPropertyChangedHandler;
             monitor.ElementPropertyChanging += elementPropertyChangingHandler;
             monitor.ElementsAdded += elementsAddedHandler;

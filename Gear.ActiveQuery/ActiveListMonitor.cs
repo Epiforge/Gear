@@ -218,7 +218,7 @@ namespace Gear.ActiveQuery
         void ElementPropertyChangingHandler(object sender, PropertyChangingEventArgs e)
         {
             if (sender is T element)
-                OnElementPropertyChanged(element, e.PropertyName);
+                OnElementPropertyChanging(element, e.PropertyName);
         }
 
         void Initialize()
