@@ -21,25 +21,32 @@ namespace Gear.Components
             var (operation, type) = key;
             var leftHand = Expression.Parameter(type);
             var rightHand = Expression.Parameter(type);
-            BinaryExpression math;
-            switch (operation)
+            try
             {
-                case BinaryOperation.Add:
-                    math = Expression.Add(leftHand, rightHand);
-                    break;
-                case BinaryOperation.Divide:
-                    math = Expression.Divide(leftHand, rightHand);
-                    break;
-                case BinaryOperation.Multiply:
-                    math = Expression.Multiply(leftHand, rightHand);
-                    break;
-                case BinaryOperation.Subtract:
-                    math = Expression.Subtract(leftHand, rightHand);
-                    break;
-                default:
-                    throw new NotSupportedException();
+                BinaryExpression math;
+                switch (operation)
+                {
+                    case BinaryOperation.Add:
+                        math = Expression.Add(leftHand, rightHand);
+                        break;
+                    case BinaryOperation.Divide:
+                        math = Expression.Divide(leftHand, rightHand);
+                        break;
+                    case BinaryOperation.Multiply:
+                        math = Expression.Multiply(leftHand, rightHand);
+                        break;
+                    case BinaryOperation.Subtract:
+                        math = Expression.Subtract(leftHand, rightHand);
+                        break;
+                    default:
+                        throw new NotSupportedException();
+                }
+                return Expression.Lambda(math, leftHand, rightHand).Compile();
             }
-            return Expression.Lambda(math, leftHand, rightHand).Compile();
+            catch (Exception ex)
+            {
+                return Expression.Lambda(Expression.Throw(Expression.Constant(ex)), leftHand, rightHand).Compile();
+            }
         }
     }
 
