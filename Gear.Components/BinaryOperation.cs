@@ -1,6 +1,6 @@
 namespace Gear.Components
 {
-    enum MathBinaryOperation
+    enum BinaryOperation
     {
         Add,
         Subtract,
