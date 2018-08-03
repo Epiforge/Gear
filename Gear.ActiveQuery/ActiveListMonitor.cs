@@ -95,13 +95,13 @@ namespace Gear.ActiveQuery
 
         void BaseMonitor_ElementPropertyChanged(object sender, ElementPropertyChangeEventArgs<T> e)
         {
-            if (relevantPropertyNames.Count == 0 || relevantPropertyNames.Contains(e.PropertyName))
+            if (relevantPropertyNames.Contains(e.PropertyName))
                 OnElementPropertyChanged(e);
         }
 
         void BaseMonitor_ElementPropertyChanging(object sender, ElementPropertyChangeEventArgs<T> e)
         {
-            if (relevantPropertyNames.Count == 0 || relevantPropertyNames.Contains(e.PropertyName))
+            if (relevantPropertyNames.Contains(e.PropertyName))
                 OnElementPropertyChanging(e);
         }
 

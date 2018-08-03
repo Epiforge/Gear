@@ -149,13 +149,13 @@ namespace Gear.ActiveQuery
 
         void BaseMonitor_ValuePropertyChanged(object sender, ValuePropertyChangeEventArgs<TKey, TValue> e)
         {
-            if (relevantPropertyNames.Count == 0 || relevantPropertyNames.Contains(e.PropertyName))
+            if (relevantPropertyNames.Contains(e.PropertyName))
                 OnValuePropertyChanged(e);
         }
 
         void BaseMonitor_ValuePropertyChanging(object sender, ValuePropertyChangeEventArgs<TKey, TValue> e)
         {
-            if (relevantPropertyNames.Count == 0 || relevantPropertyNames.Contains(e.PropertyName))
+            if (relevantPropertyNames.Contains(e.PropertyName))
                 OnValuePropertyChanging(e);
         }
 
@@ -267,19 +267,11 @@ namespace Gear.ActiveQuery
 
         protected virtual void OnValuePropertyChanged(ValuePropertyChangeEventArgs<TKey, TValue> e) => ValuePropertyChanged?.Invoke(this, e);
 
-        void OnValuePropertyChanged(TKey key, TValue value, string propertyName)
-        {
-            if (relevantPropertyNames.Count == 0 || relevantPropertyNames.Contains(propertyName))
-                OnValuePropertyChanged(new ValuePropertyChangeEventArgs<TKey, TValue>(key, value, propertyName));
-        }
+        void OnValuePropertyChanged(TKey key, TValue value, string propertyName) => OnValuePropertyChanged(new ValuePropertyChangeEventArgs<TKey, TValue>(key, value, propertyName));
 
         protected virtual void OnValuePropertyChanging(ValuePropertyChangeEventArgs<TKey, TValue> e) => ValuePropertyChanging?.Invoke(this, e);
 
-        void OnValuePropertyChanging(TKey key, TValue value, string propertyName)
-        {
-            if (relevantPropertyNames.Count == 0 || relevantPropertyNames.Contains(propertyName))
-                OnValuePropertyChanging(new ValuePropertyChangeEventArgs<TKey, TValue>(key, value, propertyName));
-        }
+        void OnValuePropertyChanging(TKey key, TValue value, string propertyName) => OnValuePropertyChanging(new ValuePropertyChangeEventArgs<TKey, TValue>(key, value, propertyName));
 
         protected virtual void OnValueRemoved(NotifyDictionaryValueEventArgs<TKey, TValue> e) => ValueRemoved?.Invoke(this, e);
 
