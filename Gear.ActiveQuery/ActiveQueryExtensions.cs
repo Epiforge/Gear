@@ -2205,11 +2205,441 @@ namespace Gear.ActiveQuery
             return result;
         }
 
-        public static ActiveAggregateValue<TValue> ActiveSum<TSource, TValue>(this IReadOnlyList<TSource> source, Func<TSource, TValue> selector, bool isThreadSafe = false, params string[] selectorProperties) where TSource : class where TValue : IEquatable<TValue>
+        public static ActiveAggregateValue<TResult> ActiveSum<TKey, TValue, TResult>(this IReadOnlyDictionary<TKey, TValue> source, Func<TKey, TValue, TResult> selector, bool isThreadSafe = false, params string[] selectorProperties) where TResult : IEquatable<TResult>
         {
-            var operations = new GenericOperations<TValue>();
-            var selectorValues = new Dictionary<TSource, TValue>();
-            TValue firstSum = default;
+            var operations = new GenericOperations<TResult>();
+            var selectorValues = source is SortedDictionary<TKey, TValue> || source is ObservableSortedDictionary<TKey, TValue> || source is SynchronizedObservableSortedDictionary<TKey, TValue> ? (IDictionary<TKey, TResult>)new SortedDictionary<TKey, TResult>() : new Dictionary<TKey, TResult>();
+            TResult firstSum = default;
+            var monitor = ActiveDictionaryMonitor<TKey, TValue>.Monitor(source, selectorProperties);
+            if (monitor.ValuesNotifyChanging)
+                foreach (var keyValuePair in source)
+                    firstSum = operations.Add(firstSum, selector(keyValuePair.Key, keyValuePair.Value));
+            else
+                foreach (var keyValuePair in source)
+                {
+                    var selectorValue = selector(keyValuePair.Key, keyValuePair.Value);
+                    firstSum = operations.Add(firstSum, selectorValue);
+                    selectorValues.Add(keyValuePair.Key, selectorValue);
+                }
+            EventHandler<NotifyDictionaryValueEventArgs<TKey, TValue>> valueAddedHandler = null;
+            EventHandler<ValuePropertyChangeEventArgs<TKey, TValue>> valuePropertyChangedHandler = null;
+            EventHandler<ValuePropertyChangeEventArgs<TKey, TValue>> valuePropertyChangingHandler = null;
+            EventHandler<NotifyDictionaryValueEventArgs<TKey, TValue>> valueRemovedHandler = null;
+            EventHandler<NotifyDictionaryValueReplacedEventArgs<TKey, TValue>> valueReplacedHandler = null;
+            EventHandler<NotifyDictionaryValuesEventArgs<TKey, TValue>> valuesAddedHandler = null;
+            EventHandler<NotifyDictionaryValuesEventArgs<TKey, TValue>> valuesRemovedHandler = null;
+            var resultAccess = isThreadSafe ? new object() : null;
+            var result = new ActiveAggregateValue<TResult>(true, firstSum, out var setValidity, out var setValue, disposing =>
+            {
+                monitor.ValueAdded -= valueAddedHandler;
+                monitor.ValuePropertyChanged -= valuePropertyChangedHandler;
+                monitor.ValuePropertyChanging -= valuePropertyChangingHandler;
+                monitor.ValueRemoved -= valueRemovedHandler;
+                monitor.ValueReplaced -= valueReplacedHandler;
+                monitor.ValuesAdded -= valuesAddedHandler;
+                monitor.ValuesRemoved -= valuesRemovedHandler;
+                if (disposing)
+                    monitor.Dispose();
+            });
+
+            Action<NotifyDictionaryValueEventArgs<TKey, TValue>> valueAddedLogic;
+            if (monitor.ValuesNotifyChanging)
+                valueAddedLogic = e => setValue(operations.Add(result.Value, selector(e.Key, e.Value)));
+            else
+                valueAddedLogic = e =>
+                {
+                    var key = e.Key;
+                    var selectorValue = selector(key, e.Value);
+                    selectorValues.Add(key, selectorValue);
+                    setValue(operations.Add(result.Value, selectorValue));
+                };
+
+            Action<ValuePropertyChangeEventArgs<TKey, TValue>> valuePropertyChangedLogic;
+            if (monitor.ValuesNotifyChanging)
+                valuePropertyChangedLogic = e =>
+                {
+                    var key = e.Key;
+                    var previousSelectorValue = selectorValues[key];
+                    var newSelectorValue = selector(key, e.Value);
+                    if (!previousSelectorValue.Equals(newSelectorValue))
+                        setValue(operations.Add(result.Value, operations.Subtract(newSelectorValue, previousSelectorValue)));
+                    selectorValues.Remove(key);
+                };
+            else
+                valuePropertyChangedLogic = e =>
+                {
+                    var key = e.Key;
+                    var previousSelectorValue = selectorValues[key];
+                    var newSelectorValue = selector(key, e.Value);
+                    if (!previousSelectorValue.Equals(newSelectorValue))
+                    {
+                        selectorValues[key] = newSelectorValue;
+                        setValue(operations.Add(result.Value, operations.Subtract(newSelectorValue, previousSelectorValue)));
+                    }
+                };
+
+            void valuePropertyChangingLogic(ValuePropertyChangeEventArgs<TKey, TValue> e)
+            {
+                var key = e.Key;
+                var selectorValue = selector(key, e.Value);
+                if (selectorValues.ContainsKey(key))
+                    selectorValues[key] = selectorValue;
+                else
+                    selectorValues.Add(key, selectorValue);
+            }
+
+            Action<NotifyDictionaryValueEventArgs<TKey, TValue>> valueRemovedLogic;
+            if (monitor.ValuesNotifyChanging)
+                valueRemovedLogic = e => setValue(operations.Subtract(result.Value, selector(e.Key, e.Value)));
+            else
+                valueRemovedLogic = e =>
+                {
+                    var key = e.Key;
+                    setValue(operations.Subtract(result.Value, selectorValues[key]));
+                    selectorValues.Remove(key);
+                };
+
+            Action<NotifyDictionaryValueReplacedEventArgs<TKey, TValue>> valueReplacedLogic;
+            if (monitor.ValuesNotifyChanging)
+                valueReplacedLogic = e =>
+                {
+                    var key = e.Key;
+                    selectorValues.Remove(key);
+                    setValue(operations.Add(result.Value, operations.Subtract(selector(key, e.NewValue), selector(key, e.OldValue))));
+                };
+            else
+                valueReplacedLogic = e =>
+                {
+                    var key = e.Key;
+                    var newSelectorValue = selector(key, e.NewValue);
+                    selectorValues[key] = newSelectorValue;
+                    setValue(operations.Add(result.Value, operations.Subtract(newSelectorValue, selector(key, e.OldValue))));
+                };
+
+            Action<NotifyDictionaryValuesEventArgs<TKey, TValue>> valuesAddedLogic;
+            if (monitor.ValuesNotifyChanging)
+                valuesAddedLogic = e =>
+                {
+                    TResult delta = default;
+                    foreach (var keyValuePair in e.KeyValuePairs)
+                        delta = operations.Add(delta, selector(keyValuePair.Key, keyValuePair.Value));
+                    setValue(operations.Add(result.Value, delta));
+                };
+            else
+                valuesAddedLogic = e =>
+                {
+                    TResult delta = default;
+                    foreach (var keyValuePair in e.KeyValuePairs)
+                    {
+                        var key = keyValuePair.Key;
+                        var selectorValue = selector(key, keyValuePair.Value);
+                        selectorValues.Add(key, selectorValue);
+                        delta = operations.Add(delta, selectorValue);
+                    }
+                    setValue(operations.Add(result.Value, delta));
+                };
+
+            Action<NotifyDictionaryValuesEventArgs<TKey, TValue>> valuesRemovedLogic;
+            if (monitor.ValuesNotifyChanging)
+                valuesRemovedLogic = e =>
+                {
+                    TResult delta = default;
+                    foreach (var keyValuePair in e.KeyValuePairs)
+                        delta = operations.Subtract(delta, selector(keyValuePair.Key, keyValuePair.Value));
+                    setValue(operations.Add(result.Value, delta));
+                };
+            else
+                valuesRemovedLogic = e =>
+                {
+                    TResult delta = default;
+                    foreach (var keyValuePair in e.KeyValuePairs)
+                    {
+                        var key = keyValuePair.Key;
+                        delta = operations.Subtract(delta, selectorValues[key]);
+                        selectorValues.Remove(key);
+                    }
+                    setValue(operations.Add(result.Value, delta));
+                };
+
+            if (isThreadSafe)
+            {
+                valueAddedHandler = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        valueAddedLogic(e);
+                };
+                valuePropertyChangedHandler = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        valuePropertyChangedLogic(e);
+                };
+                valuePropertyChangingHandler = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        valuePropertyChangingLogic(e);
+                };
+                valueRemovedHandler = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        valueRemovedLogic(e);
+                };
+                valueReplacedHandler = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        valueReplacedLogic(e);
+                };
+                valuesAddedHandler = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        valuesAddedLogic(e);
+                };
+                valuesRemovedHandler = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        valuesRemovedLogic(e);
+                };
+            }
+            else
+            {
+                valueAddedHandler = (sender, e) => valueAddedLogic(e);
+                valuePropertyChangedHandler = (sender, e) => valuePropertyChangedLogic(e);
+                valuePropertyChangingHandler = (sender, e) => valuePropertyChangingLogic(e);
+                valueRemovedHandler = (sender, e) => valueRemovedLogic(e);
+                valueReplacedHandler = (sender, e) => valueReplacedLogic(e);
+                valuesAddedHandler = (sender, e) => valuesAddedLogic(e);
+                valuesRemovedHandler = (sender, e) => valuesRemovedLogic(e);
+            }
+
+            monitor.ValueAdded += valueAddedHandler;
+            monitor.ValuePropertyChanged += valuePropertyChangedHandler;
+            monitor.ValuePropertyChanging += valuePropertyChangingHandler;
+            monitor.ValueRemoved += valueRemovedHandler;
+            monitor.ValueReplaced += valueReplacedHandler;
+            monitor.ValuesAdded += valuesAddedHandler;
+            monitor.ValuesRemoved += valuesRemovedHandler;
+            return result;
+        }
+
+        public static ActiveAggregateValue<TResult?> ActiveSum<TKey, TValue, TResult>(this IReadOnlyDictionary<TKey, TValue> source, Func<TKey, TValue, TResult?> selector, bool isThreadSafe = false, params string[] selectorProperties) where TResult : struct
+        {
+            var operations = new GenericOperations<TResult>();
+            var selectorValues = source is SortedDictionary<TKey, TValue> || source is ObservableSortedDictionary<TKey, TValue> || source is SynchronizedObservableSortedDictionary<TKey, TValue> ? (IDictionary<TKey, TResult?>)new SortedDictionary<TKey, TResult?>() : new Dictionary<TKey, TResult?>();
+            TResult firstSum = default;
+            var monitor = ActiveDictionaryMonitor<TKey, TValue>.Monitor(source, selectorProperties);
+            if (monitor.ValuesNotifyChanging)
+                foreach (var keyValuePair in source)
+                    firstSum = operations.Add(firstSum, selector(keyValuePair.Key, keyValuePair.Value) ?? default);
+            else
+                foreach (var keyValuePair in source)
+                {
+                    var selectorValue = selector(keyValuePair.Key, keyValuePair.Value);
+                    firstSum = operations.Add(firstSum, selectorValue ?? default);
+                    selectorValues.Add(keyValuePair.Key, selectorValue);
+                }
+            EventHandler<NotifyDictionaryValueEventArgs<TKey, TValue>> valueAddedHandler = null;
+            EventHandler<ValuePropertyChangeEventArgs<TKey, TValue>> valuePropertyChangedHandler = null;
+            EventHandler<ValuePropertyChangeEventArgs<TKey, TValue>> valuePropertyChangingHandler = null;
+            EventHandler<NotifyDictionaryValueEventArgs<TKey, TValue>> valueRemovedHandler = null;
+            EventHandler<NotifyDictionaryValueReplacedEventArgs<TKey, TValue>> valueReplacedHandler = null;
+            EventHandler<NotifyDictionaryValuesEventArgs<TKey, TValue>> valuesAddedHandler = null;
+            EventHandler<NotifyDictionaryValuesEventArgs<TKey, TValue>> valuesRemovedHandler = null;
+            var resultAccess = isThreadSafe ? new object() : null;
+            var result = new ActiveAggregateValue<TResult?>(true, firstSum, out var setValidity, out var setValue, disposing =>
+            {
+                monitor.ValueAdded -= valueAddedHandler;
+                monitor.ValuePropertyChanged -= valuePropertyChangedHandler;
+                monitor.ValuePropertyChanging -= valuePropertyChangingHandler;
+                monitor.ValueRemoved -= valueRemovedHandler;
+                monitor.ValueReplaced -= valueReplacedHandler;
+                monitor.ValuesAdded -= valuesAddedHandler;
+                monitor.ValuesRemoved -= valuesRemovedHandler;
+                if (disposing)
+                    monitor.Dispose();
+            });
+
+            Action<NotifyDictionaryValueEventArgs<TKey, TValue>> valueAddedLogic;
+            if (monitor.ValuesNotifyChanging)
+                valueAddedLogic = e => setValue(operations.Add(result.Value ?? default, selector(e.Key, e.Value) ?? default));
+            else
+                valueAddedLogic = e =>
+                {
+                    var key = e.Key;
+                    var selectorValue = selector(key, e.Value);
+                    selectorValues.Add(key, selectorValue);
+                    setValue(operations.Add(result.Value ?? default, selectorValue ?? default));
+                };
+
+            Action<ValuePropertyChangeEventArgs<TKey, TValue>> valuePropertyChangedLogic;
+            if (monitor.ValuesNotifyChanging)
+                valuePropertyChangedLogic = e =>
+                {
+                    var key = e.Key;
+                    var previousSelectorValue = selectorValues[key];
+                    var newSelectorValue = selector(key, e.Value);
+                    if (!previousSelectorValue.Equals(newSelectorValue))
+                        setValue(operations.Add(result.Value ?? default, operations.Subtract(newSelectorValue ?? default, previousSelectorValue ?? default)));
+                    selectorValues.Remove(key);
+                };
+            else
+                valuePropertyChangedLogic = e =>
+                {
+                    var key = e.Key;
+                    var previousSelectorValue = selectorValues[key];
+                    var newSelectorValue = selector(key, e.Value);
+                    if (!previousSelectorValue.Equals(newSelectorValue))
+                    {
+                        selectorValues[key] = newSelectorValue;
+                        setValue(operations.Add(result.Value ?? default, operations.Subtract(newSelectorValue ?? default, previousSelectorValue ?? default)));
+                    }
+                };
+
+            void valuePropertyChangingLogic(ValuePropertyChangeEventArgs<TKey, TValue> e)
+            {
+                var key = e.Key;
+                var selectorValue = selector(key, e.Value);
+                if (selectorValues.ContainsKey(key))
+                    selectorValues[key] = selectorValue;
+                else
+                    selectorValues.Add(key, selectorValue);
+            }
+
+            Action<NotifyDictionaryValueEventArgs<TKey, TValue>> valueRemovedLogic;
+            if (monitor.ValuesNotifyChanging)
+                valueRemovedLogic = e => setValue(operations.Subtract(result.Value ?? default, selector(e.Key, e.Value) ?? default));
+            else
+                valueRemovedLogic = e =>
+                {
+                    var key = e.Key;
+                    setValue(operations.Subtract(result.Value ?? default, selectorValues[key] ?? default));
+                    selectorValues.Remove(key);
+                };
+
+            Action<NotifyDictionaryValueReplacedEventArgs<TKey, TValue>> valueReplacedLogic;
+            if (monitor.ValuesNotifyChanging)
+                valueReplacedLogic = e =>
+                {
+                    var key = e.Key;
+                    selectorValues.Remove(key);
+                    setValue(operations.Add(result.Value ?? default, operations.Subtract(selector(key, e.NewValue) ?? default, selector(key, e.OldValue) ?? default)));
+                };
+            else
+                valueReplacedLogic = e =>
+                {
+                    var key = e.Key;
+                    var newSelectorValue = selector(key, e.NewValue);
+                    selectorValues[key] = newSelectorValue;
+                    setValue(operations.Add(result.Value ?? default, operations.Subtract(newSelectorValue ?? default, selector(key, e.OldValue) ?? default)));
+                };
+
+            Action<NotifyDictionaryValuesEventArgs<TKey, TValue>> valuesAddedLogic;
+            if (monitor.ValuesNotifyChanging)
+                valuesAddedLogic = e =>
+                {
+                    TResult delta = default;
+                    foreach (var keyValuePair in e.KeyValuePairs)
+                        delta = operations.Add(delta, selector(keyValuePair.Key, keyValuePair.Value) ?? default);
+                    setValue(operations.Add(result.Value ?? default, delta));
+                };
+            else
+                valuesAddedLogic = e =>
+                {
+                    TResult delta = default;
+                    foreach (var keyValuePair in e.KeyValuePairs)
+                    {
+                        var key = keyValuePair.Key;
+                        var selectorValue = selector(key, keyValuePair.Value);
+                        selectorValues.Add(key, selectorValue);
+                        delta = operations.Add(delta, selectorValue ?? default);
+                    }
+                    setValue(operations.Add(result.Value ?? default, delta));
+                };
+
+            Action<NotifyDictionaryValuesEventArgs<TKey, TValue>> valuesRemovedLogic;
+            if (monitor.ValuesNotifyChanging)
+                valuesRemovedLogic = e =>
+                {
+                    TResult delta = default;
+                    foreach (var keyValuePair in e.KeyValuePairs)
+                        delta = operations.Subtract(delta, selector(keyValuePair.Key, keyValuePair.Value) ?? default);
+                    setValue(operations.Add(result.Value ?? default, delta));
+                };
+            else
+                valuesRemovedLogic = e =>
+                {
+                    TResult delta = default;
+                    foreach (var keyValuePair in e.KeyValuePairs)
+                    {
+                        var key = keyValuePair.Key;
+                        delta = operations.Subtract(delta, selectorValues[key] ?? default);
+                        selectorValues.Remove(key);
+                    }
+                    setValue(operations.Add(result.Value ?? default, delta));
+                };
+
+            if (isThreadSafe)
+            {
+                valueAddedHandler = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        valueAddedLogic(e);
+                };
+                valuePropertyChangedHandler = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        valuePropertyChangedLogic(e);
+                };
+                valuePropertyChangingHandler = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        valuePropertyChangingLogic(e);
+                };
+                valueRemovedHandler = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        valueRemovedLogic(e);
+                };
+                valueReplacedHandler = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        valueReplacedLogic(e);
+                };
+                valuesAddedHandler = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        valuesAddedLogic(e);
+                };
+                valuesRemovedHandler = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        valuesRemovedLogic(e);
+                };
+            }
+            else
+            {
+                valueAddedHandler = (sender, e) => valueAddedLogic(e);
+                valuePropertyChangedHandler = (sender, e) => valuePropertyChangedLogic(e);
+                valuePropertyChangingHandler = (sender, e) => valuePropertyChangingLogic(e);
+                valueRemovedHandler = (sender, e) => valueRemovedLogic(e);
+                valueReplacedHandler = (sender, e) => valueReplacedLogic(e);
+                valuesAddedHandler = (sender, e) => valuesAddedLogic(e);
+                valuesRemovedHandler = (sender, e) => valuesRemovedLogic(e);
+            }
+
+            monitor.ValueAdded += valueAddedHandler;
+            monitor.ValuePropertyChanged += valuePropertyChangedHandler;
+            monitor.ValuePropertyChanging += valuePropertyChangingHandler;
+            monitor.ValueRemoved += valueRemovedHandler;
+            monitor.ValueReplaced += valueReplacedHandler;
+            monitor.ValuesAdded += valuesAddedHandler;
+            monitor.ValuesRemoved += valuesRemovedHandler;
+            return result;
+        }
+
+        public static ActiveAggregateValue<TResult> ActiveSum<TSource, TResult>(this IReadOnlyList<TSource> source, Func<TSource, TResult> selector, bool isThreadSafe = false, params string[] selectorProperties) where TSource : class where TResult : IEquatable<TResult>
+        {
+            var operations = new GenericOperations<TResult>();
+            var selectorValues = new Dictionary<TSource, TResult>();
+            TResult firstSum = default;
             var monitor = ActiveListMonitor<TSource>.Monitor(source, selectorProperties);
             if (monitor.ElementsNotifyChanging)
                 foreach (var item in source)
@@ -2226,7 +2656,7 @@ namespace Gear.ActiveQuery
             EventHandler<ElementMembershipEventArgs<TSource>> elementsAddedHandler = null;
             EventHandler<ElementMembershipEventArgs<TSource>> elementsRemovedHandler = null;
             var resultAccess = isThreadSafe ? new object() : null;
-            var result = new ActiveAggregateValue<TValue>(true, firstSum, out var setValidity, out var setValue, disposing =>
+            var result = new ActiveAggregateValue<TResult>(true, firstSum, out var setValidity, out var setValue, disposing =>
             {
                 monitor.ElementPropertyChanged -= elementPropertyChangedHandler;
                 monitor.ElementPropertyChanging -= elementPropertyChangingHandler;
@@ -2270,36 +2700,48 @@ namespace Gear.ActiveQuery
                     selectorValues.Add(element, selectorValue);
             }
 
-            void elementsAddedLogic(ElementMembershipEventArgs<TSource> e)
-            {
-                TValue delta = default;
-                if (monitor.ElementsNotifyChanging)
+            Action<ElementMembershipEventArgs<TSource>> elementsAddedLogic;
+            if (monitor.ElementsNotifyChanging)
+                elementsAddedLogic = e =>
+                {
+                    TResult delta = default;
                     foreach (var element in e.Elements)
                         delta = operations.Add(delta, selector(element));
-                else
+                    setValue(operations.Add(result.Value, delta));
+                };
+            else
+                elementsAddedLogic = e =>
+                {
+                    TResult delta = default;
                     foreach (var element in e.Elements)
                     {
                         var selectorValue = selector(element);
                         selectorValues.Add(element, selectorValue);
                         delta = operations.Add(delta, selectorValue);
                     }
-                setValue(operations.Add(result.Value, delta));
-            }
+                    setValue(operations.Add(result.Value, delta));
+                };
 
-            void elementsRemovedLogic(ElementMembershipEventArgs<TSource> e)
-            {
-                TValue delta = default;
-                if (monitor.ElementsNotifyChanging)
+            Action<ElementMembershipEventArgs<TSource>> elementsRemovedLogic;
+            if (monitor.ElementsNotifyChanging)
+                elementsRemovedLogic = e =>
+                {
+                    TResult delta = default;
                     foreach (var element in e.Elements)
                         delta = operations.Subtract(delta, selector(element));
-                else
+                    setValue(operations.Add(result.Value, delta));
+                };
+            else
+                elementsRemovedLogic = e =>
+                {
+                    TResult delta = default;
                     foreach (var element in e.Elements)
                     {
                         delta = operations.Subtract(delta, selectorValues[element]);
                         selectorValues.Remove(element);
                     }
-                setValue(operations.Add(result.Value, delta));
-            }
+                    setValue(operations.Add(result.Value, delta));
+                };
 
             if (isThreadSafe)
             {
@@ -2339,11 +2781,11 @@ namespace Gear.ActiveQuery
             return result;
         }
 
-        public static ActiveAggregateValue<TValue?> ActiveSum<TSource, TValue>(this IReadOnlyList<TSource> source, Func<TSource, TValue?> selector, bool isThreadSafe = false, params string[] selectorProperties) where TSource : class where TValue : struct, IEquatable<TValue>
+        public static ActiveAggregateValue<TResult?> ActiveSum<TSource, TResult>(this IReadOnlyList<TSource> source, Func<TSource, TResult?> selector, bool isThreadSafe = false, params string[] selectorProperties) where TSource : class where TResult : struct
         {
-            var operations = new GenericOperations<TValue>();
-            var selectorValues = new Dictionary<TSource, TValue?>();
-            TValue firstSum = default;
+            var operations = new GenericOperations<TResult>();
+            var selectorValues = new Dictionary<TSource, TResult?>();
+            TResult firstSum = default;
             var monitor = ActiveListMonitor<TSource>.Monitor(source, selectorProperties);
             if (monitor.ElementsNotifyChanging)
                 foreach (var item in source)
@@ -2360,7 +2802,7 @@ namespace Gear.ActiveQuery
             EventHandler<ElementMembershipEventArgs<TSource>> elementsAddedHandler = null;
             EventHandler<ElementMembershipEventArgs<TSource>> elementsRemovedHandler = null;
             var resultAccess = isThreadSafe ? new object() : null;
-            var result = new ActiveAggregateValue<TValue?>(true, firstSum, out var setValidity, out var setValue, disposing =>
+            var result = new ActiveAggregateValue<TResult?>(true, firstSum, out var setValidity, out var setValue, disposing =>
             {
                 monitor.ElementPropertyChanged -= elementPropertyChangedHandler;
                 monitor.ElementPropertyChanging -= elementPropertyChangingHandler;
@@ -2377,7 +2819,7 @@ namespace Gear.ActiveQuery
                     var element = e.Element;
                     var previousSelectorValue = selectorValues[element];
                     var newSelectorValue = selector(element);
-                    if (!((previousSelectorValue == null && newSelectorValue == null) || (previousSelectorValue != null && newSelectorValue != null && previousSelectorValue.Value.Equals(newSelectorValue.Value))))
+                    if (!previousSelectorValue.Equals(newSelectorValue))
                         setValue(operations.Add(result.Value ?? default, operations.Subtract(newSelectorValue ?? default, previousSelectorValue ?? default)));
                     selectorValues.Remove(element);
                 };
@@ -2387,7 +2829,7 @@ namespace Gear.ActiveQuery
                     var element = e.Element;
                     var previousSelectorValue = selectorValues[element];
                     var newSelectorValue = selector(element);
-                    if (!((previousSelectorValue == null && newSelectorValue == null) || (previousSelectorValue != null && newSelectorValue != null && previousSelectorValue.Value.Equals(newSelectorValue.Value))))
+                    if (!previousSelectorValue.Equals(newSelectorValue))
                     {
                         selectorValues[element] = newSelectorValue;
                         setValue(operations.Add(result.Value ?? default, operations.Subtract(newSelectorValue ?? default, previousSelectorValue ?? default)));
@@ -2404,36 +2846,48 @@ namespace Gear.ActiveQuery
                     selectorValues.Add(element, selectorValue);
             }
 
-            void elementsAddedLogic(ElementMembershipEventArgs<TSource> e)
-            {
-                TValue delta = default;
-                if (monitor.ElementsNotifyChanging)
+            Action<ElementMembershipEventArgs<TSource>> elementsAddedLogic;
+            if (monitor.ElementsNotifyChanging)
+                elementsAddedLogic = e =>
+                {
+                    TResult delta = default;
                     foreach (var element in e.Elements)
                         delta = operations.Add(delta, selector(element) ?? default);
-                else
+                    setValue(operations.Add(result.Value ?? default, delta));
+                };
+            else
+                elementsAddedLogic = e =>
+                {
+                    TResult delta = default;
                     foreach (var element in e.Elements)
                     {
                         var selectorValue = selector(element);
                         selectorValues.Add(element, selectorValue);
                         delta = operations.Add(delta, selectorValue ?? default);
                     }
-                setValue(operations.Add(result.Value ?? default, delta));
-            }
+                    setValue(operations.Add(result.Value ?? default, delta));
+                };
 
-            void elementsRemovedLogic(ElementMembershipEventArgs<TSource> e)
-            {
-                TValue delta = default;
-                if (monitor.ElementsNotifyChanging)
+            Action<ElementMembershipEventArgs<TSource>> elementsRemovedLogic;
+            if (monitor.ElementsNotifyChanging)
+                elementsRemovedLogic = e =>
+                {
+                    TResult delta = default;
                     foreach (var element in e.Elements)
                         delta = operations.Subtract(delta, selector(element) ?? default);
-                else
+                    setValue(operations.Add(result.Value ?? default, delta));
+                };
+            else
+                elementsRemovedLogic = e =>
+                {
+                    TResult delta = default;
                     foreach (var element in e.Elements)
                     {
                         delta = operations.Subtract(delta, selectorValues[element] ?? default);
                         selectorValues.Remove(element);
                     }
-                setValue(operations.Add(result.Value ?? default, delta));
-            }
+                    setValue(operations.Add(result.Value ?? default, delta));
+                };
 
             if (isThreadSafe)
             {
