@@ -10,6 +10,253 @@ namespace Gear.ActiveQuery
 {
     public static class ActiveQueryExtensions
     {
+        public static ActiveAggregateValue<bool> ActiveAll<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, Func<TKey, TValue, bool> predicate, IndexingStrategy indexingStrategy = IndexingStrategy.NoneOrInherit, bool isThreadSafe = false, params string[] predicateProperties) =>
+            ActiveAll(source, (source as ISynchronizable)?.SynchronizationContext, predicate, indexingStrategy, isThreadSafe, predicateProperties);
+
+        public static ActiveAggregateValue<bool> ActiveAll<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, SynchronizationContext synchronizationContext, Func<TKey, TValue, bool> predicate, IndexingStrategy indexingStrategy = IndexingStrategy.NoneOrInherit, bool isThreadSafe = false, params string[] predicateProperties)
+        {
+            var where = ActiveWhere(source, synchronizationContext, predicate, indexingStrategy, predicateProperties);
+            var monitor = ActiveDictionaryMonitor<TKey, TValue>.Monitor(where);
+            EventHandler<NotifyDictionaryValueEventArgs<TKey, TValue>> value = null;
+            EventHandler<NotifyDictionaryValuesEventArgs<TKey, TValue>> values = null;
+            var resultAccess = isThreadSafe ? new object() : null;
+            var result = new ActiveAggregateValue<bool>(true, where.Count == source.Count, out var setValidity, out var setValue, disposing =>
+            {
+                monitor.ValueAdded -= value;
+                monitor.ValueRemoved -= value;
+                monitor.ValuesAdded -= values;
+                monitor.ValuesRemoved -= values;
+                if (disposing)
+                {
+                    monitor.Dispose();
+                    where.Dispose();
+                }
+            });
+
+            void valuesLogic() => setValue(where.Count == source.Count);
+
+            if (isThreadSafe)
+            {
+                value = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        valuesLogic();
+                };
+                values = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        valuesLogic();
+                };
+            }
+            else
+            {
+                value = (sender, e) => valuesLogic();
+                values = (sender, e) => valuesLogic();
+            }
+
+            monitor.ValueAdded += value;
+            monitor.ValueRemoved += value;
+            monitor.ValuesAdded += values;
+            monitor.ValuesRemoved += values;
+            return result;
+        }
+
+        public static ActiveAggregateValue<bool> ActiveAll<TSource>(this IReadOnlyList<TSource> source, Func<TSource, bool> predicate, bool isThreadSafe = false, params string[] predicateProperties) where TSource : class =>
+            ActiveAll(source, (source as ISynchronizable)?.SynchronizationContext, predicate, isThreadSafe, predicateProperties);
+
+        public static ActiveAggregateValue<bool> ActiveAll<TSource>(this IReadOnlyList<TSource> source, SynchronizationContext synchronizationContext, Func<TSource, bool> predicate, bool isThreadSafe = false, params string[] predicateProperties) where TSource : class
+        {
+            var where = ActiveWhere(source, synchronizationContext, predicate, predicateProperties);
+            var monitor = ActiveListMonitor<TSource>.Monitor(where);
+            EventHandler<ElementMembershipEventArgs<TSource>> elementMembership = null;
+            var resultAccess = isThreadSafe ? new object() : null;
+            var result = new ActiveAggregateValue<bool>(true, where.Count == source.Count, out var setValidity, out var setValue, disposing =>
+            {
+                monitor.ElementsAdded -= elementMembership;
+                monitor.ElementsRemoved -= elementMembership;
+                if (disposing)
+                {
+                    monitor.Dispose();
+                    where.Dispose();
+                }
+            });
+
+            void elementMembershipLogic() => setValue(where.Count == source.Count);
+
+            if (isThreadSafe)
+                elementMembership = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        elementMembershipLogic();
+                };
+            else
+                elementMembership = (sender, e) => elementMembershipLogic();
+
+            monitor.ElementsAdded += elementMembership;
+            monitor.ElementsRemoved += elementMembership;
+            return result;
+        }
+
+        public static ActiveAggregateValue<bool> ActiveAny<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, bool isThreadSafe = false)
+        {
+            var monitor = ActiveDictionaryMonitor<TKey, TValue>.Monitor(source);
+            EventHandler<NotifyDictionaryValueEventArgs<TKey, TValue>> value = null;
+            EventHandler<NotifyDictionaryValuesEventArgs<TKey, TValue>> values = null;
+            var resultAccess = isThreadSafe ? new object() : null;
+            var result = new ActiveAggregateValue<bool>(true, source.Count > 0, out var setValidity, out var setValue, disposing =>
+            {
+                monitor.ValueAdded -= value;
+                monitor.ValueRemoved -= value;
+                monitor.ValuesAdded -= values;
+                monitor.ValuesRemoved -= values;
+                if (disposing)
+                    monitor.Dispose();
+            });
+
+            void valuesLogic() => setValue(source.Count > 0);
+
+            if (isThreadSafe)
+            {
+                value = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        valuesLogic();
+                };
+                values = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        valuesLogic();
+                };
+            }
+            else
+            {
+                value = (sender, e) => valuesLogic();
+                values = (sender, e) => valuesLogic();
+            }
+
+            monitor.ValueAdded += value;
+            monitor.ValueRemoved += value;
+            monitor.ValuesAdded += values;
+            monitor.ValuesRemoved += values;
+            return result;
+        }
+
+        public static ActiveAggregateValue<bool> ActiveAny<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, Func<TKey, TValue, bool> predicate, IndexingStrategy indexingStrategy = IndexingStrategy.NoneOrInherit, bool isThreadSafe = false, params string[] predicateProperties) =>
+            ActiveAny(source, (source as ISynchronizable)?.SynchronizationContext, predicate, indexingStrategy, isThreadSafe, predicateProperties);
+
+        public static ActiveAggregateValue<bool> ActiveAny<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, SynchronizationContext synchronizationContext, Func<TKey, TValue, bool> predicate, IndexingStrategy indexingStrategy = IndexingStrategy.NoneOrInherit, bool isThreadSafe = false, params string[] predicateProperties)
+        {
+            var where = ActiveWhere(source, synchronizationContext, predicate, indexingStrategy, predicateProperties);
+            var monitor = ActiveDictionaryMonitor<TKey, TValue>.Monitor(where);
+            EventHandler<NotifyDictionaryValueEventArgs<TKey, TValue>> value = null;
+            EventHandler<NotifyDictionaryValuesEventArgs<TKey, TValue>> values = null;
+            var resultAccess = isThreadSafe ? new object() : null;
+            var result = new ActiveAggregateValue<bool>(true, where.Count > 0, out var setValidity, out var setValue, disposing =>
+            {
+                monitor.ValueAdded -= value;
+                monitor.ValueRemoved -= value;
+                monitor.ValuesAdded -= values;
+                monitor.ValuesRemoved -= values;
+                if (disposing)
+                {
+                    monitor.Dispose();
+                    where.Dispose();
+                }
+            });
+
+            void valuesLogic() => setValue(where.Count > 0);
+
+            if (isThreadSafe)
+            {
+                value = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        valuesLogic();
+                };
+                values = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        valuesLogic();
+                };
+            }
+            else
+            {
+                value = (sender, e) => valuesLogic();
+                values = (sender, e) => valuesLogic();
+            }
+
+            monitor.ValueAdded += value;
+            monitor.ValueRemoved += value;
+            monitor.ValuesAdded += values;
+            monitor.ValuesRemoved += values;
+            return result;
+        }
+
+        public static ActiveAggregateValue<bool> ActiveAny<TSource>(this IReadOnlyList<TSource> source, bool isThreadSafe = false)
+        {
+            var monitor = ActiveListMonitor<TSource>.Monitor(source);
+            EventHandler<ElementMembershipEventArgs<TSource>> elementMembership = null;
+            var resultAccess = isThreadSafe ? new object() : null;
+            var result = new ActiveAggregateValue<bool>(true, source.Count > 0, out var setValidity, out var setValue, disposing =>
+            {
+                monitor.ElementsAdded -= elementMembership;
+                monitor.ElementsRemoved -= elementMembership;
+                if (disposing)
+                    monitor.Dispose();
+            });
+
+            void elementMembershipLogic(ElementMembershipEventArgs<TSource> e) => setValue(source.Count > 0);
+
+            if (isThreadSafe)
+                elementMembership = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        elementMembershipLogic(e);
+                };
+            else
+                elementMembership = (sender, e) => elementMembershipLogic(e);
+
+            monitor.ElementsAdded += elementMembership;
+            monitor.ElementsRemoved += elementMembership;
+            return result;
+        }
+
+        public static ActiveAggregateValue<bool> ActiveAny<TSource>(this IReadOnlyList<TSource> source, Func<TSource, bool> predicate, bool isThreadSafe = false, params string[] predicateProperties) where TSource : class =>
+            ActiveAny(source, (source as ISynchronizable)?.SynchronizationContext, predicate, isThreadSafe, predicateProperties);
+
+        public static ActiveAggregateValue<bool> ActiveAny<TSource>(this IReadOnlyList<TSource> source, SynchronizationContext synchronizationContext, Func<TSource, bool> predicate, bool isThreadSafe = false, params string[] predicateProperties) where TSource : class
+        {
+            var where = ActiveWhere(source, synchronizationContext, predicate, predicateProperties);
+            var monitor = ActiveListMonitor<TSource>.Monitor(where);
+            EventHandler<ElementMembershipEventArgs<TSource>> elementMembership = null;
+            var resultAccess = isThreadSafe ? new object() : null;
+            var result = new ActiveAggregateValue<bool>(true, where.Count > 1, out var setValidity, out var setValue, disposing =>
+            {
+                monitor.ElementsAdded -= elementMembership;
+                monitor.ElementsRemoved -= elementMembership;
+                if (disposing)
+                {
+                    monitor.Dispose();
+                    where.Dispose();
+                }
+            });
+
+            void elementMembershipLogic(ElementMembershipEventArgs<TSource> e) => setValue(where.Count > 0);
+
+            if (isThreadSafe)
+                elementMembership = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        elementMembershipLogic(e);
+                };
+            else
+                elementMembership = (sender, e) => elementMembershipLogic(e);
+
+            monitor.ElementsAdded += elementMembership;
+            monitor.ElementsRemoved += elementMembership;
+            return result;
+        }
+
         public static ActiveEnumerable<TResult> ActiveCast<TResult>(this IEnumerable source) =>
             ActiveCast<TResult>(source, (source as ISynchronizable)?.SynchronizationContext);
 
@@ -216,6 +463,324 @@ namespace Gear.ActiveQuery
             return result;
         }
 
+        public static ActiveAggregateValue<TSource> ActiveFirst<TSource>(this IReadOnlyList<TSource> source, bool isThreadSafe = false)
+        {
+            var firstIsValid = false;
+            TSource firstFirst = default;
+            if (source.Count > 0)
+            {
+                firstIsValid = true;
+                firstFirst = source[0];
+            }
+            var monitor = ActiveListMonitor<TSource>.Monitor(source);
+            EventHandler<ElementMembershipEventArgs<TSource>> elementsAdded = null;
+            EventHandler<ElementsMovedEventArgs<TSource>> elementsMoved = null;
+            EventHandler<ElementMembershipEventArgs<TSource>> elementsRemoved = null;
+            var resultAccess = isThreadSafe ? new object() : null;
+            var result = new ActiveAggregateValue<TSource>(firstIsValid, firstFirst, out var setValidity, out var setValue, disposing =>
+            {
+                monitor.ElementsAdded -= elementsAdded;
+                monitor.ElementsMoved -= elementsMoved;
+                monitor.ElementsRemoved -= elementsRemoved;
+                if (disposing)
+                    monitor.Dispose();
+            });
+
+            void elementsAddedLogic(ElementMembershipEventArgs<TSource> e)
+            {
+                if (e.Index == 0)
+                {
+                    setValidity(true);
+                    setValue(e.Elements.First());
+                }
+            }
+
+            void elementsMovedLogic(ElementsMovedEventArgs<TSource> e)
+            {
+                if (e.FromIndex == 0)
+                    setValue(source[0]);
+                else if (e.ToIndex == 0)
+                    setValue(e.Elements.First());
+            }
+
+            void elementsRemovedLogic(ElementMembershipEventArgs<TSource> e)
+            {
+                if (e.Index == 0)
+                {
+                    if (source.Count == 0)
+                        setValidity(false);
+                    else
+                        setValue(source[0]);
+                }
+            }
+
+            if (isThreadSafe)
+            {
+                elementsAdded = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        elementsAddedLogic(e);
+                };
+                elementsMoved = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        elementsMovedLogic(e);
+                };
+                elementsRemoved = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        elementsRemovedLogic(e);
+                };
+            }
+            else
+            {
+                elementsAdded = (sender, e) => elementsAddedLogic(e);
+                elementsMoved = (sender, e) => elementsMovedLogic(e);
+                elementsRemoved = (sender, e) => elementsRemovedLogic(e);
+            }
+
+            monitor.ElementsAdded += elementsAdded;
+            monitor.ElementsMoved += elementsMoved;
+            monitor.ElementsRemoved += elementsRemoved;
+            return result;
+        }
+
+        public static ActiveAggregateValue<TSource> ActiveFirst<TSource>(this IReadOnlyList<TSource> source, Func<TSource, bool> predicate, bool isThreadSafe = false, params string[] predicateProperties) where TSource : class =>
+            ActiveFirst(source, (source as ISynchronizable)?.SynchronizationContext, predicate, isThreadSafe, predicateProperties);
+
+        public static ActiveAggregateValue<TSource> ActiveFirst<TSource>(this IReadOnlyList<TSource> source, SynchronizationContext synchronizationContext, Func<TSource, bool> predicate, bool isThreadSafe = false, params string[] predicateProperties) where TSource : class
+        {
+            var where = ActiveWhere(source, synchronizationContext, predicate, predicateProperties);
+            var firstIsValid = false;
+            TSource firstFirst = default;
+            if (where.Count > 0)
+            {
+                firstIsValid = true;
+                firstFirst = where[0];
+            }
+            var monitor = ActiveListMonitor<TSource>.Monitor(where);
+            EventHandler<ElementMembershipEventArgs<TSource>> elementsAdded = null;
+            EventHandler<ElementsMovedEventArgs<TSource>> elementsMoved = null;
+            EventHandler<ElementMembershipEventArgs<TSource>> elementsRemoved = null;
+            var resultAccess = isThreadSafe ? new object() : null;
+            var result = new ActiveAggregateValue<TSource>(firstIsValid, firstFirst, out var setValidity, out var setValue, disposing =>
+            {
+                monitor.ElementsAdded -= elementsAdded;
+                monitor.ElementsMoved -= elementsMoved;
+                monitor.ElementsRemoved -= elementsRemoved;
+                if (disposing)
+                {
+                    monitor.Dispose();
+                    where.Dispose();
+                }
+            });
+
+            void elementsAddedLogic(ElementMembershipEventArgs<TSource> e)
+            {
+                if (e.Index == 0)
+                {
+                    setValidity(true);
+                    setValue(e.Elements.First());
+                }
+            }
+
+            void elementsMovedLogic(ElementsMovedEventArgs<TSource> e)
+            {
+                if (e.FromIndex == 0)
+                    setValue(where[0]);
+                else if (e.ToIndex == 0)
+                    setValue(e.Elements.First());
+            }
+
+            void elementsRemovedLogic(ElementMembershipEventArgs<TSource> e)
+            {
+                if (e.Index == 0)
+                {
+                    if (where.Count == 0)
+                        setValidity(false);
+                    else
+                        setValue(where[0]);
+                }
+            }
+
+            if (isThreadSafe)
+            {
+                elementsAdded = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        elementsAddedLogic(e);
+                };
+                elementsMoved = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        elementsMovedLogic(e);
+                };
+                elementsRemoved = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        elementsRemovedLogic(e);
+                };
+            }
+            else
+            {
+                elementsAdded = (sender, e) => elementsAddedLogic(e);
+                elementsMoved = (sender, e) => elementsMovedLogic(e);
+                elementsRemoved = (sender, e) => elementsRemovedLogic(e);
+            }
+
+            monitor.ElementsAdded += elementsAdded;
+            monitor.ElementsMoved += elementsMoved;
+            monitor.ElementsRemoved += elementsRemoved;
+            return result;
+        }
+
+        public static ActiveAggregateValue<TSource> ActiveFirstOrDefault<TSource>(this IReadOnlyList<TSource> source, bool isThreadSafe = false)
+        {
+            TSource firstFirst = default;
+            if (source.Count > 0)
+                firstFirst = source[0];
+            var monitor = ActiveListMonitor<TSource>.Monitor(source);
+            EventHandler<ElementMembershipEventArgs<TSource>> elementsAdded = null;
+            EventHandler<ElementsMovedEventArgs<TSource>> elementsMoved = null;
+            EventHandler<ElementMembershipEventArgs<TSource>> elementsRemoved = null;
+            var resultAccess = isThreadSafe ? new object() : null;
+            var result = new ActiveAggregateValue<TSource>(true, firstFirst, out var setValidity, out var setValue, disposing =>
+            {
+                monitor.ElementsAdded -= elementsAdded;
+                monitor.ElementsMoved -= elementsMoved;
+                monitor.ElementsRemoved -= elementsRemoved;
+                if (disposing)
+                    monitor.Dispose();
+            });
+
+            void elementsAddedLogic(ElementMembershipEventArgs<TSource> e)
+            {
+                if (e.Index == 0)
+                    setValue(e.Elements.First());
+            }
+
+            void elementsMovedLogic(ElementsMovedEventArgs<TSource> e)
+            {
+                if (e.FromIndex == 0)
+                    setValue(source[0]);
+                else if (e.ToIndex == 0)
+                    setValue(e.Elements.First());
+            }
+
+            void elementsRemovedLogic(ElementMembershipEventArgs<TSource> e)
+            {
+                if (e.Index == 0)
+                    setValue(source.Count == 0 ? default : source[0]);
+            }
+
+            if (isThreadSafe)
+            {
+                elementsAdded = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        elementsAddedLogic(e);
+                };
+                elementsMoved = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        elementsMovedLogic(e);
+                };
+                elementsRemoved = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        elementsRemovedLogic(e);
+                };
+            }
+            else
+            {
+                elementsAdded = (sender, e) => elementsAddedLogic(e);
+                elementsMoved = (sender, e) => elementsMovedLogic(e);
+                elementsRemoved = (sender, e) => elementsRemovedLogic(e);
+            }
+
+            monitor.ElementsAdded += elementsAdded;
+            monitor.ElementsMoved += elementsMoved;
+            monitor.ElementsRemoved += elementsRemoved;
+            return result;
+        }
+
+        public static ActiveAggregateValue<TSource> ActiveFirstOrDefault<TSource>(this IReadOnlyList<TSource> source, Func<TSource, bool> predicate, bool isThreadSafe = false, params string[] predicateProperties) where TSource : class =>
+            ActiveFirstOrDefault(source, (source as ISynchronizable)?.SynchronizationContext, predicate, isThreadSafe, predicateProperties);
+
+        public static ActiveAggregateValue<TSource> ActiveFirstOrDefault<TSource>(this IReadOnlyList<TSource> source, SynchronizationContext synchronizationContext, Func<TSource, bool> predicate, bool isThreadSafe = false, params string[] predicateProperties) where TSource : class
+        {
+            var where = ActiveWhere(source, synchronizationContext, predicate, predicateProperties);
+            TSource firstFirst = default;
+            if (where.Count > 0)
+                firstFirst = where[0];
+            var monitor = ActiveListMonitor<TSource>.Monitor(where);
+            EventHandler<ElementMembershipEventArgs<TSource>> elementsAdded = null;
+            EventHandler<ElementsMovedEventArgs<TSource>> elementsMoved = null;
+            EventHandler<ElementMembershipEventArgs<TSource>> elementsRemoved = null;
+            var resultAccess = isThreadSafe ? new object() : null;
+            var result = new ActiveAggregateValue<TSource>(true, firstFirst, out var setValidity, out var setValue, disposing =>
+            {
+                monitor.ElementsAdded -= elementsAdded;
+                monitor.ElementsMoved -= elementsMoved;
+                monitor.ElementsRemoved -= elementsRemoved;
+                if (disposing)
+                {
+                    monitor.Dispose();
+                    where.Dispose();
+                }
+            });
+
+            void elementsAddedLogic(ElementMembershipEventArgs<TSource> e)
+            {
+                if (e.Index == 0)
+                    setValue(e.Elements.First());
+            }
+
+            void elementsMovedLogic(ElementsMovedEventArgs<TSource> e)
+            {
+                if (e.FromIndex == 0)
+                    setValue(where[0]);
+                else if (e.ToIndex == 0)
+                    setValue(e.Elements.First());
+            }
+
+            void elementsRemovedLogic(ElementMembershipEventArgs<TSource> e)
+            {
+                if (e.Index == 0)
+                    setValue(where.Count == 0 ? default : where[0]);
+            }
+
+            if (isThreadSafe)
+            {
+                elementsAdded = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        elementsAddedLogic(e);
+                };
+                elementsMoved = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        elementsMovedLogic(e);
+                };
+                elementsRemoved = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        elementsRemovedLogic(e);
+                };
+            }
+            else
+            {
+                elementsAdded = (sender, e) => elementsAddedLogic(e);
+                elementsMoved = (sender, e) => elementsMovedLogic(e);
+                elementsRemoved = (sender, e) => elementsRemovedLogic(e);
+            }
+
+            monitor.ElementsAdded += elementsAdded;
+            monitor.ElementsMoved += elementsMoved;
+            monitor.ElementsRemoved += elementsRemoved;
+            return result;
+        }
+
         public static ActiveEnumerable<ActiveGrouping<TKey, TSource>> ActiveGroupBy<TKey, TSource>(this IReadOnlyList<TSource> source, Func<TSource, TKey> keySelector, params string[] keySelectorProperties) where TKey : IEquatable<TKey> where TSource : class =>
             ActiveGroupBy(source, (source as ISynchronizable)?.SynchronizationContext, keySelector, keySelectorProperties);
 
@@ -328,6 +893,324 @@ namespace Gear.ActiveQuery
             });
             if (synchronizationContext != null)
                 rangeObservableCollection.IsSynchronized = true;
+            return result;
+        }
+
+        public static ActiveAggregateValue<TSource> ActiveLast<TSource>(this IReadOnlyList<TSource> source, bool isThreadSafe = false)
+        {
+            var firstIsValid = false;
+            TSource firstLast = default;
+            if (source.Count > 0)
+            {
+                firstIsValid = true;
+                firstLast = source[source.Count - 1];
+            }
+            var monitor = ActiveListMonitor<TSource>.Monitor(source);
+            EventHandler<ElementMembershipEventArgs<TSource>> elementsAdded = null;
+            EventHandler<ElementsMovedEventArgs<TSource>> elementsMoved = null;
+            EventHandler<ElementMembershipEventArgs<TSource>> elementsRemoved = null;
+            var resultAccess = isThreadSafe ? new object() : null;
+            var result = new ActiveAggregateValue<TSource>(firstIsValid, firstLast, out var setValidity, out var setValue, disposing =>
+            {
+                monitor.ElementsAdded -= elementsAdded;
+                monitor.ElementsMoved -= elementsMoved;
+                monitor.ElementsRemoved -= elementsRemoved;
+                if (disposing)
+                    monitor.Dispose();
+            });
+
+            void elementsAddedLogic(ElementMembershipEventArgs<TSource> e)
+            {
+                if (e.Index + e.Count == source.Count)
+                {
+                    setValidity(true);
+                    setValue(e.Elements.Last());
+                }
+            }
+
+            void elementsMovedLogic(ElementsMovedEventArgs<TSource> e)
+            {
+                if (e.FromIndex + e.Count == source.Count)
+                    setValue(source[source.Count - 1]);
+                else if (e.ToIndex + e.Count == source.Count)
+                    setValue(e.Elements.Last());
+            }
+
+            void elementsRemovedLogic(ElementMembershipEventArgs<TSource> e)
+            {
+                if (e.Index == source.Count)
+                {
+                    if (source.Count == 0)
+                        setValidity(false);
+                    else
+                        setValue(source[source.Count - 1]);
+                }
+            }
+
+            if (isThreadSafe)
+            {
+                elementsAdded = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        elementsAddedLogic(e);
+                };
+                elementsMoved = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        elementsMovedLogic(e);
+                };
+                elementsRemoved = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        elementsRemovedLogic(e);
+                };
+            }
+            else
+            {
+                elementsAdded = (sender, e) => elementsAddedLogic(e);
+                elementsMoved = (sender, e) => elementsMovedLogic(e);
+                elementsRemoved = (sender, e) => elementsRemovedLogic(e);
+            }
+
+            monitor.ElementsAdded += elementsAdded;
+            monitor.ElementsMoved += elementsMoved;
+            monitor.ElementsRemoved += elementsRemoved;
+            return result;
+        }
+
+        public static ActiveAggregateValue<TSource> ActiveLast<TSource>(this IReadOnlyList<TSource> source, Func<TSource, bool> predicate, bool isThreadSafe = false, params string[] predicateProperties) where TSource : class =>
+            ActiveLast(source, (source as ISynchronizable)?.SynchronizationContext, predicate, isThreadSafe, predicateProperties);
+
+        public static ActiveAggregateValue<TSource> ActiveLast<TSource>(this IReadOnlyList<TSource> source, SynchronizationContext synchronizationContext, Func<TSource, bool> predicate, bool isThreadSafe = false, params string[] predicateProperties) where TSource : class
+        {
+            var where = ActiveWhere(source, synchronizationContext, predicate, predicateProperties);
+            var firstIsValid = false;
+            TSource firstLast = default;
+            if (where.Count > 0)
+            {
+                firstIsValid = true;
+                firstLast = where[where.Count - 1];
+            }
+            var monitor = ActiveListMonitor<TSource>.Monitor(where);
+            EventHandler<ElementMembershipEventArgs<TSource>> elementsAdded = null;
+            EventHandler<ElementsMovedEventArgs<TSource>> elementsMoved = null;
+            EventHandler<ElementMembershipEventArgs<TSource>> elementsRemoved = null;
+            var resultAccess = isThreadSafe ? new object() : null;
+            var result = new ActiveAggregateValue<TSource>(firstIsValid, firstLast, out var setValidity, out var setValue, disposing =>
+            {
+                monitor.ElementsAdded -= elementsAdded;
+                monitor.ElementsMoved -= elementsMoved;
+                monitor.ElementsRemoved -= elementsRemoved;
+                if (disposing)
+                {
+                    monitor.Dispose();
+                    where.Dispose();
+                }
+            });
+
+            void elementsAddedLogic(ElementMembershipEventArgs<TSource> e)
+            {
+                if (e.Index + e.Count == where.Count)
+                {
+                    setValidity(true);
+                    setValue(e.Elements.Last());
+                }
+            }
+
+            void elementsMovedLogic(ElementsMovedEventArgs<TSource> e)
+            {
+                if (e.FromIndex + e.Count == where.Count)
+                    setValue(where[where.Count - 1]);
+                else if (e.ToIndex + e.Count == where.Count)
+                    setValue(e.Elements.Last());
+            }
+
+            void elementsRemovedLogic(ElementMembershipEventArgs<TSource> e)
+            {
+                if (e.Index == where.Count)
+                {
+                    if (where.Count == 0)
+                        setValidity(false);
+                    else
+                        setValue(where[where.Count - 1]);
+                }
+            }
+
+            if (isThreadSafe)
+            {
+                elementsAdded = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        elementsAddedLogic(e);
+                };
+                elementsMoved = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        elementsMovedLogic(e);
+                };
+                elementsRemoved = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        elementsRemovedLogic(e);
+                };
+            }
+            else
+            {
+                elementsAdded = (sender, e) => elementsAddedLogic(e);
+                elementsMoved = (sender, e) => elementsMovedLogic(e);
+                elementsRemoved = (sender, e) => elementsRemovedLogic(e);
+            }
+
+            monitor.ElementsAdded += elementsAdded;
+            monitor.ElementsMoved += elementsMoved;
+            monitor.ElementsRemoved += elementsRemoved;
+            return result;
+        }
+
+        public static ActiveAggregateValue<TSource> ActiveLastOrDefault<TSource>(this IReadOnlyList<TSource> source, bool isThreadSafe = false)
+        {
+            TSource firstLast = default;
+            if (source.Count > 0)
+                firstLast = source[source.Count - 1];
+            var monitor = ActiveListMonitor<TSource>.Monitor(source);
+            EventHandler<ElementMembershipEventArgs<TSource>> elementsAdded = null;
+            EventHandler<ElementsMovedEventArgs<TSource>> elementsMoved = null;
+            EventHandler<ElementMembershipEventArgs<TSource>> elementsRemoved = null;
+            var resultAccess = isThreadSafe ? new object() : null;
+            var result = new ActiveAggregateValue<TSource>(true, firstLast, out var setValidity, out var setValue, disposing =>
+            {
+                monitor.ElementsAdded -= elementsAdded;
+                monitor.ElementsMoved -= elementsMoved;
+                monitor.ElementsRemoved -= elementsRemoved;
+                if (disposing)
+                    monitor.Dispose();
+            });
+
+            void elementsAddedLogic(ElementMembershipEventArgs<TSource> e)
+            {
+                if (e.Index + e.Count == source.Count)
+                    setValue(e.Elements.Last());
+            }
+
+            void elementsMovedLogic(ElementsMovedEventArgs<TSource> e)
+            {
+                if (e.FromIndex + e.Count == source.Count)
+                    setValue(source[source.Count - 1]);
+                else if (e.ToIndex + e.Count == source.Count)
+                    setValue(e.Elements.Last());
+            }
+
+            void elementsRemovedLogic(ElementMembershipEventArgs<TSource> e)
+            {
+                if (e.Index == source.Count)
+                    setValue(source.Count == 0 ? default : source[source.Count - 1]);
+            }
+
+            if (isThreadSafe)
+            {
+                elementsAdded = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        elementsAddedLogic(e);
+                };
+                elementsMoved = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        elementsMovedLogic(e);
+                };
+                elementsRemoved = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        elementsRemovedLogic(e);
+                };
+            }
+            else
+            {
+                elementsAdded = (sender, e) => elementsAddedLogic(e);
+                elementsMoved = (sender, e) => elementsMovedLogic(e);
+                elementsRemoved = (sender, e) => elementsRemovedLogic(e);
+            }
+
+            monitor.ElementsAdded += elementsAdded;
+            monitor.ElementsMoved += elementsMoved;
+            monitor.ElementsRemoved += elementsRemoved;
+            return result;
+        }
+
+        public static ActiveAggregateValue<TSource> ActiveLastOrDefault<TSource>(this IReadOnlyList<TSource> source, Func<TSource, bool> predicate, bool isThreadSafe = false, params string[] predicateProperties) where TSource : class =>
+            ActiveLastOrDefault(source, (source as ISynchronizable)?.SynchronizationContext, predicate, isThreadSafe, predicateProperties);
+
+        public static ActiveAggregateValue<TSource> ActiveLastOrDefault<TSource>(this IReadOnlyList<TSource> source, SynchronizationContext synchronizationContext, Func<TSource, bool> predicate, bool isThreadSafe = false, params string[] predicateProperties) where TSource : class
+        {
+            var where = ActiveWhere(source, synchronizationContext, predicate, predicateProperties);
+            TSource firstLast = default;
+            if (where.Count > 0)
+                firstLast = where[where.Count - 1];
+            var monitor = ActiveListMonitor<TSource>.Monitor(where);
+            EventHandler<ElementMembershipEventArgs<TSource>> elementsAdded = null;
+            EventHandler<ElementsMovedEventArgs<TSource>> elementsMoved = null;
+            EventHandler<ElementMembershipEventArgs<TSource>> elementsRemoved = null;
+            var resultAccess = isThreadSafe ? new object() : null;
+            var result = new ActiveAggregateValue<TSource>(true, firstLast, out var setValidity, out var setValue, disposing =>
+            {
+                monitor.ElementsAdded -= elementsAdded;
+                monitor.ElementsMoved -= elementsMoved;
+                monitor.ElementsRemoved -= elementsRemoved;
+                if (disposing)
+                {
+                    monitor.Dispose();
+                    where.Dispose();
+                }
+            });
+
+            void elementsAddedLogic(ElementMembershipEventArgs<TSource> e)
+            {
+                if (e.Index + e.Count == where.Count)
+                    setValue(e.Elements.Last());
+            }
+
+            void elementsMovedLogic(ElementsMovedEventArgs<TSource> e)
+            {
+                if (e.FromIndex + e.Count == where.Count)
+                    setValue(where[where.Count - 1]);
+                else if (e.ToIndex + e.Count == where.Count)
+                    setValue(e.Elements.Last());
+            }
+
+            void elementsRemovedLogic(ElementMembershipEventArgs<TSource> e)
+            {
+                if (e.Index == where.Count)
+                    setValue(where.Count == 0 ? default : where[where.Count - 1]);
+            }
+
+            if (isThreadSafe)
+            {
+                elementsAdded = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        elementsAddedLogic(e);
+                };
+                elementsMoved = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        elementsMovedLogic(e);
+                };
+                elementsRemoved = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        elementsRemovedLogic(e);
+                };
+            }
+            else
+            {
+                elementsAdded = (sender, e) => elementsAddedLogic(e);
+                elementsMoved = (sender, e) => elementsMovedLogic(e);
+                elementsRemoved = (sender, e) => elementsRemovedLogic(e);
+            }
+
+            monitor.ElementsAdded += elementsAdded;
+            monitor.ElementsMoved += elementsMoved;
+            monitor.ElementsRemoved += elementsRemoved;
             return result;
         }
 
@@ -1920,6 +2803,148 @@ namespace Gear.ActiveQuery
             return result;
         }
 
+        public static ActiveEnumerable<TResult> ActiveSelect<TKey, TValue, TResult>(this IReadOnlyDictionary<TKey, TValue> source, Func<TKey, TValue, TResult> selector, Action<TResult> releaser = null, Action<TKey, TValue, string, TResult> updater = null, params string[] selectorProperties) =>
+            ActiveSelect(source, (source as ISynchronizable)?.SynchronizationContext, selector, releaser, updater, selectorProperties);
+
+        public static ActiveEnumerable<TResult> ActiveSelect<TKey, TValue, TResult>(this IReadOnlyDictionary<TKey, TValue> source, SynchronizationContext synchronizationContext, Func<TKey, TValue, TResult> selector, Action<TResult> releaser = null, Action<TKey, TValue, string, TResult> updater = null, params string[] selectorProperties)
+        {
+            var keyToIndex = source is SortedDictionary<TKey, TValue> || source is ObservableSortedDictionary<TKey, TValue> || source is SynchronizedObservableSortedDictionary<TKey, TValue> ? (IDictionary<TKey, int>)new SortedDictionary<TKey, TValue>() : (IDictionary<TKey, int>)new Dictionary<TKey, TValue>();
+            var rangeObservableCollection = new SynchronizedRangeObservableCollection<TResult>(synchronizationContext, source.Select((element, index) =>
+            {
+                keyToIndex.Add(element.Key, index);
+                return selector(element.Key, element.Value);
+            }), false);
+            var rangeObservableCollectionAccess = new object();
+            var monitor = ActiveDictionaryMonitor<TKey, TValue>.Monitor(source, selectorProperties);
+
+            void valueAddedHandler(object sender, NotifyDictionaryValueEventArgs<TKey, TValue> e)
+            {
+                lock (rangeObservableCollectionAccess)
+                {
+                    keyToIndex.Add(e.Key, keyToIndex.Count);
+                    rangeObservableCollection.Add(selector(e.Key, e.Value));
+                }
+            }
+
+            void valuePropertyChangedHandler(object sender, ValuePropertyChangeEventArgs<TKey, TValue> e)
+            {
+                TResult element;
+                lock (rangeObservableCollectionAccess)
+                {
+                    if (updater == null)
+                        element = rangeObservableCollection.Replace(keyToIndex[e.Key], selector(e.Key, e.Value));
+                    else
+                        element = rangeObservableCollection[keyToIndex[e.Key]];
+                }
+                if (updater == null)
+                    releaser?.Invoke(element);
+                else
+                    updater(e.Key, e.Value, e.PropertyName, element);
+            }
+
+            void valueRemovedHandler(object sender, NotifyDictionaryValueEventArgs<TKey, TValue> e)
+            {
+                TResult removedElement;
+                lock (rangeObservableCollectionAccess)
+                {
+                    var removingIndex = keyToIndex[e.Key];
+                    keyToIndex.Remove(e.Key);
+                    foreach (var key in keyToIndex.Keys.ToList())
+                    {
+                        var index = keyToIndex[key];
+                        if (index > removingIndex)
+                            keyToIndex[key] = index - 1;
+                    }
+                    removedElement = rangeObservableCollection.GetAndRemoveAt(removingIndex);
+                }
+                releaser?.Invoke(removedElement);
+            }
+
+            void valueReplacedHandler(object sender, NotifyDictionaryValueReplacedEventArgs<TKey, TValue> e)
+            {
+                TResult replacedElement;
+                lock (rangeObservableCollectionAccess)
+                    replacedElement = rangeObservableCollection.Replace(keyToIndex[e.Key], selector(e.Key, e.NewValue));
+                releaser?.Invoke(replacedElement);
+            }
+
+            void valuesAddedHandler(object sender, NotifyDictionaryValuesEventArgs<TKey, TValue> e)
+            {
+                if (e.KeyValuePairs.Any())
+                    lock (rangeObservableCollectionAccess)
+                    {
+                        var lastIndex = keyToIndex.Count - 1;
+                        foreach (var keyValuePair in e.KeyValuePairs)
+                            keyToIndex.Add(keyValuePair.Key, ++lastIndex);
+                        rangeObservableCollection.AddRange(e.KeyValuePairs.Select(kvp => selector(kvp.Key, kvp.Value)));
+                    }
+            }
+
+            void valuesRemovedHandler(object sender, NotifyDictionaryValuesEventArgs<TKey, TValue> e)
+            {
+                if (e.KeyValuePairs.Any())
+                    lock (rangeObservableCollectionAccess)
+                    {
+                        var removingIndicies = new List<int>();
+                        foreach (var kvp in e.KeyValuePairs)
+                        {
+                            removingIndicies.Add(keyToIndex[kvp.Key]);
+                            keyToIndex.Remove(kvp.Key);
+                        }
+                        var rangeStart = -1;
+                        var rangeCount = 0;
+                        rangeObservableCollection.Execute(() =>
+                        {
+                            foreach (var removingIndex in removingIndicies.OrderByDescending(i => i))
+                            {
+                                if (removingIndex != rangeStart - 1 && rangeStart != -1)
+                                {
+                                    if (rangeCount == 1)
+                                        rangeObservableCollection.RemoveAt(rangeStart);
+                                    else
+                                        rangeObservableCollection.RemoveRange(rangeStart, rangeCount);
+                                    rangeCount = 0;
+                                }
+                                rangeStart = removingIndex;
+                                ++rangeCount;
+                            }
+                            if (rangeStart != -1)
+                            {
+                                if (rangeCount == 1)
+                                    rangeObservableCollection.RemoveAt(rangeStart);
+                                else
+                                    rangeObservableCollection.RemoveRange(rangeStart, rangeCount);
+                            }
+                        });
+                        var revisedKeyedIndicies = keyToIndex.OrderBy(kvp => kvp.Value).Select((element, index) => (element.Key, index));
+                        keyToIndex = source is SortedDictionary<TKey, TValue> || source is ObservableSortedDictionary<TKey, TValue> || source is SynchronizedObservableSortedDictionary<TKey, TValue> ? (IDictionary<TKey, int>)new SortedDictionary<TKey, TValue>() : (IDictionary<TKey, int>)new Dictionary<TKey, TValue>();
+                        foreach (var (key, index) in revisedKeyedIndicies)
+                            keyToIndex.Add(key, index);
+                    }
+            }
+
+            monitor.ValueAdded += valueAddedHandler;
+            monitor.ValuePropertyChanged += valuePropertyChangedHandler;
+            monitor.ValueRemoved += valueRemovedHandler;
+            monitor.ValueReplaced += valueReplacedHandler;
+            monitor.ValuesAdded += valuesAddedHandler;
+            monitor.ValuesRemoved += valuesRemovedHandler;
+            var result = new ActiveEnumerable<TResult>(rangeObservableCollection, disposing =>
+            {
+                monitor.ValueAdded -= valueAddedHandler;
+                monitor.ValuePropertyChanged -= valuePropertyChangedHandler;
+                monitor.ValueRemoved -= valueRemovedHandler;
+                monitor.ValueReplaced -= valueReplacedHandler;
+                monitor.ValuesAdded -= valuesAddedHandler;
+                monitor.ValuesRemoved -= valuesRemovedHandler;
+                if (disposing)
+                    monitor.Dispose();
+            });
+            if (synchronizationContext != null)
+                rangeObservableCollection.IsSynchronized = true;
+            return result;
+        }
+
         public static ActiveEnumerable<TResult> ActiveSelect<TSource, TResult>(this IReadOnlyList<TSource> source, Func<TSource, TResult> selector, Action<TResult> releaser = null, Action<TSource, string, TResult> updater = null, IndexingStrategy indexingStrategy = IndexingStrategy.NoneOrInherit, params string[] selectorProperties) where TSource : class =>
             ActiveSelect(source, (source as ISynchronizable)?.SynchronizationContext, selector, releaser, updater, indexingStrategy, selectorProperties);
 
@@ -2202,6 +3227,194 @@ namespace Gear.ActiveQuery
             });
             if (synchronizationContext != null)
                 rangeObservableCollection.IsSynchronized = true;
+            return result;
+        }
+
+        public static ActiveAggregateValue<TSource> ActiveSingle<TSource>(this IReadOnlyList<TSource> source, bool isThreadSafe = false)
+        {
+            var firstIsValid = false;
+            TSource firstSingle = default;
+            if (source.Count == 1)
+            {
+                firstIsValid = true;
+                firstSingle = source[0];
+            }
+            var monitor = ActiveListMonitor<TSource>.Monitor(source);
+            EventHandler<ElementMembershipEventArgs<TSource>> elementMembership = null;
+            var resultAccess = isThreadSafe ? new object() : null;
+            var result = new ActiveAggregateValue<TSource>(firstIsValid, firstSingle, out var setValidity, out var setValue, disposing =>
+            {
+                monitor.ElementsAdded -= elementMembership;
+                monitor.ElementsRemoved -= elementMembership;
+                if (disposing)
+                    monitor.Dispose();
+            });
+
+            void elementMembershipLogic(ElementMembershipEventArgs<TSource> e)
+            {
+                if (source.Count == 1)
+                {
+                    setValue(source[0]);
+                    setValidity(true);
+                }
+                else
+                    setValidity(false);
+            }
+
+            if (isThreadSafe)
+                elementMembership = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        elementMembershipLogic(e);
+                };
+            else
+                elementMembership = (sender, e) => elementMembershipLogic(e);
+
+            monitor.ElementsAdded += elementMembership;
+            monitor.ElementsRemoved += elementMembership;
+            return result;
+        }
+
+        public static ActiveAggregateValue<TSource> ActiveSingle<TSource>(this IReadOnlyList<TSource> source, Func<TSource, bool> predicate, bool isThreadSafe = false, params string[] predicateProperties) where TSource : class =>
+            ActiveSingle(source, (source as ISynchronizable)?.SynchronizationContext, predicate, isThreadSafe, predicateProperties);
+
+        public static ActiveAggregateValue<TSource> ActiveSingle<TSource>(this IReadOnlyList<TSource> source, SynchronizationContext synchronizationContext, Func<TSource, bool> predicate, bool isThreadSafe = false, params string[] predicateProperties) where TSource : class
+        {
+            var where = ActiveWhere(source, synchronizationContext, predicate, predicateProperties);
+            var firstIsValid = false;
+            TSource firstSingle = default;
+            if (where.Count == 1)
+            {
+                firstIsValid = true;
+                firstSingle = where[0];
+            }
+            var monitor = ActiveListMonitor<TSource>.Monitor(where);
+            EventHandler<ElementMembershipEventArgs<TSource>> elementMembership = null;
+            var resultAccess = isThreadSafe ? new object() : null;
+            var result = new ActiveAggregateValue<TSource>(firstIsValid, firstSingle, out var setValidity, out var setValue, disposing =>
+            {
+                monitor.ElementsAdded -= elementMembership;
+                monitor.ElementsRemoved -= elementMembership;
+                if (disposing)
+                {
+                    monitor.Dispose();
+                    where.Dispose();
+                }
+            });
+
+            void elementMembershipLogic(ElementMembershipEventArgs<TSource> e)
+            {
+                if (where.Count == 1)
+                {
+                    setValue(where[0]);
+                    setValidity(true);
+                }
+                else
+                    setValidity(false);
+            }
+
+            if (isThreadSafe)
+                elementMembership = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        elementMembershipLogic(e);
+                };
+            else
+                elementMembership = (sender, e) => elementMembershipLogic(e);
+
+            monitor.ElementsAdded += elementMembership;
+            monitor.ElementsRemoved += elementMembership;
+            return result;
+        }
+
+        public static ActiveAggregateValue<TSource> ActiveSingleOrDefault<TSource>(this IReadOnlyList<TSource> source, bool isThreadSafe = false)
+        {
+            var firstIsValid = source.Count <= 1;
+            TSource firstSingle = default;
+            if (source.Count == 1)
+                firstSingle = source[0];
+            var monitor = ActiveListMonitor<TSource>.Monitor(source);
+            EventHandler<ElementMembershipEventArgs<TSource>> elementMembership = null;
+            var resultAccess = isThreadSafe ? new object() : null;
+            var result = new ActiveAggregateValue<TSource>(firstIsValid, firstSingle, out var setValidity, out var setValue, disposing =>
+            {
+                monitor.ElementsAdded -= elementMembership;
+                monitor.ElementsRemoved -= elementMembership;
+                if (disposing)
+                    monitor.Dispose();
+            });
+
+            void elementMembershipLogic(ElementMembershipEventArgs<TSource> e)
+            {
+                if (source.Count <= 1)
+                {
+                    setValue(source.Count == 0 ? default : source[0]);
+                    setValidity(true);
+                }
+                else
+                    setValidity(false);
+            }
+
+            if (isThreadSafe)
+                elementMembership = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        elementMembershipLogic(e);
+                };
+            else
+                elementMembership = (sender, e) => elementMembershipLogic(e);
+
+            monitor.ElementsAdded += elementMembership;
+            monitor.ElementsRemoved += elementMembership;
+            return result;
+        }
+
+        public static ActiveAggregateValue<TSource> ActiveSingleOrDefault<TSource>(this IReadOnlyList<TSource> source, Func<TSource, bool> predicate, bool isThreadSafe = false, params string[] predicateProperties) where TSource : class =>
+            ActiveSingleOrDefault(source, (source as ISynchronizable)?.SynchronizationContext, predicate, isThreadSafe, predicateProperties);
+
+        public static ActiveAggregateValue<TSource> ActiveSingleOrDefault<TSource>(this IReadOnlyList<TSource> source, SynchronizationContext synchronizationContext, Func<TSource, bool> predicate, bool isThreadSafe = false, params string[] predicateProperties) where TSource : class
+        {
+            var where = ActiveWhere(source, synchronizationContext, predicate, predicateProperties);
+            var firstIsValid = where.Count <= 1;
+            TSource firstSingle = default;
+            if (where.Count == 1)
+                firstSingle = where[0];
+            var monitor = ActiveListMonitor<TSource>.Monitor(where);
+            EventHandler<ElementMembershipEventArgs<TSource>> elementMembership = null;
+            var resultAccess = isThreadSafe ? new object() : null;
+            var result = new ActiveAggregateValue<TSource>(firstIsValid, firstSingle, out var setValidity, out var setValue, disposing =>
+            {
+                monitor.ElementsAdded -= elementMembership;
+                monitor.ElementsRemoved -= elementMembership;
+                if (disposing)
+                {
+                    monitor.Dispose();
+                    where.Dispose();
+                }
+            });
+
+            void elementMembershipLogic(ElementMembershipEventArgs<TSource> e)
+            {
+                if (where.Count <= 1)
+                {
+                    setValue(where.Count == 0 ? default : where[0]);
+                    setValidity(true);
+                }
+                else
+                    setValidity(false);
+            }
+
+            if (isThreadSafe)
+                elementMembership = (sender, e) =>
+                {
+                    lock (resultAccess)
+                        elementMembershipLogic(e);
+                };
+            else
+                elementMembership = (sender, e) => elementMembershipLogic(e);
+
+            monitor.ElementsAdded += elementMembership;
+            monitor.ElementsRemoved += elementMembership;
             return result;
         }
 
@@ -3121,149 +4334,7 @@ namespace Gear.ActiveQuery
             ToActiveEnumerable(source, (source as ISynchronizable)?.SynchronizationContext);
 
         public static ActiveEnumerable<TValue> ToActiveEnumerable<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, SynchronizationContext synchronizationContext) =>
-            ToActiveEnumerable(source, synchronizationContext, (key, value) => value);
-
-        public static ActiveEnumerable<TResult> ToActiveEnumerable<TKey, TValue, TResult>(this IReadOnlyDictionary<TKey, TValue> source, Func<TKey, TValue, TResult> selector, Action<TResult> releaser = null, Action<TKey, TValue, string, TResult> updater = null, params string[] selectorProperties) =>
-            ToActiveEnumerable(source, (source as ISynchronizable)?.SynchronizationContext, selector, releaser, updater, selectorProperties);
-
-        public static ActiveEnumerable<TResult> ToActiveEnumerable<TKey, TValue, TResult>(this IReadOnlyDictionary<TKey, TValue> source, SynchronizationContext synchronizationContext, Func<TKey, TValue, TResult> selector, Action<TResult> releaser = null, Action<TKey, TValue, string, TResult> updater = null, params string[] selectorProperties)
-        {
-            var keyToIndex = source is SortedDictionary<TKey, TValue> || source is ObservableSortedDictionary<TKey, TValue> || source is SynchronizedObservableSortedDictionary<TKey, TValue> ? (IDictionary<TKey, int>)new SortedDictionary<TKey, TValue>() : (IDictionary<TKey, int>)new Dictionary<TKey, TValue>();
-            var rangeObservableCollection = new SynchronizedRangeObservableCollection<TResult>(synchronizationContext, source.Select((element, index) =>
-            {
-                keyToIndex.Add(element.Key, index);
-                return selector(element.Key, element.Value);
-            }), false);
-            var rangeObservableCollectionAccess = new object();
-            var monitor = ActiveDictionaryMonitor<TKey, TValue>.Monitor(source, selectorProperties);
-
-            void valueAddedHandler(object sender, NotifyDictionaryValueEventArgs<TKey, TValue> e)
-            {
-                lock (rangeObservableCollectionAccess)
-                {
-                    keyToIndex.Add(e.Key, keyToIndex.Count);
-                    rangeObservableCollection.Add(selector(e.Key, e.Value));
-                }
-            }
-
-            void valuePropertyChangedHandler(object sender, ValuePropertyChangeEventArgs<TKey, TValue> e)
-            {
-                TResult element;
-                lock (rangeObservableCollectionAccess)
-                {
-                    if (updater == null)
-                        element = rangeObservableCollection.Replace(keyToIndex[e.Key], selector(e.Key, e.Value));
-                    else
-                        element = rangeObservableCollection[keyToIndex[e.Key]];
-                }
-                if (updater == null)
-                    releaser?.Invoke(element);
-                else
-                    updater(e.Key, e.Value, e.PropertyName, element);
-            }
-
-            void valueRemovedHandler(object sender, NotifyDictionaryValueEventArgs<TKey, TValue> e)
-            {
-                TResult removedElement;
-                lock (rangeObservableCollectionAccess)
-                {
-                    var removingIndex = keyToIndex[e.Key];
-                    keyToIndex.Remove(e.Key);
-                    foreach (var key in keyToIndex.Keys.ToList())
-                    {
-                        var index = keyToIndex[key];
-                        if (index > removingIndex)
-                            keyToIndex[key] = index - 1;
-                    }
-                    removedElement = rangeObservableCollection.GetAndRemoveAt(removingIndex);
-                }
-                releaser?.Invoke(removedElement);
-            }
-
-            void valueReplacedHandler(object sender, NotifyDictionaryValueReplacedEventArgs<TKey, TValue> e)
-            {
-                TResult replacedElement;
-                lock (rangeObservableCollectionAccess)
-                    replacedElement = rangeObservableCollection.Replace(keyToIndex[e.Key], selector(e.Key, e.NewValue));
-                releaser?.Invoke(replacedElement);
-            }
-
-            void valuesAddedHandler(object sender, NotifyDictionaryValuesEventArgs<TKey, TValue> e)
-            {
-                if (e.KeyValuePairs.Any())
-                    lock (rangeObservableCollectionAccess)
-                    {
-                        var lastIndex = keyToIndex.Count - 1;
-                        foreach (var keyValuePair in e.KeyValuePairs)
-                            keyToIndex.Add(keyValuePair.Key, ++lastIndex);
-                        rangeObservableCollection.AddRange(e.KeyValuePairs.Select(kvp => selector(kvp.Key, kvp.Value)));
-                    }
-            }
-
-            void valuesRemovedHandler(object sender, NotifyDictionaryValuesEventArgs<TKey, TValue> e)
-            {
-                if (e.KeyValuePairs.Any())
-                    lock (rangeObservableCollectionAccess)
-                    {
-                        var removingIndicies = new List<int>();
-                        foreach (var kvp in e.KeyValuePairs)
-                        {
-                            removingIndicies.Add(keyToIndex[kvp.Key]);
-                            keyToIndex.Remove(kvp.Key);
-                        }
-                        var rangeStart = -1;
-                        var rangeCount = 0;
-                        rangeObservableCollection.Execute(() =>
-                        {
-                            foreach (var removingIndex in removingIndicies.OrderByDescending(i => i))
-                            {
-                                if (removingIndex != rangeStart - 1 && rangeStart != -1)
-                                {
-                                    if (rangeCount == 1)
-                                        rangeObservableCollection.RemoveAt(rangeStart);
-                                    else
-                                        rangeObservableCollection.RemoveRange(rangeStart, rangeCount);
-                                    rangeCount = 0;
-                                }
-                                rangeStart = removingIndex;
-                                ++rangeCount;
-                            }
-                            if (rangeStart != -1)
-                            {
-                                if (rangeCount == 1)
-                                    rangeObservableCollection.RemoveAt(rangeStart);
-                                else
-                                    rangeObservableCollection.RemoveRange(rangeStart, rangeCount);
-                            }
-                        });
-                        var revisedKeyedIndicies = keyToIndex.OrderBy(kvp => kvp.Value).Select((element, index) => (element.Key, index));
-                        keyToIndex = source is SortedDictionary<TKey, TValue> || source is ObservableSortedDictionary<TKey, TValue> || source is SynchronizedObservableSortedDictionary<TKey, TValue> ? (IDictionary<TKey, int>)new SortedDictionary<TKey, TValue>() : (IDictionary<TKey, int>)new Dictionary<TKey, TValue>();
-                        foreach (var (key, index) in revisedKeyedIndicies)
-                            keyToIndex.Add(key, index);
-                    }
-            }
-
-            monitor.ValueAdded += valueAddedHandler;
-            monitor.ValuePropertyChanged += valuePropertyChangedHandler;
-            monitor.ValueRemoved += valueRemovedHandler;
-            monitor.ValueReplaced += valueReplacedHandler;
-            monitor.ValuesAdded += valuesAddedHandler;
-            monitor.ValuesRemoved += valuesRemovedHandler;
-            var result = new ActiveEnumerable<TResult>(rangeObservableCollection, disposing =>
-            {
-                monitor.ValueAdded -= valueAddedHandler;
-                monitor.ValuePropertyChanged -= valuePropertyChangedHandler;
-                monitor.ValueRemoved -= valueRemovedHandler;
-                monitor.ValueReplaced -= valueReplacedHandler;
-                monitor.ValuesAdded -= valuesAddedHandler;
-                monitor.ValuesRemoved -= valuesRemovedHandler;
-                if (disposing)
-                    monitor.Dispose();
-            });
-            if (synchronizationContext != null)
-                rangeObservableCollection.IsSynchronized = true;
-            return result;
-        }
+            ActiveSelect(source, synchronizationContext, (key, value) => value);
 
         public static ActiveEnumerable<TSource> ToActiveEnumerable<TSource>(this IReadOnlyList<TSource> source) => new ActiveEnumerable<TSource>(source);
     }
