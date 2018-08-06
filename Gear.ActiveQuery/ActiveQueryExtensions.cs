@@ -230,7 +230,7 @@ namespace Gear.ActiveQuery
             var monitor = ActiveListMonitor<TSource>.Monitor(where);
             EventHandler<ElementMembershipEventArgs<TSource>> elementMembership = null;
             var resultAccess = isThreadSafe ? new object() : null;
-            var result = new ActiveAggregateValue<bool>(true, where.Count > 1, out var setValidity, out var setValue, disposing =>
+            var result = new ActiveAggregateValue<bool>(true, where.Count > 0, out var setValidity, out var setValue, disposing =>
             {
                 monitor.ElementsAdded -= elementMembership;
                 monitor.ElementsRemoved -= elementMembership;
