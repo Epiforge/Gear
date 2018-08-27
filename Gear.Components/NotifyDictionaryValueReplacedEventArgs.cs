@@ -1,5 +1,19 @@
 namespace Gear.Components
 {
+    public class NotifyDictionaryValueReplacedEventArgs
+    {
+        public NotifyDictionaryValueReplacedEventArgs(object key, object oldValue, object newValue)
+        {
+            Key = key;
+            OldValue = oldValue;
+            NewValue = newValue;
+        }
+
+        public object Key { get; }
+        public object NewValue { get; }
+        public object OldValue { get; }
+    }
+
     public class NotifyDictionaryValueReplacedEventArgs<TKey, TValue>
     {
         public NotifyDictionaryValueReplacedEventArgs(TKey key, TValue oldValue, TValue newValue)

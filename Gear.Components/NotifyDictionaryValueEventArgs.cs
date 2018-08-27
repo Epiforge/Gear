@@ -2,6 +2,18 @@ using System;
 
 namespace Gear.Components
 {
+    public class NotifyDictionaryValueEventArgs : EventArgs
+    {
+        public NotifyDictionaryValueEventArgs(object key, object value)
+        {
+            Key = key;
+            Value = value;
+        }
+
+        public object Key { get; }
+        public object Value { get; }
+    }
+
     public class NotifyDictionaryValueEventArgs<TKey, TValue> : EventArgs
     {
         public NotifyDictionaryValueEventArgs(TKey key, TValue value)
