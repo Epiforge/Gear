@@ -5,7 +5,7 @@ using System.Linq;
 
 namespace Gear.Components
 {
-    struct EquatableList<T> : IReadOnlyList<T>, IEquatable<EquatableList<T>>
+    public struct EquatableList<T> : IReadOnlyList<T>, IEquatable<EquatableList<T>>
     {
         public static bool operator ==(EquatableList<T> a, EquatableList<T> b) => a.Equals(b);
 
