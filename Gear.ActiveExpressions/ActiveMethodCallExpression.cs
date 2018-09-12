@@ -97,7 +97,10 @@ namespace Gear.ActiveExpressions
                     argument.PropertyChanged -= ArgumentPropertyChanged;
                     argument.Dispose();
                 }
-                instanceInstances.Remove((@object, method, arguments));
+                if (@object == null)
+                    staticInstances.Remove((method, arguments));
+                else
+                    instanceInstances.Remove((@object, method, arguments));
             }
         }
 
