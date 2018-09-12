@@ -16,14 +16,14 @@ namespace Gear.ActiveExpressions
         static FastMethodInfo CreateFastMethodInfo((ExpressionType expressionType, Type returnType, EquatableList<Type> parameterTypes) key)
         {
             var (expressionType, returnType, parameterTypes) = key;
-            var method = operationMethods.SingleOrDefault(m =>
+            var (methodInfo, expressionOperationAttribute) = operationMethods.SingleOrDefault(m =>
             {
-                var (methodInfo, expressionOperationAttribute) = m;
-                return expressionOperationAttribute.Type == expressionType && methodInfo.ReturnType == returnType && methodInfo.GetParameters().Select(p => p.ParameterType).SequenceEqual(parameterTypes);
+                var (mi, eoa) = m;
+                return eoa.Type == expressionType && mi.ReturnType == returnType && mi.GetParameters().Select(p => p.ParameterType).SequenceEqual(parameterTypes);
             });
-            if (method == default)
+            if (methodInfo == default)
                 return null;
-            return new FastMethodInfo(method.methodInfo);
+            return new FastMethodInfo(methodInfo);
         }
 
         internal static FastMethodInfo GetFastMethodInfo(ExpressionType expressionType, Type returnType, params Type[] parameterTypes) => operationFastMethodInfos.GetOrAdd((expressionType, returnType, new EquatableList<Type>(parameterTypes)), CreateFastMethodInfo);
