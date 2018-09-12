@@ -1,6 +1,3 @@
-
-| [Gear.ActiveQuery](https://www.nuget.org/packages/Gear.ActiveQuery/) | Active queries of notifying collections![Gear Logo](Gear.jpg)
-
 <h1>Gear</h1>
 
 General utilities to help with stuff in .NET Development, from Epiforge.
