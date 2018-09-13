@@ -60,17 +60,18 @@ namespace Gear.ActiveExpressions
         readonly FieldInfo field;
         readonly MemberInfo member;
 
-        protected override void Dispose(bool disposing)
+        protected override bool Dispose(bool disposing)
         {
             lock (instanceManagementLock)
             {
                 if (--disposalCount > 0)
-                    return;
+                    return false;
                 if (fastGetter != null)
                     UnsubscribeFromExpressionValueNotifications();
                 expression.PropertyChanged -= ExpressionPropertyChanged;
                 expression.Dispose();
                 instances.Remove((expression, member));
+                return true;
             }
         }
 

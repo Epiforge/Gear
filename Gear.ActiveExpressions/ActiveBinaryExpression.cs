@@ -102,12 +102,12 @@ namespace Gear.ActiveExpressions
         readonly ExpressionType nodeType;
         protected readonly ActiveExpression right;
 
-        protected override void Dispose(bool disposing)
+        protected override bool Dispose(bool disposing)
         {
             lock (instanceManagementLock)
             {
                 if (--disposalCount > 0)
-                    return;
+                    return false;
                 left.PropertyChanged -= LeftPropertyChanged;
                 left.Dispose();
                 right.PropertyChanged -= RightPropertyChanged;
@@ -116,6 +116,7 @@ namespace Gear.ActiveExpressions
                     factoryInstances.Remove((nodeType, left, right));
                 else
                     implementationInstances.Remove((nodeType, left, right, isLiftedToNull, method));
+                return true;
             }
         }
 

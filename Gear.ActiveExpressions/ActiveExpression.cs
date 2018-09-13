@@ -15,7 +15,7 @@ namespace Gear.ActiveExpressions
     /// Active expressions subscribe to notification events for values in each stage of evaluation and will re-evaluate dependent portions of the expression tree when a change occurs.
     /// Use <see cref="Create{TResult}(LambdaExpression, object[])"/> or one of its strongly-typed overloads to create an active expression.
     /// </summary>
-    public abstract class ActiveExpression : SyncDisposablePropertyChangeNotifier
+    public abstract class ActiveExpression : OverridableSyncDisposablePropertyChangeNotifier
     {
         static readonly ConcurrentDictionary<MethodInfo, FastMethodInfo> compiledMethods = new ConcurrentDictionary<MethodInfo, FastMethodInfo>();
 
@@ -187,7 +187,7 @@ namespace Gear.ActiveExpressions
     /// <see cref="INotifyPropertyChanged"/>, <see cref="INotifyCollectionChanged"/>, and <see cref="INotifyDictionaryChanged"/> events raised by any value within the expression will cause all dependent portions to be re-evaluated.
     /// </summary>
     /// <typeparam name="TResult">The value returned by the expression upon which this active expression is based</typeparam>
-    public class ActiveExpression<TResult> : SyncDisposablePropertyChangeNotifier
+    public class ActiveExpression<TResult> : OverridableSyncDisposablePropertyChangeNotifier
     {
         static readonly object instanceManagementLock = new object();
         static readonly Dictionary<(string expressionString, EquatableList<object> arguments), ActiveExpression<TResult>> instances = new Dictionary<(string expressionString, EquatableList<object> arguments), ActiveExpression<TResult>>();
@@ -223,15 +223,16 @@ namespace Gear.ActiveExpressions
         readonly (string expressionString, EquatableList<object> arguments) key;
         TResult val;
 
-        protected override void Dispose(bool disposing)
+        protected override bool Dispose(bool disposing)
         {
             lock (instanceManagementLock)
             {
                 if (--disposalCount > 0)
-                    return;
+                    return false;
                 expression.PropertyChanged -= ExpressionPropertyChanged;
                 expression.Dispose();
                 instances.Remove(key);
+                return true;
             }
         }
 

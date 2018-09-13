@@ -42,18 +42,19 @@ namespace Gear.ActiveExpressions
 
         void ArgumentPropertyChanged(object sender, PropertyChangedEventArgs e) => Evaluate();
 
-        protected override void Dispose(bool disposing)
+        protected override bool Dispose(bool disposing)
         {
             lock (instanceManagementLock)
             {
                 if (--disposalCount > 0)
-                    return;
+                    return false;
                 foreach (var argument in arguments)
                 {
                     argument.PropertyChanged -= ArgumentPropertyChanged;
                     argument.Dispose();
                 }
                 instances.Remove((Type, arguments));
+                return true;
             }
         }
 

@@ -56,15 +56,16 @@ namespace Gear.ActiveExpressions
         readonly ExpressionType nodeType;
         readonly ActiveExpression operand;
 
-        protected override void Dispose(bool disposing)
+        protected override bool Dispose(bool disposing)
         {
             lock (instanceManagementLock)
             {
                 if (--disposalCount > 0)
-                    return;
+                    return false;
                 operand.PropertyChanged -= OperandPropertyChanged;
                 operand.Dispose();
                 instances.Remove((nodeType, operand, Type, method));
+                return true;
             }
         }
 

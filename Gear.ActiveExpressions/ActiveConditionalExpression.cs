@@ -62,12 +62,12 @@ namespace Gear.ActiveExpressions
         readonly ActiveExpression ifTrue;
         readonly ActiveExpression test;
 
-        protected override void Dispose(bool disposing)
+        protected override bool Dispose(bool disposing)
         {
             lock (instanceManagementLock)
             {
                 if (--disposalCount > 0)
-                    return;
+                    return false;
                 test.PropertyChanged -= TestPropertyChanged;
                 test.Dispose();
                 ifTrue.PropertyChanged -= IfTruePropertyChanged;
@@ -75,6 +75,7 @@ namespace Gear.ActiveExpressions
                 ifFalse.PropertyChanged -= IfFalsePropertyChanged;
                 ifFalse.Dispose();
                 instances.Remove((test, ifTrue, ifFalse));
+                return true;
             }
         }
 

@@ -30,13 +30,14 @@ namespace Gear.ActiveExpressions
 
         int disposalCount;
 
-        protected override void Dispose(bool disposing)
+        protected override bool Dispose(bool disposing)
         {
             lock (instanceManagementLock)
             {
                 if (--disposalCount > 0)
-                    return;
+                    return false;
                 instances.Remove((Type, Value));
+                return true;
             }
         }
     }

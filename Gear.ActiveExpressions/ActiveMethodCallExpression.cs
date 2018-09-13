@@ -81,12 +81,12 @@ namespace Gear.ActiveExpressions
 
         void ArgumentPropertyChanged(object sender, PropertyChangedEventArgs e) => Evaluate();
 
-        protected override void Dispose(bool disposing)
+        protected override bool Dispose(bool disposing)
         {
             lock (instanceManagementLock)
             {
                 if (--disposalCount > 0)
-                    return;
+                    return false;
                 if (@object != null)
                 {
                     @object.PropertyChanged -= ObjectPropertyChanged;
@@ -101,6 +101,7 @@ namespace Gear.ActiveExpressions
                     staticInstances.Remove((method, arguments));
                 else
                     instanceInstances.Remove((@object, method, arguments));
+                return true;
             }
         }
 
