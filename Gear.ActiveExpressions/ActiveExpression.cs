@@ -57,7 +57,19 @@ namespace Gear.ActiveExpressions
         /// <param name="lambdaExpression">The lambda expression</param>
         /// <param name="arguments">The arguments</param>
         /// <returns>The active expression</returns>
-        public static ActiveExpression<TResult> Create<TResult>(LambdaExpression lambdaExpression, params object[] arguments) => ActiveExpression<TResult>.Create(lambdaExpression, arguments);
+        public static ActiveExpression<TResult> Create<TResult>(LambdaExpression lambdaExpression, params object[] arguments) =>
+            ActiveExpression<TResult>.Create(lambdaExpression, arguments);
+
+        /// <summary>
+        /// Creates an active expression using a specified strongly-typed lambda expression with no arguments
+        /// </summary>
+        /// <typeparam name="TArg">The type of the argument.</typeparam>
+        /// <typeparam name="TResult">The type that <paramref name="expression"/> returns</typeparam>
+        /// <param name="expression">The strongly-typed lambda expression</param>
+        /// <param name="arg">The argument</param>
+        /// <returns>The active expression</returns>
+        public static ActiveExpression<TResult> Create<TResult>(Expression<Func<TResult>> expression) =>
+            ActiveExpression<TResult>.Create(expression);
 
         /// <summary>
         /// Creates an active expression using a specified strongly-typed lambda expression and one argument
@@ -67,7 +79,8 @@ namespace Gear.ActiveExpressions
         /// <param name="expression">The strongly-typed lambda expression</param>
         /// <param name="arg">The argument</param>
         /// <returns>The active expression</returns>
-        public static ActiveExpression<TResult> Create<TArg, TResult>(Expression<Func<TArg, TResult>> expression, TArg arg) => ActiveExpression<TResult>.Create(expression, arg);
+        public static ActiveExpression<TArg, TResult> Create<TArg, TResult>(Expression<Func<TArg, TResult>> expression, TArg arg) =>
+            ActiveExpression<TArg, TResult>.Create(expression, arg);
 
         /// <summary>
         /// Creates an active expression using a specified strongly-typed lambda expression and two arguments
@@ -79,7 +92,8 @@ namespace Gear.ActiveExpressions
         /// <param name="arg1">The first argument</param>
         /// <param name="arg2">The second argument</param>
         /// <returns>The active expression</returns>
-        public static ActiveExpression<TResult> Create<TArg1, TArg2, TResult>(Expression<Func<TArg1, TArg2, TResult>> expression, TArg1 arg1, TArg2 arg2) => ActiveExpression<TResult>.Create(expression, arg1, arg2);
+        public static ActiveExpression<TArg1, TArg2, TResult> Create<TArg1, TArg2, TResult>(Expression<Func<TArg1, TArg2, TResult>> expression, TArg1 arg1, TArg2 arg2) =>
+            ActiveExpression<TArg1, TArg2, TResult>.Create(expression, arg1, arg2);
 
         /// <summary>
         /// Creates an active expression using a specified strongly-typed lambda expression and three arguments
@@ -93,7 +107,8 @@ namespace Gear.ActiveExpressions
         /// <param name="arg2">The second argument</param>
         /// <param name="arg3">The third argument</param>
         /// <returns>The active expression</returns>
-        public static ActiveExpression<TResult> Create<TArg1, TArg2, TArg3, TResult>(Expression<Func<TArg1, TArg2, TArg3, TResult>> expression, TArg1 arg1, TArg2 arg2, TArg3 arg3) => ActiveExpression<TResult>.Create(expression, arg1, arg2, arg3);
+        public static ActiveExpression<TArg1, TArg2, TArg3, TResult> Create<TArg1, TArg2, TArg3, TResult>(Expression<Func<TArg1, TArg2, TArg3, TResult>> expression, TArg1 arg1, TArg2 arg2, TArg3 arg3) =>
+            ActiveExpression<TArg1, TArg2, TArg3, TResult>.Create(expression, arg1, arg2, arg3);
 
         internal static Expression ReplaceParameters(LambdaExpression lambdaExpression, params object[] arguments)
         {
@@ -175,10 +190,10 @@ namespace Gear.ActiveExpressions
     }
 
     /// <summary>
-    /// Represents an active evaluation of an expression.
-    /// <see cref="INotifyPropertyChanged"/>, <see cref="INotifyCollectionChanged"/>, and <see cref="INotifyDictionaryChanged"/> events raised by any value within the expression will cause all dependent portions to be re-evaluated.
+    /// Represents an active evaluation of a lambda expression.
+    /// <see cref="INotifyPropertyChanged"/>, <see cref="INotifyCollectionChanged"/>, and <see cref="INotifyDictionaryChanged"/> events raised by any value within the lambda expression will cause all dependent portions to be re-evaluated.
     /// </summary>
-    /// <typeparam name="TResult">The value returned by the expression upon which this active expression is based</typeparam>
+    /// <typeparam name="TResult">The type of the value returned by the lambda expression upon which this active expression is based</typeparam>
     public class ActiveExpression<TResult> : OverridableSyncDisposablePropertyChangeNotifier
     {
         static readonly object instanceManagementLock = new object();
@@ -211,7 +226,7 @@ namespace Gear.ActiveExpressions
             this.expression.PropertyChanged += ExpressionPropertyChanged;
         }
 
-        protected readonly EquatableList<object> arguments;
+        readonly EquatableList<object> arguments;
         int disposalCount;
         readonly ActiveExpression expression;
         readonly string expressionString;
@@ -243,6 +258,291 @@ namespace Gear.ActiveExpressions
         /// Gets the arguments that were passed to the lambda expression
         /// </summary>
         public IReadOnlyList<object> Arguments => arguments;
+
+        /// <summary>
+        /// Gets the exception that was thrown while evaluating the lambda expression; <c>null</c> if there was no such exception
+        /// </summary>
+        public Exception Fault
+        {
+            get => fault;
+            private set => SetBackedProperty(ref fault, in value);
+        }
+
+        /// <summary>
+        /// Gets the result of evaluating the lambda expression
+        /// </summary>
+        public TResult Value
+        {
+            get => val;
+            private set => SetBackedProperty(ref val, in value);
+        }
+    }
+
+    /// <summary>
+    /// Represents an active evaluation of a strongly-typed lambda expression with a single argument.
+    /// <see cref="INotifyPropertyChanged"/>, <see cref="INotifyCollectionChanged"/>, and <see cref="INotifyDictionaryChanged"/> events raised by any value within the lambda expression will cause all dependent portions to be re-evaluated.
+    /// </summary>
+    /// <typeparam name="TArg">The type of the argument passed to the lambda expression</typeparam>
+    /// <typeparam name="TResult">The type of the value returned by the expression upon which this active expression is based</typeparam>
+    public class ActiveExpression<TArg, TResult> : OverridableSyncDisposablePropertyChangeNotifier
+    {
+        static readonly object instanceManagementLock = new object();
+        static readonly Dictionary<(string expressionString, TArg arg), ActiveExpression<TArg, TResult>> instances = new Dictionary<(string expressionString, TArg arg), ActiveExpression<TArg, TResult>>();
+
+        internal static ActiveExpression<TArg, TResult> Create(LambdaExpression expression, TArg arg)
+        {
+            var expressionString = expression.ToString();
+            var key = (expressionString, arg);
+            lock (instanceManagementLock)
+            {
+                if (!instances.TryGetValue(key, out var activeExpression))
+                {
+                    activeExpression = new ActiveExpression<TArg, TResult>(expressionString, arg, ActiveExpression.Create(ActiveExpression.ReplaceParameters(expression, arg)));
+                    instances.Add(key, activeExpression);
+                }
+                ++activeExpression.disposalCount;
+                return activeExpression;
+            }
+        }
+
+        protected ActiveExpression(string expressionString, TArg arg, ActiveExpression expression)
+        {
+            this.expressionString = expressionString;
+            Arg = arg;
+            this.expression = expression;
+            fault = this.expression.Fault;
+            val = (TResult)this.expression.Value;
+            this.expression.PropertyChanged += ExpressionPropertyChanged;
+        }
+
+        int disposalCount;
+        readonly ActiveExpression expression;
+        readonly string expressionString;
+        Exception fault;
+        TResult val;
+
+        protected override bool Dispose(bool disposing)
+        {
+            lock (instanceManagementLock)
+            {
+                if (--disposalCount > 0)
+                    return false;
+                expression.PropertyChanged -= ExpressionPropertyChanged;
+                expression.Dispose();
+                instances.Remove((expressionString, Arg));
+                return true;
+            }
+        }
+
+        void ExpressionPropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(Fault))
+                Fault = expression.Fault;
+            else if (e.PropertyName == nameof(Value))
+                Value = (TResult)expression.Value;
+        }
+
+        /// <summary>
+        /// Gets the argument that was passed to the lambda expression
+        /// </summary>
+        public TArg Arg { get; }
+
+        /// <summary>
+        /// Gets the exception that was thrown while evaluating the lambda expression; <c>null</c> if there was no such exception
+        /// </summary>
+        public Exception Fault
+        {
+            get => fault;
+            private set => SetBackedProperty(ref fault, in value);
+        }
+
+        /// <summary>
+        /// Gets the result of evaluating the lambda expression
+        /// </summary>
+        public TResult Value
+        {
+            get => val;
+            private set => SetBackedProperty(ref val, in value);
+        }
+    }
+
+    /// <summary>
+    /// Represents an active evaluation of a strongly-typed lambda expression with two arguments.
+    /// <see cref="INotifyPropertyChanged"/>, <see cref="INotifyCollectionChanged"/>, and <see cref="INotifyDictionaryChanged"/> events raised by any value within the lambda expression will cause all dependent portions to be re-evaluated.
+    /// </summary>
+    /// <typeparam name="TArg1">The type of the first argument passed to the lambda expression</typeparam>
+    /// <typeparam name="TArg2">The type of the second argument passed to the lambda expression</typeparam>
+    /// <typeparam name="TResult">The type of the value returned by the expression upon which this active expression is based</typeparam>
+    public class ActiveExpression<TArg1, TArg2, TResult> : OverridableSyncDisposablePropertyChangeNotifier
+    {
+        static readonly object instanceManagementLock = new object();
+        static readonly Dictionary<(string expressionString, TArg1 arg1, TArg2 arg2), ActiveExpression<TArg1, TArg2, TResult>> instances = new Dictionary<(string expressionString, TArg1 arg1, TArg2 arg2), ActiveExpression<TArg1, TArg2, TResult>>();
+
+        internal static ActiveExpression<TArg1, TArg2, TResult> Create(LambdaExpression expression, TArg1 arg1, TArg2 arg2)
+        {
+            var expressionString = expression.ToString();
+            var key = (expressionString, arg1, arg2);
+            lock (instanceManagementLock)
+            {
+                if (!instances.TryGetValue(key, out var activeExpression))
+                {
+                    activeExpression = new ActiveExpression<TArg1, TArg2, TResult>(expressionString, arg1, arg2, ActiveExpression.Create(ActiveExpression.ReplaceParameters(expression, arg1, arg2)));
+                    instances.Add(key, activeExpression);
+                }
+                ++activeExpression.disposalCount;
+                return activeExpression;
+            }
+        }
+
+        protected ActiveExpression(string expressionString, TArg1 arg1, TArg2 arg2, ActiveExpression expression)
+        {
+            this.expressionString = expressionString;
+            Arg1 = arg1;
+            Arg2 = arg2;
+            this.expression = expression;
+            fault = this.expression.Fault;
+            val = (TResult)this.expression.Value;
+            this.expression.PropertyChanged += ExpressionPropertyChanged;
+        }
+
+        int disposalCount;
+        readonly ActiveExpression expression;
+        readonly string expressionString;
+        Exception fault;
+        TResult val;
+
+        protected override bool Dispose(bool disposing)
+        {
+            lock (instanceManagementLock)
+            {
+                if (--disposalCount > 0)
+                    return false;
+                expression.PropertyChanged -= ExpressionPropertyChanged;
+                expression.Dispose();
+                instances.Remove((expressionString, Arg1, Arg2));
+                return true;
+            }
+        }
+
+        void ExpressionPropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(Fault))
+                Fault = expression.Fault;
+            else if (e.PropertyName == nameof(Value))
+                Value = (TResult)expression.Value;
+        }
+
+        /// <summary>
+        /// Gets the first argument that was passed to the lambda expression
+        /// </summary>
+        public TArg1 Arg1 { get; }
+
+        /// <summary>
+        /// Gets the second argument that was passed to the lambda expression
+        /// </summary>
+        public TArg2 Arg2 { get; }
+
+        /// <summary>
+        /// Gets the exception that was thrown while evaluating the lambda expression; <c>null</c> if there was no such exception
+        /// </summary>
+        public Exception Fault
+        {
+            get => fault;
+            private set => SetBackedProperty(ref fault, in value);
+        }
+
+        /// <summary>
+        /// Gets the result of evaluating the lambda expression
+        /// </summary>
+        public TResult Value
+        {
+            get => val;
+            private set => SetBackedProperty(ref val, in value);
+        }
+    }
+
+    /// <summary>
+    /// Represents an active evaluation of a strongly-typed lambda expression with two arguments.
+    /// <see cref="INotifyPropertyChanged"/>, <see cref="INotifyCollectionChanged"/>, and <see cref="INotifyDictionaryChanged"/> events raised by any value within the lambda expression will cause all dependent portions to be re-evaluated.
+    /// </summary>
+    /// <typeparam name="TArg1">The type of the first argument passed to the lambda expression</typeparam>
+    /// <typeparam name="TArg2">The type of the second argument passed to the lambda expression</typeparam>
+    /// <typeparam name="TArg3">The type of the third argument passed to the lambda expression</typeparam>
+    /// <typeparam name="TResult">The type of the value returned by the expression upon which this active expression is based</typeparam>
+    public class ActiveExpression<TArg1, TArg2, TArg3, TResult> : OverridableSyncDisposablePropertyChangeNotifier
+    {
+        static readonly object instanceManagementLock = new object();
+        static readonly Dictionary<(string expressionString, TArg1 arg1, TArg2 arg2, TArg3 arg3), ActiveExpression<TArg1, TArg2, TArg3, TResult>> instances = new Dictionary<(string expressionString, TArg1 arg1, TArg2 arg2, TArg3 arg3), ActiveExpression<TArg1, TArg2, TArg3, TResult>>();
+
+        internal static ActiveExpression<TArg1, TArg2, TArg3, TResult> Create(LambdaExpression expression, TArg1 arg1, TArg2 arg2, TArg3 arg3)
+        {
+            var expressionString = expression.ToString();
+            var key = (expressionString, arg1, arg2, arg3);
+            lock (instanceManagementLock)
+            {
+                if (!instances.TryGetValue(key, out var activeExpression))
+                {
+                    activeExpression = new ActiveExpression<TArg1, TArg2, TArg3, TResult>(expressionString, arg1, arg2, arg3, ActiveExpression.Create(ActiveExpression.ReplaceParameters(expression, arg1, arg2, arg3)));
+                    instances.Add(key, activeExpression);
+                }
+                ++activeExpression.disposalCount;
+                return activeExpression;
+            }
+        }
+
+        protected ActiveExpression(string expressionString, TArg1 arg1, TArg2 arg2, TArg3 arg3, ActiveExpression expression)
+        {
+            this.expressionString = expressionString;
+            Arg1 = arg1;
+            Arg2 = arg2;
+            Arg3 = arg3;
+            this.expression = expression;
+            fault = this.expression.Fault;
+            val = (TResult)this.expression.Value;
+            this.expression.PropertyChanged += ExpressionPropertyChanged;
+        }
+
+        int disposalCount;
+        readonly ActiveExpression expression;
+        readonly string expressionString;
+        Exception fault;
+        TResult val;
+
+        protected override bool Dispose(bool disposing)
+        {
+            lock (instanceManagementLock)
+            {
+                if (--disposalCount > 0)
+                    return false;
+                expression.PropertyChanged -= ExpressionPropertyChanged;
+                expression.Dispose();
+                instances.Remove((expressionString, Arg1, Arg2, Arg3));
+                return true;
+            }
+        }
+
+        void ExpressionPropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(Fault))
+                Fault = expression.Fault;
+            else if (e.PropertyName == nameof(Value))
+                Value = (TResult)expression.Value;
+        }
+
+        /// <summary>
+        /// Gets the first argument that was passed to the lambda expression
+        /// </summary>
+        public TArg1 Arg1 { get; }
+
+        /// <summary>
+        /// Gets the second argument that was passed to the lambda expression
+        /// </summary>
+        public TArg2 Arg2 { get; }
+
+        /// <summary>
+        /// Gets the third argument that was passed to the lambda expression
+        /// </summary>
+        public TArg3 Arg3 { get; }
 
         /// <summary>
         /// Gets the exception that was thrown while evaluating the lambda expression; <c>null</c> if there was no such exception
