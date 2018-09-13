@@ -53,29 +53,21 @@ namespace Gear.ActiveExpressions
         /// <summary>
         /// Creates an active expression using a specified lambda expression and arguments
         /// </summary>
-        /// <typeparam name="TResult">The type that <paramref name="lambdaExpression"/> returns.</typeparam>
-        /// <param name="lambdaExpression">The lambda expression.</param>
-        /// <param name="arguments">The arguments.</param>
-        /// <returns>The active expression.</returns>
+        /// <typeparam name="TResult">The type that <paramref name="lambdaExpression"/> returns</typeparam>
+        /// <param name="lambdaExpression">The lambda expression</param>
+        /// <param name="arguments">The arguments</param>
+        /// <returns>The active expression</returns>
         public static ActiveExpression<TResult> Create<TResult>(LambdaExpression lambdaExpression, params object[] arguments) => ActiveExpression<TResult>.Create(lambdaExpression, arguments);
-
-        /// <summary>
-        /// Creates an active expression using a specified strongly-typed lambda expression
-        /// </summary>
-        /// <typeparam name="TResult">The type that <paramref name="expression"/> returns.</typeparam>
-        /// <param name="expression">The strongly-typed lambda expression.</param>
-        /// <returns>The active expression.</returns>
-        public static ActiveExpression<TResult> Create<TResult>(Expression<Func<TResult>> expression) => Create<TResult>((LambdaExpression)expression);
 
         /// <summary>
         /// Creates an active expression using a specified strongly-typed lambda expression and one argument
         /// </summary>
         /// <typeparam name="TArg">The type of the argument.</typeparam>
-        /// <typeparam name="TResult">The type that <paramref name="expression"/> returns.</typeparam>
-        /// <param name="expression">The strongly-typed lambda expression.</param>
-        /// <param name="arg">The argument.</param>
-        /// <returns>The active expression.</returns>
-        public static ActiveExpression<TResult> Create<TArg, TResult>(Expression<Func<TArg, TResult>> expression, TArg arg) => Create<TResult>(expression, arg);
+        /// <typeparam name="TResult">The type that <paramref name="expression"/> returns</typeparam>
+        /// <param name="expression">The strongly-typed lambda expression</param>
+        /// <param name="arg">The argument</param>
+        /// <returns>The active expression</returns>
+        public static ActiveExpression<TResult> Create<TArg, TResult>(Expression<Func<TArg, TResult>> expression, TArg arg) => ActiveExpression<TResult>.Create(expression, arg);
 
         /// <summary>
         /// Creates an active expression using a specified strongly-typed lambda expression and two arguments
@@ -87,7 +79,7 @@ namespace Gear.ActiveExpressions
         /// <param name="arg1">The first argument</param>
         /// <param name="arg2">The second argument</param>
         /// <returns>The active expression</returns>
-        public static ActiveExpression<TResult> Create<TArg1, TArg2, TResult>(Expression<Func<TArg1, TArg2, TResult>> expression, TArg1 arg1, TArg2 arg2) => Create<TResult>(expression, arg1, arg2);
+        public static ActiveExpression<TResult> Create<TArg1, TArg2, TResult>(Expression<Func<TArg1, TArg2, TResult>> expression, TArg1 arg1, TArg2 arg2) => ActiveExpression<TResult>.Create(expression, arg1, arg2);
 
         /// <summary>
         /// Creates an active expression using a specified strongly-typed lambda expression and three arguments
@@ -101,7 +93,7 @@ namespace Gear.ActiveExpressions
         /// <param name="arg2">The second argument</param>
         /// <param name="arg3">The third argument</param>
         /// <returns>The active expression</returns>
-        public static ActiveExpression<TResult> Create<TArg1, TArg2, TArg3, TResult>(Expression<Func<TArg1, TArg2, TArg3, TResult>> expression, TArg1 arg1, TArg2 arg2, TArg3 arg3) => Create<TResult>(expression, arg1, arg2, arg3);
+        public static ActiveExpression<TResult> Create<TArg1, TArg2, TArg3, TResult>(Expression<Func<TArg1, TArg2, TArg3, TResult>> expression, TArg1 arg1, TArg2 arg2, TArg3 arg3) => ActiveExpression<TResult>.Create(expression, arg1, arg2, arg3);
 
         internal static Expression ReplaceParameters(LambdaExpression lambdaExpression, params object[] arguments)
         {
@@ -192,15 +184,16 @@ namespace Gear.ActiveExpressions
         static readonly object instanceManagementLock = new object();
         static readonly Dictionary<(string expressionString, EquatableList<object> arguments), ActiveExpression<TResult>> instances = new Dictionary<(string expressionString, EquatableList<object> arguments), ActiveExpression<TResult>>();
 
-        internal static ActiveExpression<TResult> Create(LambdaExpression expression, params object[] arguments)
+        internal static ActiveExpression<TResult> Create(LambdaExpression expression, params object[] args)
         {
             var expressionString = expression.ToString();
-            var key = (expressionString, new EquatableList<object>(arguments));
+            var arguments = new EquatableList<object>(args);
+            var key = (expressionString, arguments);
             lock (instanceManagementLock)
             {
                 if (!instances.TryGetValue(key, out var activeExpression))
                 {
-                    activeExpression = new ActiveExpression<TResult>(ActiveExpression.Create(ActiveExpression.ReplaceParameters(expression, arguments)), key);
+                    activeExpression = new ActiveExpression<TResult>(expressionString, arguments, ActiveExpression.Create(ActiveExpression.ReplaceParameters(expression, args)));
                     instances.Add(key, activeExpression);
                 }
                 ++activeExpression.disposalCount;
@@ -208,19 +201,21 @@ namespace Gear.ActiveExpressions
             }
         }
 
-        ActiveExpression(ActiveExpression expression, (string expressionString, EquatableList<object> arguments) key)
+        protected ActiveExpression(string expressionString, EquatableList<object> arguments, ActiveExpression expression)
         {
+            this.expressionString = expressionString;
+            this.arguments = arguments;
             this.expression = expression;
             fault = this.expression.Fault;
             val = (TResult)this.expression.Value;
             this.expression.PropertyChanged += ExpressionPropertyChanged;
-            this.key = key;
         }
 
+        protected readonly EquatableList<object> arguments;
         int disposalCount;
         readonly ActiveExpression expression;
+        readonly string expressionString;
         Exception fault;
-        readonly (string expressionString, EquatableList<object> arguments) key;
         TResult val;
 
         protected override bool Dispose(bool disposing)
@@ -231,7 +226,7 @@ namespace Gear.ActiveExpressions
                     return false;
                 expression.PropertyChanged -= ExpressionPropertyChanged;
                 expression.Dispose();
-                instances.Remove(key);
+                instances.Remove((expressionString, arguments));
                 return true;
             }
         }
@@ -245,7 +240,12 @@ namespace Gear.ActiveExpressions
         }
 
         /// <summary>
-        /// Gets the exception that was thrown while evaluating the expression; <c>null</c> if there was no such exception
+        /// Gets the arguments that were passed to the lambda expression
+        /// </summary>
+        public IReadOnlyList<object> Arguments => arguments;
+
+        /// <summary>
+        /// Gets the exception that was thrown while evaluating the lambda expression; <c>null</c> if there was no such exception
         /// </summary>
         public Exception Fault
         {
@@ -254,7 +254,7 @@ namespace Gear.ActiveExpressions
         }
 
         /// <summary>
-        /// Gets the result of evaluating the expression
+        /// Gets the result of evaluating the lambda expression
         /// </summary>
         public TResult Value
         {
