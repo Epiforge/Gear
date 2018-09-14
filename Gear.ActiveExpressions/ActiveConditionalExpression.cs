@@ -1,3 +1,4 @@
+using Gear.Components;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -5,7 +6,7 @@ using System.Linq.Expressions;
 
 namespace Gear.ActiveExpressions
 {
-    class ActiveConditionalExpression : ActiveExpression
+    class ActiveConditionalExpression : ActiveExpression, IEquatable<ActiveConditionalExpression>
     {
         static readonly object instanceManagementLock = new object();
         static readonly Dictionary<(ActiveExpression test, ActiveExpression ifTrue, ActiveExpression ifFalse), ActiveConditionalExpression> instances = new Dictionary<(ActiveExpression test, ActiveExpression ifTrue, ActiveExpression ifFalse), ActiveConditionalExpression>();
@@ -27,6 +28,10 @@ namespace Gear.ActiveExpressions
                 return activeConditionalExpression;
             }
         }
+
+        public static bool operator ==(ActiveConditionalExpression a, ActiveConditionalExpression b) => a?.Equals(b) ?? b == null;
+
+        public static bool operator !=(ActiveConditionalExpression a, ActiveConditionalExpression b) => !(a == b);
 
         ActiveConditionalExpression(Type type, ActiveExpression test, ActiveExpression ifTrue, ActiveExpression ifFalse) : base(type, ExpressionType.Conditional)
         {
@@ -78,6 +83,12 @@ namespace Gear.ActiveExpressions
                 return true;
             }
         }
+
+        public override bool Equals(object obj) => Equals(obj as ActiveConditionalExpression);
+
+        public bool Equals(ActiveConditionalExpression other) => other?.ifFalse == ifFalse && other?.ifTrue == ifTrue && other?.test == test;
+
+        public override int GetHashCode() => HashCodes.CombineObjects(typeof(ActiveConditionalExpression), ifFalse, ifTrue, test);
 
         void IfFalsePropertyChanged(object sender, PropertyChangedEventArgs e)
         {

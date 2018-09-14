@@ -9,7 +9,7 @@ using System.Reflection;
 
 namespace Gear.ActiveExpressions
 {
-    class ActiveIndexExpression : ActiveExpression
+    class ActiveIndexExpression : ActiveExpression, IEquatable<ActiveIndexExpression>
     {
         static readonly object instanceManagementLock = new object();
         static readonly Dictionary<(ActiveExpression @object, PropertyInfo indexer, EquatableList<ActiveExpression> arguments), ActiveIndexExpression> instances = new Dictionary<(ActiveExpression @object, PropertyInfo indexer, EquatableList<ActiveExpression> arguments), ActiveIndexExpression>();
@@ -31,6 +31,10 @@ namespace Gear.ActiveExpressions
                 return activeIndexExpression;
             }
         }
+
+        public static bool operator ==(ActiveIndexExpression a, ActiveIndexExpression b) => a?.Equals(b) ?? b == null;
+
+        public static bool operator !=(ActiveIndexExpression a, ActiveIndexExpression b) => !(a == b);
 
         ActiveIndexExpression(Type type, ActiveExpression @object, PropertyInfo indexer, EquatableList<ActiveExpression> arguments) : base(type, ExpressionType.Index)
         {
@@ -74,6 +78,10 @@ namespace Gear.ActiveExpressions
             }
         }
 
+        public override bool Equals(object obj) => Equals(obj as ActiveIndexExpression);
+
+        public bool Equals(ActiveIndexExpression other) => other?.arguments == arguments && other?.indexer == indexer && other?.@object == @object;
+
         void Evaluate()
         {
             try
@@ -101,6 +109,8 @@ namespace Gear.ActiveExpressions
                 Fault = ex;
             }
         }
+
+        public override int GetHashCode() => HashCodes.CombineObjects(typeof(ActiveIndexExpression), arguments, indexer, @object);
 
         void ObjectPropertyChanged(object sender, PropertyChangedEventArgs e) => Evaluate();
 

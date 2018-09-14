@@ -7,7 +7,7 @@ using System.Reflection;
 
 namespace Gear.ActiveExpressions
 {
-    class ActiveMemberExpression : ActiveExpression
+    class ActiveMemberExpression : ActiveExpression, IEquatable<ActiveMemberExpression>
     {
         static readonly object[] emptyArray = new object[0];
         static readonly object instanceManagementLock = new object();
@@ -29,6 +29,10 @@ namespace Gear.ActiveExpressions
                 return activeMemberExpression;
             }
         }
+
+        public static bool operator ==(ActiveMemberExpression a, ActiveMemberExpression b) => a?.Equals(b) ?? b == null;
+
+        public static bool operator !=(ActiveMemberExpression a, ActiveMemberExpression b) => !(a == b);
 
         ActiveMemberExpression(Type type, ActiveExpression expression, MemberInfo member) : base(type, ExpressionType.MemberAccess)
         {
@@ -75,6 +79,10 @@ namespace Gear.ActiveExpressions
             }
         }
 
+        public override bool Equals(object obj) => Equals(obj as ActiveMemberExpression);
+
+        public bool Equals(ActiveMemberExpression other) => other?.expression == expression && other?.member == member;
+
         void Evaluate()
         {
             try
@@ -112,6 +120,8 @@ namespace Gear.ActiveExpressions
             if (e.PropertyName == member.Name)
                 Evaluate();
         }
+
+        public override int GetHashCode() => HashCodes.CombineObjects(typeof(ActiveMemberExpression), expression, member);
 
         void SubscribeToExpressionValueNotifications()
         {

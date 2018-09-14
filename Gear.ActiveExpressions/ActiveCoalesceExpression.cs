@@ -1,15 +1,24 @@
+using Gear.Components;
 using System;
 using System.Linq.Expressions;
 
 namespace Gear.ActiveExpressions
 {
-    class ActiveCoalesceExpression : ActiveBinaryExpression
+    class ActiveCoalesceExpression : ActiveBinaryExpression, IEquatable<ActiveCoalesceExpression>
     {
+        public static bool operator ==(ActiveCoalesceExpression a, ActiveCoalesceExpression b) => a?.Equals(b) ?? b == null;
+
+        public static bool operator !=(ActiveCoalesceExpression a, ActiveCoalesceExpression b) => !(a == b);
+
         public ActiveCoalesceExpression(Type type, ActiveExpression left, ActiveExpression right, LambdaExpression conversion) : base(type, ExpressionType.Coalesce, left, right, false)
         {
             if (conversion != null)
                 throw new NotSupportedException("Coalesce conversions are not yet supported");
         }
+
+        public override bool Equals(object obj) => Equals(obj as ActiveCoalesceExpression);
+
+        public bool Equals(ActiveCoalesceExpression other) => other?.left == left && other?.right == right;
 
         protected override void Evaluate()
         {
@@ -26,5 +35,7 @@ namespace Gear.ActiveExpressions
             else
                 Value = right.Value;
         }
+
+        public override int GetHashCode() => HashCodes.CombineObjects(typeof(ActiveCoalesceExpression), left, right);
     }
 }

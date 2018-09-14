@@ -7,7 +7,7 @@ using System.Reflection;
 
 namespace Gear.ActiveExpressions
 {
-    class ActiveBinaryExpression : ActiveExpression
+    class ActiveBinaryExpression : ActiveExpression, IEquatable<ActiveBinaryExpression>
     {
         static readonly object instanceManagementLock = new object();
         static readonly Dictionary<(ExpressionType nodeType, ActiveExpression left, ActiveExpression right), ActiveBinaryExpression> factoryInstances = new Dictionary<(ExpressionType nodeType, ActiveExpression left, ActiveExpression right), ActiveBinaryExpression>();
@@ -70,6 +70,10 @@ namespace Gear.ActiveExpressions
             throw new NotSupportedException("ActiveBinaryExpressions do not yet support BinaryExpressions using Conversions");
         }
 
+        public static bool operator ==(ActiveBinaryExpression a, ActiveBinaryExpression b) => a?.Equals(b) ?? b == null;
+
+        public static bool operator !=(ActiveBinaryExpression a, ActiveBinaryExpression b) => !(a == b);
+
         protected ActiveBinaryExpression(Type type, ExpressionType nodeType, ActiveExpression left, ActiveExpression right, bool getOperation = true) : base(type, nodeType)
         {
             this.nodeType = nodeType;
@@ -120,6 +124,10 @@ namespace Gear.ActiveExpressions
             }
         }
 
+        public override bool Equals(object obj) => Equals(obj as ActiveBinaryExpression);
+
+        public bool Equals(ActiveBinaryExpression other) => other?.left == left && other?.method == method && other?.nodeType == nodeType && other?.right == right;
+
         protected virtual void Evaluate()
         {
             var leftFault = left.Fault;
@@ -140,6 +148,8 @@ namespace Gear.ActiveExpressions
                 Fault = ex;
             }
         }
+
+        public override int GetHashCode() => HashCodes.CombineObjects(typeof(ActiveBinaryExpression), left, method, nodeType, right);
 
         void LeftPropertyChanged(object sender, PropertyChangedEventArgs e) => Evaluate();
 

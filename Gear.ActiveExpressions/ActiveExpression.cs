@@ -194,7 +194,7 @@ namespace Gear.ActiveExpressions
     /// <see cref="INotifyPropertyChanged"/>, <see cref="INotifyCollectionChanged"/>, and <see cref="INotifyDictionaryChanged"/> events raised by any value within the lambda expression will cause all dependent portions to be re-evaluated.
     /// </summary>
     /// <typeparam name="TResult">The type of the value returned by the lambda expression upon which this active expression is based</typeparam>
-    public class ActiveExpression<TResult> : OverridableSyncDisposablePropertyChangeNotifier
+    public class ActiveExpression<TResult> : OverridableSyncDisposablePropertyChangeNotifier, IEquatable<ActiveExpression<TResult>>
     {
         static readonly object instanceManagementLock = new object();
         static readonly Dictionary<(string expressionString, EquatableList<object> arguments), ActiveExpression<TResult>> instances = new Dictionary<(string expressionString, EquatableList<object> arguments), ActiveExpression<TResult>>();
@@ -215,6 +215,10 @@ namespace Gear.ActiveExpressions
                 return activeExpression;
             }
         }
+
+        public static bool operator ==(ActiveExpression<TResult> a, ActiveExpression<TResult> b) => a?.Equals(b) ?? b == null;
+
+        public static bool operator !=(ActiveExpression<TResult> a, ActiveExpression<TResult> b) => !(a == b);
 
         protected ActiveExpression(string expressionString, EquatableList<object> arguments, ActiveExpression expression)
         {
@@ -246,6 +250,10 @@ namespace Gear.ActiveExpressions
             }
         }
 
+        public override bool Equals(object obj) => Equals(obj as ActiveExpression<TResult>);
+
+        public bool Equals(ActiveExpression<TResult> other) => other?.arguments == arguments && other?.expression == expression;
+
         void ExpressionPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
             if (e.PropertyName == nameof(Fault))
@@ -253,6 +261,8 @@ namespace Gear.ActiveExpressions
             else if (e.PropertyName == nameof(Value))
                 Value = (TResult)expression.Value;
         }
+
+        public override int GetHashCode() => HashCodes.CombineObjects(typeof(ActiveExpression<TResult>), arguments, expression);
 
         /// <summary>
         /// Gets the arguments that were passed to the lambda expression
@@ -284,7 +294,7 @@ namespace Gear.ActiveExpressions
     /// </summary>
     /// <typeparam name="TArg">The type of the argument passed to the lambda expression</typeparam>
     /// <typeparam name="TResult">The type of the value returned by the expression upon which this active expression is based</typeparam>
-    public class ActiveExpression<TArg, TResult> : OverridableSyncDisposablePropertyChangeNotifier
+    public class ActiveExpression<TArg, TResult> : OverridableSyncDisposablePropertyChangeNotifier, IEquatable<ActiveExpression<TArg, TResult>>
     {
         static readonly object instanceManagementLock = new object();
         static readonly Dictionary<(string expressionString, TArg arg), ActiveExpression<TArg, TResult>> instances = new Dictionary<(string expressionString, TArg arg), ActiveExpression<TArg, TResult>>();
@@ -304,6 +314,10 @@ namespace Gear.ActiveExpressions
                 return activeExpression;
             }
         }
+
+        public static bool operator ==(ActiveExpression<TArg, TResult> a, ActiveExpression<TArg, TResult> b) => a?.Equals(b) ?? b == null;
+
+        public static bool operator !=(ActiveExpression<TArg, TResult> a, ActiveExpression<TArg, TResult> b) => !(a == b);
 
         protected ActiveExpression(string expressionString, TArg arg, ActiveExpression expression)
         {
@@ -334,6 +348,10 @@ namespace Gear.ActiveExpressions
             }
         }
 
+        public override bool Equals(object obj) => Equals(obj as ActiveExpression<TArg, TResult>);
+
+        public bool Equals(ActiveExpression<TArg, TResult> other) => other != null && other.expression == expression && EqualityComparer<TArg>.Default.Equals(other.Arg, Arg);
+
         void ExpressionPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
             if (e.PropertyName == nameof(Fault))
@@ -341,6 +359,8 @@ namespace Gear.ActiveExpressions
             else if (e.PropertyName == nameof(Value))
                 Value = (TResult)expression.Value;
         }
+
+        public override int GetHashCode() => HashCodes.CombineObjects(typeof(ActiveExpression<TArg, TResult>), expression, Arg);
 
         /// <summary>
         /// Gets the argument that was passed to the lambda expression
@@ -373,7 +393,7 @@ namespace Gear.ActiveExpressions
     /// <typeparam name="TArg1">The type of the first argument passed to the lambda expression</typeparam>
     /// <typeparam name="TArg2">The type of the second argument passed to the lambda expression</typeparam>
     /// <typeparam name="TResult">The type of the value returned by the expression upon which this active expression is based</typeparam>
-    public class ActiveExpression<TArg1, TArg2, TResult> : OverridableSyncDisposablePropertyChangeNotifier
+    public class ActiveExpression<TArg1, TArg2, TResult> : OverridableSyncDisposablePropertyChangeNotifier, IEquatable<ActiveExpression<TArg1, TArg2, TResult>>
     {
         static readonly object instanceManagementLock = new object();
         static readonly Dictionary<(string expressionString, TArg1 arg1, TArg2 arg2), ActiveExpression<TArg1, TArg2, TResult>> instances = new Dictionary<(string expressionString, TArg1 arg1, TArg2 arg2), ActiveExpression<TArg1, TArg2, TResult>>();
@@ -393,6 +413,10 @@ namespace Gear.ActiveExpressions
                 return activeExpression;
             }
         }
+
+        public static bool operator ==(ActiveExpression<TArg1, TArg2, TResult> a, ActiveExpression<TArg1, TArg2, TResult> b) => a?.Equals(b) ?? b == null;
+
+        public static bool operator !=(ActiveExpression<TArg1, TArg2, TResult> a, ActiveExpression<TArg1, TArg2, TResult> b) => !(a == b);
 
         protected ActiveExpression(string expressionString, TArg1 arg1, TArg2 arg2, ActiveExpression expression)
         {
@@ -424,6 +448,10 @@ namespace Gear.ActiveExpressions
             }
         }
 
+        public override bool Equals(object obj) => Equals(obj as ActiveExpression<TArg1, TArg2, TResult>);
+
+        public bool Equals(ActiveExpression<TArg1, TArg2, TResult> other) => other != null && other.expression == expression && EqualityComparer<TArg1>.Default.Equals(other.Arg1, Arg1) && EqualityComparer<TArg2>.Default.Equals(other.Arg2, Arg2);
+
         void ExpressionPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
             if (e.PropertyName == nameof(Fault))
@@ -431,6 +459,8 @@ namespace Gear.ActiveExpressions
             else if (e.PropertyName == nameof(Value))
                 Value = (TResult)expression.Value;
         }
+
+        public override int GetHashCode() => HashCodes.CombineObjects(typeof(ActiveExpression<TArg1, TArg2, TResult>), expression, Arg1, Arg2);
 
         /// <summary>
         /// Gets the first argument that was passed to the lambda expression
@@ -469,7 +499,7 @@ namespace Gear.ActiveExpressions
     /// <typeparam name="TArg2">The type of the second argument passed to the lambda expression</typeparam>
     /// <typeparam name="TArg3">The type of the third argument passed to the lambda expression</typeparam>
     /// <typeparam name="TResult">The type of the value returned by the expression upon which this active expression is based</typeparam>
-    public class ActiveExpression<TArg1, TArg2, TArg3, TResult> : OverridableSyncDisposablePropertyChangeNotifier
+    public class ActiveExpression<TArg1, TArg2, TArg3, TResult> : OverridableSyncDisposablePropertyChangeNotifier, IEquatable<ActiveExpression<TArg1, TArg2, TArg3, TResult>>
     {
         static readonly object instanceManagementLock = new object();
         static readonly Dictionary<(string expressionString, TArg1 arg1, TArg2 arg2, TArg3 arg3), ActiveExpression<TArg1, TArg2, TArg3, TResult>> instances = new Dictionary<(string expressionString, TArg1 arg1, TArg2 arg2, TArg3 arg3), ActiveExpression<TArg1, TArg2, TArg3, TResult>>();
@@ -489,6 +519,10 @@ namespace Gear.ActiveExpressions
                 return activeExpression;
             }
         }
+
+        public static bool operator ==(ActiveExpression<TArg1, TArg2, TArg3, TResult> a, ActiveExpression<TArg1, TArg2, TArg3, TResult> b) => a?.Equals(b) ?? b == null;
+
+        public static bool operator !=(ActiveExpression<TArg1, TArg2, TArg3, TResult> a, ActiveExpression<TArg1, TArg2, TArg3, TResult> b) => !(a == b);
 
         protected ActiveExpression(string expressionString, TArg1 arg1, TArg2 arg2, TArg3 arg3, ActiveExpression expression)
         {
@@ -521,6 +555,10 @@ namespace Gear.ActiveExpressions
             }
         }
 
+        public override bool Equals(object obj) => Equals(obj as ActiveExpression<TArg1, TArg2, TArg3, TResult>);
+
+        public bool Equals(ActiveExpression<TArg1, TArg2, TArg3, TResult> other) => other != null && other.expression == expression && EqualityComparer<TArg1>.Default.Equals(other.Arg1, Arg1) && EqualityComparer<TArg2>.Default.Equals(other.Arg2, Arg2) && EqualityComparer<TArg3>.Default.Equals(other.Arg3, Arg3);
+
         void ExpressionPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
             if (e.PropertyName == nameof(Fault))
@@ -528,6 +566,8 @@ namespace Gear.ActiveExpressions
             else if (e.PropertyName == nameof(Value))
                 Value = (TResult)expression.Value;
         }
+
+        public override int GetHashCode() => HashCodes.CombineObjects(typeof(ActiveExpression<TArg1, TArg2, TArg3, TResult>), expression, Arg1, Arg2, Arg3);
 
         /// <summary>
         /// Gets the first argument that was passed to the lambda expression

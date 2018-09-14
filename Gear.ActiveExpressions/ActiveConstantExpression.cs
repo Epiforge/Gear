@@ -1,10 +1,11 @@
+using Gear.Components;
 using System;
 using System.Collections.Generic;
 using System.Linq.Expressions;
 
 namespace Gear.ActiveExpressions
 {
-    class ActiveConstantExpression : ActiveExpression
+    class ActiveConstantExpression : ActiveExpression, IEquatable<ActiveConstantExpression>
     {
         static readonly object instanceManagementLock = new object();
         static readonly Dictionary<(Type type, object value), ActiveConstantExpression> instances = new Dictionary<(Type type, object value), ActiveConstantExpression>();
@@ -26,6 +27,10 @@ namespace Gear.ActiveExpressions
             }
         }
 
+        public static bool operator ==(ActiveConstantExpression a, ActiveConstantExpression b) => a?.Equals(b) ?? b == null;
+
+        public static bool operator !=(ActiveConstantExpression a, ActiveConstantExpression b) => !(a == b);
+
         ActiveConstantExpression(Type type, object value) : base(type, ExpressionType.Constant) => Value = value;
 
         int disposalCount;
@@ -40,5 +45,11 @@ namespace Gear.ActiveExpressions
                 return true;
             }
         }
+
+        public override bool Equals(object obj) => Equals(obj as ActiveConstantExpression);
+
+        public bool Equals(ActiveConstantExpression other) => other?.Value == Value;
+
+        public override int GetHashCode() => HashCodes.CombineObjects(typeof(ActiveConstantExpression), Value);
     }
 }

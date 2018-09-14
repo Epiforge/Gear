@@ -8,13 +8,17 @@ using System.Reflection;
 
 namespace Gear.ActiveExpressions
 {
-    class ActiveUnaryExpression : ActiveExpression
+    class ActiveUnaryExpression : ActiveExpression, IEquatable<ActiveUnaryExpression>
     {
         static readonly object instanceManagementLock = new object();
         static readonly Dictionary<(ExpressionType nodeType, ActiveExpression opperand, Type type, MethodInfo method), ActiveUnaryExpression> instances = new Dictionary<(ExpressionType nodeType, ActiveExpression opperand, Type type, MethodInfo method), ActiveUnaryExpression>();
         static readonly ConcurrentDictionary<Type, MethodInfo> nullableConversions = new ConcurrentDictionary<Type, MethodInfo>();
 
         static MethodInfo GetNullableConversionMethodInfo(Type nullableType) => nullableType.GetRuntimeMethod("op_Implicit", new Type[] { nullableType.GenericTypeArguments[0] });
+
+        public static bool operator ==(ActiveUnaryExpression a, ActiveUnaryExpression b) => a?.Equals(b) ?? b == null;
+
+        public static bool operator !=(ActiveUnaryExpression a, ActiveUnaryExpression b) => !(a == b);
 
         public static ActiveUnaryExpression Create(UnaryExpression unaryExpression)
         {
@@ -69,6 +73,10 @@ namespace Gear.ActiveExpressions
             }
         }
 
+        public override bool Equals(object obj) => Equals(obj as ActiveUnaryExpression);
+
+        public bool Equals(ActiveUnaryExpression other) => other?.method == method && other?.nodeType == nodeType && other?.operand == operand;
+
         void Evaluate()
         {
             try
@@ -86,6 +94,8 @@ namespace Gear.ActiveExpressions
                 Fault = ex;
             }
         }
+
+        public override int GetHashCode() => HashCodes.CombineObjects(typeof(ActiveUnaryExpression), method, nodeType, operand);
 
         void OperandPropertyChanged(object sender, PropertyChangedEventArgs e) => Evaluate();
     }

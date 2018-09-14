@@ -7,10 +7,14 @@ using System.Linq.Expressions;
 
 namespace Gear.ActiveExpressions
 {
-    class ActiveNewExpression : ActiveExpression
+    class ActiveNewExpression : ActiveExpression, IEquatable<ActiveNewExpression>
     {
         static readonly object instanceManagementLock = new object();
         static readonly Dictionary<(Type type, EquatableList<ActiveExpression> arguments), ActiveNewExpression> instances = new Dictionary<(Type type, EquatableList<ActiveExpression> arguments), ActiveNewExpression>();
+
+        public static bool operator ==(ActiveNewExpression a, ActiveNewExpression b) => a?.Equals(b) ?? b == null;
+
+        public static bool operator !=(ActiveNewExpression a, ActiveNewExpression b) => !(a == b);
 
         public static ActiveNewExpression Create(NewExpression newExpression)
         {
@@ -58,6 +62,10 @@ namespace Gear.ActiveExpressions
             }
         }
 
+        public override bool Equals(object obj) => Equals(obj as ActiveNewExpression);
+
+        public bool Equals(ActiveNewExpression other) => other?.Type == Type && other?.arguments == arguments;
+
         void Evaluate()
         {
             try
@@ -73,5 +81,7 @@ namespace Gear.ActiveExpressions
                 Fault = ex;
             }
         }
+
+        public override int GetHashCode() => HashCodes.CombineObjects(typeof(ActiveNewExpression), Type, arguments);
     }
 }

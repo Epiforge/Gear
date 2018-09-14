@@ -8,7 +8,7 @@ using System.Reflection;
 
 namespace Gear.ActiveExpressions
 {
-    class ActiveMethodCallExpression : ActiveExpression
+    class ActiveMethodCallExpression : ActiveExpression, IEquatable<ActiveMethodCallExpression>
     {
         static readonly object instanceManagementLock = new object();
         static readonly Dictionary<(ActiveExpression @object, MethodInfo method, EquatableList<ActiveExpression> arguments), ActiveMethodCallExpression> instanceInstances = new Dictionary<(ActiveExpression @object, MethodInfo method, EquatableList<ActiveExpression> arguments), ActiveMethodCallExpression>();
@@ -50,6 +50,10 @@ namespace Gear.ActiveExpressions
                 }
             }
         }
+
+        public static bool operator ==(ActiveMethodCallExpression a, ActiveMethodCallExpression b) => a?.Equals(b) ?? b == null;
+
+        public static bool operator !=(ActiveMethodCallExpression a, ActiveMethodCallExpression b) => !(a == b);
 
         ActiveMethodCallExpression(Type type, ActiveExpression @object, MethodInfo method, EquatableList<ActiveExpression> arguments) : base(type, ExpressionType.Call)
         {
@@ -105,6 +109,10 @@ namespace Gear.ActiveExpressions
             }
         }
 
+        public override bool Equals(object obj) => Equals(obj as ActiveMethodCallExpression);
+
+        public bool Equals(ActiveMethodCallExpression other) => other?.arguments == arguments && other?.method == method && other?.@object == @object;
+
         void Evaluate()
         {
             try
@@ -123,6 +131,8 @@ namespace Gear.ActiveExpressions
                 Fault = ex;
             }
         }
+
+        public override int GetHashCode() => HashCodes.CombineObjects(typeof(ActiveMethodCallExpression), arguments, method, @object);
 
         void ObjectPropertyChanged(object sender, PropertyChangedEventArgs e) => Evaluate();
     }
