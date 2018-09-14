@@ -1466,6 +1466,73 @@ namespace Gear.ActiveExpressions
 
         #endregion Divide
 
+        #region Equal
+
+        [ExpressionOperation(ExpressionType.Equal)]
+        public static bool Equal(byte a, byte b) => a == b;
+
+        [ExpressionOperation(ExpressionType.Equal)]
+        public static bool Equal(byte? a, byte? b) => a == b;
+
+        [ExpressionOperation(ExpressionType.Equal)]
+        public static bool Equal(sbyte a, sbyte b) => a == b;
+
+        [ExpressionOperation(ExpressionType.Equal)]
+        public static bool Equal(sbyte? a, sbyte? b) => a == b;
+
+        [ExpressionOperation(ExpressionType.Equal)]
+        public static bool Equal(short a, short b) => a == b;
+
+        [ExpressionOperation(ExpressionType.Equal)]
+        public static bool Equal(short? a, short? b) => a == b;
+
+        [ExpressionOperation(ExpressionType.Equal)]
+        public static bool Equal(int a, int b) => a == b;
+
+        [ExpressionOperation(ExpressionType.Equal)]
+        public static bool Equal(int? a, int? b) => a == b;
+
+        [ExpressionOperation(ExpressionType.Equal)]
+        public static bool Equal(long a, long b) => a == b;
+
+        [ExpressionOperation(ExpressionType.Equal)]
+        public static bool Equal(long? a, long? b) => a == b;
+
+        [ExpressionOperation(ExpressionType.Equal)]
+        public static bool Equal(float a, float b) => a == b;
+
+        [ExpressionOperation(ExpressionType.Equal)]
+        public static bool Equal(float? a, float? b) => a == b;
+
+        [ExpressionOperation(ExpressionType.Equal)]
+        public static bool Equal(double a, double b) => a == b;
+
+        [ExpressionOperation(ExpressionType.Equal)]
+        public static bool Equal(double? a, double? b) => a == b;
+
+        [ExpressionOperation(ExpressionType.Equal)]
+        public static bool Equal(decimal a, decimal b) => a == b;
+
+        [ExpressionOperation(ExpressionType.Equal)]
+        public static bool Equal(decimal? a, decimal? b) => a == b;
+
+        [ExpressionOperation(ExpressionType.Equal)]
+        public static bool Equal(DateTime a, DateTime b) => a == b;
+
+        [ExpressionOperation(ExpressionType.Equal)]
+        public static bool Equal(DateTime? a, DateTime? b) => a == b;
+
+        [ExpressionOperation(ExpressionType.Equal)]
+        public static bool Equal(TimeSpan a, TimeSpan b) => a == b;
+
+        [ExpressionOperation(ExpressionType.Equal)]
+        public static bool Equal(TimeSpan? a, TimeSpan? b) => a == b;
+
+        [ExpressionOperation(ExpressionType.Equal)]
+        public static bool Equal(object a, object b) => a == b;
+
+        #endregion Equal
+
         #region ExclusiveOr
 
         [ExpressionOperation(ExpressionType.ExclusiveOr)]
@@ -2221,6 +2288,73 @@ namespace Gear.ActiveExpressions
         public static ulong? Not(ulong? a) => ~a;
 
         #endregion Not
+
+        #region NotEqual
+
+        [ExpressionOperation(ExpressionType.NotEqual)]
+        public static bool NotEqual(byte a, byte b) => a != b;
+
+        [ExpressionOperation(ExpressionType.NotEqual)]
+        public static bool NotEqual(byte? a, byte? b) => a != b;
+
+        [ExpressionOperation(ExpressionType.NotEqual)]
+        public static bool NotEqual(sbyte a, sbyte b) => a != b;
+
+        [ExpressionOperation(ExpressionType.NotEqual)]
+        public static bool NotEqual(sbyte? a, sbyte? b) => a != b;
+
+        [ExpressionOperation(ExpressionType.NotEqual)]
+        public static bool NotEqual(short a, short b) => a != b;
+
+        [ExpressionOperation(ExpressionType.NotEqual)]
+        public static bool NotEqual(short? a, short? b) => a != b;
+
+        [ExpressionOperation(ExpressionType.NotEqual)]
+        public static bool NotEqual(int a, int b) => a != b;
+
+        [ExpressionOperation(ExpressionType.NotEqual)]
+        public static bool NotEqual(int? a, int? b) => a != b;
+
+        [ExpressionOperation(ExpressionType.NotEqual)]
+        public static bool NotEqual(long a, long b) => a != b;
+
+        [ExpressionOperation(ExpressionType.NotEqual)]
+        public static bool NotEqual(long? a, long? b) => a != b;
+
+        [ExpressionOperation(ExpressionType.NotEqual)]
+        public static bool NotEqual(float a, float b) => a != b;
+
+        [ExpressionOperation(ExpressionType.NotEqual)]
+        public static bool NotEqual(float? a, float? b) => a != b;
+
+        [ExpressionOperation(ExpressionType.NotEqual)]
+        public static bool NotEqual(double a, double b) => a != b;
+
+        [ExpressionOperation(ExpressionType.NotEqual)]
+        public static bool NotEqual(double? a, double? b) => a != b;
+
+        [ExpressionOperation(ExpressionType.NotEqual)]
+        public static bool NotEqual(decimal a, decimal b) => a != b;
+
+        [ExpressionOperation(ExpressionType.NotEqual)]
+        public static bool NotEqual(decimal? a, decimal? b) => a != b;
+
+        [ExpressionOperation(ExpressionType.NotEqual)]
+        public static bool NotEqual(DateTime a, DateTime b) => a != b;
+
+        [ExpressionOperation(ExpressionType.NotEqual)]
+        public static bool NotEqual(DateTime? a, DateTime? b) => a != b;
+
+        [ExpressionOperation(ExpressionType.NotEqual)]
+        public static bool NotEqual(TimeSpan a, TimeSpan b) => a != b;
+
+        [ExpressionOperation(ExpressionType.NotEqual)]
+        public static bool NotEqual(TimeSpan? a, TimeSpan? b) => a != b;
+
+        [ExpressionOperation(ExpressionType.NotEqual)]
+        public static bool NotEqual(object a, object b) => a != b;
+
+        #endregion NotEqual
 
         #region OnesComplement
 
