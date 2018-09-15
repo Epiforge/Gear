@@ -1,0 +1,42 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyVersion>1.0.0</AssemblyVersion>
+    <Authors>Epiforge</Authors>
+    <Company>Epiforge</Company>
+    <Description>Gear for leveraging multi-core processors to get things done faster.</Description>
+    <FileVersion>1.0.0</FileVersion>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <Owners>Epiforge</Owners>
+    <PackageIconUrl>https://raw.githubusercontent.com/Epiforge/Gear/master/NuGet.jpg</PackageIconUrl>
+    <PackageId>Gear.Parallel</PackageId>
+    <PackageLicenseUrl>https://raw.githubusercontent.com/Epiforge/Gear/master/LICENSE</PackageLicenseUrl>
+    <PackageProjectUrl>https://github.com/Epiforge/Gear</PackageProjectUrl>
+    <PackageTags>expression tree active live update</PackageTags>
+    <PackageVersion>1.0.0</PackageVersion>
+    <PackOnBuild>true</PackOnBuild>
+    <Product>Parallel Gear</Product>
+    <ReleaseVersion>1.0.0</ReleaseVersion>
+    <RepositoryType>GitHub</RepositoryType>
+    <RepositoryUrl>https://github.com/Epiforge/Gear</RepositoryUrl>
+    <Summary>Gear for leveraging multi-core processors to get things done faster.</Summary>
+    <SynchReleaseVersion>false</SynchReleaseVersion>
+    <TargetFramework>netstandard1.3</TargetFramework>
+    <Title>Parallel Gear</Title>
+    <Version>1.0.0</Version>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <LangVersion>7.2</LangVersion>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <LangVersion>7.2</LangVersion>
+    <DocumentationFile>bin\Release\netstandard1.3\Gear.ActiveExpressions.xml</DocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Threading.Tasks.Dataflow" Version="4.9.0" />
+  </ItemGroup>
+
+</Project>
