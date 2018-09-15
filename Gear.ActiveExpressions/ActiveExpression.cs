@@ -259,7 +259,7 @@ namespace Gear.ActiveExpressions
             if (e.PropertyName == nameof(Fault))
                 Fault = expression.Fault;
             else if (e.PropertyName == nameof(Value))
-                Value = (TResult)expression.Value;
+                Value = expression.Value is TResult typedValue ? typedValue : default;
         }
 
         public override int GetHashCode() => HashCodes.CombineObjects(typeof(ActiveExpression<TResult>), arguments, expression);
@@ -357,7 +357,7 @@ namespace Gear.ActiveExpressions
             if (e.PropertyName == nameof(Fault))
                 Fault = expression.Fault;
             else if (e.PropertyName == nameof(Value))
-                Value = (TResult)expression.Value;
+                Value = expression.Value is TResult typedValue ? typedValue : default;
         }
 
         public override int GetHashCode() => HashCodes.CombineObjects(typeof(ActiveExpression<TArg, TResult>), expression, Arg);
@@ -457,7 +457,7 @@ namespace Gear.ActiveExpressions
             if (e.PropertyName == nameof(Fault))
                 Fault = expression.Fault;
             else if (e.PropertyName == nameof(Value))
-                Value = (TResult)expression.Value;
+                Value = expression.Value is TResult typedValue ? typedValue : default;
         }
 
         public override int GetHashCode() => HashCodes.CombineObjects(typeof(ActiveExpression<TArg1, TArg2, TResult>), expression, Arg1, Arg2);
@@ -564,7 +564,7 @@ namespace Gear.ActiveExpressions
             if (e.PropertyName == nameof(Fault))
                 Fault = expression.Fault;
             else if (e.PropertyName == nameof(Value))
-                Value = (TResult)expression.Value;
+                Value = expression.Value is TResult typedValue ? typedValue : default;
         }
 
         public override int GetHashCode() => HashCodes.CombineObjects(typeof(ActiveExpression<TArg1, TArg2, TArg3, TResult>), expression, Arg1, Arg2, Arg3);
