@@ -12,7 +12,7 @@
     <PackageId>Gear.Parallel</PackageId>
     <PackageLicenseUrl>https://raw.githubusercontent.com/Epiforge/Gear/master/LICENSE</PackageLicenseUrl>
     <PackageProjectUrl>https://github.com/Epiforge/Gear</PackageProjectUrl>
-    <PackageTags>expression tree active live update</PackageTags>
+    <PackageTags>parallel dataflow multicore multithreading</PackageTags>
     <PackageVersion>1.0.0</PackageVersion>
     <PackOnBuild>true</PackOnBuild>
     <Product>Parallel Gear</Product>
@@ -32,7 +32,7 @@
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
     <LangVersion>7.2</LangVersion>
-    <DocumentationFile>bin\Release\netstandard1.3\Gear.ActiveExpressions.xml</DocumentationFile>
+    <DocumentationFile>bin\Release\netstandard1.3\Gear.Parallel.xml</DocumentationFile>
   </PropertyGroup>
 
   <ItemGroup>
