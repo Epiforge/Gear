@@ -10,19 +10,19 @@ namespace Gear.ActiveExpressions
     class ActiveBinaryExpression : ActiveExpression, IEquatable<ActiveBinaryExpression>
     {
         static readonly object instanceManagementLock = new object();
-        static readonly Dictionary<(ExpressionType nodeType, ActiveExpression left, ActiveExpression right), ActiveBinaryExpression> factoryInstances = new Dictionary<(ExpressionType nodeType, ActiveExpression left, ActiveExpression right), ActiveBinaryExpression>();
-        static readonly Dictionary<(ExpressionType nodeType, ActiveExpression left, ActiveExpression right, bool isLiftedToNull, MethodInfo method), ActiveBinaryExpression> implementationInstances = new Dictionary<(ExpressionType nodeType, ActiveExpression left, ActiveExpression right, bool isLiftedToNull, MethodInfo method), ActiveBinaryExpression>();
+        static readonly Dictionary<(ExpressionType nodeType, ActiveExpression left, ActiveExpression right, ActiveExpressionOptions options), ActiveBinaryExpression> factoryInstances = new Dictionary<(ExpressionType nodeType, ActiveExpression left, ActiveExpression right, ActiveExpressionOptions options), ActiveBinaryExpression>();
+        static readonly Dictionary<(ExpressionType nodeType, ActiveExpression left, ActiveExpression right, bool isLiftedToNull, MethodInfo method, ActiveExpressionOptions options), ActiveBinaryExpression> implementationInstances = new Dictionary<(ExpressionType nodeType, ActiveExpression left, ActiveExpression right, bool isLiftedToNull, MethodInfo method, ActiveExpressionOptions options), ActiveBinaryExpression>();
 
-        public static ActiveBinaryExpression Create(BinaryExpression binaryExpression)
+        public static ActiveBinaryExpression Create(BinaryExpression binaryExpression, ActiveExpressionOptions options)
         {
             var type = binaryExpression.Type;
             var nodeType = binaryExpression.NodeType;
-            var left = Create(binaryExpression.Left);
-            var right = Create(binaryExpression.Right);
+            var left = Create(binaryExpression.Left, options);
+            var right = Create(binaryExpression.Right, options);
             var method = binaryExpression.Method;
             if (method == null)
             {
-                var key = (nodeType, left, right);
+                var key = (nodeType, left, right, options);
                 lock (instanceManagementLock)
                 {
                     if (!factoryInstances.TryGetValue(key, out var activeBinaryExpression))
@@ -39,7 +39,7 @@ namespace Gear.ActiveExpressions
                                 activeBinaryExpression = new ActiveOrElseExpression(left, right);
                                 break;
                             default:
-                                activeBinaryExpression = new ActiveBinaryExpression(type, nodeType, left, right);
+                                activeBinaryExpression = new ActiveBinaryExpression(type, nodeType, left, right, options);
                                 break;
                         }
                         factoryInstances.Add(key, activeBinaryExpression);
@@ -54,12 +54,12 @@ namespace Gear.ActiveExpressions
                 var conversion = binaryExpression.Conversion;
                 if (conversion == null)
                 {
-                    var key = (nodeType, left, right, isLiftedToNull, method);
+                    var key = (nodeType, left, right, isLiftedToNull, method, options);
                     lock (instanceManagementLock)
                     {
                         if (!implementationInstances.TryGetValue(key, out var activeBinaryExpression))
                         {
-                            activeBinaryExpression = new ActiveBinaryExpression(type, nodeType, left, right, isLiftedToNull, method);
+                            activeBinaryExpression = new ActiveBinaryExpression(type, nodeType, left, right, isLiftedToNull, method, options);
                             implementationInstances.Add(key, activeBinaryExpression);
                         }
                         ++activeBinaryExpression.disposalCount;
@@ -74,7 +74,7 @@ namespace Gear.ActiveExpressions
 
         public static bool operator !=(ActiveBinaryExpression a, ActiveBinaryExpression b) => !(a == b);
 
-        protected ActiveBinaryExpression(Type type, ExpressionType nodeType, ActiveExpression left, ActiveExpression right, bool getOperation = true) : base(type, nodeType)
+        protected ActiveBinaryExpression(Type type, ExpressionType nodeType, ActiveExpression left, ActiveExpression right, ActiveExpressionOptions options, bool getOperation = true) : base(type, nodeType, options)
         {
             this.nodeType = nodeType;
             this.left = left;
@@ -86,7 +86,7 @@ namespace Gear.ActiveExpressions
             Evaluate();
         }
 
-        ActiveBinaryExpression(Type type, ExpressionType nodeType, ActiveExpression left, ActiveExpression right, bool isLiftedToNull, MethodInfo method) : base(type, nodeType)
+        ActiveBinaryExpression(Type type, ExpressionType nodeType, ActiveExpression left, ActiveExpression right, bool isLiftedToNull, MethodInfo method, ActiveExpressionOptions options) : base(type, nodeType, options)
         {
             this.left = left;
             this.left.PropertyChanged += LeftPropertyChanged;
@@ -108,25 +108,49 @@ namespace Gear.ActiveExpressions
 
         protected override bool Dispose(bool disposing)
         {
+            var result = false;
             lock (instanceManagementLock)
             {
-                if (--disposalCount > 0)
-                    return false;
-                left.PropertyChanged -= LeftPropertyChanged;
-                left.Dispose();
-                right.PropertyChanged -= RightPropertyChanged;
-                right.Dispose();
-                if (method == null)
-                    factoryInstances.Remove((nodeType, left, right));
-                else
-                    implementationInstances.Remove((nodeType, left, right, isLiftedToNull, method));
-                return true;
+                if (--disposalCount == 0)
+                {
+                    left.PropertyChanged -= LeftPropertyChanged;
+                    left.Dispose();
+                    right.PropertyChanged -= RightPropertyChanged;
+                    right.Dispose();
+                    if (method == null)
+                        factoryInstances.Remove((nodeType, left, right, options));
+                    else
+                        implementationInstances.Remove((nodeType, left, right, isLiftedToNull, method, options));
+                    result = true;
+                }
+            }
+            if (result)
+                DisposeValueIfNecessary();
+            return result;
+        }
+
+        void DisposeValueIfNecessary()
+        {
+            if (method != null && ApplicableOptions.IsMethodReturnValueDisposed(method))
+            {
+                var value = Value;
+                try
+                {
+                    if (value is IDisposable disposable)
+                        disposable.Dispose();
+                    else if (value is IAsyncDisposable asyncDisposable)
+                        asyncDisposable.DisposeAsync().Wait();
+                }
+                catch (Exception ex)
+                {
+                    throw new Exception("Disposal of method return value failed", ex);
+                }
             }
         }
 
         public override bool Equals(object obj) => Equals(obj as ActiveBinaryExpression);
 
-        public bool Equals(ActiveBinaryExpression other) => other?.left == left && other?.method == method && other?.nodeType == nodeType && other?.right == right;
+        public bool Equals(ActiveBinaryExpression other) => other?.left == left && other?.method == method && other?.nodeType == nodeType && other?.right == right && other?.options == options;
 
         protected virtual void Evaluate()
         {
@@ -136,6 +160,7 @@ namespace Gear.ActiveExpressions
             var rightValue = right.Value;
             try
             {
+                DisposeValueIfNecessary();
                 if (leftFault != null)
                     Fault = leftFault;
                 else if (rightFault != null)
@@ -149,7 +174,7 @@ namespace Gear.ActiveExpressions
             }
         }
 
-        public override int GetHashCode() => HashCodes.CombineObjects(typeof(ActiveBinaryExpression), left, method, nodeType, right);
+        public override int GetHashCode() => HashCodes.CombineObjects(typeof(ActiveBinaryExpression), left, method, nodeType, right, options);
 
         void LeftPropertyChanged(object sender, PropertyChangedEventArgs e) => Evaluate();
 

@@ -12,19 +12,19 @@ namespace Gear.ActiveExpressions
     class ActiveIndexExpression : ActiveExpression, IEquatable<ActiveIndexExpression>
     {
         static readonly object instanceManagementLock = new object();
-        static readonly Dictionary<(ActiveExpression @object, PropertyInfo indexer, EquatableList<ActiveExpression> arguments), ActiveIndexExpression> instances = new Dictionary<(ActiveExpression @object, PropertyInfo indexer, EquatableList<ActiveExpression> arguments), ActiveIndexExpression>();
+        static readonly Dictionary<(ActiveExpression @object, PropertyInfo indexer, EquatableList<ActiveExpression> arguments, ActiveExpressionOptions options), ActiveIndexExpression> instances = new Dictionary<(ActiveExpression @object, PropertyInfo indexer, EquatableList<ActiveExpression> arguments, ActiveExpressionOptions options), ActiveIndexExpression>();
 
-        public static ActiveIndexExpression Create(IndexExpression indexExpression)
+        public static ActiveIndexExpression Create(IndexExpression indexExpression, ActiveExpressionOptions options)
         {
-            var @object = Create(indexExpression.Object);
+            var @object = Create(indexExpression.Object, options);
             var indexer = indexExpression.Indexer;
-            var arguments = new EquatableList<ActiveExpression>(indexExpression.Arguments.Select(argument => Create(argument)).ToList());
-            var key = (@object, indexer, arguments);
+            var arguments = new EquatableList<ActiveExpression>(indexExpression.Arguments.Select(argument => Create(argument, options)).ToList());
+            var key = (@object, indexer, arguments, options);
             lock (instanceManagementLock)
             {
                 if (!instances.TryGetValue(key, out var activeIndexExpression))
                 {
-                    activeIndexExpression = new ActiveIndexExpression(indexExpression.Type, @object, indexer, arguments);
+                    activeIndexExpression = new ActiveIndexExpression(indexExpression.Type, @object, indexer, arguments, options);
                     instances.Add(key, activeIndexExpression);
                 }
                 ++activeIndexExpression.disposalCount;
@@ -36,10 +36,11 @@ namespace Gear.ActiveExpressions
 
         public static bool operator !=(ActiveIndexExpression a, ActiveIndexExpression b) => !(a == b);
 
-        ActiveIndexExpression(Type type, ActiveExpression @object, PropertyInfo indexer, EquatableList<ActiveExpression> arguments) : base(type, ExpressionType.Index)
+        ActiveIndexExpression(Type type, ActiveExpression @object, PropertyInfo indexer, EquatableList<ActiveExpression> arguments, ActiveExpressionOptions options) : base(type, ExpressionType.Index, options)
         {
             this.indexer = indexer;
-            fastGetter = GetFastMethodInfo(this.indexer.GetMethod);
+            getMethod = this.indexer.GetMethod;
+            fastGetter = GetFastMethodInfo(getMethod);
             this.@object = @object;
             this.@object.PropertyChanged += ObjectPropertyChanged;
             this.arguments = arguments;
@@ -53,6 +54,7 @@ namespace Gear.ActiveExpressions
         readonly EquatableList<ActiveExpression> arguments;
         int disposalCount;
         readonly FastMethodInfo fastGetter;
+        readonly MethodInfo getMethod;
         readonly PropertyInfo indexer;
         readonly ActiveExpression @object;
         object objectValue;
@@ -61,31 +63,56 @@ namespace Gear.ActiveExpressions
 
         protected override bool Dispose(bool disposing)
         {
+            var result = false;
             lock (instanceManagementLock)
             {
-                if (--disposalCount > 0)
-                    return false;
-                UnsubscribeFromObjectValueNotifications();
-                @object.PropertyChanged -= ObjectPropertyChanged;
-                @object.Dispose();
-                foreach (var argument in arguments)
+                if (--disposalCount == 0)
                 {
-                    argument.PropertyChanged -= ArgumentPropertyChanged;
-                    argument.Dispose();
+                    UnsubscribeFromObjectValueNotifications();
+                    @object.PropertyChanged -= ObjectPropertyChanged;
+                    @object.Dispose();
+                    foreach (var argument in arguments)
+                    {
+                        argument.PropertyChanged -= ArgumentPropertyChanged;
+                        argument.Dispose();
+                    }
+                    instances.Remove((@object, indexer, arguments, options));
+                    result = true;
                 }
-                instances.Remove((@object, indexer, arguments));
-                return true;
+            }
+            if (result)
+                DisposeValueIfNecessary();
+            return result;
+        }
+
+        void DisposeValueIfNecessary()
+        {
+            if (ApplicableOptions.IsMethodReturnValueDisposed(getMethod))
+            {
+                var value = Value;
+                try
+                {
+                    if (value is IDisposable disposable)
+                        disposable.Dispose();
+                    else if (value is IAsyncDisposable asyncDisposable)
+                        asyncDisposable.DisposeAsync().Wait();
+                }
+                catch (Exception ex)
+                {
+                    throw new Exception("Disposal of property value failed", ex);
+                }
             }
         }
 
         public override bool Equals(object obj) => Equals(obj as ActiveIndexExpression);
 
-        public bool Equals(ActiveIndexExpression other) => other?.arguments == arguments && other?.indexer == indexer && other?.@object == @object;
+        public bool Equals(ActiveIndexExpression other) => other?.arguments == arguments && other?.indexer == indexer && other?.@object == @object && other?.options == options;
 
         void Evaluate()
         {
             try
             {
+                DisposeValueIfNecessary();
                 var objectFault = @object.Fault;
                 var argumentFault = arguments.Select(argument => argument.Fault).Where(fault => fault != null).FirstOrDefault();
                 if (objectFault != null)
@@ -110,7 +137,7 @@ namespace Gear.ActiveExpressions
             }
         }
 
-        public override int GetHashCode() => HashCodes.CombineObjects(typeof(ActiveIndexExpression), arguments, indexer, @object);
+        public override int GetHashCode() => HashCodes.CombineObjects(typeof(ActiveIndexExpression), arguments, indexer, @object, options);
 
         void ObjectPropertyChanged(object sender, PropertyChangedEventArgs e) => Evaluate();
 

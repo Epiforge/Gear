@@ -11,18 +11,18 @@ namespace Gear.ActiveExpressions
     {
         static readonly object[] emptyArray = new object[0];
         static readonly object instanceManagementLock = new object();
-        static readonly Dictionary<(ActiveExpression expression, MemberInfo member), ActiveMemberExpression> instances = new Dictionary<(ActiveExpression expression, MemberInfo member), ActiveMemberExpression>();
+        static readonly Dictionary<(ActiveExpression expression, MemberInfo member, ActiveExpressionOptions options), ActiveMemberExpression> instances = new Dictionary<(ActiveExpression expression, MemberInfo member, ActiveExpressionOptions options), ActiveMemberExpression>();
 
-        public static ActiveMemberExpression Create(MemberExpression memberExpression)
+        public static ActiveMemberExpression Create(MemberExpression memberExpression, ActiveExpressionOptions options)
         {
-            var expression = Create(memberExpression.Expression);
+            var expression = Create(memberExpression.Expression, options);
             var member = memberExpression.Member;
-            var key = (expression, member);
+            var key = (expression, member, options);
             lock (instanceManagementLock)
             {
                 if (!instances.TryGetValue(key, out var activeMemberExpression))
                 {
-                    activeMemberExpression = new ActiveMemberExpression(memberExpression.Type, expression, member);
+                    activeMemberExpression = new ActiveMemberExpression(memberExpression.Type, expression, member, options);
                     instances.Add(key, activeMemberExpression);
                 }
                 ++activeMemberExpression.disposalCount;
@@ -34,7 +34,7 @@ namespace Gear.ActiveExpressions
 
         public static bool operator !=(ActiveMemberExpression a, ActiveMemberExpression b) => !(a == b);
 
-        ActiveMemberExpression(Type type, ActiveExpression expression, MemberInfo member) : base(type, ExpressionType.MemberAccess)
+        ActiveMemberExpression(Type type, ActiveExpression expression, MemberInfo member, ActiveExpressionOptions options) : base(type, ExpressionType.MemberAccess, options)
         {
             this.expression = expression;
             expressionValue = this.expression.Value;
@@ -46,7 +46,9 @@ namespace Gear.ActiveExpressions
                     this.field = field;
                     break;
                 case PropertyInfo property:
-                    fastGetter = GetFastMethodInfo(property.GetMethod);
+                    this.property = property;
+                    getMethod = property.GetMethod;
+                    fastGetter = GetFastMethodInfo(getMethod);
                     SubscribeToExpressionValueNotifications();
                     break;
                 case null:
@@ -62,31 +64,58 @@ namespace Gear.ActiveExpressions
         object expressionValue;
         readonly FastMethodInfo fastGetter;
         readonly FieldInfo field;
+        readonly MethodInfo getMethod;
         readonly MemberInfo member;
+        readonly PropertyInfo property;
 
         protected override bool Dispose(bool disposing)
         {
+            var result = false;
             lock (instanceManagementLock)
             {
-                if (--disposalCount > 0)
-                    return false;
-                if (fastGetter != null)
-                    UnsubscribeFromExpressionValueNotifications();
-                expression.PropertyChanged -= ExpressionPropertyChanged;
-                expression.Dispose();
-                instances.Remove((expression, member));
-                return true;
+                if (--disposalCount == 0)
+                {
+                    if (fastGetter != null)
+                        UnsubscribeFromExpressionValueNotifications();
+                    expression.PropertyChanged -= ExpressionPropertyChanged;
+                    expression.Dispose();
+                    instances.Remove((expression, member, options));
+                    result = true;
+                }
+            }
+            if (result)
+                DisposeValueIfNecessary();
+            return result;
+        }
+
+        void DisposeValueIfNecessary()
+        {
+            if (property != null && ApplicableOptions.IsMethodReturnValueDisposed(getMethod))
+            {
+                var value = Value;
+                try
+                {
+                    if (value is IDisposable disposable)
+                        disposable.Dispose();
+                    else if (value is IAsyncDisposable asyncDisposable)
+                        asyncDisposable.DisposeAsync().Wait();
+                }
+                catch (Exception ex)
+                {
+                    throw new Exception("Disposal of property value failed", ex);
+                }
             }
         }
 
         public override bool Equals(object obj) => Equals(obj as ActiveMemberExpression);
 
-        public bool Equals(ActiveMemberExpression other) => other?.expression == expression && other?.member == member;
+        public bool Equals(ActiveMemberExpression other) => other?.expression == expression && other?.member == member && other?.options == options;
 
         void Evaluate()
         {
             try
             {
+                DisposeValueIfNecessary();
                 var expressionFault = expression.Fault;
                 if (expressionFault != null)
                     Fault = expressionFault;
@@ -121,7 +150,7 @@ namespace Gear.ActiveExpressions
                 Evaluate();
         }
 
-        public override int GetHashCode() => HashCodes.CombineObjects(typeof(ActiveMemberExpression), expression, member);
+        public override int GetHashCode() => HashCodes.CombineObjects(typeof(ActiveMemberExpression), expression, member, options);
 
         void SubscribeToExpressionValueNotifications()
         {

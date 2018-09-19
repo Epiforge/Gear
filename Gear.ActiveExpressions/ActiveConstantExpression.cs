@@ -31,7 +31,7 @@ namespace Gear.ActiveExpressions
 
         public static bool operator !=(ActiveConstantExpression a, ActiveConstantExpression b) => !(a == b);
 
-        ActiveConstantExpression(Type type, object value) : base(type, ExpressionType.Constant) => Value = value;
+        ActiveConstantExpression(Type type, object value) : base(type, ExpressionType.Constant, null) => Value = value;
 
         int disposalCount;
 

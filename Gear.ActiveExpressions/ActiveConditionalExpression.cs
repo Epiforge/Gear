@@ -9,19 +9,19 @@ namespace Gear.ActiveExpressions
     class ActiveConditionalExpression : ActiveExpression, IEquatable<ActiveConditionalExpression>
     {
         static readonly object instanceManagementLock = new object();
-        static readonly Dictionary<(ActiveExpression test, ActiveExpression ifTrue, ActiveExpression ifFalse), ActiveConditionalExpression> instances = new Dictionary<(ActiveExpression test, ActiveExpression ifTrue, ActiveExpression ifFalse), ActiveConditionalExpression>();
+        static readonly Dictionary<(ActiveExpression test, ActiveExpression ifTrue, ActiveExpression ifFalse, ActiveExpressionOptions options), ActiveConditionalExpression> instances = new Dictionary<(ActiveExpression test, ActiveExpression ifTrue, ActiveExpression ifFalse, ActiveExpressionOptions options), ActiveConditionalExpression>();
 
-        public static ActiveConditionalExpression Create(ConditionalExpression conditionalExpression)
+        public static ActiveConditionalExpression Create(ConditionalExpression conditionalExpression, ActiveExpressionOptions options)
         {
-            var test = Create(conditionalExpression.Test);
-            var ifTrue = Create(conditionalExpression.IfTrue);
-            var ifFalse = Create(conditionalExpression.IfFalse);
-            var key = (test, ifTrue, ifFalse);
+            var test = Create(conditionalExpression.Test, options);
+            var ifTrue = Create(conditionalExpression.IfTrue, options);
+            var ifFalse = Create(conditionalExpression.IfFalse, options);
+            var key = (test, ifTrue, ifFalse, options);
             lock (instanceManagementLock)
             {
                 if (!instances.TryGetValue(key, out var activeConditionalExpression))
                 {
-                    activeConditionalExpression = new ActiveConditionalExpression(conditionalExpression.Type, test, ifTrue, ifFalse);
+                    activeConditionalExpression = new ActiveConditionalExpression(conditionalExpression.Type, test, ifTrue, ifFalse, options);
                     instances.Add(key, activeConditionalExpression);
                 }
                 ++activeConditionalExpression.disposalCount;
@@ -33,7 +33,7 @@ namespace Gear.ActiveExpressions
 
         public static bool operator !=(ActiveConditionalExpression a, ActiveConditionalExpression b) => !(a == b);
 
-        ActiveConditionalExpression(Type type, ActiveExpression test, ActiveExpression ifTrue, ActiveExpression ifFalse) : base(type, ExpressionType.Conditional)
+        ActiveConditionalExpression(Type type, ActiveExpression test, ActiveExpression ifTrue, ActiveExpression ifFalse, ActiveExpressionOptions options) : base(type, ExpressionType.Conditional, options)
         {
             this.test = test;
             this.test.PropertyChanged += TestPropertyChanged;
@@ -79,16 +79,16 @@ namespace Gear.ActiveExpressions
                 ifTrue.Dispose();
                 ifFalse.PropertyChanged -= IfFalsePropertyChanged;
                 ifFalse.Dispose();
-                instances.Remove((test, ifTrue, ifFalse));
+                instances.Remove((test, ifTrue, ifFalse, options));
                 return true;
             }
         }
 
         public override bool Equals(object obj) => Equals(obj as ActiveConditionalExpression);
 
-        public bool Equals(ActiveConditionalExpression other) => other?.ifFalse == ifFalse && other?.ifTrue == ifTrue && other?.test == test;
+        public bool Equals(ActiveConditionalExpression other) => other?.ifFalse == ifFalse && other?.ifTrue == ifTrue && other?.test == test && other?.options == options;
 
-        public override int GetHashCode() => HashCodes.CombineObjects(typeof(ActiveConditionalExpression), ifFalse, ifTrue, test);
+        public override int GetHashCode() => HashCodes.CombineObjects(typeof(ActiveConditionalExpression), ifFalse, ifTrue, test, options);
 
         void IfFalsePropertyChanged(object sender, PropertyChangedEventArgs e)
         {

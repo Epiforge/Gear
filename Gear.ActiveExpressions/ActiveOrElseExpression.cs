@@ -10,7 +10,7 @@ namespace Gear.ActiveExpressions
 
         public static bool operator !=(ActiveOrElseExpression a, ActiveOrElseExpression b) => !(a == b);
 
-        public ActiveOrElseExpression(ActiveExpression left, ActiveExpression right) : base(typeof(bool), ExpressionType.OrElse, left, right, false)
+        public ActiveOrElseExpression(ActiveExpression left, ActiveExpression right) : base(typeof(bool), ExpressionType.OrElse, left, right, null, false)
         {
         }
 

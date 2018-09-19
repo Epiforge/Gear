@@ -11,21 +11,21 @@ namespace Gear.ActiveExpressions
     class ActiveMethodCallExpression : ActiveExpression, IEquatable<ActiveMethodCallExpression>
     {
         static readonly object instanceManagementLock = new object();
-        static readonly Dictionary<(ActiveExpression @object, MethodInfo method, EquatableList<ActiveExpression> arguments), ActiveMethodCallExpression> instanceInstances = new Dictionary<(ActiveExpression @object, MethodInfo method, EquatableList<ActiveExpression> arguments), ActiveMethodCallExpression>();
-        static readonly Dictionary<(MethodInfo method, EquatableList<ActiveExpression> arguments), ActiveMethodCallExpression> staticInstances = new Dictionary<(MethodInfo method, EquatableList<ActiveExpression> arguments), ActiveMethodCallExpression>();
+        static readonly Dictionary<(ActiveExpression @object, MethodInfo method, EquatableList<ActiveExpression> arguments, ActiveExpressionOptions options), ActiveMethodCallExpression> instanceInstances = new Dictionary<(ActiveExpression @object, MethodInfo method, EquatableList<ActiveExpression> arguments, ActiveExpressionOptions options), ActiveMethodCallExpression>();
+        static readonly Dictionary<(MethodInfo method, EquatableList<ActiveExpression> arguments, ActiveExpressionOptions options), ActiveMethodCallExpression> staticInstances = new Dictionary<(MethodInfo method, EquatableList<ActiveExpression> arguments, ActiveExpressionOptions options), ActiveMethodCallExpression>();
 
-        public static ActiveMethodCallExpression Create(MethodCallExpression methodCallExpression)
+        public static ActiveMethodCallExpression Create(MethodCallExpression methodCallExpression, ActiveExpressionOptions options)
         {
             if (methodCallExpression.Object == null)
             {
                 var method = methodCallExpression.Method;
-                var arguments = new EquatableList<ActiveExpression>(methodCallExpression.Arguments.Select(argument => Create(argument)).ToList());
-                var key = (method, arguments);
+                var arguments = new EquatableList<ActiveExpression>(methodCallExpression.Arguments.Select(argument => Create(argument, options)).ToList());
+                var key = (method, arguments, options);
                 lock (instanceManagementLock)
                 {
                     if (!staticInstances.TryGetValue(key, out var activeMethodCallExpression))
                     {
-                        activeMethodCallExpression = new ActiveMethodCallExpression(methodCallExpression.Type, method, arguments);
+                        activeMethodCallExpression = new ActiveMethodCallExpression(methodCallExpression.Type, method, arguments, options);
                         staticInstances.Add(key, activeMethodCallExpression);
                     }
                     ++activeMethodCallExpression.disposalCount;
@@ -34,15 +34,15 @@ namespace Gear.ActiveExpressions
             }
             else
             {
-                var @object = Create(methodCallExpression.Object);
+                var @object = Create(methodCallExpression.Object, options);
                 var method = methodCallExpression.Method;
-                var arguments = new EquatableList<ActiveExpression>(methodCallExpression.Arguments.Select(argument => Create(argument)).ToList());
-                var key = (@object, method, arguments);
+                var arguments = new EquatableList<ActiveExpression>(methodCallExpression.Arguments.Select(argument => Create(argument, options)).ToList());
+                var key = (@object, method, arguments, options);
                 lock (instanceManagementLock)
                 {
                     if (!instanceInstances.TryGetValue(key, out var activeMethodCallExpression))
                     {
-                        activeMethodCallExpression = new ActiveMethodCallExpression(methodCallExpression.Type, @object, method, arguments);
+                        activeMethodCallExpression = new ActiveMethodCallExpression(methodCallExpression.Type, @object, method, arguments, options);
                         instanceInstances.Add(key, activeMethodCallExpression);
                     }
                     ++activeMethodCallExpression.disposalCount;
@@ -55,7 +55,7 @@ namespace Gear.ActiveExpressions
 
         public static bool operator !=(ActiveMethodCallExpression a, ActiveMethodCallExpression b) => !(a == b);
 
-        ActiveMethodCallExpression(Type type, ActiveExpression @object, MethodInfo method, EquatableList<ActiveExpression> arguments) : base(type, ExpressionType.Call)
+        ActiveMethodCallExpression(Type type, ActiveExpression @object, MethodInfo method, EquatableList<ActiveExpression> arguments, ActiveExpressionOptions options) : base(type, ExpressionType.Call, options)
         {
             this.method = method;
             fastMethod = GetFastMethodInfo(this.method);
@@ -67,7 +67,7 @@ namespace Gear.ActiveExpressions
             Evaluate();
         }
 
-        ActiveMethodCallExpression(Type type, MethodInfo method, EquatableList<ActiveExpression> arguments) : base(type, ExpressionType.Call)
+        ActiveMethodCallExpression(Type type, MethodInfo method, EquatableList<ActiveExpression> arguments, ActiveExpressionOptions options) : base(type, ExpressionType.Call, options)
         {
             this.method = method;
             fastMethod = GetFastMethodInfo(this.method);
@@ -87,36 +87,61 @@ namespace Gear.ActiveExpressions
 
         protected override bool Dispose(bool disposing)
         {
+            var result = false;
             lock (instanceManagementLock)
             {
-                if (--disposalCount > 0)
-                    return false;
-                if (@object != null)
+                if (--disposalCount == 0)
                 {
-                    @object.PropertyChanged -= ObjectPropertyChanged;
-                    @object.Dispose();
+                    if (@object != null)
+                    {
+                        @object.PropertyChanged -= ObjectPropertyChanged;
+                        @object.Dispose();
+                    }
+                    foreach (var argument in arguments)
+                    {
+                        argument.PropertyChanged -= ArgumentPropertyChanged;
+                        argument.Dispose();
+                    }
+                    if (@object == null)
+                        staticInstances.Remove((method, arguments, options));
+                    else
+                        instanceInstances.Remove((@object, method, arguments, options));
+                    result = true;
                 }
-                foreach (var argument in arguments)
+            }
+            if (result)
+                DisposeValueIfNecessary();
+            return result;
+        }
+
+        void DisposeValueIfNecessary()
+        {
+            if (ApplicableOptions.IsMethodReturnValueDisposed(method))
+            {
+                var value = Value;
+                try
                 {
-                    argument.PropertyChanged -= ArgumentPropertyChanged;
-                    argument.Dispose();
+                    if (value is IDisposable disposable)
+                        disposable.Dispose();
+                    else if (value is IAsyncDisposable asyncDisposable)
+                        asyncDisposable.DisposeAsync().Wait();
                 }
-                if (@object == null)
-                    staticInstances.Remove((method, arguments));
-                else
-                    instanceInstances.Remove((@object, method, arguments));
-                return true;
+                catch (Exception ex)
+                {
+                    throw new Exception("Disposal of method return value failed", ex);
+                }
             }
         }
 
         public override bool Equals(object obj) => Equals(obj as ActiveMethodCallExpression);
 
-        public bool Equals(ActiveMethodCallExpression other) => other?.arguments == arguments && other?.method == method && other?.@object == @object;
+        public bool Equals(ActiveMethodCallExpression other) => other?.arguments == arguments && other?.method == method && other?.@object == @object && other?.options == options;
 
         void Evaluate()
         {
             try
             {
+                DisposeValueIfNecessary();
                 var objectFault = @object?.Fault;
                 var argumentFault = arguments.Select(argument => argument.Fault).Where(fault => fault != null).FirstOrDefault();
                 if (objectFault != null)
@@ -132,7 +157,7 @@ namespace Gear.ActiveExpressions
             }
         }
 
-        public override int GetHashCode() => HashCodes.CombineObjects(typeof(ActiveMethodCallExpression), arguments, method, @object);
+        public override int GetHashCode() => HashCodes.CombineObjects(typeof(ActiveMethodCallExpression), arguments, method, @object, options);
 
         void ObjectPropertyChanged(object sender, PropertyChangedEventArgs e) => Evaluate();
     }

@@ -23,26 +23,26 @@ namespace Gear.ActiveExpressions
 
         protected static FastMethodInfo GetFastMethodInfo(MethodInfo methodInfo) => compiledMethods.GetOrAdd(methodInfo, CreateFastMethodInfo);
 
-        internal static ActiveExpression Create(Expression expression)
+        internal static ActiveExpression Create(Expression expression, ActiveExpressionOptions options)
         {
             switch (expression)
             {
                 case BinaryExpression binaryExpression:
-                    return ActiveBinaryExpression.Create(binaryExpression);
+                    return ActiveBinaryExpression.Create(binaryExpression, options);
                 case ConditionalExpression conditionalExpression:
-                    return ActiveConditionalExpression.Create(conditionalExpression);
+                    return ActiveConditionalExpression.Create(conditionalExpression, options);
                 case ConstantExpression constantExpression:
                     return ActiveConstantExpression.Create(constantExpression);
                 case IndexExpression indexExpression:
-                    return ActiveIndexExpression.Create(indexExpression);
+                    return ActiveIndexExpression.Create(indexExpression, options);
                 case MemberExpression memberExpression:
-                    return ActiveMemberExpression.Create(memberExpression);
+                    return ActiveMemberExpression.Create(memberExpression, options);
                 case MethodCallExpression methodCallExpression:
-                    return ActiveMethodCallExpression.Create(methodCallExpression);
+                    return ActiveMethodCallExpression.Create(methodCallExpression, options);
                 case NewExpression newExpression:
-                    return ActiveNewExpression.Create(newExpression);
+                    return ActiveNewExpression.Create(newExpression, options);
                 case UnaryExpression unaryExpression:
-                    return ActiveUnaryExpression.Create(unaryExpression);
+                    return ActiveUnaryExpression.Create(unaryExpression, options);
                 case null:
                     throw new ArgumentNullException(nameof(expression));
                 default:
@@ -58,7 +58,18 @@ namespace Gear.ActiveExpressions
         /// <param name="arguments">The arguments</param>
         /// <returns>The active expression</returns>
         public static ActiveExpression<TResult> Create<TResult>(LambdaExpression lambdaExpression, params object[] arguments) =>
-            ActiveExpression<TResult>.Create(lambdaExpression, arguments);
+            CreateWithOptions<TResult>(lambdaExpression, null, arguments);
+
+        /// <summary>
+        /// Creates an active expression using a specified lambda expression and arguments
+        /// </summary>
+        /// <typeparam name="TResult">The type that <paramref name="lambdaExpression"/> returns</typeparam>
+        /// <param name="lambdaExpression">The lambda expression</param>
+        /// <param name="options">Active expression options to use instead of <see cref="ActiveExpressionOptions.Default"/></param>
+        /// <param name="arguments">The arguments</param>
+        /// <returns>The active expression</returns>
+        public static ActiveExpression<TResult> CreateWithOptions<TResult>(LambdaExpression lambdaExpression, ActiveExpressionOptions options, params object[] arguments) =>
+            ActiveExpression<TResult>.Create(lambdaExpression, options, arguments);
 
         /// <summary>
         /// Creates an active expression using a specified strongly-typed lambda expression with no arguments
@@ -66,10 +77,10 @@ namespace Gear.ActiveExpressions
         /// <typeparam name="TArg">The type of the argument.</typeparam>
         /// <typeparam name="TResult">The type that <paramref name="expression"/> returns</typeparam>
         /// <param name="expression">The strongly-typed lambda expression</param>
-        /// <param name="arg">The argument</param>
+        /// <param name="options">Active expression options to use instead of <see cref="ActiveExpressionOptions.Default"/></param>
         /// <returns>The active expression</returns>
-        public static ActiveExpression<TResult> Create<TResult>(Expression<Func<TResult>> expression) =>
-            ActiveExpression<TResult>.Create(expression);
+        public static ActiveExpression<TResult> Create<TResult>(Expression<Func<TResult>> expression, ActiveExpressionOptions options = null) =>
+            ActiveExpression<TResult>.Create(expression, options);
 
         /// <summary>
         /// Creates an active expression using a specified strongly-typed lambda expression and one argument
@@ -78,9 +89,10 @@ namespace Gear.ActiveExpressions
         /// <typeparam name="TResult">The type that <paramref name="expression"/> returns</typeparam>
         /// <param name="expression">The strongly-typed lambda expression</param>
         /// <param name="arg">The argument</param>
+        /// <param name="options">Active expression options to use instead of <see cref="ActiveExpressionOptions.Default"/></param>
         /// <returns>The active expression</returns>
-        public static ActiveExpression<TArg, TResult> Create<TArg, TResult>(Expression<Func<TArg, TResult>> expression, TArg arg) =>
-            ActiveExpression<TArg, TResult>.Create(expression, arg);
+        public static ActiveExpression<TArg, TResult> Create<TArg, TResult>(Expression<Func<TArg, TResult>> expression, TArg arg, ActiveExpressionOptions options = null) =>
+            ActiveExpression<TArg, TResult>.Create(expression, arg, options);
 
         /// <summary>
         /// Creates an active expression using a specified strongly-typed lambda expression and two arguments
@@ -91,9 +103,10 @@ namespace Gear.ActiveExpressions
         /// <param name="expression">The strongly-typed lambda expression</param>
         /// <param name="arg1">The first argument</param>
         /// <param name="arg2">The second argument</param>
+        /// <param name="options">Active expression options to use instead of <see cref="ActiveExpressionOptions.Default"/></param>
         /// <returns>The active expression</returns>
-        public static ActiveExpression<TArg1, TArg2, TResult> Create<TArg1, TArg2, TResult>(Expression<Func<TArg1, TArg2, TResult>> expression, TArg1 arg1, TArg2 arg2) =>
-            ActiveExpression<TArg1, TArg2, TResult>.Create(expression, arg1, arg2);
+        public static ActiveExpression<TArg1, TArg2, TResult> Create<TArg1, TArg2, TResult>(Expression<Func<TArg1, TArg2, TResult>> expression, TArg1 arg1, TArg2 arg2, ActiveExpressionOptions options = null) =>
+            ActiveExpression<TArg1, TArg2, TResult>.Create(expression, arg1, arg2, options);
 
         /// <summary>
         /// Creates an active expression using a specified strongly-typed lambda expression and three arguments
@@ -106,9 +119,10 @@ namespace Gear.ActiveExpressions
         /// <param name="arg1">The first argument</param>
         /// <param name="arg2">The second argument</param>
         /// <param name="arg3">The third argument</param>
+        /// <param name="options">Active expression options to use instead of <see cref="ActiveExpressionOptions.Default"/></param>
         /// <returns>The active expression</returns>
-        public static ActiveExpression<TArg1, TArg2, TArg3, TResult> Create<TArg1, TArg2, TArg3, TResult>(Expression<Func<TArg1, TArg2, TArg3, TResult>> expression, TArg1 arg1, TArg2 arg2, TArg3 arg3) =>
-            ActiveExpression<TArg1, TArg2, TArg3, TResult>.Create(expression, arg1, arg2, arg3);
+        public static ActiveExpression<TArg1, TArg2, TArg3, TResult> Create<TArg1, TArg2, TArg3, TResult>(Expression<Func<TArg1, TArg2, TArg3, TResult>> expression, TArg1 arg1, TArg2 arg2, TArg3 arg3, ActiveExpressionOptions options = null) =>
+            ActiveExpression<TArg1, TArg2, TArg3, TResult>.Create(expression, arg1, arg2, arg3, options);
 
         internal static Expression ReplaceParameters(LambdaExpression lambdaExpression, params object[] arguments)
         {
@@ -153,14 +167,18 @@ namespace Gear.ActiveExpressions
             }
         }
 
-        public ActiveExpression(Type type, ExpressionType nodeType)
+        public ActiveExpression(Type type, ExpressionType nodeType, ActiveExpressionOptions options)
         {
             Type = type;
             NodeType = nodeType;
+            this.options = options;
         }
 
         Exception fault;
         object val;
+        protected readonly ActiveExpressionOptions options;
+
+        protected ActiveExpressionOptions ApplicableOptions => options ?? ActiveExpressionOptions.Default;
 
         public Exception Fault
         {
@@ -197,18 +215,18 @@ namespace Gear.ActiveExpressions
     public class ActiveExpression<TResult> : OverridableSyncDisposablePropertyChangeNotifier, IEquatable<ActiveExpression<TResult>>
     {
         static readonly object instanceManagementLock = new object();
-        static readonly Dictionary<(string expressionString, EquatableList<object> arguments), ActiveExpression<TResult>> instances = new Dictionary<(string expressionString, EquatableList<object> arguments), ActiveExpression<TResult>>();
+        static readonly Dictionary<(string expressionString, EquatableList<object> arguments, ActiveExpressionOptions options), ActiveExpression<TResult>> instances = new Dictionary<(string expressionString, EquatableList<object> arguments, ActiveExpressionOptions options), ActiveExpression<TResult>>();
 
-        internal static ActiveExpression<TResult> Create(LambdaExpression expression, params object[] args)
+        internal static ActiveExpression<TResult> Create(LambdaExpression expression, ActiveExpressionOptions options, params object[] args)
         {
             var expressionString = expression.ToString();
             var arguments = new EquatableList<object>(args);
-            var key = (expressionString, arguments);
+            var key = (expressionString, arguments, options);
             lock (instanceManagementLock)
             {
                 if (!instances.TryGetValue(key, out var activeExpression))
                 {
-                    activeExpression = new ActiveExpression<TResult>(expressionString, arguments, ActiveExpression.Create(ActiveExpression.ReplaceParameters(expression, args)));
+                    activeExpression = new ActiveExpression<TResult>(expressionString, arguments, ActiveExpression.Create(ActiveExpression.ReplaceParameters(expression, args), options), options);
                     instances.Add(key, activeExpression);
                 }
                 ++activeExpression.disposalCount;
@@ -220,11 +238,12 @@ namespace Gear.ActiveExpressions
 
         public static bool operator !=(ActiveExpression<TResult> a, ActiveExpression<TResult> b) => !(a == b);
 
-        protected ActiveExpression(string expressionString, EquatableList<object> arguments, ActiveExpression expression)
+        protected ActiveExpression(string expressionString, EquatableList<object> arguments, ActiveExpression expression, ActiveExpressionOptions options)
         {
             this.expressionString = expressionString;
             this.arguments = arguments;
             this.expression = expression;
+            Options = options;
             fault = this.expression.Fault;
             val = (TResult)this.expression.Value;
             this.expression.PropertyChanged += ExpressionPropertyChanged;
@@ -245,14 +264,14 @@ namespace Gear.ActiveExpressions
                     return false;
                 expression.PropertyChanged -= ExpressionPropertyChanged;
                 expression.Dispose();
-                instances.Remove((expressionString, arguments));
+                instances.Remove((expressionString, arguments, Options));
                 return true;
             }
         }
 
         public override bool Equals(object obj) => Equals(obj as ActiveExpression<TResult>);
 
-        public bool Equals(ActiveExpression<TResult> other) => other?.arguments == arguments && other?.expression == expression;
+        public bool Equals(ActiveExpression<TResult> other) => other?.arguments == arguments && other?.expression == expression && other?.Options == Options;
 
         void ExpressionPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
@@ -262,7 +281,7 @@ namespace Gear.ActiveExpressions
                 Value = expression.Value is TResult typedValue ? typedValue : default;
         }
 
-        public override int GetHashCode() => HashCodes.CombineObjects(typeof(ActiveExpression<TResult>), arguments, expression);
+        public override int GetHashCode() => HashCodes.CombineObjects(typeof(ActiveExpression<TResult>), arguments, expression, Options);
 
         /// <summary>
         /// Gets the arguments that were passed to the lambda expression
@@ -277,6 +296,11 @@ namespace Gear.ActiveExpressions
             get => fault;
             private set => SetBackedProperty(ref fault, in value);
         }
+
+        /// <summary>
+        /// Gets the options used when creating the active expression
+        /// </summary>
+        public ActiveExpressionOptions Options { get; }
 
         /// <summary>
         /// Gets the result of evaluating the lambda expression
@@ -297,17 +321,17 @@ namespace Gear.ActiveExpressions
     public class ActiveExpression<TArg, TResult> : OverridableSyncDisposablePropertyChangeNotifier, IEquatable<ActiveExpression<TArg, TResult>>
     {
         static readonly object instanceManagementLock = new object();
-        static readonly Dictionary<(string expressionString, TArg arg), ActiveExpression<TArg, TResult>> instances = new Dictionary<(string expressionString, TArg arg), ActiveExpression<TArg, TResult>>();
+        static readonly Dictionary<(string expressionString, TArg arg, ActiveExpressionOptions options), ActiveExpression<TArg, TResult>> instances = new Dictionary<(string expressionString, TArg arg, ActiveExpressionOptions options), ActiveExpression<TArg, TResult>>();
 
-        internal static ActiveExpression<TArg, TResult> Create(LambdaExpression expression, TArg arg)
+        internal static ActiveExpression<TArg, TResult> Create(LambdaExpression expression, TArg arg, ActiveExpressionOptions options = null)
         {
             var expressionString = expression.ToString();
-            var key = (expressionString, arg);
+            var key = (expressionString, arg, options);
             lock (instanceManagementLock)
             {
                 if (!instances.TryGetValue(key, out var activeExpression))
                 {
-                    activeExpression = new ActiveExpression<TArg, TResult>(expressionString, arg, ActiveExpression.Create(ActiveExpression.ReplaceParameters(expression, arg)));
+                    activeExpression = new ActiveExpression<TArg, TResult>(expressionString, arg, ActiveExpression.Create(ActiveExpression.ReplaceParameters(expression, arg), options), options);
                     instances.Add(key, activeExpression);
                 }
                 ++activeExpression.disposalCount;
@@ -319,11 +343,12 @@ namespace Gear.ActiveExpressions
 
         public static bool operator !=(ActiveExpression<TArg, TResult> a, ActiveExpression<TArg, TResult> b) => !(a == b);
 
-        protected ActiveExpression(string expressionString, TArg arg, ActiveExpression expression)
+        protected ActiveExpression(string expressionString, TArg arg, ActiveExpression expression, ActiveExpressionOptions options)
         {
             this.expressionString = expressionString;
             Arg = arg;
             this.expression = expression;
+            Options = options;
             fault = this.expression.Fault;
             val = (TResult)this.expression.Value;
             this.expression.PropertyChanged += ExpressionPropertyChanged;
@@ -343,14 +368,14 @@ namespace Gear.ActiveExpressions
                     return false;
                 expression.PropertyChanged -= ExpressionPropertyChanged;
                 expression.Dispose();
-                instances.Remove((expressionString, Arg));
+                instances.Remove((expressionString, Arg, Options));
                 return true;
             }
         }
 
         public override bool Equals(object obj) => Equals(obj as ActiveExpression<TArg, TResult>);
 
-        public bool Equals(ActiveExpression<TArg, TResult> other) => other != null && other.expression == expression && EqualityComparer<TArg>.Default.Equals(other.Arg, Arg);
+        public bool Equals(ActiveExpression<TArg, TResult> other) => other != null && other.expression == expression && EqualityComparer<TArg>.Default.Equals(other.Arg, Arg) && other.Options == Options;
 
         void ExpressionPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
@@ -360,7 +385,7 @@ namespace Gear.ActiveExpressions
                 Value = expression.Value is TResult typedValue ? typedValue : default;
         }
 
-        public override int GetHashCode() => HashCodes.CombineObjects(typeof(ActiveExpression<TArg, TResult>), expression, Arg);
+        public override int GetHashCode() => HashCodes.CombineObjects(typeof(ActiveExpression<TArg, TResult>), expression, Arg, Options);
 
         /// <summary>
         /// Gets the argument that was passed to the lambda expression
@@ -375,6 +400,11 @@ namespace Gear.ActiveExpressions
             get => fault;
             private set => SetBackedProperty(ref fault, in value);
         }
+
+        /// <summary>
+        /// Gets the options used when creating the active expression
+        /// </summary>
+        public ActiveExpressionOptions Options { get; }
 
         /// <summary>
         /// Gets the result of evaluating the lambda expression
@@ -396,17 +426,17 @@ namespace Gear.ActiveExpressions
     public class ActiveExpression<TArg1, TArg2, TResult> : OverridableSyncDisposablePropertyChangeNotifier, IEquatable<ActiveExpression<TArg1, TArg2, TResult>>
     {
         static readonly object instanceManagementLock = new object();
-        static readonly Dictionary<(string expressionString, TArg1 arg1, TArg2 arg2), ActiveExpression<TArg1, TArg2, TResult>> instances = new Dictionary<(string expressionString, TArg1 arg1, TArg2 arg2), ActiveExpression<TArg1, TArg2, TResult>>();
+        static readonly Dictionary<(string expressionString, TArg1 arg1, TArg2 arg2, ActiveExpressionOptions options), ActiveExpression<TArg1, TArg2, TResult>> instances = new Dictionary<(string expressionString, TArg1 arg1, TArg2 arg2, ActiveExpressionOptions options), ActiveExpression<TArg1, TArg2, TResult>>();
 
-        internal static ActiveExpression<TArg1, TArg2, TResult> Create(LambdaExpression expression, TArg1 arg1, TArg2 arg2)
+        internal static ActiveExpression<TArg1, TArg2, TResult> Create(LambdaExpression expression, TArg1 arg1, TArg2 arg2, ActiveExpressionOptions options = null)
         {
             var expressionString = expression.ToString();
-            var key = (expressionString, arg1, arg2);
+            var key = (expressionString, arg1, arg2, options);
             lock (instanceManagementLock)
             {
                 if (!instances.TryGetValue(key, out var activeExpression))
                 {
-                    activeExpression = new ActiveExpression<TArg1, TArg2, TResult>(expressionString, arg1, arg2, ActiveExpression.Create(ActiveExpression.ReplaceParameters(expression, arg1, arg2)));
+                    activeExpression = new ActiveExpression<TArg1, TArg2, TResult>(expressionString, arg1, arg2, ActiveExpression.Create(ActiveExpression.ReplaceParameters(expression, arg1, arg2), options), options);
                     instances.Add(key, activeExpression);
                 }
                 ++activeExpression.disposalCount;
@@ -418,12 +448,13 @@ namespace Gear.ActiveExpressions
 
         public static bool operator !=(ActiveExpression<TArg1, TArg2, TResult> a, ActiveExpression<TArg1, TArg2, TResult> b) => !(a == b);
 
-        protected ActiveExpression(string expressionString, TArg1 arg1, TArg2 arg2, ActiveExpression expression)
+        protected ActiveExpression(string expressionString, TArg1 arg1, TArg2 arg2, ActiveExpression expression, ActiveExpressionOptions options)
         {
             this.expressionString = expressionString;
             Arg1 = arg1;
             Arg2 = arg2;
             this.expression = expression;
+            Options = options;
             fault = this.expression.Fault;
             val = (TResult)this.expression.Value;
             this.expression.PropertyChanged += ExpressionPropertyChanged;
@@ -443,14 +474,14 @@ namespace Gear.ActiveExpressions
                     return false;
                 expression.PropertyChanged -= ExpressionPropertyChanged;
                 expression.Dispose();
-                instances.Remove((expressionString, Arg1, Arg2));
+                instances.Remove((expressionString, Arg1, Arg2, Options));
                 return true;
             }
         }
 
         public override bool Equals(object obj) => Equals(obj as ActiveExpression<TArg1, TArg2, TResult>);
 
-        public bool Equals(ActiveExpression<TArg1, TArg2, TResult> other) => other != null && other.expression == expression && EqualityComparer<TArg1>.Default.Equals(other.Arg1, Arg1) && EqualityComparer<TArg2>.Default.Equals(other.Arg2, Arg2);
+        public bool Equals(ActiveExpression<TArg1, TArg2, TResult> other) => other != null && other.expression == expression && EqualityComparer<TArg1>.Default.Equals(other.Arg1, Arg1) && EqualityComparer<TArg2>.Default.Equals(other.Arg2, Arg2) && other.Options == Options;
 
         void ExpressionPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
@@ -460,7 +491,7 @@ namespace Gear.ActiveExpressions
                 Value = expression.Value is TResult typedValue ? typedValue : default;
         }
 
-        public override int GetHashCode() => HashCodes.CombineObjects(typeof(ActiveExpression<TArg1, TArg2, TResult>), expression, Arg1, Arg2);
+        public override int GetHashCode() => HashCodes.CombineObjects(typeof(ActiveExpression<TArg1, TArg2, TResult>), expression, Arg1, Arg2, Options);
 
         /// <summary>
         /// Gets the first argument that was passed to the lambda expression
@@ -480,6 +511,11 @@ namespace Gear.ActiveExpressions
             get => fault;
             private set => SetBackedProperty(ref fault, in value);
         }
+
+        /// <summary>
+        /// Gets the options used when creating the active expression
+        /// </summary>
+        public ActiveExpressionOptions Options { get; }
 
         /// <summary>
         /// Gets the result of evaluating the lambda expression
@@ -502,17 +538,17 @@ namespace Gear.ActiveExpressions
     public class ActiveExpression<TArg1, TArg2, TArg3, TResult> : OverridableSyncDisposablePropertyChangeNotifier, IEquatable<ActiveExpression<TArg1, TArg2, TArg3, TResult>>
     {
         static readonly object instanceManagementLock = new object();
-        static readonly Dictionary<(string expressionString, TArg1 arg1, TArg2 arg2, TArg3 arg3), ActiveExpression<TArg1, TArg2, TArg3, TResult>> instances = new Dictionary<(string expressionString, TArg1 arg1, TArg2 arg2, TArg3 arg3), ActiveExpression<TArg1, TArg2, TArg3, TResult>>();
+        static readonly Dictionary<(string expressionString, TArg1 arg1, TArg2 arg2, TArg3 arg3, ActiveExpressionOptions options), ActiveExpression<TArg1, TArg2, TArg3, TResult>> instances = new Dictionary<(string expressionString, TArg1 arg1, TArg2 arg2, TArg3 arg3, ActiveExpressionOptions options), ActiveExpression<TArg1, TArg2, TArg3, TResult>>();
 
-        internal static ActiveExpression<TArg1, TArg2, TArg3, TResult> Create(LambdaExpression expression, TArg1 arg1, TArg2 arg2, TArg3 arg3)
+        internal static ActiveExpression<TArg1, TArg2, TArg3, TResult> Create(LambdaExpression expression, TArg1 arg1, TArg2 arg2, TArg3 arg3, ActiveExpressionOptions options = null)
         {
             var expressionString = expression.ToString();
-            var key = (expressionString, arg1, arg2, arg3);
+            var key = (expressionString, arg1, arg2, arg3, options);
             lock (instanceManagementLock)
             {
                 if (!instances.TryGetValue(key, out var activeExpression))
                 {
-                    activeExpression = new ActiveExpression<TArg1, TArg2, TArg3, TResult>(expressionString, arg1, arg2, arg3, ActiveExpression.Create(ActiveExpression.ReplaceParameters(expression, arg1, arg2, arg3)));
+                    activeExpression = new ActiveExpression<TArg1, TArg2, TArg3, TResult>(expressionString, arg1, arg2, arg3, ActiveExpression.Create(ActiveExpression.ReplaceParameters(expression, arg1, arg2, arg3), options), options);
                     instances.Add(key, activeExpression);
                 }
                 ++activeExpression.disposalCount;
@@ -524,13 +560,14 @@ namespace Gear.ActiveExpressions
 
         public static bool operator !=(ActiveExpression<TArg1, TArg2, TArg3, TResult> a, ActiveExpression<TArg1, TArg2, TArg3, TResult> b) => !(a == b);
 
-        protected ActiveExpression(string expressionString, TArg1 arg1, TArg2 arg2, TArg3 arg3, ActiveExpression expression)
+        protected ActiveExpression(string expressionString, TArg1 arg1, TArg2 arg2, TArg3 arg3, ActiveExpression expression, ActiveExpressionOptions options)
         {
             this.expressionString = expressionString;
             Arg1 = arg1;
             Arg2 = arg2;
             Arg3 = arg3;
             this.expression = expression;
+            Options = options;
             fault = this.expression.Fault;
             val = (TResult)this.expression.Value;
             this.expression.PropertyChanged += ExpressionPropertyChanged;
@@ -550,14 +587,14 @@ namespace Gear.ActiveExpressions
                     return false;
                 expression.PropertyChanged -= ExpressionPropertyChanged;
                 expression.Dispose();
-                instances.Remove((expressionString, Arg1, Arg2, Arg3));
+                instances.Remove((expressionString, Arg1, Arg2, Arg3, Options));
                 return true;
             }
         }
 
         public override bool Equals(object obj) => Equals(obj as ActiveExpression<TArg1, TArg2, TArg3, TResult>);
 
-        public bool Equals(ActiveExpression<TArg1, TArg2, TArg3, TResult> other) => other != null && other.expression == expression && EqualityComparer<TArg1>.Default.Equals(other.Arg1, Arg1) && EqualityComparer<TArg2>.Default.Equals(other.Arg2, Arg2) && EqualityComparer<TArg3>.Default.Equals(other.Arg3, Arg3);
+        public bool Equals(ActiveExpression<TArg1, TArg2, TArg3, TResult> other) => other != null && other.expression == expression && EqualityComparer<TArg1>.Default.Equals(other.Arg1, Arg1) && EqualityComparer<TArg2>.Default.Equals(other.Arg2, Arg2) && EqualityComparer<TArg3>.Default.Equals(other.Arg3, Arg3) && other.Options == Options;
 
         void ExpressionPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
@@ -567,7 +604,7 @@ namespace Gear.ActiveExpressions
                 Value = expression.Value is TResult typedValue ? typedValue : default;
         }
 
-        public override int GetHashCode() => HashCodes.CombineObjects(typeof(ActiveExpression<TArg1, TArg2, TArg3, TResult>), expression, Arg1, Arg2, Arg3);
+        public override int GetHashCode() => HashCodes.CombineObjects(typeof(ActiveExpression<TArg1, TArg2, TArg3, TResult>), expression, Arg1, Arg2, Arg3, Options);
 
         /// <summary>
         /// Gets the first argument that was passed to the lambda expression
@@ -592,6 +629,11 @@ namespace Gear.ActiveExpressions
             get => fault;
             private set => SetBackedProperty(ref fault, in value);
         }
+
+        /// <summary>
+        /// Gets the options used when creating the active expression
+        /// </summary>
+        public ActiveExpressionOptions Options { get; }
 
         /// <summary>
         /// Gets the result of evaluating the lambda expression

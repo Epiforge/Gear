@@ -11,7 +11,7 @@ namespace Gear.ActiveExpressions
     class ActiveUnaryExpression : ActiveExpression, IEquatable<ActiveUnaryExpression>
     {
         static readonly object instanceManagementLock = new object();
-        static readonly Dictionary<(ExpressionType nodeType, ActiveExpression opperand, Type type, MethodInfo method), ActiveUnaryExpression> instances = new Dictionary<(ExpressionType nodeType, ActiveExpression opperand, Type type, MethodInfo method), ActiveUnaryExpression>();
+        static readonly Dictionary<(ExpressionType nodeType, ActiveExpression opperand, Type type, MethodInfo method, ActiveExpressionOptions options), ActiveUnaryExpression> instances = new Dictionary<(ExpressionType nodeType, ActiveExpression opperand, Type type, MethodInfo method, ActiveExpressionOptions options), ActiveUnaryExpression>();
         static readonly ConcurrentDictionary<Type, MethodInfo> nullableConversions = new ConcurrentDictionary<Type, MethodInfo>();
 
         static MethodInfo GetNullableConversionMethodInfo(Type nullableType) => nullableType.GetRuntimeMethod("op_Implicit", new Type[] { nullableType.GenericTypeArguments[0] });
@@ -20,18 +20,18 @@ namespace Gear.ActiveExpressions
 
         public static bool operator !=(ActiveUnaryExpression a, ActiveUnaryExpression b) => !(a == b);
 
-        public static ActiveUnaryExpression Create(UnaryExpression unaryExpression)
+        public static ActiveUnaryExpression Create(UnaryExpression unaryExpression, ActiveExpressionOptions options)
         {
             var nodeType = unaryExpression.NodeType;
-            var operand = Create(unaryExpression.Operand);
+            var operand = Create(unaryExpression.Operand, options);
             var type = unaryExpression.Type;
             var method = unaryExpression.Method;
-            var key = (nodeType, operand, type, method);
+            var key = (nodeType, operand, type, method, options);
             lock (instanceManagementLock)
             {
                 if (!instances.TryGetValue(key, out var activeUnaryExpression))
                 {
-                    activeUnaryExpression = new ActiveUnaryExpression(nodeType, operand, type, method);
+                    activeUnaryExpression = new ActiveUnaryExpression(nodeType, operand, type, method, options);
                     instances.Add(key, activeUnaryExpression);
                 }
                 ++activeUnaryExpression.disposalCount;
@@ -39,7 +39,7 @@ namespace Gear.ActiveExpressions
             }
         }
 
-        ActiveUnaryExpression(ExpressionType nodeType, ActiveExpression operand, Type type, MethodInfo method) : base(type, nodeType)
+        ActiveUnaryExpression(ExpressionType nodeType, ActiveExpression operand, Type type, MethodInfo method, ActiveExpressionOptions options) : base(type, nodeType, options)
         {
             this.nodeType = nodeType;
             this.operand = operand;
@@ -62,25 +62,50 @@ namespace Gear.ActiveExpressions
 
         protected override bool Dispose(bool disposing)
         {
+            var result = false;
             lock (instanceManagementLock)
             {
-                if (--disposalCount > 0)
-                    return false;
-                operand.PropertyChanged -= OperandPropertyChanged;
-                operand.Dispose();
-                instances.Remove((nodeType, operand, Type, method));
-                return true;
+                if (--disposalCount == 0)
+                {
+                    operand.PropertyChanged -= OperandPropertyChanged;
+                    operand.Dispose();
+                    instances.Remove((nodeType, operand, Type, method, options));
+                    result = true;
+                }
+            }
+            if (result)
+                DisposeValueIfNecessary();
+            return result;
+        }
+
+        void DisposeValueIfNecessary()
+        {
+            if (method != null && ApplicableOptions.IsMethodReturnValueDisposed(method))
+            {
+                var value = Value;
+                try
+                {
+                    if (value is IDisposable disposable)
+                        disposable.Dispose();
+                    else if (value is IAsyncDisposable asyncDisposable)
+                        asyncDisposable.DisposeAsync().Wait();
+                }
+                catch (Exception ex)
+                {
+                    throw new Exception("Disposal of method return value failed", ex);
+                }
             }
         }
 
         public override bool Equals(object obj) => Equals(obj as ActiveUnaryExpression);
 
-        public bool Equals(ActiveUnaryExpression other) => other?.method == method && other?.nodeType == nodeType && other?.operand == operand;
+        public bool Equals(ActiveUnaryExpression other) => other?.method == method && other?.nodeType == nodeType && other?.operand == operand && other?.options == options;
 
         void Evaluate()
         {
             try
             {
+                DisposeValueIfNecessary();
                 var operandFault = operand.Fault;
                 if (operandFault != null)
                     Fault = operandFault;
@@ -95,7 +120,7 @@ namespace Gear.ActiveExpressions
             }
         }
 
-        public override int GetHashCode() => HashCodes.CombineObjects(typeof(ActiveUnaryExpression), method, nodeType, operand);
+        public override int GetHashCode() => HashCodes.CombineObjects(typeof(ActiveUnaryExpression), method, nodeType, operand, options);
 
         void OperandPropertyChanged(object sender, PropertyChangedEventArgs e) => Evaluate();
     }
