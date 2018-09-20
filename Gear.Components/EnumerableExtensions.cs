@@ -7,6 +7,22 @@ namespace Gear.Components
 {
     public static class EnumerableExtensions
     {
+        public static bool Any(this IEnumerable source)
+        {
+            if (source == null)
+                throw new ArgumentNullException(nameof(source));
+            var enumerator = source.GetEnumerator();
+            try
+            {
+                return enumerator.MoveNext();
+            }
+            finally
+            {
+                if (enumerator is IDisposable disposable)
+                    disposable.Dispose();
+            }
+        }
+
         public static int FindIndex<TSource>(this IEnumerable<TSource> source, Predicate<TSource> predicate)
         {
             if (source is TSource[] typedArray)
