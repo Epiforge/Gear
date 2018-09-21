@@ -7,21 +7,7 @@ namespace Gear.Components
 {
     public static class EnumerableExtensions
     {
-        public static bool Any(this IEnumerable source)
-        {
-            if (source == null)
-                throw new ArgumentNullException(nameof(source));
-            var enumerator = source.GetEnumerator();
-            try
-            {
-                return enumerator.MoveNext();
-            }
-            finally
-            {
-                if (enumerator is IDisposable disposable)
-                    disposable.Dispose();
-            }
-        }
+        #region Indicies
 
         public static int FindIndex<TSource>(this IEnumerable<TSource> source, Predicate<TSource> predicate)
         {
@@ -163,5 +149,7 @@ namespace Gear.Components
             var equalityComparer = EqualityComparer<TSource>.Default;
             return FindIndicies(source, element => equalityComparer.Equals(element, item));
         }
+
+        #endregion Indicies
     }
 }
