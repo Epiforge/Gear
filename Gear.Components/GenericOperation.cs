@@ -61,10 +61,10 @@ namespace Gear.Components
             subtract = (Func<T, T, T>)GenericOperations.CompiledBinaryOperationMethods.GetOrAdd((BinaryOperation.Subtract, type), GenericOperations.CompiledBinaryOperationMethodsValueFactory);
         }
 
-        Func<T, T, T> add;
-        Func<T, T, T> divide;
-        Func<T, T, T> multiply;
-        Func<T, T, T> subtract;
+        readonly Func<T, T, T> add;
+        readonly Func<T, T, T> divide;
+        readonly Func<T, T, T> multiply;
+        readonly Func<T, T, T> subtract;
 
         public T Add(T a, T b) => add(a, b);
 
