@@ -5,7 +5,7 @@ namespace Gear.Components
 {
     public interface ISynchronizable : INotifyPropertyChanged
     {
-        bool IsSynchronized { get; set; }
+        bool IsSynchronized { get; }
         SynchronizationContext SynchronizationContext { get; }
     }
 }
