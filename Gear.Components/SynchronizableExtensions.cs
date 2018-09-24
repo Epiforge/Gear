@@ -9,7 +9,7 @@ namespace Gear.Components
     {
         public static void Execute(this ISynchronizable synchronizable, Action action)
         {
-            if (!synchronizable.IsSynchronized || synchronizable.SynchronizationContext == null || SynchronizationContext.Current == synchronizable.SynchronizationContext)
+            if (!(synchronizable?.IsSynchronized ?? false) || synchronizable.SynchronizationContext == null || SynchronizationContext.Current == synchronizable.SynchronizationContext)
             {
                 action();
                 return;
@@ -31,7 +31,7 @@ namespace Gear.Components
 
         public static TReturn Execute<TReturn>(this ISynchronizable synchronizable, Func<TReturn> func)
         {
-            if (!synchronizable.IsSynchronized || synchronizable.SynchronizationContext == null || SynchronizationContext.Current == synchronizable.SynchronizationContext)
+            if (!(synchronizable?.IsSynchronized ?? false) || synchronizable.SynchronizationContext == null || SynchronizationContext.Current == synchronizable.SynchronizationContext)
                 return func();
             TReturn result = default;
             ExceptionDispatchInfo edi = default;
@@ -52,7 +52,7 @@ namespace Gear.Components
 
         public static Task ExecuteAsync(this ISynchronizable synchronizable, Action action)
         {
-            if (!synchronizable.IsSynchronized || synchronizable.SynchronizationContext == null || SynchronizationContext.Current == synchronizable.SynchronizationContext)
+            if (!(synchronizable?.IsSynchronized ?? false) || synchronizable.SynchronizationContext == null || SynchronizationContext.Current == synchronizable.SynchronizationContext)
             {
                 action();
                 return Task.CompletedTask;
@@ -64,7 +64,7 @@ namespace Gear.Components
 
         public static Task<TResult> ExecuteAsync<TResult>(this ISynchronizable synchronizable, Func<TResult> func)
         {
-            if (!synchronizable.IsSynchronized || synchronizable.SynchronizationContext == null || SynchronizationContext.Current == synchronizable.SynchronizationContext)
+            if (!(synchronizable?.IsSynchronized ?? false) || synchronizable.SynchronizationContext == null || SynchronizationContext.Current == synchronizable.SynchronizationContext)
                 return Task.FromResult(func());
             var completion = new TaskCompletionSource<TResult>();
             synchronizable.SynchronizationContext.Post(state => completion.AttemptSetResult(func), null);
@@ -73,7 +73,7 @@ namespace Gear.Components
 
         public static async Task ExecuteAsync(this ISynchronizable synchronizable, Func<Task> asyncAction)
         {
-            if (!synchronizable.IsSynchronized || synchronizable.SynchronizationContext == null || SynchronizationContext.Current == synchronizable.SynchronizationContext)
+            if (!(synchronizable?.IsSynchronized ?? false) || synchronizable.SynchronizationContext == null || SynchronizationContext.Current == synchronizable.SynchronizationContext)
             {
                 await asyncAction().ConfigureAwait(false);
                 return;
@@ -85,7 +85,7 @@ namespace Gear.Components
 
         public static async Task<TResult> ExecuteAsync<TResult>(this ISynchronizable synchronizable, Func<Task<TResult>> asyncFunc)
         {
-            if (!synchronizable.IsSynchronized || synchronizable.SynchronizationContext == null || SynchronizationContext.Current == synchronizable.SynchronizationContext)
+            if (!(synchronizable?.IsSynchronized ?? false) || synchronizable.SynchronizationContext == null || SynchronizationContext.Current == synchronizable.SynchronizationContext)
                 return await asyncFunc().ConfigureAwait(false);
             var completion = new TaskCompletionSource<TResult>();
             synchronizable.SynchronizationContext.Post(async state => await completion.AttemptSetResultAsync(asyncFunc).ConfigureAwait(false), null);
