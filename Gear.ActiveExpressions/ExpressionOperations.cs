@@ -26,7 +26,7 @@ namespace Gear.ActiveExpressions
             return new FastMethodInfo(methodInfo);
         }
 
-        internal static FastMethodInfo GetFastMethodInfo(ExpressionType expressionType, Type returnType, params Type[] parameterTypes) => operationFastMethodInfos.GetOrAdd((expressionType, returnType, new EquatableList<Type>(parameterTypes)), CreateFastMethodInfo);
+        public static FastMethodInfo GetFastMethodInfo(ExpressionType expressionType, Type returnType, params Type[] parameterTypes) => operationFastMethodInfos.GetOrAdd((expressionType, returnType, new EquatableList<Type>(parameterTypes)), CreateFastMethodInfo);
 
         #region Add
 
