@@ -151,5 +151,11 @@ namespace Gear.Components
         }
 
         #endregion Indicies
+
+        public static IEnumerable<T> Repeat<T>(this T item, int count)
+        {
+            for (var i = 0; i < count; ++i)
+                yield return item;
+        }
     }
 }
