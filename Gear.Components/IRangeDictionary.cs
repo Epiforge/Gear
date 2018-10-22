@@ -10,7 +10,7 @@ namespace Gear.Components
         IReadOnlyList<TKey> RemoveRange(IEnumerable<TKey> keys);
         new bool TryGetValue(TKey key, out TValue value);
 
-        new TValue this[TKey key] { get; }
+        new TValue this[TKey key] { get; set; }
         new IEnumerable<TKey> Keys { get; }
         new IEnumerable<TValue> Values { get; }
     }
