@@ -8,7 +8,7 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Threading;
 
-namespace Gear.ActiveQuery.Expressions
+namespace Gear.ActiveQuery
 {
     /// <summary>
     /// Represents the dictionary of results derived from creating an active expression for each key-value pair in a dictionary

@@ -1,48 +1,165 @@
+using Gear.Components;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Linq.Expressions;
 
 namespace Gear.ActiveQuery
 {
-    class ActiveOrderingComparer<T> : IComparer<T>
+    class ActiveOrderingComparer<TElement> : SyncDisposable, IComparer<TElement>
     {
-        public ActiveOrderingComparer(IEnumerable<ActiveOrderingDescriptor<T>> orderingDescriptors)
+        static readonly EqualityComparer<TElement> equalityComparer = EqualityComparer<TElement>.Default;
+
+        public ActiveOrderingComparer(IReadOnlyList<(EnumerableRangeActiveExpression<TElement, IComparable> rangeActiveExpression, bool isDescending)> selectors, IndexingStrategy indexingStrategy)
         {
-            var nullConstant = Expression.Constant(null, typeof(object));
-            var firstParameter = Expression.Parameter(typeof(T));
-            var secondParameter = Expression.Parameter(typeof(T));
-            Expression expression = Expression.Constant(0);
-            foreach (var orderingDescriptor in orderingDescriptors.Reverse())
+            this.indexingStrategy = indexingStrategy;
+            switch (this.indexingStrategy)
             {
-                var selector = orderingDescriptor.Selector;
-                var firstSelection = Expression.Invoke((Expression<Func<T, IComparable>>)(f => selector(f)), firstParameter);
-                var secondSelection = Expression.Invoke((Expression<Func<T, IComparable>>)(s => selector(s)), secondParameter);
-                Expression comparisonExpression = Expression.Condition
-                (
-                    Expression.ReferenceEqual(firstSelection, nullConstant),
-                    Expression.Condition
-                    (
-                        Expression.ReferenceEqual(secondSelection, nullConstant),
-                        Expression.Constant(0, typeof(int)),
-                        Expression.Constant(-1, typeof(int))
-                    ),
-                    Expression.Condition
-                    (
-                        Expression.ReferenceEqual(secondSelection, nullConstant),
-                        Expression.Constant(1, typeof(int)),
-                        Expression.Invoke((Expression<Func<IComparable, IComparable, int>>)((f, s) => f.CompareTo(s)), firstSelection, secondSelection)
-                    )
-                );
-                if (orderingDescriptor.Descending)
-                    comparisonExpression = Expression.Negate(comparisonExpression);
-                expression = Expression.Condition(Expression.Equal(comparisonExpression, Expression.Constant(0)), expression, comparisonExpression);
+                case IndexingStrategy.HashTable:
+                    comparables = new Dictionary<TElement, List<IComparable>>();
+                    counts = new SortedDictionary<TElement, int>();
+                    break;
+                case IndexingStrategy.SelfBalancingBinarySearchTree:
+                    comparables = new SortedDictionary<TElement, List<IComparable>>();
+                    counts = new SortedDictionary<TElement, int>();
+                    break;
             }
-            comparisonFunction = Expression.Lambda<Func<T, T, int>>(expression, firstParameter, secondParameter).Compile();
+
+            lock (comparablesAccess)
+            {
+                this.selectors = selectors;
+                if (this.indexingStrategy != IndexingStrategy.NoneOrInherit)
+                {
+                    foreach (var (rangeActiveExpression, isDescending) in this.selectors)
+                    {
+                        rangeActiveExpression.ElementResultChanged += RangeActiveExpressionElementResultChanged;
+                        rangeActiveExpression.ElementsAdded += RangeActiveExpressionElementsAdded;
+                    }
+                    this.selectors.Last().rangeActiveExpression.ElementsRemoved += RangeActiveExpressionElementsRemoved;
+                    rangeActiveExpressionIndicies = new Dictionary<EnumerableRangeActiveExpression<TElement, IComparable>, int>();
+                    var index = -1;
+                    foreach (var (rangeActiveExpression, isDescending) in this.selectors.Take(1))
+                    {
+                        rangeActiveExpressionIndicies.Add(rangeActiveExpression, ++index);
+                        foreach (var elementAndResults in rangeActiveExpression.GetResults().GroupBy(er => er.element, er => er.result))
+                        {
+                            var element = elementAndResults.Key;
+                            var elementComparables = new List<IComparable>();
+                            comparables.Add(element, elementComparables);
+                            elementComparables.Add(elementAndResults.First());
+                            counts.Add(element, elementAndResults.Count());
+                        }
+                    }
+                    foreach (var (rangeActiveExpression, isDescending) in this.selectors.Skip(1))
+                        foreach (var elementAndResults in rangeActiveExpression.GetResults().GroupBy(er => er.element, er => er.result))
+                            comparables[elementAndResults.Key].Add(elementAndResults.First());
+                }
+            }
         }
 
-        readonly Func<T, T, int> comparisonFunction;
+        readonly IDictionary<TElement, List<IComparable>> comparables;
+        readonly object comparablesAccess = new object();
+        readonly IDictionary<TElement, int> counts;
+        readonly IndexingStrategy indexingStrategy;
+        readonly Dictionary<EnumerableRangeActiveExpression<TElement, IComparable>, int> rangeActiveExpressionIndicies;
+        readonly IReadOnlyList<(EnumerableRangeActiveExpression<TElement, IComparable> rangeActiveExpression, bool isDescending)> selectors;
 
-        public int Compare(T x, T y) => comparisonFunction(x, y);
+        public int Compare(TElement x, TElement y)
+        {
+            IReadOnlyList<IComparable> xList, yList;
+            if (indexingStrategy == IndexingStrategy.NoneOrInherit)
+            {
+                xList = GetComparables(x);
+                yList = GetComparables(y);
+            }
+            else
+            {
+                xList = comparables[x];
+                yList = comparables[y];
+            }
+            for (var i = 0; i < selectors.Count; ++i)
+            {
+                var isDescending = selectors[i].isDescending;
+                var xComparable = xList[i];
+                var yComparable = yList[i];
+                if (xComparable == null && yComparable != null)
+                    return isDescending ? 1 : -1;
+                if (xComparable != null && yComparable == null)
+                    return isDescending ? -1 : 1;
+                var comparison = xComparable.CompareTo(yComparable);
+                if (comparison != 0)
+                    return comparison * (isDescending ? -1 : 1);
+            }
+            return 0;
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (indexingStrategy != IndexingStrategy.NoneOrInherit)
+            {
+                foreach (var (rangeActiveExpression, isDescending) in selectors)
+                {
+                    rangeActiveExpression.ElementResultChanged -= RangeActiveExpressionElementResultChanged;
+                    rangeActiveExpression.ElementsAdded -= RangeActiveExpressionElementsAdded;
+                }
+                selectors.Last().rangeActiveExpression.ElementsRemoved += RangeActiveExpressionElementsRemoved;
+            }
+        }
+
+        IReadOnlyList<IComparable> GetComparables(TElement element) =>
+            selectors.Select(expressionAndOrder => expressionAndOrder.rangeActiveExpression.GetResults().First(er => equalityComparer.Equals(er.element, element)).result).ToList();
+
+        void RangeActiveExpressionElementResultChanged(object sender, RangeActiveExpressionResultChangeEventArgs<TElement, IComparable> e)
+        {
+            lock (comparablesAccess)
+                comparables[e.Element][rangeActiveExpressionIndicies[(EnumerableRangeActiveExpression<TElement, IComparable>)sender]] = e.Result;
+        }
+
+        void RangeActiveExpressionElementsAdded(object sender, RangeActiveExpressionMembershipEventArgs<TElement, IComparable> e)
+        {
+            lock (comparablesAccess)
+            {
+                var rangeActiveExpressionIndex = rangeActiveExpressionIndicies[(EnumerableRangeActiveExpression<TElement, IComparable>)sender];
+                if (rangeActiveExpressionIndex == 0)
+                    foreach (var elementAndResults in e.ElementResults.GroupBy(er => er.element, er => er.result))
+                    {
+                        var element = elementAndResults.Key;
+                        var count = elementAndResults.Count();
+                        if (!comparables.TryGetValue(element, out var elementComparables))
+                        {
+                            elementComparables = new List<IComparable>();
+                            comparables.Add(elementAndResults.Key, elementComparables);
+                            elementComparables.Add(elementAndResults.First());
+                            counts.Add(element, count);
+                        }
+                        else
+                            counts[element] += count;
+                    }
+                else
+                    foreach (var elementAndResults in e.ElementResults.GroupBy(er => er.element, er => er.result))
+                    {
+                        var comparablesList = comparables[elementAndResults.Key];
+                        if (comparablesList.Count == rangeActiveExpressionIndex)
+                            comparablesList.Add(elementAndResults.First());
+                    }
+            }
+        }
+
+        void RangeActiveExpressionElementsRemoved(object sender, RangeActiveExpressionMembershipEventArgs<TElement, IComparable> e)
+        {
+            lock (comparablesAccess)
+                foreach (var elementAndResults in e.ElementResults.GroupBy(er => er.element, er => er.result))
+                {
+                    var element = elementAndResults.Key;
+                    var currentCount = counts[element];
+                    var removedCount = elementAndResults.Count();
+                    if (currentCount - removedCount == 0)
+                    {
+                        counts.Remove(element);
+                        comparables.Remove(element);
+                    }
+                    else
+                        counts[element] = currentCount = removedCount;
+                }
+        }
     }
 }

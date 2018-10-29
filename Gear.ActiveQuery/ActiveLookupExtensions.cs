@@ -6,7 +6,7 @@ using System.ComponentModel;
 using System.Linq;
 using System.Linq.Expressions;
 
-namespace Gear.ActiveQuery.Expressions
+namespace Gear.ActiveQuery
 {
     public static class ActiveLookupExtensions
     {

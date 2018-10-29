@@ -1,4 +1,4 @@
-namespace Gear.ActiveQuery.Expressions
+namespace Gear.ActiveQuery
 {
     internal delegate object CountConversionDelegate(int count);
 }

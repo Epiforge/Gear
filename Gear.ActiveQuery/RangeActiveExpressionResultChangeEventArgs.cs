@@ -1,6 +1,6 @@
 using System;
 
-namespace Gear.ActiveQuery.Expressions
+namespace Gear.ActiveQuery
 {
     public class RangeActiveExpressionResultChangeEventArgs<TElement, TResult> : EventArgs
     {

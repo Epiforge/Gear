@@ -9,7 +9,7 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Threading;
 
-namespace Gear.ActiveQuery.Expressions
+namespace Gear.ActiveQuery
 {
     public static class ActiveEnumerableExtensions
     {

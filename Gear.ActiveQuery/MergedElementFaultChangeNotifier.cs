@@ -37,7 +37,7 @@ namespace Gear.ActiveQuery
 
         void ElementFaultChangeNotifierElementFaultChanged(object sender, ElementFaultChangeEventArgs e) => ElementFaultChanged?.Invoke(sender, e);
 
-        void ElementFaultChangeNotifierElementFaultChanging(object sender, ElementFaultChangeEventArgs e) => ElementFaultChanged?.Invoke(sender, e);
+        void ElementFaultChangeNotifierElementFaultChanging(object sender, ElementFaultChangeEventArgs e) => ElementFaultChanging?.Invoke(sender, e);
 
         public IReadOnlyList<(object element, Exception fault)> GetElementFaults() =>
             elementFaultChangeNotifiers.SelectMany(elementFaultChangeNotifier => elementFaultChangeNotifier?.GetElementFaults() ?? Enumerable.Empty<(object element, Exception fault)>()).ToList();

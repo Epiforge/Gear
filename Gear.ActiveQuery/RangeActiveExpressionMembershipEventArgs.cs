@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace Gear.ActiveQuery.Expressions
+namespace Gear.ActiveQuery
 {
     public class RangeActiveExpressionMembershipEventArgs<TElement, TResult> : EventArgs
     {

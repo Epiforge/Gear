@@ -2,7 +2,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Linq.Expressions;
 
-namespace Gear.ActiveQuery.Expressions
+namespace Gear.ActiveQuery
 {
     internal static class CountConversion
     {

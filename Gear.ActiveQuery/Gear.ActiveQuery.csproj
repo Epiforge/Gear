@@ -37,7 +37,7 @@
 
   <ItemGroup>
     <PackageReference Include="Gear.ActiveExpressions" Version="1.0.10" />
-    <PackageReference Include="Gear.Components" Version="1.0.56" />
+    <PackageReference Include="Gear.Components" Version="1.0.58" />
     <PackageReference Include="System.ValueTuple" Version="4.5.0" />
   </ItemGroup>
 
