@@ -1,6 +1,8 @@
+using System;
+
 namespace Gear.Components
 {
-    public class NotifyDictionaryValueReplacedEventArgs
+    public class NotifyDictionaryValueReplacedEventArgs : EventArgs
     {
         public NotifyDictionaryValueReplacedEventArgs(object key, object oldValue, object newValue)
         {
