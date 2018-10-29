@@ -5,7 +5,7 @@ using System.Linq.Expressions;
 
 namespace Gear.ActiveQuery
 {
-    class ActiveOrderingComparer<T> : IComparer<T> where T : class
+    class ActiveOrderingComparer<T> : IComparer<T>
     {
         public ActiveOrderingComparer(IEnumerable<ActiveOrderingDescriptor<T>> orderingDescriptors)
         {
@@ -27,10 +27,15 @@ namespace Gear.ActiveQuery
                         Expression.Constant(0, typeof(int)),
                         Expression.Constant(-1, typeof(int))
                     ),
-                    Expression.Invoke((Expression<Func<IComparable, IComparable, int>>)((f, s) => f.CompareTo(s)), firstSelection, secondSelection)
+                    Expression.Condition
+                    (
+                        Expression.ReferenceEqual(secondSelection, nullConstant),
+                        Expression.Constant(1, typeof(int)),
+                        Expression.Invoke((Expression<Func<IComparable, IComparable, int>>)((f, s) => f.CompareTo(s)), firstSelection, secondSelection)
+                    )
                 );
                 if (orderingDescriptor.Descending)
-                    comparisonExpression = Expression.Multiply(comparisonExpression, Expression.Constant(-1));
+                    comparisonExpression = Expression.Negate(comparisonExpression);
                 expression = Expression.Condition(Expression.Equal(comparisonExpression, Expression.Constant(0)), expression, comparisonExpression);
             }
             comparisonFunction = Expression.Lambda<Func<T, T, int>>(expression, firstParameter, secondParameter).Compile();

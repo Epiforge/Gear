@@ -10,17 +10,17 @@ namespace Gear.ActiveQuery
 {
     public static class ActiveQueryExtensions
     {
-        public static ActiveAggregateValue<bool> ActiveAll<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, Func<TKey, TValue, bool> predicate, IndexingStrategy indexingStrategy = IndexingStrategy.NoneOrInherit, bool isThreadSafe = false, params string[] predicateProperties) =>
+        public static ActiveValue<bool> ActiveAll<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, Func<TKey, TValue, bool> predicate, IndexingStrategy indexingStrategy = IndexingStrategy.NoneOrInherit, bool isThreadSafe = false, params string[] predicateProperties) =>
             ActiveAll(source, (source as ISynchronizable)?.SynchronizationContext, predicate, indexingStrategy, isThreadSafe, predicateProperties);
 
-        public static ActiveAggregateValue<bool> ActiveAll<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, SynchronizationContext synchronizationContext, Func<TKey, TValue, bool> predicate, IndexingStrategy indexingStrategy = IndexingStrategy.NoneOrInherit, bool isThreadSafe = false, params string[] predicateProperties)
+        public static ActiveValue<bool> ActiveAll<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, SynchronizationContext synchronizationContext, Func<TKey, TValue, bool> predicate, IndexingStrategy indexingStrategy = IndexingStrategy.NoneOrInherit, bool isThreadSafe = false, params string[] predicateProperties)
         {
             var where = ActiveWhere(source, synchronizationContext, predicate, indexingStrategy, predicateProperties);
             var monitor = ActiveDictionaryMonitor<TKey, TValue>.Monitor(where);
             EventHandler<NotifyDictionaryValueEventArgs<TKey, TValue>> value = null;
             EventHandler<NotifyDictionaryValuesEventArgs<TKey, TValue>> values = null;
             var resultAccess = isThreadSafe ? new object() : null;
-            var result = new ActiveAggregateValue<bool>(true, where.Count == source.Count, out var setValidity, out var setValue, disposing =>
+            var result = new ActiveValue<bool>(true, where.Count == source.Count, out var setValidity, out var setValue, disposing =>
             {
                 monitor.ValueAdded -= value;
                 monitor.ValueRemoved -= value;
@@ -61,16 +61,16 @@ namespace Gear.ActiveQuery
             return result;
         }
 
-        public static ActiveAggregateValue<bool> ActiveAll<TSource>(this IReadOnlyList<TSource> source, Func<TSource, bool> predicate, bool isThreadSafe = false, params string[] predicateProperties) where TSource : class =>
+        public static ActiveValue<bool> ActiveAll<TSource>(this IReadOnlyList<TSource> source, Func<TSource, bool> predicate, bool isThreadSafe = false, params string[] predicateProperties) where TSource : class =>
             ActiveAll(source, (source as ISynchronizable)?.SynchronizationContext, predicate, isThreadSafe, predicateProperties);
 
-        public static ActiveAggregateValue<bool> ActiveAll<TSource>(this IReadOnlyList<TSource> source, SynchronizationContext synchronizationContext, Func<TSource, bool> predicate, bool isThreadSafe = false, params string[] predicateProperties) where TSource : class
+        public static ActiveValue<bool> ActiveAll<TSource>(this IReadOnlyList<TSource> source, SynchronizationContext synchronizationContext, Func<TSource, bool> predicate, bool isThreadSafe = false, params string[] predicateProperties) where TSource : class
         {
             var where = ActiveWhere(source, synchronizationContext, predicate, predicateProperties);
             var monitor = ActiveListMonitor<TSource>.Monitor(where);
             EventHandler<ElementMembershipEventArgs<TSource>> elementMembership = null;
             var resultAccess = isThreadSafe ? new object() : null;
-            var result = new ActiveAggregateValue<bool>(true, where.Count == source.Count, out var setValidity, out var setValue, disposing =>
+            var result = new ActiveValue<bool>(true, where.Count == source.Count, out var setValidity, out var setValue, disposing =>
             {
                 monitor.ElementsAdded -= elementMembership;
                 monitor.ElementsRemoved -= elementMembership;
@@ -97,13 +97,13 @@ namespace Gear.ActiveQuery
             return result;
         }
 
-        public static ActiveAggregateValue<bool> ActiveAny<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, bool isThreadSafe = false)
+        public static ActiveValue<bool> ActiveAny<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, bool isThreadSafe = false)
         {
             var monitor = ActiveDictionaryMonitor<TKey, TValue>.Monitor(source);
             EventHandler<NotifyDictionaryValueEventArgs<TKey, TValue>> value = null;
             EventHandler<NotifyDictionaryValuesEventArgs<TKey, TValue>> values = null;
             var resultAccess = isThreadSafe ? new object() : null;
-            var result = new ActiveAggregateValue<bool>(true, source.Count > 0, out var setValidity, out var setValue, disposing =>
+            var result = new ActiveValue<bool>(true, source.Count > 0, out var setValidity, out var setValue, disposing =>
             {
                 monitor.ValueAdded -= value;
                 monitor.ValueRemoved -= value;
@@ -141,17 +141,17 @@ namespace Gear.ActiveQuery
             return result;
         }
 
-        public static ActiveAggregateValue<bool> ActiveAny<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, Func<TKey, TValue, bool> predicate, IndexingStrategy indexingStrategy = IndexingStrategy.NoneOrInherit, bool isThreadSafe = false, params string[] predicateProperties) =>
+        public static ActiveValue<bool> ActiveAny<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, Func<TKey, TValue, bool> predicate, IndexingStrategy indexingStrategy = IndexingStrategy.NoneOrInherit, bool isThreadSafe = false, params string[] predicateProperties) =>
             ActiveAny(source, (source as ISynchronizable)?.SynchronizationContext, predicate, indexingStrategy, isThreadSafe, predicateProperties);
 
-        public static ActiveAggregateValue<bool> ActiveAny<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, SynchronizationContext synchronizationContext, Func<TKey, TValue, bool> predicate, IndexingStrategy indexingStrategy = IndexingStrategy.NoneOrInherit, bool isThreadSafe = false, params string[] predicateProperties)
+        public static ActiveValue<bool> ActiveAny<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, SynchronizationContext synchronizationContext, Func<TKey, TValue, bool> predicate, IndexingStrategy indexingStrategy = IndexingStrategy.NoneOrInherit, bool isThreadSafe = false, params string[] predicateProperties)
         {
             var where = ActiveWhere(source, synchronizationContext, predicate, indexingStrategy, predicateProperties);
             var monitor = ActiveDictionaryMonitor<TKey, TValue>.Monitor(where);
             EventHandler<NotifyDictionaryValueEventArgs<TKey, TValue>> value = null;
             EventHandler<NotifyDictionaryValuesEventArgs<TKey, TValue>> values = null;
             var resultAccess = isThreadSafe ? new object() : null;
-            var result = new ActiveAggregateValue<bool>(true, where.Count > 0, out var setValidity, out var setValue, disposing =>
+            var result = new ActiveValue<bool>(true, where.Count > 0, out var setValidity, out var setValue, disposing =>
             {
                 monitor.ValueAdded -= value;
                 monitor.ValueRemoved -= value;
@@ -192,12 +192,12 @@ namespace Gear.ActiveQuery
             return result;
         }
 
-        public static ActiveAggregateValue<bool> ActiveAny<TSource>(this IReadOnlyList<TSource> source, bool isThreadSafe = false)
+        public static ActiveValue<bool> ActiveAny<TSource>(this IReadOnlyList<TSource> source, bool isThreadSafe = false)
         {
             var monitor = ActiveListMonitor<TSource>.Monitor(source);
             EventHandler<ElementMembershipEventArgs<TSource>> elementMembership = null;
             var resultAccess = isThreadSafe ? new object() : null;
-            var result = new ActiveAggregateValue<bool>(true, source.Count > 0, out var setValidity, out var setValue, disposing =>
+            var result = new ActiveValue<bool>(true, source.Count > 0, out var setValidity, out var setValue, disposing =>
             {
                 monitor.ElementsAdded -= elementMembership;
                 monitor.ElementsRemoved -= elementMembership;
@@ -221,16 +221,16 @@ namespace Gear.ActiveQuery
             return result;
         }
 
-        public static ActiveAggregateValue<bool> ActiveAny<TSource>(this IReadOnlyList<TSource> source, Func<TSource, bool> predicate, bool isThreadSafe = false, params string[] predicateProperties) where TSource : class =>
+        public static ActiveValue<bool> ActiveAny<TSource>(this IReadOnlyList<TSource> source, Func<TSource, bool> predicate, bool isThreadSafe = false, params string[] predicateProperties) where TSource : class =>
             ActiveAny(source, (source as ISynchronizable)?.SynchronizationContext, predicate, isThreadSafe, predicateProperties);
 
-        public static ActiveAggregateValue<bool> ActiveAny<TSource>(this IReadOnlyList<TSource> source, SynchronizationContext synchronizationContext, Func<TSource, bool> predicate, bool isThreadSafe = false, params string[] predicateProperties) where TSource : class
+        public static ActiveValue<bool> ActiveAny<TSource>(this IReadOnlyList<TSource> source, SynchronizationContext synchronizationContext, Func<TSource, bool> predicate, bool isThreadSafe = false, params string[] predicateProperties) where TSource : class
         {
             var where = ActiveWhere(source, synchronizationContext, predicate, predicateProperties);
             var monitor = ActiveListMonitor<TSource>.Monitor(where);
             EventHandler<ElementMembershipEventArgs<TSource>> elementMembership = null;
             var resultAccess = isThreadSafe ? new object() : null;
-            var result = new ActiveAggregateValue<bool>(true, where.Count > 0, out var setValidity, out var setValue, disposing =>
+            var result = new ActiveValue<bool>(true, where.Count > 0, out var setValidity, out var setValue, disposing =>
             {
                 monitor.ElementsAdded -= elementMembership;
                 monitor.ElementsRemoved -= elementMembership;
@@ -463,7 +463,7 @@ namespace Gear.ActiveQuery
             return result;
         }
 
-        public static ActiveAggregateValue<TSource> ActiveFirst<TSource>(this IReadOnlyList<TSource> source, bool isThreadSafe = false)
+        public static ActiveValue<TSource> ActiveFirst<TSource>(this IReadOnlyList<TSource> source, bool isThreadSafe = false)
         {
             var firstIsValid = false;
             TSource firstFirst = default;
@@ -477,7 +477,7 @@ namespace Gear.ActiveQuery
             EventHandler<ElementsMovedEventArgs<TSource>> elementsMoved = null;
             EventHandler<ElementMembershipEventArgs<TSource>> elementsRemoved = null;
             var resultAccess = isThreadSafe ? new object() : null;
-            var result = new ActiveAggregateValue<TSource>(firstIsValid, firstFirst, out var setValidity, out var setValue, disposing =>
+            var result = new ActiveValue<TSource>(firstIsValid, firstFirst, out var setValidity, out var setValue, disposing =>
             {
                 monitor.ElementsAdded -= elementsAdded;
                 monitor.ElementsMoved -= elementsMoved;
@@ -545,10 +545,10 @@ namespace Gear.ActiveQuery
             return result;
         }
 
-        public static ActiveAggregateValue<TSource> ActiveFirst<TSource>(this IReadOnlyList<TSource> source, Func<TSource, bool> predicate, bool isThreadSafe = false, params string[] predicateProperties) where TSource : class =>
+        public static ActiveValue<TSource> ActiveFirst<TSource>(this IReadOnlyList<TSource> source, Func<TSource, bool> predicate, bool isThreadSafe = false, params string[] predicateProperties) where TSource : class =>
             ActiveFirst(source, (source as ISynchronizable)?.SynchronizationContext, predicate, isThreadSafe, predicateProperties);
 
-        public static ActiveAggregateValue<TSource> ActiveFirst<TSource>(this IReadOnlyList<TSource> source, SynchronizationContext synchronizationContext, Func<TSource, bool> predicate, bool isThreadSafe = false, params string[] predicateProperties) where TSource : class
+        public static ActiveValue<TSource> ActiveFirst<TSource>(this IReadOnlyList<TSource> source, SynchronizationContext synchronizationContext, Func<TSource, bool> predicate, bool isThreadSafe = false, params string[] predicateProperties) where TSource : class
         {
             var where = ActiveWhere(source, synchronizationContext, predicate, predicateProperties);
             var firstIsValid = false;
@@ -563,7 +563,7 @@ namespace Gear.ActiveQuery
             EventHandler<ElementsMovedEventArgs<TSource>> elementsMoved = null;
             EventHandler<ElementMembershipEventArgs<TSource>> elementsRemoved = null;
             var resultAccess = isThreadSafe ? new object() : null;
-            var result = new ActiveAggregateValue<TSource>(firstIsValid, firstFirst, out var setValidity, out var setValue, disposing =>
+            var result = new ActiveValue<TSource>(firstIsValid, firstFirst, out var setValidity, out var setValue, disposing =>
             {
                 monitor.ElementsAdded -= elementsAdded;
                 monitor.ElementsMoved -= elementsMoved;
@@ -634,7 +634,7 @@ namespace Gear.ActiveQuery
             return result;
         }
 
-        public static ActiveAggregateValue<TSource> ActiveFirstOrDefault<TSource>(this IReadOnlyList<TSource> source, bool isThreadSafe = false)
+        public static ActiveValue<TSource> ActiveFirstOrDefault<TSource>(this IReadOnlyList<TSource> source, bool isThreadSafe = false)
         {
             TSource firstFirst = default;
             if (source.Count > 0)
@@ -644,7 +644,7 @@ namespace Gear.ActiveQuery
             EventHandler<ElementsMovedEventArgs<TSource>> elementsMoved = null;
             EventHandler<ElementMembershipEventArgs<TSource>> elementsRemoved = null;
             var resultAccess = isThreadSafe ? new object() : null;
-            var result = new ActiveAggregateValue<TSource>(true, firstFirst, out var setValidity, out var setValue, disposing =>
+            var result = new ActiveValue<TSource>(true, firstFirst, out var setValidity, out var setValue, disposing =>
             {
                 monitor.ElementsAdded -= elementsAdded;
                 monitor.ElementsMoved -= elementsMoved;
@@ -704,10 +704,10 @@ namespace Gear.ActiveQuery
             return result;
         }
 
-        public static ActiveAggregateValue<TSource> ActiveFirstOrDefault<TSource>(this IReadOnlyList<TSource> source, Func<TSource, bool> predicate, bool isThreadSafe = false, params string[] predicateProperties) where TSource : class =>
+        public static ActiveValue<TSource> ActiveFirstOrDefault<TSource>(this IReadOnlyList<TSource> source, Func<TSource, bool> predicate, bool isThreadSafe = false, params string[] predicateProperties) where TSource : class =>
             ActiveFirstOrDefault(source, (source as ISynchronizable)?.SynchronizationContext, predicate, isThreadSafe, predicateProperties);
 
-        public static ActiveAggregateValue<TSource> ActiveFirstOrDefault<TSource>(this IReadOnlyList<TSource> source, SynchronizationContext synchronizationContext, Func<TSource, bool> predicate, bool isThreadSafe = false, params string[] predicateProperties) where TSource : class
+        public static ActiveValue<TSource> ActiveFirstOrDefault<TSource>(this IReadOnlyList<TSource> source, SynchronizationContext synchronizationContext, Func<TSource, bool> predicate, bool isThreadSafe = false, params string[] predicateProperties) where TSource : class
         {
             var where = ActiveWhere(source, synchronizationContext, predicate, predicateProperties);
             TSource firstFirst = default;
@@ -718,7 +718,7 @@ namespace Gear.ActiveQuery
             EventHandler<ElementsMovedEventArgs<TSource>> elementsMoved = null;
             EventHandler<ElementMembershipEventArgs<TSource>> elementsRemoved = null;
             var resultAccess = isThreadSafe ? new object() : null;
-            var result = new ActiveAggregateValue<TSource>(true, firstFirst, out var setValidity, out var setValue, disposing =>
+            var result = new ActiveValue<TSource>(true, firstFirst, out var setValidity, out var setValue, disposing =>
             {
                 monitor.ElementsAdded -= elementsAdded;
                 monitor.ElementsMoved -= elementsMoved;
@@ -896,7 +896,7 @@ namespace Gear.ActiveQuery
             return result;
         }
 
-        public static ActiveAggregateValue<TSource> ActiveLast<TSource>(this IReadOnlyList<TSource> source, bool isThreadSafe = false)
+        public static ActiveValue<TSource> ActiveLast<TSource>(this IReadOnlyList<TSource> source, bool isThreadSafe = false)
         {
             var firstIsValid = false;
             TSource firstLast = default;
@@ -910,7 +910,7 @@ namespace Gear.ActiveQuery
             EventHandler<ElementsMovedEventArgs<TSource>> elementsMoved = null;
             EventHandler<ElementMembershipEventArgs<TSource>> elementsRemoved = null;
             var resultAccess = isThreadSafe ? new object() : null;
-            var result = new ActiveAggregateValue<TSource>(firstIsValid, firstLast, out var setValidity, out var setValue, disposing =>
+            var result = new ActiveValue<TSource>(firstIsValid, firstLast, out var setValidity, out var setValue, disposing =>
             {
                 monitor.ElementsAdded -= elementsAdded;
                 monitor.ElementsMoved -= elementsMoved;
@@ -978,10 +978,10 @@ namespace Gear.ActiveQuery
             return result;
         }
 
-        public static ActiveAggregateValue<TSource> ActiveLast<TSource>(this IReadOnlyList<TSource> source, Func<TSource, bool> predicate, bool isThreadSafe = false, params string[] predicateProperties) where TSource : class =>
+        public static ActiveValue<TSource> ActiveLast<TSource>(this IReadOnlyList<TSource> source, Func<TSource, bool> predicate, bool isThreadSafe = false, params string[] predicateProperties) where TSource : class =>
             ActiveLast(source, (source as ISynchronizable)?.SynchronizationContext, predicate, isThreadSafe, predicateProperties);
 
-        public static ActiveAggregateValue<TSource> ActiveLast<TSource>(this IReadOnlyList<TSource> source, SynchronizationContext synchronizationContext, Func<TSource, bool> predicate, bool isThreadSafe = false, params string[] predicateProperties) where TSource : class
+        public static ActiveValue<TSource> ActiveLast<TSource>(this IReadOnlyList<TSource> source, SynchronizationContext synchronizationContext, Func<TSource, bool> predicate, bool isThreadSafe = false, params string[] predicateProperties) where TSource : class
         {
             var where = ActiveWhere(source, synchronizationContext, predicate, predicateProperties);
             var firstIsValid = false;
@@ -996,7 +996,7 @@ namespace Gear.ActiveQuery
             EventHandler<ElementsMovedEventArgs<TSource>> elementsMoved = null;
             EventHandler<ElementMembershipEventArgs<TSource>> elementsRemoved = null;
             var resultAccess = isThreadSafe ? new object() : null;
-            var result = new ActiveAggregateValue<TSource>(firstIsValid, firstLast, out var setValidity, out var setValue, disposing =>
+            var result = new ActiveValue<TSource>(firstIsValid, firstLast, out var setValidity, out var setValue, disposing =>
             {
                 monitor.ElementsAdded -= elementsAdded;
                 monitor.ElementsMoved -= elementsMoved;
@@ -1067,7 +1067,7 @@ namespace Gear.ActiveQuery
             return result;
         }
 
-        public static ActiveAggregateValue<TSource> ActiveLastOrDefault<TSource>(this IReadOnlyList<TSource> source, bool isThreadSafe = false)
+        public static ActiveValue<TSource> ActiveLastOrDefault<TSource>(this IReadOnlyList<TSource> source, bool isThreadSafe = false)
         {
             TSource firstLast = default;
             if (source.Count > 0)
@@ -1077,7 +1077,7 @@ namespace Gear.ActiveQuery
             EventHandler<ElementsMovedEventArgs<TSource>> elementsMoved = null;
             EventHandler<ElementMembershipEventArgs<TSource>> elementsRemoved = null;
             var resultAccess = isThreadSafe ? new object() : null;
-            var result = new ActiveAggregateValue<TSource>(true, firstLast, out var setValidity, out var setValue, disposing =>
+            var result = new ActiveValue<TSource>(true, firstLast, out var setValidity, out var setValue, disposing =>
             {
                 monitor.ElementsAdded -= elementsAdded;
                 monitor.ElementsMoved -= elementsMoved;
@@ -1137,10 +1137,10 @@ namespace Gear.ActiveQuery
             return result;
         }
 
-        public static ActiveAggregateValue<TSource> ActiveLastOrDefault<TSource>(this IReadOnlyList<TSource> source, Func<TSource, bool> predicate, bool isThreadSafe = false, params string[] predicateProperties) where TSource : class =>
+        public static ActiveValue<TSource> ActiveLastOrDefault<TSource>(this IReadOnlyList<TSource> source, Func<TSource, bool> predicate, bool isThreadSafe = false, params string[] predicateProperties) where TSource : class =>
             ActiveLastOrDefault(source, (source as ISynchronizable)?.SynchronizationContext, predicate, isThreadSafe, predicateProperties);
 
-        public static ActiveAggregateValue<TSource> ActiveLastOrDefault<TSource>(this IReadOnlyList<TSource> source, SynchronizationContext synchronizationContext, Func<TSource, bool> predicate, bool isThreadSafe = false, params string[] predicateProperties) where TSource : class
+        public static ActiveValue<TSource> ActiveLastOrDefault<TSource>(this IReadOnlyList<TSource> source, SynchronizationContext synchronizationContext, Func<TSource, bool> predicate, bool isThreadSafe = false, params string[] predicateProperties) where TSource : class
         {
             var where = ActiveWhere(source, synchronizationContext, predicate, predicateProperties);
             TSource firstLast = default;
@@ -1151,7 +1151,7 @@ namespace Gear.ActiveQuery
             EventHandler<ElementsMovedEventArgs<TSource>> elementsMoved = null;
             EventHandler<ElementMembershipEventArgs<TSource>> elementsRemoved = null;
             var resultAccess = isThreadSafe ? new object() : null;
-            var result = new ActiveAggregateValue<TSource>(true, firstLast, out var setValidity, out var setValue, disposing =>
+            var result = new ActiveValue<TSource>(true, firstLast, out var setValidity, out var setValue, disposing =>
             {
                 monitor.ElementsAdded -= elementsAdded;
                 monitor.ElementsMoved -= elementsMoved;
@@ -1214,7 +1214,7 @@ namespace Gear.ActiveQuery
             return result;
         }
 
-        public static ActiveAggregateValue<TResult> ActiveMax<TKey, TValue, TResult>(this IReadOnlyDictionary<TKey, TValue> source, Func<TKey, TValue, TResult> selector, bool isThreadSafe = false, params string[] selectorProperties) where TResult : IComparable<TResult>
+        public static ActiveValue<TResult> ActiveMax<TKey, TValue, TResult>(this IReadOnlyDictionary<TKey, TValue> source, Func<TKey, TValue, TResult> selector, bool isThreadSafe = false, params string[] selectorProperties) where TResult : IComparable<TResult>
         {
             var selectorValues = source is SortedDictionary<TKey, TValue> || source is ObservableSortedDictionary<TKey, TValue> || source is SynchronizedObservableSortedDictionary<TKey, TValue> ? (IDictionary<TKey, TResult>)new SortedDictionary<TKey, TResult>() : new Dictionary<TKey, TResult>();
             var firstIsValid = false;
@@ -1243,7 +1243,7 @@ namespace Gear.ActiveQuery
             EventHandler<NotifyDictionaryValuesEventArgs<TKey, TValue>> valuesAdded = null;
             EventHandler<NotifyDictionaryValuesEventArgs<TKey, TValue>> valuesRemoved = null;
             var resultAccess = isThreadSafe ? new object() : null;
-            var result = new ActiveAggregateValue<TResult>(firstIsValid, firstMax, out var setValidity, out var setValue, disposing =>
+            var result = new ActiveValue<TResult>(firstIsValid, firstMax, out var setValidity, out var setValue, disposing =>
             {
                 monitor.ValueAdded -= valueAdded;
                 monitor.ValuePropertyChanged -= valuePropertyChanged;
@@ -1432,7 +1432,7 @@ namespace Gear.ActiveQuery
             return result;
         }
 
-        public static ActiveAggregateValue<TResult?> ActiveMax<TKey, TValue, TResult>(this IReadOnlyDictionary<TKey, TValue> source, Func<TKey, TValue, TResult?> selector, bool isThreadSafe = false, params string[] selectorProperties) where TResult : struct, IComparable<TResult>
+        public static ActiveValue<TResult?> ActiveMax<TKey, TValue, TResult>(this IReadOnlyDictionary<TKey, TValue> source, Func<TKey, TValue, TResult?> selector, bool isThreadSafe = false, params string[] selectorProperties) where TResult : struct, IComparable<TResult>
         {
             var selectorValues = source is SortedDictionary<TKey, TValue> || source is ObservableSortedDictionary<TKey, TValue> || source is SynchronizedObservableSortedDictionary<TKey, TValue> ? (IDictionary<TKey, TResult?>)new SortedDictionary<TKey, TResult?>() : new Dictionary<TKey, TResult?>();
             var firstIsValid = false;
@@ -1461,7 +1461,7 @@ namespace Gear.ActiveQuery
             EventHandler<NotifyDictionaryValuesEventArgs<TKey, TValue>> valuesAdded = null;
             EventHandler<NotifyDictionaryValuesEventArgs<TKey, TValue>> valuesRemoved = null;
             var resultAccess = isThreadSafe ? new object() : null;
-            var result = new ActiveAggregateValue<TResult?>(firstIsValid, firstMax, out var setValidity, out var setValue, disposing =>
+            var result = new ActiveValue<TResult?>(firstIsValid, firstMax, out var setValidity, out var setValue, disposing =>
             {
                 monitor.ValueAdded -= valueAdded;
                 monitor.ValuePropertyChanged -= valuePropertyChanged;
@@ -1657,7 +1657,7 @@ namespace Gear.ActiveQuery
             return result;
         }
 
-        public static ActiveAggregateValue<TResult> ActiveMax<TSource, TResult>(this IReadOnlyList<TSource> source, Func<TSource, TResult> selector, bool isThreadSafe = false, params string[] selectorProperties) where TSource : class where TResult : IComparable<TResult>
+        public static ActiveValue<TResult> ActiveMax<TSource, TResult>(this IReadOnlyList<TSource> source, Func<TSource, TResult> selector, bool isThreadSafe = false, params string[] selectorProperties) where TSource : class where TResult : IComparable<TResult>
         {
             var selectorValues = new Dictionary<object, TResult>();
             var firstIsValid = false;
@@ -1681,7 +1681,7 @@ namespace Gear.ActiveQuery
             EventHandler<ElementMembershipEventArgs<TSource>> elementsAdded = null;
             EventHandler<ElementMembershipEventArgs<TSource>> elementsRemoved = null;
             var resultAccess = isThreadSafe ? new object() : null;
-            var result = new ActiveAggregateValue<TResult>(firstIsValid, firstMax, out var setValidity, out var setValue, disposing =>
+            var result = new ActiveValue<TResult>(firstIsValid, firstMax, out var setValidity, out var setValue, disposing =>
             {
                 monitor.ElementPropertyChanged -= elementPropertyChanged;
                 monitor.ElementsAdded -= elementsAdded;
@@ -1792,7 +1792,7 @@ namespace Gear.ActiveQuery
             return result;
         }
 
-        public static ActiveAggregateValue<TResult?> ActiveMax<TSource, TResult>(this IReadOnlyList<TSource> source, Func<TSource, TResult?> selector, bool isThreadSafe = false, params string[] selectorProperties) where TSource : class where TResult : struct, IComparable<TResult>
+        public static ActiveValue<TResult?> ActiveMax<TSource, TResult>(this IReadOnlyList<TSource> source, Func<TSource, TResult?> selector, bool isThreadSafe = false, params string[] selectorProperties) where TSource : class where TResult : struct, IComparable<TResult>
         {
             var selectorValues = new Dictionary<object, TResult?>();
             var firstIsValid = false;
@@ -1816,7 +1816,7 @@ namespace Gear.ActiveQuery
             EventHandler<ElementMembershipEventArgs<TSource>> elementsAdded = null;
             EventHandler<ElementMembershipEventArgs<TSource>> elementsRemoved = null;
             var resultAccess = isThreadSafe ? new object() : null;
-            var result = new ActiveAggregateValue<TResult?>(firstIsValid, firstMax, out var setValidity, out var setValue, disposing =>
+            var result = new ActiveValue<TResult?>(firstIsValid, firstMax, out var setValidity, out var setValue, disposing =>
             {
                 monitor.ElementPropertyChanged -= elementPropertyChanged;
                 monitor.ElementsAdded -= elementsAdded;
@@ -1926,7 +1926,7 @@ namespace Gear.ActiveQuery
             return result;
         }
 
-        public static ActiveAggregateValue<TResult> ActiveMin<TKey, TValue, TResult>(this IReadOnlyDictionary<TKey, TValue> source, Func<TKey, TValue, TResult> selector, bool isThreadSafe = false, params string[] selectorProperties) where TResult : IComparable<TResult>
+        public static ActiveValue<TResult> ActiveMin<TKey, TValue, TResult>(this IReadOnlyDictionary<TKey, TValue> source, Func<TKey, TValue, TResult> selector, bool isThreadSafe = false, params string[] selectorProperties) where TResult : IComparable<TResult>
         {
             var selectorValues = source is SortedDictionary<TKey, TValue> || source is ObservableSortedDictionary<TKey, TValue> || source is SynchronizedObservableSortedDictionary<TKey, TValue> ? (IDictionary<TKey, TResult>)new SortedDictionary<TKey, TResult>() : new Dictionary<TKey, TResult>();
             var firstIsValid = false;
@@ -1955,7 +1955,7 @@ namespace Gear.ActiveQuery
             EventHandler<NotifyDictionaryValuesEventArgs<TKey, TValue>> valuesAdded = null;
             EventHandler<NotifyDictionaryValuesEventArgs<TKey, TValue>> valuesRemoved = null;
             var resultAccess = isThreadSafe ? new object() : null;
-            var result = new ActiveAggregateValue<TResult>(firstIsValid, firstMin, out var setValidity, out var setValue, disposing =>
+            var result = new ActiveValue<TResult>(firstIsValid, firstMin, out var setValidity, out var setValue, disposing =>
             {
                 monitor.ValueAdded -= valueAdded;
                 monitor.ValuePropertyChanged -= valuePropertyChanged;
@@ -2144,7 +2144,7 @@ namespace Gear.ActiveQuery
             return result;
         }
 
-        public static ActiveAggregateValue<TResult?> ActiveMin<TKey, TValue, TResult>(this IReadOnlyDictionary<TKey, TValue> source, Func<TKey, TValue, TResult?> selector, bool isThreadSafe = false, params string[] selectorProperties) where TResult : struct, IComparable<TResult>
+        public static ActiveValue<TResult?> ActiveMin<TKey, TValue, TResult>(this IReadOnlyDictionary<TKey, TValue> source, Func<TKey, TValue, TResult?> selector, bool isThreadSafe = false, params string[] selectorProperties) where TResult : struct, IComparable<TResult>
         {
             var selectorValues = source is SortedDictionary<TKey, TValue> || source is ObservableSortedDictionary<TKey, TValue> || source is SynchronizedObservableSortedDictionary<TKey, TValue> ? (IDictionary<TKey, TResult?>)new SortedDictionary<TKey, TResult?>() : new Dictionary<TKey, TResult?>();
             var firstIsValid = false;
@@ -2173,7 +2173,7 @@ namespace Gear.ActiveQuery
             EventHandler<NotifyDictionaryValuesEventArgs<TKey, TValue>> valuesAdded = null;
             EventHandler<NotifyDictionaryValuesEventArgs<TKey, TValue>> valuesRemoved = null;
             var resultAccess = isThreadSafe ? new object() : null;
-            var result = new ActiveAggregateValue<TResult?>(firstIsValid, firstMin, out var setValidity, out var setValue, disposing =>
+            var result = new ActiveValue<TResult?>(firstIsValid, firstMin, out var setValidity, out var setValue, disposing =>
             {
                 monitor.ValueAdded -= valueAdded;
                 monitor.ValuePropertyChanged -= valuePropertyChanged;
@@ -2369,7 +2369,7 @@ namespace Gear.ActiveQuery
             return result;
         }
 
-        public static ActiveAggregateValue<TResult> ActiveMin<TSource, TResult>(this IReadOnlyList<TSource> source, Func<TSource, TResult> selector, bool isThreadSafe = false, params string[] selectorProperties) where TSource : class where TResult : IComparable<TResult>
+        public static ActiveValue<TResult> ActiveMin<TSource, TResult>(this IReadOnlyList<TSource> source, Func<TSource, TResult> selector, bool isThreadSafe = false, params string[] selectorProperties) where TSource : class where TResult : IComparable<TResult>
         {
             var selectorValues = new Dictionary<object, TResult>();
             var firstIsValid = false;
@@ -2393,7 +2393,7 @@ namespace Gear.ActiveQuery
             EventHandler<ElementMembershipEventArgs<TSource>> elementsAdded = null;
             EventHandler<ElementMembershipEventArgs<TSource>> elementsRemoved = null;
             var resultAccess = isThreadSafe ? new object() : null;
-            var result = new ActiveAggregateValue<TResult>(firstIsValid, firstMin, out var setValidity, out var setValue, disposing =>
+            var result = new ActiveValue<TResult>(firstIsValid, firstMin, out var setValidity, out var setValue, disposing =>
             {
                 monitor.ElementPropertyChanged -= elementPropertyChanged;
                 monitor.ElementsAdded -= elementsAdded;
@@ -2504,7 +2504,7 @@ namespace Gear.ActiveQuery
             return result;
         }
 
-        public static ActiveAggregateValue<TResult?> ActiveMin<TSource, TResult>(this IReadOnlyList<TSource> source, Func<TSource, TResult?> selector, bool isThreadSafe = false, params string[] selectorProperties) where TSource : class where TResult : struct, IComparable<TResult>
+        public static ActiveValue<TResult?> ActiveMin<TSource, TResult>(this IReadOnlyList<TSource> source, Func<TSource, TResult?> selector, bool isThreadSafe = false, params string[] selectorProperties) where TSource : class where TResult : struct, IComparable<TResult>
         {
             var selectorValues = new Dictionary<object, TResult?>();
             var firstIsValid = false;
@@ -2528,7 +2528,7 @@ namespace Gear.ActiveQuery
             EventHandler<ElementMembershipEventArgs<TSource>> elementsAdded = null;
             EventHandler<ElementMembershipEventArgs<TSource>> elementsRemoved = null;
             var resultAccess = isThreadSafe ? new object() : null;
-            var result = new ActiveAggregateValue<TResult?>(firstIsValid, firstMin, out var setValidity, out var setValue, disposing =>
+            var result = new ActiveValue<TResult?>(firstIsValid, firstMin, out var setValidity, out var setValue, disposing =>
             {
                 monitor.ElementPropertyChanged -= elementPropertyChanged;
                 monitor.ElementsAdded -= elementsAdded;
@@ -3230,7 +3230,7 @@ namespace Gear.ActiveQuery
             return result;
         }
 
-        public static ActiveAggregateValue<TSource> ActiveSingle<TSource>(this IReadOnlyList<TSource> source, bool isThreadSafe = false)
+        public static ActiveValue<TSource> ActiveSingle<TSource>(this IReadOnlyList<TSource> source, bool isThreadSafe = false)
         {
             var firstIsValid = false;
             TSource firstSingle = default;
@@ -3242,7 +3242,7 @@ namespace Gear.ActiveQuery
             var monitor = ActiveListMonitor<TSource>.Monitor(source);
             EventHandler<ElementMembershipEventArgs<TSource>> elementMembership = null;
             var resultAccess = isThreadSafe ? new object() : null;
-            var result = new ActiveAggregateValue<TSource>(firstIsValid, firstSingle, out var setValidity, out var setValue, disposing =>
+            var result = new ActiveValue<TSource>(firstIsValid, firstSingle, out var setValidity, out var setValue, disposing =>
             {
                 monitor.ElementsAdded -= elementMembership;
                 monitor.ElementsRemoved -= elementMembership;
@@ -3275,10 +3275,10 @@ namespace Gear.ActiveQuery
             return result;
         }
 
-        public static ActiveAggregateValue<TSource> ActiveSingle<TSource>(this IReadOnlyList<TSource> source, Func<TSource, bool> predicate, bool isThreadSafe = false, params string[] predicateProperties) where TSource : class =>
+        public static ActiveValue<TSource> ActiveSingle<TSource>(this IReadOnlyList<TSource> source, Func<TSource, bool> predicate, bool isThreadSafe = false, params string[] predicateProperties) where TSource : class =>
             ActiveSingle(source, (source as ISynchronizable)?.SynchronizationContext, predicate, isThreadSafe, predicateProperties);
 
-        public static ActiveAggregateValue<TSource> ActiveSingle<TSource>(this IReadOnlyList<TSource> source, SynchronizationContext synchronizationContext, Func<TSource, bool> predicate, bool isThreadSafe = false, params string[] predicateProperties) where TSource : class
+        public static ActiveValue<TSource> ActiveSingle<TSource>(this IReadOnlyList<TSource> source, SynchronizationContext synchronizationContext, Func<TSource, bool> predicate, bool isThreadSafe = false, params string[] predicateProperties) where TSource : class
         {
             var where = ActiveWhere(source, synchronizationContext, predicate, predicateProperties);
             var firstIsValid = false;
@@ -3291,7 +3291,7 @@ namespace Gear.ActiveQuery
             var monitor = ActiveListMonitor<TSource>.Monitor(where);
             EventHandler<ElementMembershipEventArgs<TSource>> elementMembership = null;
             var resultAccess = isThreadSafe ? new object() : null;
-            var result = new ActiveAggregateValue<TSource>(firstIsValid, firstSingle, out var setValidity, out var setValue, disposing =>
+            var result = new ActiveValue<TSource>(firstIsValid, firstSingle, out var setValidity, out var setValue, disposing =>
             {
                 monitor.ElementsAdded -= elementMembership;
                 monitor.ElementsRemoved -= elementMembership;
@@ -3327,7 +3327,7 @@ namespace Gear.ActiveQuery
             return result;
         }
 
-        public static ActiveAggregateValue<TSource> ActiveSingleOrDefault<TSource>(this IReadOnlyList<TSource> source, bool isThreadSafe = false)
+        public static ActiveValue<TSource> ActiveSingleOrDefault<TSource>(this IReadOnlyList<TSource> source, bool isThreadSafe = false)
         {
             var firstIsValid = source.Count <= 1;
             TSource firstSingle = default;
@@ -3336,7 +3336,7 @@ namespace Gear.ActiveQuery
             var monitor = ActiveListMonitor<TSource>.Monitor(source);
             EventHandler<ElementMembershipEventArgs<TSource>> elementMembership = null;
             var resultAccess = isThreadSafe ? new object() : null;
-            var result = new ActiveAggregateValue<TSource>(firstIsValid, firstSingle, out var setValidity, out var setValue, disposing =>
+            var result = new ActiveValue<TSource>(firstIsValid, firstSingle, out var setValidity, out var setValue, disposing =>
             {
                 monitor.ElementsAdded -= elementMembership;
                 monitor.ElementsRemoved -= elementMembership;
@@ -3369,10 +3369,10 @@ namespace Gear.ActiveQuery
             return result;
         }
 
-        public static ActiveAggregateValue<TSource> ActiveSingleOrDefault<TSource>(this IReadOnlyList<TSource> source, Func<TSource, bool> predicate, bool isThreadSafe = false, params string[] predicateProperties) where TSource : class =>
+        public static ActiveValue<TSource> ActiveSingleOrDefault<TSource>(this IReadOnlyList<TSource> source, Func<TSource, bool> predicate, bool isThreadSafe = false, params string[] predicateProperties) where TSource : class =>
             ActiveSingleOrDefault(source, (source as ISynchronizable)?.SynchronizationContext, predicate, isThreadSafe, predicateProperties);
 
-        public static ActiveAggregateValue<TSource> ActiveSingleOrDefault<TSource>(this IReadOnlyList<TSource> source, SynchronizationContext synchronizationContext, Func<TSource, bool> predicate, bool isThreadSafe = false, params string[] predicateProperties) where TSource : class
+        public static ActiveValue<TSource> ActiveSingleOrDefault<TSource>(this IReadOnlyList<TSource> source, SynchronizationContext synchronizationContext, Func<TSource, bool> predicate, bool isThreadSafe = false, params string[] predicateProperties) where TSource : class
         {
             var where = ActiveWhere(source, synchronizationContext, predicate, predicateProperties);
             var firstIsValid = where.Count <= 1;
@@ -3382,7 +3382,7 @@ namespace Gear.ActiveQuery
             var monitor = ActiveListMonitor<TSource>.Monitor(where);
             EventHandler<ElementMembershipEventArgs<TSource>> elementMembership = null;
             var resultAccess = isThreadSafe ? new object() : null;
-            var result = new ActiveAggregateValue<TSource>(firstIsValid, firstSingle, out var setValidity, out var setValue, disposing =>
+            var result = new ActiveValue<TSource>(firstIsValid, firstSingle, out var setValidity, out var setValue, disposing =>
             {
                 monitor.ElementsAdded -= elementMembership;
                 monitor.ElementsRemoved -= elementMembership;
@@ -3418,7 +3418,7 @@ namespace Gear.ActiveQuery
             return result;
         }
 
-        public static ActiveAggregateValue<TResult> ActiveSum<TKey, TValue, TResult>(this IReadOnlyDictionary<TKey, TValue> source, Func<TKey, TValue, TResult> selector, bool isThreadSafe = false, params string[] selectorProperties) where TResult : IEquatable<TResult>
+        public static ActiveValue<TResult> ActiveSum<TKey, TValue, TResult>(this IReadOnlyDictionary<TKey, TValue> source, Func<TKey, TValue, TResult> selector, bool isThreadSafe = false, params string[] selectorProperties) where TResult : IEquatable<TResult>
         {
             var operations = new GenericOperations<TResult>();
             var selectorValues = source is SortedDictionary<TKey, TValue> || source is ObservableSortedDictionary<TKey, TValue> || source is SynchronizedObservableSortedDictionary<TKey, TValue> ? (IDictionary<TKey, TResult>)new SortedDictionary<TKey, TResult>() : new Dictionary<TKey, TResult>();
@@ -3442,7 +3442,7 @@ namespace Gear.ActiveQuery
             EventHandler<NotifyDictionaryValuesEventArgs<TKey, TValue>> valuesAddedHandler = null;
             EventHandler<NotifyDictionaryValuesEventArgs<TKey, TValue>> valuesRemovedHandler = null;
             var resultAccess = isThreadSafe ? new object() : null;
-            var result = new ActiveAggregateValue<TResult>(true, firstSum, out var setValidity, out var setValue, disposing =>
+            var result = new ActiveValue<TResult>(true, firstSum, out var setValidity, out var setValue, disposing =>
             {
                 monitor.ValueAdded -= valueAddedHandler;
                 monitor.ValuePropertyChanged -= valuePropertyChangedHandler;
@@ -3633,7 +3633,7 @@ namespace Gear.ActiveQuery
             return result;
         }
 
-        public static ActiveAggregateValue<TResult?> ActiveSum<TKey, TValue, TResult>(this IReadOnlyDictionary<TKey, TValue> source, Func<TKey, TValue, TResult?> selector, bool isThreadSafe = false, params string[] selectorProperties) where TResult : struct
+        public static ActiveValue<TResult?> ActiveSum<TKey, TValue, TResult>(this IReadOnlyDictionary<TKey, TValue> source, Func<TKey, TValue, TResult?> selector, bool isThreadSafe = false, params string[] selectorProperties) where TResult : struct
         {
             var operations = new GenericOperations<TResult>();
             var selectorValues = source is SortedDictionary<TKey, TValue> || source is ObservableSortedDictionary<TKey, TValue> || source is SynchronizedObservableSortedDictionary<TKey, TValue> ? (IDictionary<TKey, TResult?>)new SortedDictionary<TKey, TResult?>() : new Dictionary<TKey, TResult?>();
@@ -3657,7 +3657,7 @@ namespace Gear.ActiveQuery
             EventHandler<NotifyDictionaryValuesEventArgs<TKey, TValue>> valuesAddedHandler = null;
             EventHandler<NotifyDictionaryValuesEventArgs<TKey, TValue>> valuesRemovedHandler = null;
             var resultAccess = isThreadSafe ? new object() : null;
-            var result = new ActiveAggregateValue<TResult?>(true, firstSum, out var setValidity, out var setValue, disposing =>
+            var result = new ActiveValue<TResult?>(true, firstSum, out var setValidity, out var setValue, disposing =>
             {
                 monitor.ValueAdded -= valueAddedHandler;
                 monitor.ValuePropertyChanged -= valuePropertyChangedHandler;
@@ -3848,7 +3848,7 @@ namespace Gear.ActiveQuery
             return result;
         }
 
-        public static ActiveAggregateValue<TResult> ActiveSum<TSource, TResult>(this IReadOnlyList<TSource> source, Func<TSource, TResult> selector, bool isThreadSafe = false, params string[] selectorProperties) where TSource : class where TResult : IEquatable<TResult>
+        public static ActiveValue<TResult> ActiveSum<TSource, TResult>(this IReadOnlyList<TSource> source, Func<TSource, TResult> selector, bool isThreadSafe = false, params string[] selectorProperties) where TSource : class where TResult : IEquatable<TResult>
         {
             var operations = new GenericOperations<TResult>();
             var selectorValues = new Dictionary<TSource, TResult>();
@@ -3869,7 +3869,7 @@ namespace Gear.ActiveQuery
             EventHandler<ElementMembershipEventArgs<TSource>> elementsAddedHandler = null;
             EventHandler<ElementMembershipEventArgs<TSource>> elementsRemovedHandler = null;
             var resultAccess = isThreadSafe ? new object() : null;
-            var result = new ActiveAggregateValue<TResult>(true, firstSum, out var setValidity, out var setValue, disposing =>
+            var result = new ActiveValue<TResult>(true, firstSum, out var setValidity, out var setValue, disposing =>
             {
                 monitor.ElementPropertyChanged -= elementPropertyChangedHandler;
                 monitor.ElementPropertyChanging -= elementPropertyChangingHandler;
@@ -3994,7 +3994,7 @@ namespace Gear.ActiveQuery
             return result;
         }
 
-        public static ActiveAggregateValue<TResult?> ActiveSum<TSource, TResult>(this IReadOnlyList<TSource> source, Func<TSource, TResult?> selector, bool isThreadSafe = false, params string[] selectorProperties) where TSource : class where TResult : struct
+        public static ActiveValue<TResult?> ActiveSum<TSource, TResult>(this IReadOnlyList<TSource> source, Func<TSource, TResult?> selector, bool isThreadSafe = false, params string[] selectorProperties) where TSource : class where TResult : struct
         {
             var operations = new GenericOperations<TResult>();
             var selectorValues = new Dictionary<TSource, TResult?>();
@@ -4015,7 +4015,7 @@ namespace Gear.ActiveQuery
             EventHandler<ElementMembershipEventArgs<TSource>> elementsAddedHandler = null;
             EventHandler<ElementMembershipEventArgs<TSource>> elementsRemovedHandler = null;
             var resultAccess = isThreadSafe ? new object() : null;
-            var result = new ActiveAggregateValue<TResult?>(true, firstSum, out var setValidity, out var setValue, disposing =>
+            var result = new ActiveValue<TResult?>(true, firstSum, out var setValidity, out var setValue, disposing =>
             {
                 monitor.ElementPropertyChanged -= elementPropertyChangedHandler;
                 monitor.ElementPropertyChanging -= elementPropertyChangingHandler;

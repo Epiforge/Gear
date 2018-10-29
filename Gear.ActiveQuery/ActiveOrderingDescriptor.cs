@@ -2,7 +2,7 @@ using System;
 
 namespace Gear.ActiveQuery
 {
-    public class ActiveOrderingDescriptor<T> where T : class
+    public class ActiveOrderingDescriptor<T>
     {
         public ActiveOrderingDescriptor(Func<T, IComparable> selector, bool descending)
         {

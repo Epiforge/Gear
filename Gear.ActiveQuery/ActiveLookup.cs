@@ -6,9 +6,9 @@ using System.ComponentModel;
 
 namespace Gear.ActiveQuery
 {
-    public class ActiveLookup<TKey, TValue> : SyncDisposablePropertyChangeNotifier, INotifyDictionaryChanged<TKey, TValue>, IReadOnlyDictionary<TKey, TValue>
+    public class ActiveLookup<TKey, TValue> : SyncDisposablePropertyChangeNotifier, INotifyDictionaryChanged<TKey, TValue>, INotifyElementFaultChanges, IReadOnlyDictionary<TKey, TValue>
     {
-        internal ActiveLookup(IReadOnlyDictionary<TKey, TValue> readOnlyDictionary, Action<bool> onDispose = null)
+        internal ActiveLookup(IReadOnlyDictionary<TKey, TValue> readOnlyDictionary, Action onDispose = null)
         {
             if (readOnlyDictionary is ActiveLookup<TKey, TValue> activeLookup)
                 this.readOnlyDictionary = activeLookup.readOnlyDictionary;
@@ -29,9 +29,30 @@ namespace Gear.ActiveQuery
             this.onDispose = onDispose;
         }
 
-        readonly IReadOnlyDictionary<TKey, TValue> readOnlyDictionary;
-        readonly Action<bool> onDispose;
+        internal ActiveLookup(IReadOnlyDictionary<TKey, TValue> readOnlyDictionary, INotifyElementFaultChanges faultNotifier, Action onDispose = null) : this(readOnlyDictionary, onDispose)
+        {
+            this.faultNotifier = faultNotifier ?? (readOnlyDictionary as INotifyElementFaultChanges);
+            if (this.faultNotifier != null)
+            {
+                this.faultNotifier.ElementFaultChanged += FaultNotifierElementFaultChanged;
+                this.faultNotifier.ElementFaultChanging += FaultNotifierElementFaultChanging;
+            }
+        }
 
+        internal ActiveLookup(IReadOnlyDictionary<TKey, TValue> readOnlyDictionary, out Action<Exception> setOperationFault, Action onDispose = null) : this(readOnlyDictionary, out setOperationFault, null, onDispose)
+        {
+        }
+
+        internal ActiveLookup(IReadOnlyDictionary<TKey, TValue> readOnlyDictionary, out Action<Exception> setOperationFault, INotifyElementFaultChanges faultNotifier = null, Action onDispose = null) : this(readOnlyDictionary, faultNotifier, onDispose) =>
+            setOperationFault = SetOperationFault;
+
+        readonly INotifyElementFaultChanges faultNotifier;
+        readonly Action onDispose;
+        Exception operationFault;
+        readonly IReadOnlyDictionary<TKey, TValue> readOnlyDictionary;
+
+        public event EventHandler<ElementFaultChangeEventArgs> ElementFaultChanged;
+        public event EventHandler<ElementFaultChangeEventArgs> ElementFaultChanging;
         public event EventHandler<NotifyDictionaryValueEventArgs<TKey, TValue>> ValueAdded;
         public event EventHandler<NotifyDictionaryValueEventArgs<TKey, TValue>> ValueRemoved;
         public event EventHandler<NotifyDictionaryValueReplacedEventArgs<TKey, TValue>> ValueReplaced;
@@ -42,7 +63,7 @@ namespace Gear.ActiveQuery
 
         protected override void Dispose(bool disposing)
         {
-            onDispose?.Invoke(disposing);
+            onDispose?.Invoke();
             if (disposing)
             {
                 if (readOnlyDictionary is INotifyDictionaryChanged<TKey, TValue> dictionaryNotifier)
@@ -59,6 +80,12 @@ namespace Gear.ActiveQuery
                     propertyChangingNotifier.PropertyChanging -= PropertyChangingHandler;
             }
         }
+
+        void FaultNotifierElementFaultChanged(object sender, ElementFaultChangeEventArgs e) => ElementFaultChanged?.Invoke(this, e);
+
+        void FaultNotifierElementFaultChanging(object sender, ElementFaultChangeEventArgs e) => ElementFaultChanging?.Invoke(this, e);
+
+        public IReadOnlyList<(object element, Exception fault)> GetElementFaults() => faultNotifier?.GetElementFaults();
 
         void PropertyChangedHandler(object sender, PropertyChangedEventArgs e)
         {
@@ -78,6 +105,8 @@ namespace Gear.ActiveQuery
 
         IEnumerator IEnumerable.GetEnumerator() => ((IEnumerable)readOnlyDictionary).GetEnumerator();
 
+        void SetOperationFault(Exception operationFault) => OperationFault = operationFault;
+
         void ValueAddedHandler(object sender, NotifyDictionaryValueEventArgs<TKey, TValue> e) => ValueAdded?.Invoke(this, e);
 
         void ValueRemovedHandler(object sender, NotifyDictionaryValueEventArgs<TKey, TValue> e) => ValueRemoved?.Invoke(this, e);
@@ -93,6 +122,12 @@ namespace Gear.ActiveQuery
         public int Count => readOnlyDictionary.Count;
 
         public IEnumerable<TKey> Keys => readOnlyDictionary.Keys;
+
+        public Exception OperationFault
+        {
+            get => operationFault;
+            private set => SetBackedProperty(ref operationFault, in value);
+        }
 
         public IEnumerable<TValue> Values => readOnlyDictionary.Values;
     }
