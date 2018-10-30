@@ -6,7 +6,7 @@ namespace Gear.ActiveExpressions
 {
     class ActiveCoalesceExpression : ActiveBinaryExpression, IEquatable<ActiveCoalesceExpression>
     {
-        public static bool operator ==(ActiveCoalesceExpression a, ActiveCoalesceExpression b) => a?.Equals(b) ?? b == null;
+        public static bool operator ==(ActiveCoalesceExpression a, ActiveCoalesceExpression b) => a?.Equals(b) ?? b is null;
 
         public static bool operator !=(ActiveCoalesceExpression a, ActiveCoalesceExpression b) => !(a == b);
 

@@ -51,7 +51,7 @@ namespace Gear.ActiveExpressions
             }
         }
 
-        public static bool operator ==(ActiveMethodCallExpression a, ActiveMethodCallExpression b) => a?.Equals(b) ?? b == null;
+        public static bool operator ==(ActiveMethodCallExpression a, ActiveMethodCallExpression b) => a?.Equals(b) ?? b is null;
 
         public static bool operator !=(ActiveMethodCallExpression a, ActiveMethodCallExpression b) => !(a == b);
 

@@ -234,7 +234,7 @@ namespace Gear.ActiveExpressions
             }
         }
 
-        public static bool operator ==(ActiveExpression<TResult> a, ActiveExpression<TResult> b) => a?.Equals(b) ?? b == null;
+        public static bool operator ==(ActiveExpression<TResult> a, ActiveExpression<TResult> b) => a?.Equals(b) ?? b is null;
 
         public static bool operator !=(ActiveExpression<TResult> a, ActiveExpression<TResult> b) => !(a == b);
 
@@ -339,7 +339,7 @@ namespace Gear.ActiveExpressions
             }
         }
 
-        public static bool operator ==(ActiveExpression<TArg, TResult> a, ActiveExpression<TArg, TResult> b) => a?.Equals(b) ?? b == null;
+        public static bool operator ==(ActiveExpression<TArg, TResult> a, ActiveExpression<TArg, TResult> b) => a?.Equals(b) ?? b is null;
 
         public static bool operator !=(ActiveExpression<TArg, TResult> a, ActiveExpression<TArg, TResult> b) => !(a == b);
 
@@ -444,7 +444,7 @@ namespace Gear.ActiveExpressions
             }
         }
 
-        public static bool operator ==(ActiveExpression<TArg1, TArg2, TResult> a, ActiveExpression<TArg1, TArg2, TResult> b) => a?.Equals(b) ?? b == null;
+        public static bool operator ==(ActiveExpression<TArg1, TArg2, TResult> a, ActiveExpression<TArg1, TArg2, TResult> b) => a?.Equals(b) ?? b is null;
 
         public static bool operator !=(ActiveExpression<TArg1, TArg2, TResult> a, ActiveExpression<TArg1, TArg2, TResult> b) => !(a == b);
 
@@ -556,7 +556,7 @@ namespace Gear.ActiveExpressions
             }
         }
 
-        public static bool operator ==(ActiveExpression<TArg1, TArg2, TArg3, TResult> a, ActiveExpression<TArg1, TArg2, TArg3, TResult> b) => a?.Equals(b) ?? b == null;
+        public static bool operator ==(ActiveExpression<TArg1, TArg2, TArg3, TResult> a, ActiveExpression<TArg1, TArg2, TArg3, TResult> b) => a?.Equals(b) ?? b is null;
 
         public static bool operator !=(ActiveExpression<TArg1, TArg2, TArg3, TResult> a, ActiveExpression<TArg1, TArg2, TArg3, TResult> b) => !(a == b);
 

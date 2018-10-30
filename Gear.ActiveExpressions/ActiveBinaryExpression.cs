@@ -70,7 +70,7 @@ namespace Gear.ActiveExpressions
             throw new NotSupportedException("ActiveBinaryExpressions do not yet support BinaryExpressions using Conversions");
         }
 
-        public static bool operator ==(ActiveBinaryExpression a, ActiveBinaryExpression b) => a?.Equals(b) ?? b == null;
+        public static bool operator ==(ActiveBinaryExpression a, ActiveBinaryExpression b) => a?.Equals(b) ?? b is null;
 
         public static bool operator !=(ActiveBinaryExpression a, ActiveBinaryExpression b) => !(a == b);
 

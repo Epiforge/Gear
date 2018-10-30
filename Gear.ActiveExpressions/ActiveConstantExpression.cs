@@ -27,7 +27,7 @@ namespace Gear.ActiveExpressions
             }
         }
 
-        public static bool operator ==(ActiveConstantExpression a, ActiveConstantExpression b) => a?.Equals(b) ?? b == null;
+        public static bool operator ==(ActiveConstantExpression a, ActiveConstantExpression b) => a?.Equals(b) ?? b is null;
 
         public static bool operator !=(ActiveConstantExpression a, ActiveConstantExpression b) => !(a == b);
 

@@ -12,7 +12,7 @@ namespace Gear.ActiveExpressions
         static readonly object instanceManagementLock = new object();
         static readonly Dictionary<(Type type, EquatableList<ActiveExpression> arguments, ActiveExpressionOptions options), ActiveNewExpression> instances = new Dictionary<(Type type, EquatableList<ActiveExpression> arguments, ActiveExpressionOptions options), ActiveNewExpression>();
 
-        public static bool operator ==(ActiveNewExpression a, ActiveNewExpression b) => a?.Equals(b) ?? b == null;
+        public static bool operator ==(ActiveNewExpression a, ActiveNewExpression b) => a?.Equals(b) ?? b is null;
 
         public static bool operator !=(ActiveNewExpression a, ActiveNewExpression b) => !(a == b);
 

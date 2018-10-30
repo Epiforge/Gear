@@ -16,7 +16,7 @@ namespace Gear.ActiveExpressions
 
         static MethodInfo GetNullableConversionMethodInfo(Type nullableType) => nullableType.GetRuntimeMethod("op_Implicit", new Type[] { nullableType.GenericTypeArguments[0] });
 
-        public static bool operator ==(ActiveUnaryExpression a, ActiveUnaryExpression b) => a?.Equals(b) ?? b == null;
+        public static bool operator ==(ActiveUnaryExpression a, ActiveUnaryExpression b) => a?.Equals(b) ?? b is null;
 
         public static bool operator !=(ActiveUnaryExpression a, ActiveUnaryExpression b) => !(a == b);
 

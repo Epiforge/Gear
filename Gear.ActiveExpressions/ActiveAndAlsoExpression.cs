@@ -6,7 +6,7 @@ namespace Gear.ActiveExpressions
 {
     class ActiveAndAlsoExpression : ActiveBinaryExpression, IEquatable<ActiveAndAlsoExpression>
     {
-        public static bool operator ==(ActiveAndAlsoExpression a, ActiveAndAlsoExpression b) => a?.Equals(b) ?? b == null;
+        public static bool operator ==(ActiveAndAlsoExpression a, ActiveAndAlsoExpression b) => a?.Equals(b) ?? b is null;
 
         public static bool operator !=(ActiveAndAlsoExpression a, ActiveAndAlsoExpression b) => !(a == b);
 
