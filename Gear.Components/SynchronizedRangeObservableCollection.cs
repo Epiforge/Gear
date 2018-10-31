@@ -69,10 +69,7 @@ namespace Gear.Components
                     Items.RemoveAt(oldStartIndex);
                     movedItems.Add(item);
                 }
-                var insertionIndex = newStartIndex;
-                if (newStartIndex > oldStartIndex)
-                    insertionIndex -= (count + 1);
-                --insertionIndex;
+                var insertionIndex = newStartIndex - 1;
                 foreach (var item in movedItems)
                     Items.Insert(++insertionIndex, item);
                 OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Move, movedItems, newStartIndex, oldStartIndex));
