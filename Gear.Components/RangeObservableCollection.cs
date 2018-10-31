@@ -60,6 +60,7 @@ namespace Gear.Components
                 var insertionIndex = newStartIndex;
                 if (newStartIndex > oldStartIndex)
                     insertionIndex -= (count + 1);
+                --insertionIndex;
                 foreach (var item in movedItems)
                     Items.Insert(++insertionIndex, item);
                 OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Move, movedItems, newStartIndex, oldStartIndex));
