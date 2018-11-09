@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 
 namespace Gear.Components
@@ -13,7 +14,7 @@ namespace Gear.Components
 
         public EquatableList(IReadOnlyList<T> elements)
         {
-            this.elements = elements;
+            this.elements = elements.ToImmutableList();
             hashCode = HashCodes.CombineObjects(this.elements);
         }
 
