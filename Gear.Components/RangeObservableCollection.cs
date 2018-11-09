@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
@@ -163,7 +164,7 @@ namespace Gear.Components
                 OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, oldItems, originalIndex));
             if (oldItems.Length != list.Count)
                 OnPropertyChanged(new PropertyChangedEventArgs(nameof(Count)));
-            return oldItems;
+            return oldItems.ToImmutableList();
         }
 
         public IReadOnlyList<T> ReplaceRange(int index, int count, IList<T> list) => ReplaceRange(index, count, (IEnumerable<T>)list);

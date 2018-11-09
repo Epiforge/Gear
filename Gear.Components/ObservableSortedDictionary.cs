@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 
 namespace Gear.Components
@@ -318,7 +319,7 @@ namespace Gear.Components
                 OnValuesRemoved(removingKeyValuePairs);
                 NotifyCountChanged();
             }
-            return removedKeys;
+            return removedKeys.ToImmutableList();
         }
 
         protected virtual void SetValue(object key, object value)

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Threading;
@@ -30,7 +31,7 @@ namespace Gear.Components
             var result = new List<T>();
             for (int i = index, ii = index + count; i < ii; ++i)
                 result.Add(this[i]);
-            return result;
+            return result.ToImmutableList();
         });
 
         public Task<IReadOnlyList<T>> GetRangeAsync(int index, int count) => this.ExecuteAsync(() => GetRange(index, count));
@@ -182,7 +183,7 @@ namespace Gear.Components
                 OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, oldItems, originalIndex));
             if (oldItems.Length != list.Count)
                 OnPropertyChanged(new PropertyChangedEventArgs(nameof(Count)));
-            return oldItems;
+            return oldItems.ToImmutableList();
         });
 
         public IReadOnlyList<T> ReplaceRange(int index, int count, IList<T> list) => ReplaceRange(index, count, (IEnumerable<T>)list);
