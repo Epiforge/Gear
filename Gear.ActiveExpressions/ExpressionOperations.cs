@@ -2,6 +2,7 @@ using Gear.Components;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
@@ -10,7 +11,7 @@ namespace Gear.ActiveExpressions
 {
     public static class ExpressionOperations
     {
-        static readonly IReadOnlyList<(MethodInfo methodInfo, ExpressionOperationAttribute expressionOperationAttribute)> operationMethods = typeof(ExpressionOperations).GetRuntimeMethods().Where(m => m.IsPublic && m.IsStatic).Select(m => (methodInfo: m, expressionOperationAttribute: m.GetCustomAttribute<ExpressionOperationAttribute>())).Where(m => m.expressionOperationAttribute != null).ToList();
+        static readonly IReadOnlyList<(MethodInfo methodInfo, ExpressionOperationAttribute expressionOperationAttribute)> operationMethods = typeof(ExpressionOperations).GetRuntimeMethods().Where(m => m.IsPublic && m.IsStatic).Select(m => (methodInfo: m, expressionOperationAttribute: m.GetCustomAttribute<ExpressionOperationAttribute>())).Where(m => m.expressionOperationAttribute != null).ToImmutableList();
         static ConcurrentDictionary<(ExpressionType expressionType, Type returnType, EquatableList<Type> parameterTypes), FastMethodInfo> operationFastMethodInfos = new ConcurrentDictionary<(ExpressionType expressionType, Type returnType, EquatableList<Type> parameterTypes), FastMethodInfo>();
 
         static FastMethodInfo CreateFastMethodInfo((ExpressionType expressionType, Type returnType, EquatableList<Type> parameterTypes) key)
