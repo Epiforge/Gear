@@ -345,7 +345,7 @@ namespace Gear.Components
                 OnValuesRemoved(removingKeyValuePairs);
                 NotifyCountChanged();
             }
-            return removedKeys.ToImmutableList();
+            return removedKeys.ToImmutableArray();
         }
 
         protected virtual void SetValue(object key, object value)

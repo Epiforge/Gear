@@ -14,7 +14,7 @@ namespace Gear.Components
 
         public EquatableList(IReadOnlyList<T> elements)
         {
-            this.elements = elements.ToImmutableList();
+            this.elements = elements.ToImmutableArray();
             hashCode = HashCodes.CombineObjects(this.elements);
         }
 

@@ -164,7 +164,7 @@ namespace Gear.Components
                 OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, oldItems, originalIndex));
             if (oldItems.Length != list.Count)
                 OnPropertyChanged(new PropertyChangedEventArgs(nameof(Count)));
-            return oldItems.ToImmutableList();
+            return oldItems.ToImmutableArray();
         }
 
         public IReadOnlyList<T> ReplaceRange(int index, int count, IList<T> list) => ReplaceRange(index, count, (IEnumerable<T>)list);
