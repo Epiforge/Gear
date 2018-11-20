@@ -31,3 +31,4 @@ $tf*/
 *.userprefs
 packages/
 *.nupkg
+.axocover/
