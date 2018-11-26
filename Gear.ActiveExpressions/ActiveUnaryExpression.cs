@@ -20,10 +20,10 @@ namespace Gear.ActiveExpressions
 
         public static bool operator !=(ActiveUnaryExpression a, ActiveUnaryExpression b) => !(a == b);
 
-        public static ActiveUnaryExpression Create(UnaryExpression unaryExpression, ActiveExpressionOptions options)
+        public static ActiveUnaryExpression Create(UnaryExpression unaryExpression, ActiveExpressionOptions options, bool deferEvaluation)
         {
             var nodeType = unaryExpression.NodeType;
-            var operand = Create(unaryExpression.Operand, options);
+            var operand = Create(unaryExpression.Operand, options, deferEvaluation);
             var type = unaryExpression.Type;
             var method = unaryExpression.Method;
             var key = (nodeType, operand, type, method, options);
@@ -31,7 +31,7 @@ namespace Gear.ActiveExpressions
             {
                 if (!instances.TryGetValue(key, out var activeUnaryExpression))
                 {
-                    activeUnaryExpression = new ActiveUnaryExpression(nodeType, operand, type, method, options);
+                    activeUnaryExpression = new ActiveUnaryExpression(nodeType, operand, type, method, options, deferEvaluation);
                     instances.Add(key, activeUnaryExpression);
                 }
                 ++activeUnaryExpression.disposalCount;
@@ -39,7 +39,7 @@ namespace Gear.ActiveExpressions
             }
         }
 
-        ActiveUnaryExpression(ExpressionType nodeType, ActiveExpression operand, Type type, MethodInfo method, ActiveExpressionOptions options) : base(type, nodeType, options)
+        ActiveUnaryExpression(ExpressionType nodeType, ActiveExpression operand, Type type, MethodInfo method, ActiveExpressionOptions options, bool deferEvaluation) : base(type, nodeType, options, deferEvaluation)
         {
             this.nodeType = nodeType;
             this.operand = operand;
@@ -51,7 +51,7 @@ namespace Gear.ActiveExpressions
                 fastMethod = GetFastMethodInfo(nullableConversions.GetOrAdd(type, GetNullableConversionMethodInfo));
             else
                 fastMethod = ExpressionOperations.GetFastMethodInfo(nodeType, type, operand.Type);
-            Evaluate();
+            EvaluateIfNotDeferred();
         }
 
         int disposalCount;
@@ -101,7 +101,7 @@ namespace Gear.ActiveExpressions
 
         public bool Equals(ActiveUnaryExpression other) => other?.method == method && other?.nodeType == nodeType && other?.operand == operand && other?.options == options;
 
-        void Evaluate()
+        protected override void Evaluate()
         {
             try
             {

@@ -16,16 +16,16 @@ namespace Gear.ActiveExpressions
 
         public static bool operator !=(ActiveNewExpression a, ActiveNewExpression b) => !(a == b);
 
-        public static ActiveNewExpression Create(NewExpression newExpression, ActiveExpressionOptions options)
+        public static ActiveNewExpression Create(NewExpression newExpression, ActiveExpressionOptions options, bool deferEvaluation)
         {
             var type = newExpression.Type;
-            var arguments = new EquatableList<ActiveExpression>(newExpression.Arguments.Select(argument => Create(argument, options)).ToList());
+            var arguments = new EquatableList<ActiveExpression>(newExpression.Arguments.Select(argument => Create(argument, options, deferEvaluation)).ToList());
             var key = (type, arguments, options);
             lock (instanceManagementLock)
             {
                 if (!instances.TryGetValue(key, out var activeNewExpression))
                 {
-                    activeNewExpression = new ActiveNewExpression(type, arguments, options);
+                    activeNewExpression = new ActiveNewExpression(type, arguments, options, deferEvaluation);
                     instances.Add(key, activeNewExpression);
                 }
                 ++activeNewExpression.disposalCount;
@@ -33,13 +33,13 @@ namespace Gear.ActiveExpressions
             }
         }
 
-        ActiveNewExpression(Type type, EquatableList<ActiveExpression> arguments, ActiveExpressionOptions options) : base(type, ExpressionType.New, options)
+        ActiveNewExpression(Type type, EquatableList<ActiveExpression> arguments, ActiveExpressionOptions options, bool deferEvaluation) : base(type, ExpressionType.New, options, deferEvaluation)
         {
             this.arguments = arguments;
             constructorParameterTypes = new EquatableList<Type>(this.arguments.Select(argument => argument.Type).ToList());
             foreach (var argument in this.arguments)
                 argument.PropertyChanged += ArgumentPropertyChanged;
-            Evaluate();
+            EvaluateIfNotDeferred();
         }
 
         readonly EquatableList<ActiveExpression> arguments;
@@ -92,7 +92,7 @@ namespace Gear.ActiveExpressions
 
         public bool Equals(ActiveNewExpression other) => other?.Type == Type && other?.arguments == arguments && other?.options == options;
 
-        void Evaluate()
+        protected override void Evaluate()
         {
             try
             {

@@ -10,7 +10,7 @@ namespace Gear.ActiveExpressions
         static readonly object instanceManagementLock = new object();
         static readonly Dictionary<(Type type, object value), ActiveConstantExpression> instances = new Dictionary<(Type type, object value), ActiveConstantExpression>();
 
-        public static ActiveConstantExpression Create(ConstantExpression constantExpression)
+        public static ActiveConstantExpression Create(ConstantExpression constantExpression, ActiveExpressionOptions options, bool deferEvaluation)
         {
             var type = constantExpression.Type;
             var value = constantExpression.Value;
@@ -19,7 +19,7 @@ namespace Gear.ActiveExpressions
             {
                 if (!instances.TryGetValue(key, out var activeConstantExpression))
                 {
-                    activeConstantExpression = new ActiveConstantExpression(type, value);
+                    activeConstantExpression = new ActiveConstantExpression(type, value, options, deferEvaluation);
                     instances.Add(key, activeConstantExpression);
                 }
                 ++activeConstantExpression.disposalCount;
@@ -31,8 +31,13 @@ namespace Gear.ActiveExpressions
 
         public static bool operator !=(ActiveConstantExpression a, ActiveConstantExpression b) => !(a == b);
 
-        ActiveConstantExpression(Type type, object value) : base(type, ExpressionType.Constant, null) => Value = value;
+        ActiveConstantExpression(Type type, object value, ActiveExpressionOptions options, bool deferEvaluation) : base(type, ExpressionType.Constant, options, deferEvaluation)
+        {
+            constant = value;
+            EvaluateIfNotDeferred();
+        }
 
+        readonly object constant;
         int disposalCount;
 
         protected override bool Dispose(bool disposing)
@@ -49,6 +54,8 @@ namespace Gear.ActiveExpressions
         public override bool Equals(object obj) => Equals(obj as ActiveConstantExpression);
 
         public bool Equals(ActiveConstantExpression other) => other?.Value == Value;
+
+        protected override void Evaluate() => Value = constant;
 
         public override int GetHashCode() => HashCodes.CombineObjects(typeof(ActiveConstantExpression), Value);
     }

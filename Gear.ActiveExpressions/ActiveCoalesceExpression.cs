@@ -10,7 +10,7 @@ namespace Gear.ActiveExpressions
 
         public static bool operator !=(ActiveCoalesceExpression a, ActiveCoalesceExpression b) => !(a == b);
 
-        public ActiveCoalesceExpression(Type type, ActiveExpression left, ActiveExpression right, LambdaExpression conversion) : base(type, ExpressionType.Coalesce, left, right, null, false)
+        public ActiveCoalesceExpression(Type type, ActiveExpression left, ActiveExpression right, LambdaExpression conversion, bool deferEvaluation) : base(type, ExpressionType.Coalesce, left, right, null, deferEvaluation, false)
         {
             if (conversion != null)
                 throw new NotSupportedException("Coalesce conversions are not yet supported");
@@ -23,17 +23,22 @@ namespace Gear.ActiveExpressions
         protected override void Evaluate()
         {
             var leftFault = left.Fault;
-            var leftValue = left.Value;
-            var rightFault = right.Fault;
-            var rightValue = right.Value;
             if (leftFault != null)
                 Fault = leftFault;
-            else if (leftValue != null)
-                Value = leftValue;
-            else if (rightFault != null)
-                Fault = rightFault;
             else
-                Value = right.Value;
+            {
+                var leftValue = left.Value;
+                if (leftValue != null)
+                    Value = leftValue;
+                else
+                {
+                    var rightFault = right.Fault;
+                    if (rightFault != null)
+                        Fault = rightFault;
+                    else
+                        Value = right.Value;
+                }
+            }
         }
 
         public override int GetHashCode() => HashCodes.CombineObjects(typeof(ActiveCoalesceExpression), left, right);

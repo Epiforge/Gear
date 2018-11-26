@@ -14,17 +14,17 @@ namespace Gear.ActiveExpressions
         static readonly object instanceManagementLock = new object();
         static readonly Dictionary<(ActiveExpression @object, PropertyInfo indexer, EquatableList<ActiveExpression> arguments, ActiveExpressionOptions options), ActiveIndexExpression> instances = new Dictionary<(ActiveExpression @object, PropertyInfo indexer, EquatableList<ActiveExpression> arguments, ActiveExpressionOptions options), ActiveIndexExpression>();
 
-        public static ActiveIndexExpression Create(IndexExpression indexExpression, ActiveExpressionOptions options)
+        public static ActiveIndexExpression Create(IndexExpression indexExpression, ActiveExpressionOptions options, bool deferEvaluation)
         {
-            var @object = Create(indexExpression.Object, options);
+            var @object = Create(indexExpression.Object, options, deferEvaluation);
             var indexer = indexExpression.Indexer;
-            var arguments = new EquatableList<ActiveExpression>(indexExpression.Arguments.Select(argument => Create(argument, options)).ToList());
+            var arguments = new EquatableList<ActiveExpression>(indexExpression.Arguments.Select(argument => Create(argument, options, deferEvaluation)).ToList());
             var key = (@object, indexer, arguments, options);
             lock (instanceManagementLock)
             {
                 if (!instances.TryGetValue(key, out var activeIndexExpression))
                 {
-                    activeIndexExpression = new ActiveIndexExpression(indexExpression.Type, @object, indexer, arguments, options);
+                    activeIndexExpression = new ActiveIndexExpression(indexExpression.Type, @object, indexer, arguments, options, deferEvaluation);
                     instances.Add(key, activeIndexExpression);
                 }
                 ++activeIndexExpression.disposalCount;
@@ -36,7 +36,7 @@ namespace Gear.ActiveExpressions
 
         public static bool operator !=(ActiveIndexExpression a, ActiveIndexExpression b) => !(a == b);
 
-        ActiveIndexExpression(Type type, ActiveExpression @object, PropertyInfo indexer, EquatableList<ActiveExpression> arguments, ActiveExpressionOptions options) : base(type, ExpressionType.Index, options)
+        ActiveIndexExpression(Type type, ActiveExpression @object, PropertyInfo indexer, EquatableList<ActiveExpression> arguments, ActiveExpressionOptions options, bool deferEvaluation) : base(type, ExpressionType.Index, options, deferEvaluation)
         {
             this.indexer = indexer;
             getMethod = this.indexer.GetMethod;
@@ -46,9 +46,8 @@ namespace Gear.ActiveExpressions
             this.arguments = arguments;
             foreach (var argument in this.arguments)
                 argument.PropertyChanged += ArgumentPropertyChanged;
-            objectValue = this.@object.Value;
             SubscribeToObjectValueNotifications();
-            Evaluate();
+            EvaluateIfNotDeferred();
         }
 
         readonly EquatableList<ActiveExpression> arguments;
@@ -108,7 +107,7 @@ namespace Gear.ActiveExpressions
 
         public bool Equals(ActiveIndexExpression other) => other?.arguments == arguments && other?.indexer == indexer && other?.@object == @object && other?.options == options;
 
-        void Evaluate()
+        protected override void Evaluate()
         {
             try
             {

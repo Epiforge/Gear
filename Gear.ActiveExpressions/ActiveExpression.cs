@@ -23,31 +23,43 @@ namespace Gear.ActiveExpressions
 
         protected static FastMethodInfo GetFastMethodInfo(MethodInfo methodInfo) => compiledMethods.GetOrAdd(methodInfo, CreateFastMethodInfo);
 
-        internal static ActiveExpression Create(Expression expression, ActiveExpressionOptions options)
+        internal static ActiveExpression Create(Expression expression, ActiveExpressionOptions options, bool deferEvaluation)
         {
+            ActiveExpression activeExpression;
             switch (expression)
             {
                 case BinaryExpression binaryExpression:
-                    return ActiveBinaryExpression.Create(binaryExpression, options);
+                    activeExpression = ActiveBinaryExpression.Create(binaryExpression, options, deferEvaluation);
+                    break;
                 case ConditionalExpression conditionalExpression:
-                    return ActiveConditionalExpression.Create(conditionalExpression, options);
+                    activeExpression = ActiveConditionalExpression.Create(conditionalExpression, options, deferEvaluation);
+                    break;
                 case ConstantExpression constantExpression:
-                    return ActiveConstantExpression.Create(constantExpression);
+                    activeExpression = ActiveConstantExpression.Create(constantExpression, options, deferEvaluation);
+                    break;
                 case IndexExpression indexExpression:
-                    return ActiveIndexExpression.Create(indexExpression, options);
+                    activeExpression = ActiveIndexExpression.Create(indexExpression, options, deferEvaluation);
+                    break;
                 case MemberExpression memberExpression:
-                    return ActiveMemberExpression.Create(memberExpression, options);
+                    activeExpression = ActiveMemberExpression.Create(memberExpression, options, deferEvaluation);
+                    break;
                 case MethodCallExpression methodCallExpression:
-                    return ActiveMethodCallExpression.Create(methodCallExpression, options);
+                    activeExpression = ActiveMethodCallExpression.Create(methodCallExpression, options, deferEvaluation);
+                    break;
                 case NewExpression newExpression:
-                    return ActiveNewExpression.Create(newExpression, options);
+                    activeExpression = ActiveNewExpression.Create(newExpression, options, deferEvaluation);
+                    break;
                 case UnaryExpression unaryExpression:
-                    return ActiveUnaryExpression.Create(unaryExpression, options);
+                    activeExpression = ActiveUnaryExpression.Create(unaryExpression, options, deferEvaluation);
+                    break;
                 case null:
                     throw new ArgumentNullException(nameof(expression));
                 default:
                     throw new NotSupportedException($"Cannot create an expression of type \"{expression.GetType().Name}\"");
             }
+            if (!deferEvaluation)
+                activeExpression.EvaluateIfDeferred();
+            return activeExpression;
         }
 
         /// <summary>
@@ -167,22 +179,52 @@ namespace Gear.ActiveExpressions
             }
         }
 
-        public ActiveExpression(Type type, ExpressionType nodeType, ActiveExpressionOptions options)
+        public ActiveExpression(Type type, ExpressionType nodeType, ActiveExpressionOptions options, bool deferEvaluation)
         {
             Type = type;
             NodeType = nodeType;
             this.options = options;
+            deferringEvaluation = deferEvaluation;
         }
 
+        bool deferringEvaluation;
+        readonly object deferringEvaluationLock = new object();
         Exception fault;
         object val;
         protected readonly ActiveExpressionOptions options;
 
         protected ActiveExpressionOptions ApplicableOptions => options ?? ActiveExpressionOptions.Default;
 
+        protected abstract void Evaluate();
+
+        void EvaluateIfDeferred()
+        {
+            lock (deferringEvaluationLock)
+            {
+                if (deferringEvaluation)
+                {
+                    Evaluate();
+                    deferringEvaluation = false;
+                }
+            }
+        }
+
+        protected void EvaluateIfNotDeferred()
+        {
+            lock (deferringEvaluationLock)
+            {
+                if (!deferringEvaluation)
+                    Evaluate();
+            }
+        }
+
         public Exception Fault
         {
-            get => fault;
+            get
+            {
+                EvaluateIfDeferred();
+                return fault;
+            }
             protected set
             {
                 if (value != null)
@@ -197,7 +239,11 @@ namespace Gear.ActiveExpressions
 
         public object Value
         {
-            get => val;
+            get
+            {
+                EvaluateIfDeferred();
+                return val;
+            }
             protected set
             {
                 if (value != null)
@@ -226,7 +272,7 @@ namespace Gear.ActiveExpressions
             {
                 if (!instances.TryGetValue(key, out var activeExpression))
                 {
-                    activeExpression = new ActiveExpression<TResult>(expressionString, arguments, ActiveExpression.Create(ActiveExpression.ReplaceParameters(expression, args), options), options);
+                    activeExpression = new ActiveExpression<TResult>(expressionString, arguments, ActiveExpression.Create(ActiveExpression.ReplaceParameters(expression, args), options, false), options);
                     instances.Add(key, activeExpression);
                 }
                 ++activeExpression.disposalCount;
@@ -331,7 +377,7 @@ namespace Gear.ActiveExpressions
             {
                 if (!instances.TryGetValue(key, out var activeExpression))
                 {
-                    activeExpression = new ActiveExpression<TArg, TResult>(expressionString, arg, ActiveExpression.Create(ActiveExpression.ReplaceParameters(expression, arg), options), options);
+                    activeExpression = new ActiveExpression<TArg, TResult>(expressionString, arg, ActiveExpression.Create(ActiveExpression.ReplaceParameters(expression, arg), options, false), options);
                     instances.Add(key, activeExpression);
                 }
                 ++activeExpression.disposalCount;
@@ -436,7 +482,7 @@ namespace Gear.ActiveExpressions
             {
                 if (!instances.TryGetValue(key, out var activeExpression))
                 {
-                    activeExpression = new ActiveExpression<TArg1, TArg2, TResult>(expressionString, arg1, arg2, ActiveExpression.Create(ActiveExpression.ReplaceParameters(expression, arg1, arg2), options), options);
+                    activeExpression = new ActiveExpression<TArg1, TArg2, TResult>(expressionString, arg1, arg2, ActiveExpression.Create(ActiveExpression.ReplaceParameters(expression, arg1, arg2), options, false), options);
                     instances.Add(key, activeExpression);
                 }
                 ++activeExpression.disposalCount;
@@ -548,7 +594,7 @@ namespace Gear.ActiveExpressions
             {
                 if (!instances.TryGetValue(key, out var activeExpression))
                 {
-                    activeExpression = new ActiveExpression<TArg1, TArg2, TArg3, TResult>(expressionString, arg1, arg2, arg3, ActiveExpression.Create(ActiveExpression.ReplaceParameters(expression, arg1, arg2, arg3), options), options);
+                    activeExpression = new ActiveExpression<TArg1, TArg2, TArg3, TResult>(expressionString, arg1, arg2, arg3, ActiveExpression.Create(ActiveExpression.ReplaceParameters(expression, arg1, arg2, arg3), options, false), options);
                     instances.Add(key, activeExpression);
                 }
                 ++activeExpression.disposalCount;

@@ -11,17 +11,17 @@ namespace Gear.ActiveExpressions
         static readonly object instanceManagementLock = new object();
         static readonly Dictionary<(ActiveExpression test, ActiveExpression ifTrue, ActiveExpression ifFalse, ActiveExpressionOptions options), ActiveConditionalExpression> instances = new Dictionary<(ActiveExpression test, ActiveExpression ifTrue, ActiveExpression ifFalse, ActiveExpressionOptions options), ActiveConditionalExpression>();
 
-        public static ActiveConditionalExpression Create(ConditionalExpression conditionalExpression, ActiveExpressionOptions options)
+        public static ActiveConditionalExpression Create(ConditionalExpression conditionalExpression, ActiveExpressionOptions options, bool deferEvaluation)
         {
-            var test = Create(conditionalExpression.Test, options);
-            var ifTrue = Create(conditionalExpression.IfTrue, options);
-            var ifFalse = Create(conditionalExpression.IfFalse, options);
+            var test = Create(conditionalExpression.Test, options, deferEvaluation);
+            var ifTrue = Create(conditionalExpression.IfTrue, options, true);
+            var ifFalse = Create(conditionalExpression.IfFalse, options, true);
             var key = (test, ifTrue, ifFalse, options);
             lock (instanceManagementLock)
             {
                 if (!instances.TryGetValue(key, out var activeConditionalExpression))
                 {
-                    activeConditionalExpression = new ActiveConditionalExpression(conditionalExpression.Type, test, ifTrue, ifFalse, options);
+                    activeConditionalExpression = new ActiveConditionalExpression(conditionalExpression.Type, test, ifTrue, ifFalse, options, deferEvaluation);
                     instances.Add(key, activeConditionalExpression);
                 }
                 ++activeConditionalExpression.disposalCount;
@@ -33,7 +33,7 @@ namespace Gear.ActiveExpressions
 
         public static bool operator !=(ActiveConditionalExpression a, ActiveConditionalExpression b) => !(a == b);
 
-        ActiveConditionalExpression(Type type, ActiveExpression test, ActiveExpression ifTrue, ActiveExpression ifFalse, ActiveExpressionOptions options) : base(type, ExpressionType.Conditional, options)
+        ActiveConditionalExpression(Type type, ActiveExpression test, ActiveExpression ifTrue, ActiveExpression ifFalse, ActiveExpressionOptions options, bool deferEvaluation) : base(type, ExpressionType.Conditional, options, deferEvaluation)
         {
             this.test = test;
             this.test.PropertyChanged += TestPropertyChanged;
@@ -41,25 +41,7 @@ namespace Gear.ActiveExpressions
             this.ifTrue.PropertyChanged += IfTruePropertyChanged;
             this.ifFalse = ifFalse;
             this.ifFalse.PropertyChanged += IfFalsePropertyChanged;
-            var testFault = test.Fault;
-            if (testFault != null)
-                Fault = testFault;
-            else if ((bool)test.Value)
-            {
-                var ifTrueFault = ifTrue.Fault;
-                if (ifTrueFault != null)
-                    Fault = ifTrueFault;
-                else
-                    Value = ifTrue.Value;
-            }
-            else
-            {
-                var ifFalseFault = ifFalse.Fault;
-                if (ifFalseFault != null)
-                    Fault = ifFalseFault;
-                else
-                    Value = ifFalse.Value;
-            }
+            EvaluateIfNotDeferred();
         }
 
         int disposalCount;
@@ -87,6 +69,29 @@ namespace Gear.ActiveExpressions
         public override bool Equals(object obj) => Equals(obj as ActiveConditionalExpression);
 
         public bool Equals(ActiveConditionalExpression other) => other?.ifFalse == ifFalse && other?.ifTrue == ifTrue && other?.test == test && other?.options == options;
+
+        protected override void Evaluate()
+        {
+            var testFault = test.Fault;
+            if (testFault != null)
+                Fault = testFault;
+            else if ((bool)test.Value)
+            {
+                var ifTrueFault = ifTrue.Fault;
+                if (ifTrueFault != null)
+                    Fault = ifTrueFault;
+                else
+                    Value = ifTrue.Value;
+            }
+            else
+            {
+                var ifFalseFault = ifFalse.Fault;
+                if (ifFalseFault != null)
+                    Fault = ifFalseFault;
+                else
+                    Value = ifFalse.Value;
+            }
+        }
 
         public override int GetHashCode() => HashCodes.CombineObjects(typeof(ActiveConditionalExpression), ifFalse, ifTrue, test, options);
 

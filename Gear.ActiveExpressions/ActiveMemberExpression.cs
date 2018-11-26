@@ -13,16 +13,16 @@ namespace Gear.ActiveExpressions
         static readonly object instanceManagementLock = new object();
         static readonly Dictionary<(ActiveExpression expression, MemberInfo member, ActiveExpressionOptions options), ActiveMemberExpression> instances = new Dictionary<(ActiveExpression expression, MemberInfo member, ActiveExpressionOptions options), ActiveMemberExpression>();
 
-        public static ActiveMemberExpression Create(MemberExpression memberExpression, ActiveExpressionOptions options)
+        public static ActiveMemberExpression Create(MemberExpression memberExpression, ActiveExpressionOptions options, bool deferEvaluation)
         {
-            var expression = Create(memberExpression.Expression, options);
+            var expression = Create(memberExpression.Expression, options, deferEvaluation);
             var member = memberExpression.Member;
             var key = (expression, member, options);
             lock (instanceManagementLock)
             {
                 if (!instances.TryGetValue(key, out var activeMemberExpression))
                 {
-                    activeMemberExpression = new ActiveMemberExpression(memberExpression.Type, expression, member, options);
+                    activeMemberExpression = new ActiveMemberExpression(memberExpression.Type, expression, member, options, deferEvaluation);
                     instances.Add(key, activeMemberExpression);
                 }
                 ++activeMemberExpression.disposalCount;
@@ -34,10 +34,9 @@ namespace Gear.ActiveExpressions
 
         public static bool operator !=(ActiveMemberExpression a, ActiveMemberExpression b) => !(a == b);
 
-        ActiveMemberExpression(Type type, ActiveExpression expression, MemberInfo member, ActiveExpressionOptions options) : base(type, ExpressionType.MemberAccess, options)
+        ActiveMemberExpression(Type type, ActiveExpression expression, MemberInfo member, ActiveExpressionOptions options, bool deferEvaluation) : base(type, ExpressionType.MemberAccess, options, deferEvaluation)
         {
             this.expression = expression;
-            expressionValue = this.expression.Value;
             this.expression.PropertyChanged += ExpressionPropertyChanged;
             this.member = member;
             switch (this.member)
@@ -56,7 +55,7 @@ namespace Gear.ActiveExpressions
                 default:
                     throw new NotSupportedException($"Cannot get value using {this.member.GetType().Name} for \"{member.DeclaringType.FullName}.{member.Name}\"");
             }
-            Evaluate();
+            EvaluateIfNotDeferred();
         }
 
         int disposalCount;
@@ -111,7 +110,7 @@ namespace Gear.ActiveExpressions
 
         public bool Equals(ActiveMemberExpression other) => other?.expression == expression && other?.member == member && other?.options == options;
 
-        void Evaluate()
+        protected override void Evaluate()
         {
             try
             {

@@ -14,18 +14,18 @@ namespace Gear.ActiveExpressions
         static readonly Dictionary<(ActiveExpression @object, MethodInfo method, EquatableList<ActiveExpression> arguments, ActiveExpressionOptions options), ActiveMethodCallExpression> instanceInstances = new Dictionary<(ActiveExpression @object, MethodInfo method, EquatableList<ActiveExpression> arguments, ActiveExpressionOptions options), ActiveMethodCallExpression>();
         static readonly Dictionary<(MethodInfo method, EquatableList<ActiveExpression> arguments, ActiveExpressionOptions options), ActiveMethodCallExpression> staticInstances = new Dictionary<(MethodInfo method, EquatableList<ActiveExpression> arguments, ActiveExpressionOptions options), ActiveMethodCallExpression>();
 
-        public static ActiveMethodCallExpression Create(MethodCallExpression methodCallExpression, ActiveExpressionOptions options)
+        public static ActiveMethodCallExpression Create(MethodCallExpression methodCallExpression, ActiveExpressionOptions options, bool deferEvaluation)
         {
             if (methodCallExpression.Object == null)
             {
                 var method = methodCallExpression.Method;
-                var arguments = new EquatableList<ActiveExpression>(methodCallExpression.Arguments.Select(argument => Create(argument, options)).ToList());
+                var arguments = new EquatableList<ActiveExpression>(methodCallExpression.Arguments.Select(argument => Create(argument, options, deferEvaluation)).ToList());
                 var key = (method, arguments, options);
                 lock (instanceManagementLock)
                 {
                     if (!staticInstances.TryGetValue(key, out var activeMethodCallExpression))
                     {
-                        activeMethodCallExpression = new ActiveMethodCallExpression(methodCallExpression.Type, method, arguments, options);
+                        activeMethodCallExpression = new ActiveMethodCallExpression(methodCallExpression.Type, method, arguments, options, deferEvaluation);
                         staticInstances.Add(key, activeMethodCallExpression);
                     }
                     ++activeMethodCallExpression.disposalCount;
@@ -34,15 +34,15 @@ namespace Gear.ActiveExpressions
             }
             else
             {
-                var @object = Create(methodCallExpression.Object, options);
+                var @object = Create(methodCallExpression.Object, options, deferEvaluation);
                 var method = methodCallExpression.Method;
-                var arguments = new EquatableList<ActiveExpression>(methodCallExpression.Arguments.Select(argument => Create(argument, options)).ToList());
+                var arguments = new EquatableList<ActiveExpression>(methodCallExpression.Arguments.Select(argument => Create(argument, options, deferEvaluation)).ToList());
                 var key = (@object, method, arguments, options);
                 lock (instanceManagementLock)
                 {
                     if (!instanceInstances.TryGetValue(key, out var activeMethodCallExpression))
                     {
-                        activeMethodCallExpression = new ActiveMethodCallExpression(methodCallExpression.Type, @object, method, arguments, options);
+                        activeMethodCallExpression = new ActiveMethodCallExpression(methodCallExpression.Type, @object, method, arguments, options, deferEvaluation);
                         instanceInstances.Add(key, activeMethodCallExpression);
                     }
                     ++activeMethodCallExpression.disposalCount;
@@ -55,7 +55,7 @@ namespace Gear.ActiveExpressions
 
         public static bool operator !=(ActiveMethodCallExpression a, ActiveMethodCallExpression b) => !(a == b);
 
-        ActiveMethodCallExpression(Type type, ActiveExpression @object, MethodInfo method, EquatableList<ActiveExpression> arguments, ActiveExpressionOptions options) : base(type, ExpressionType.Call, options)
+        ActiveMethodCallExpression(Type type, ActiveExpression @object, MethodInfo method, EquatableList<ActiveExpression> arguments, ActiveExpressionOptions options, bool deferEvaluation) : base(type, ExpressionType.Call, options, deferEvaluation)
         {
             this.method = method;
             fastMethod = GetFastMethodInfo(this.method);
@@ -64,17 +64,17 @@ namespace Gear.ActiveExpressions
             this.arguments = arguments;
             foreach (var argument in this.arguments)
                 argument.PropertyChanged += ArgumentPropertyChanged;
-            Evaluate();
+            EvaluateIfNotDeferred();
         }
 
-        ActiveMethodCallExpression(Type type, MethodInfo method, EquatableList<ActiveExpression> arguments, ActiveExpressionOptions options) : base(type, ExpressionType.Call, options)
+        ActiveMethodCallExpression(Type type, MethodInfo method, EquatableList<ActiveExpression> arguments, ActiveExpressionOptions options, bool deferEvaluation) : base(type, ExpressionType.Call, options, deferEvaluation)
         {
             this.method = method;
             fastMethod = GetFastMethodInfo(this.method);
             this.arguments = arguments;
             foreach (var argument in this.arguments)
                 argument.PropertyChanged += ArgumentPropertyChanged;
-            Evaluate();
+            EvaluateIfNotDeferred();
         }
 
         readonly EquatableList<ActiveExpression> arguments;
@@ -137,7 +137,7 @@ namespace Gear.ActiveExpressions
 
         public bool Equals(ActiveMethodCallExpression other) => other?.arguments == arguments && other?.method == method && other?.@object == @object && other?.options == options;
 
-        void Evaluate()
+        protected override void Evaluate()
         {
             try
             {
