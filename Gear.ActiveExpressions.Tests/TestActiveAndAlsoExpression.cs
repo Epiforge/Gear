@@ -6,6 +6,17 @@ namespace Gear.ActiveExpressions.Tests
     class TestActiveAndAlsoExpression
     {
         [Test]
+        public void ShortCircuitsFault()
+        {
+            var john = TestPerson.CreateJohn();
+            using (var expr = ActiveExpression.Create<TestPerson, TestPerson, bool>((p1, p2) => string.IsNullOrEmpty(p1.Name) && string.IsNullOrEmpty(p2.Name), john, null))
+            {
+                Assert.IsFalse(expr.Value);
+                Assert.IsNull(expr.Fault);
+            }
+        }
+
+        [Test]
         public void ShortCircuitsValue()
         {
             var john = TestPerson.CreateJohn();

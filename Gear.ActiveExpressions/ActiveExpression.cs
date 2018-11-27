@@ -218,6 +218,20 @@ namespace Gear.ActiveExpressions
             }
         }
 
+        protected bool TryGetUndeferredValue(out object value)
+        {
+            lock (deferringEvaluationLock)
+            {
+                if (deferringEvaluation)
+                {
+                    value = null;
+                    return false;
+                }
+            }
+            value = val;
+            return true;
+        }
+
         public Exception Fault
         {
             get

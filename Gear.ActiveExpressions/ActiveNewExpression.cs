@@ -71,9 +71,8 @@ namespace Gear.ActiveExpressions
 
         void DisposeValueIfNecessary()
         {
-            if (ApplicableOptions.IsConstructedTypeDisposed(Type, constructorParameterTypes))
+            if (ApplicableOptions.IsConstructedTypeDisposed(Type, constructorParameterTypes) && TryGetUndeferredValue(out var value))
             {
-                var value = Value;
                 try
                 {
                     if (value is IDisposable disposable)

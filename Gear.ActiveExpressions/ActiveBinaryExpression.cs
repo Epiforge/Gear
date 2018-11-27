@@ -143,9 +143,8 @@ namespace Gear.ActiveExpressions
 
         void DisposeValueIfNecessary()
         {
-            if (method != null && ApplicableOptions.IsMethodReturnValueDisposed(method))
+            if (method != null && ApplicableOptions.IsMethodReturnValueDisposed(method) && TryGetUndeferredValue(out var value))
             {
-                var value = Value;
                 try
                 {
                     if (value is IDisposable disposable)
