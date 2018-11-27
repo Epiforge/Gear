@@ -50,6 +50,9 @@
   <ItemGroup>
     <Compile Include="TestActiveAndAlsoExpression.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="TestActiveCoalesceExpression.cs" />
+    <Compile Include="TestActiveConditionalExpression.cs" />
+    <Compile Include="TestActiveOrElseExpression.cs" />
     <Compile Include="TestPerson.cs" />
   </ItemGroup>
   <ItemGroup>

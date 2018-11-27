@@ -157,7 +157,7 @@ namespace Gear.ActiveExpressions
                 case BinaryExpression binaryExpression:
                     return Expression.MakeBinary(binaryExpression.NodeType, ReplaceParameters(parameterTranslation, binaryExpression.Left), ReplaceParameters(parameterTranslation, binaryExpression.Right), binaryExpression.IsLiftedToNull, binaryExpression.Method, (LambdaExpression)ReplaceParameters(parameterTranslation, binaryExpression.Conversion));
                 case ConditionalExpression conditionalExpression:
-                    return Expression.Condition(ReplaceParameters(parameterTranslation, conditionalExpression.Test), ReplaceParameters(parameterTranslation, conditionalExpression.IfTrue), ReplaceParameters(parameterTranslation, conditionalExpression.IfTrue), conditionalExpression.Type);
+                    return Expression.Condition(ReplaceParameters(parameterTranslation, conditionalExpression.Test), ReplaceParameters(parameterTranslation, conditionalExpression.IfTrue), ReplaceParameters(parameterTranslation, conditionalExpression.IfFalse), conditionalExpression.Type);
                 case ConstantExpression constantExpression:
                     return constantExpression;
                 case IndexExpression indexExpression:

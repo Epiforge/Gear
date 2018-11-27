@@ -6,15 +6,15 @@ using System.Linq;
 namespace Gear.ActiveExpressions.Tests
 {
     [TestFixture]
-    class TestActiveAndAlsoExpression
+    class TestActiveCoalesceExpression
     {
         [Test]
         public void ShortCircuitsFault()
         {
             var john = TestPerson.CreateJohn();
-            using (var expr = ActiveExpression.Create<TestPerson, TestPerson, bool>((p1, p2) => string.IsNullOrEmpty(p1.Name) && string.IsNullOrEmpty(p2.Name), john, null))
+            using (var expr = ActiveExpression.Create<TestPerson, TestPerson, string>((p1, p2) => p1.Name ?? p2.Name, john, null))
             {
-                Assert.IsFalse(expr.Value);
+                Assert.AreEqual(john.Name, expr.Value);
                 Assert.IsNull(expr.Fault);
             }
         }
@@ -24,8 +24,8 @@ namespace Gear.ActiveExpressions.Tests
         {
             var john = TestPerson.CreateJohn();
             var emily = TestPerson.CreateEmily();
-            using (var expr = ActiveExpression.Create((p1, p2) => p1.Name.Length == 1 && p2.Name.Length > 3, john, emily))
-                Assert.IsFalse(expr.Value);
+            using (var expr = ActiveExpression.Create((p1, p2) => p1.Name ?? p2.Name, john, emily))
+                Assert.AreEqual(john.Name, expr.Value);
             Assert.AreEqual(0, emily.NameGets);
         }
 
@@ -34,25 +34,27 @@ namespace Gear.ActiveExpressions.Tests
         {
             var john = TestPerson.CreateJohn();
             var emily = TestPerson.CreateEmily();
-            var values = new BlockingCollection<bool>();
-            using (var expr = ActiveExpression.Create((p1, p2) => p1.Name.Length == 1 && p2.Name.Length == 1, john, emily))
+            var values = new BlockingCollection<string>();
+            using (var expr = ActiveExpression.Create((p1, p2) => p1.Name ?? p2.Name, john, emily))
             {
                 void exprChanged(object sender, PropertyChangedEventArgs e)
                 {
-                    if (e.PropertyName == nameof(ActiveExpression<TestPerson, TestPerson, bool>.Value))
+                    if (e.PropertyName == nameof(ActiveExpression<TestPerson, TestPerson, string>.Value))
                         values.Add(expr.Value);
                 }
                 expr.PropertyChanged += exprChanged;
                 values.Add(expr.Value);
                 john.Name = "J";
-                emily.Name = "E";
                 john.Name = "John";
-                john.Name = "J";
-                emily.Name = "Emily";
+                john.Name = null;
                 emily.Name = "E";
+                emily.Name = "Emily";
+                emily.Name = null;
+                emily.Name = "Emily";
+                john.Name = "John";
                 expr.PropertyChanged -= exprChanged;
             }
-            Assert.IsTrue(new bool[] { false, true, false, true, false, true }.SequenceEqual(values));
+            Assert.IsTrue(new string[] { "John", "J", "John", "Emily", "E", "Emily", null, "Emily", "John" }.SequenceEqual(values));
         }
     }
 }
