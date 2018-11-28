@@ -5,7 +5,7 @@ using System.Linq.Expressions;
 
 namespace Gear.ActiveExpressions
 {
-    class ActiveConstantExpression : ActiveExpression, IEquatable<ActiveConstantExpression>
+    class ActiveConstantExpression : ActiveExpression
     {
         static readonly object instanceManagementLock = new object();
         static readonly Dictionary<(Type type, object value), ActiveConstantExpression> instances = new Dictionary<(Type type, object value), ActiveConstantExpression>();
@@ -27,9 +27,9 @@ namespace Gear.ActiveExpressions
             }
         }
 
-        public static bool operator ==(ActiveConstantExpression a, ActiveConstantExpression b) => a?.Equals(b) ?? b is null;
+        public static bool operator ==(ActiveConstantExpression a, ActiveConstantExpression b) => a?.Value == b?.Value && a?.options == b?.options;
 
-        public static bool operator !=(ActiveConstantExpression a, ActiveConstantExpression b) => !(a == b);
+        public static bool operator !=(ActiveConstantExpression a, ActiveConstantExpression b) => a?.Value != b?.Value || a?.options != b?.options;
 
         ActiveConstantExpression(Type type, object value, ActiveExpressionOptions options, bool deferEvaluation) : base(type, ExpressionType.Constant, options, deferEvaluation)
         {
@@ -51,9 +51,7 @@ namespace Gear.ActiveExpressions
             }
         }
 
-        public override bool Equals(object obj) => Equals(obj as ActiveConstantExpression);
-
-        public bool Equals(ActiveConstantExpression other) => other?.Value == Value;
+        public override bool Equals(object obj) => obj is ActiveConstantExpression other && (constant?.Equals(other.constant) ?? other.constant is null) && (options?.Equals(other.options) ?? other.options is null);
 
         protected override void Evaluate() => Value = constant;
 

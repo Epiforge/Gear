@@ -6,7 +6,7 @@ using System.Linq.Expressions;
 
 namespace Gear.ActiveExpressions
 {
-    class ActiveConditionalExpression : ActiveExpression, IEquatable<ActiveConditionalExpression>
+    class ActiveConditionalExpression : ActiveExpression
     {
         static readonly object instanceManagementLock = new object();
         static readonly Dictionary<(ActiveExpression test, ActiveExpression ifTrue, ActiveExpression ifFalse, ActiveExpressionOptions options), ActiveConditionalExpression> instances = new Dictionary<(ActiveExpression test, ActiveExpression ifTrue, ActiveExpression ifFalse, ActiveExpressionOptions options), ActiveConditionalExpression>();
@@ -29,9 +29,9 @@ namespace Gear.ActiveExpressions
             }
         }
 
-        public static bool operator ==(ActiveConditionalExpression a, ActiveConditionalExpression b) => a?.Equals(b) ?? b is null;
+        public static bool operator ==(ActiveConditionalExpression a, ActiveConditionalExpression b) => a?.ifFalse == b?.ifFalse && a?.ifTrue == b?.ifTrue && a?.test == b?.test && a?.options == b?.options;
 
-        public static bool operator !=(ActiveConditionalExpression a, ActiveConditionalExpression b) => !(a == b);
+        public static bool operator !=(ActiveConditionalExpression a, ActiveConditionalExpression b) => a?.ifFalse != b?.ifFalse || a?.ifTrue != b?.ifTrue || a?.test != b?.test || a?.options != b?.options;
 
         ActiveConditionalExpression(Type type, ActiveExpression test, ActiveExpression ifTrue, ActiveExpression ifFalse, ActiveExpressionOptions options, bool deferEvaluation) : base(type, ExpressionType.Conditional, options, deferEvaluation)
         {
@@ -66,9 +66,7 @@ namespace Gear.ActiveExpressions
             }
         }
 
-        public override bool Equals(object obj) => Equals(obj as ActiveConditionalExpression);
-
-        public bool Equals(ActiveConditionalExpression other) => other?.ifFalse == ifFalse && other?.ifTrue == ifTrue && other?.test == test && other?.options == options;
+        public override bool Equals(object obj) => obj is ActiveConditionalExpression other && ifFalse.Equals(other.ifFalse) && ifTrue.Equals(other.ifTrue) && test.Equals(other.test) && (options?.Equals(other.options) ?? other.options is null);
 
         protected override void Evaluate()
         {

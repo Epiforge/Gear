@@ -9,7 +9,7 @@ using System.Reflection;
 
 namespace Gear.ActiveExpressions
 {
-    class ActiveIndexExpression : ActiveExpression, IEquatable<ActiveIndexExpression>
+    class ActiveIndexExpression : ActiveExpression
     {
         static readonly object instanceManagementLock = new object();
         static readonly Dictionary<(ActiveExpression @object, PropertyInfo indexer, EquatableList<ActiveExpression> arguments, ActiveExpressionOptions options), ActiveIndexExpression> instances = new Dictionary<(ActiveExpression @object, PropertyInfo indexer, EquatableList<ActiveExpression> arguments, ActiveExpressionOptions options), ActiveIndexExpression>();
@@ -32,9 +32,9 @@ namespace Gear.ActiveExpressions
             }
         }
 
-        public static bool operator ==(ActiveIndexExpression a, ActiveIndexExpression b) => a?.Equals(b) ?? b is null;
+        public static bool operator ==(ActiveIndexExpression a, ActiveIndexExpression b) => a?.arguments == b?.arguments && a?.indexer == b?.indexer && a?.@object == b?.@object && a?.options == b?.options;
 
-        public static bool operator !=(ActiveIndexExpression a, ActiveIndexExpression b) => !(a == b);
+        public static bool operator !=(ActiveIndexExpression a, ActiveIndexExpression b) => a?.arguments != b?.arguments || a?.indexer != b?.indexer || a?.@object != b?.@object || a?.options != b?.options;
 
         ActiveIndexExpression(Type type, ActiveExpression @object, PropertyInfo indexer, EquatableList<ActiveExpression> arguments, ActiveExpressionOptions options, bool deferEvaluation) : base(type, ExpressionType.Index, options, deferEvaluation)
         {
@@ -102,9 +102,7 @@ namespace Gear.ActiveExpressions
             }
         }
 
-        public override bool Equals(object obj) => Equals(obj as ActiveIndexExpression);
-
-        public bool Equals(ActiveIndexExpression other) => other?.arguments == arguments && other?.indexer == indexer && other?.@object == @object && other?.options == options;
+        public override bool Equals(object obj) => obj is ActiveIndexExpression other && arguments.Equals(other.arguments) && indexer.Equals(other.indexer) && @object.Equals(other.@object) && (options?.Equals(other.options) ?? other.options is null);
 
         protected override void Evaluate()
         {

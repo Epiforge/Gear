@@ -7,7 +7,7 @@ using System.Reflection;
 
 namespace Gear.ActiveExpressions
 {
-    class ActiveBinaryExpression : ActiveExpression, IEquatable<ActiveBinaryExpression>
+    class ActiveBinaryExpression : ActiveExpression
     {
         static readonly object instanceManagementLock = new object();
         static readonly Dictionary<(ExpressionType nodeType, ActiveExpression left, ActiveExpression right, ActiveExpressionOptions options), ActiveBinaryExpression> factoryInstances = new Dictionary<(ExpressionType nodeType, ActiveExpression left, ActiveExpression right, ActiveExpressionOptions options), ActiveBinaryExpression>();
@@ -82,9 +82,9 @@ namespace Gear.ActiveExpressions
             throw new NotSupportedException("ActiveBinaryExpressions do not yet support BinaryExpressions using Conversions");
         }
 
-        public static bool operator ==(ActiveBinaryExpression a, ActiveBinaryExpression b) => a?.Equals(b) ?? b is null;
+        public static bool operator ==(ActiveBinaryExpression a, ActiveBinaryExpression b) => a?.left == b?.left && a?.method == b?.method && a?.nodeType == b?.nodeType && a?.right == b?.right && a?.options == b?.options;
 
-        public static bool operator !=(ActiveBinaryExpression a, ActiveBinaryExpression b) => !(a == b);
+        public static bool operator !=(ActiveBinaryExpression a, ActiveBinaryExpression b) => a?.left != b?.left || a?.method != b?.method || a?.nodeType != b?.nodeType || a?.right != b?.right || a?.options != b?.options;
 
         protected ActiveBinaryExpression(Type type, ExpressionType nodeType, ActiveExpression left, ActiveExpression right, ActiveExpressionOptions options, bool deferEvaluation, bool getOperation = true) : base(type, nodeType, options, deferEvaluation)
         {
@@ -159,9 +159,7 @@ namespace Gear.ActiveExpressions
             }
         }
 
-        public override bool Equals(object obj) => Equals(obj as ActiveBinaryExpression);
-
-        public bool Equals(ActiveBinaryExpression other) => other?.left == left && other?.method == method && other?.nodeType == nodeType && other?.right == right && other?.options == options;
+        public override bool Equals(object obj) => obj is ActiveBinaryExpression other && left.Equals(other.left) && (method?.Equals(other.method) ?? other.method is null) && nodeType.Equals(other.nodeType) && right.Equals(other.right) && (options?.Equals(other.options) ?? other.options is null);
 
         protected override void Evaluate()
         {

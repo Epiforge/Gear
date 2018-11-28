@@ -6,10 +6,10 @@ using System.Linq;
 namespace Gear.ActiveExpressions.Tests
 {
     [TestFixture]
-    class TestActiveOrElseExpression
+    class ActiveOrElseExpression
     {
         [Test]
-        public void ShortCircuitsFault()
+        public void FaultShortCircuiting()
         {
             var john = TestPerson.CreateJohn();
             using (var expr = ActiveExpression.Create<TestPerson, TestPerson, bool>((p1, p2) => !string.IsNullOrEmpty(p1.Name) || !string.IsNullOrEmpty(p2.Name), john, null))
@@ -20,17 +20,7 @@ namespace Gear.ActiveExpressions.Tests
         }
 
         [Test]
-        public void ShortCircuitsValue()
-        {
-            var john = TestPerson.CreateJohn();
-            var emily = TestPerson.CreateEmily();
-            using (var expr = ActiveExpression.Create((p1, p2) => p1.Name.Length > 1 || p2.Name.Length > 3, john, emily))
-                Assert.IsTrue(expr.Value);
-            Assert.AreEqual(0, emily.NameGets);
-        }
-
-        [Test]
-        public void SupportsChanges()
+        public void PropertyChanges()
         {
             var john = TestPerson.CreateJohn();
             var emily = TestPerson.CreateEmily();
@@ -54,6 +44,16 @@ namespace Gear.ActiveExpressions.Tests
                 expr.PropertyChanged -= exprChanged;
             }
             Assert.IsTrue(new bool[] { false, true, false, true, false, true }.SequenceEqual(values));
+        }
+
+        [Test]
+        public void ValueShortCircuiting()
+        {
+            var john = TestPerson.CreateJohn();
+            var emily = TestPerson.CreateEmily();
+            using (var expr = ActiveExpression.Create((p1, p2) => p1.Name.Length > 1 || p2.Name.Length > 3, john, emily))
+                Assert.IsTrue(expr.Value);
+            Assert.AreEqual(0, emily.NameGets);
         }
     }
 }

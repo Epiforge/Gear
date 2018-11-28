@@ -7,14 +7,14 @@ using System.Linq.Expressions;
 
 namespace Gear.ActiveExpressions
 {
-    class ActiveNewExpression : ActiveExpression, IEquatable<ActiveNewExpression>
+    class ActiveNewExpression : ActiveExpression
     {
         static readonly object instanceManagementLock = new object();
         static readonly Dictionary<(Type type, EquatableList<ActiveExpression> arguments, ActiveExpressionOptions options), ActiveNewExpression> instances = new Dictionary<(Type type, EquatableList<ActiveExpression> arguments, ActiveExpressionOptions options), ActiveNewExpression>();
 
-        public static bool operator ==(ActiveNewExpression a, ActiveNewExpression b) => a?.Equals(b) ?? b is null;
+        public static bool operator ==(ActiveNewExpression a, ActiveNewExpression b) => a?.Type == b?.Type && a?.arguments == b?.arguments && a?.options == b?.options;
 
-        public static bool operator !=(ActiveNewExpression a, ActiveNewExpression b) => !(a == b);
+        public static bool operator !=(ActiveNewExpression a, ActiveNewExpression b) => a?.Type != b?.Type || a?.arguments != b?.arguments || a?.options != b?.options;
 
         public static ActiveNewExpression Create(NewExpression newExpression, ActiveExpressionOptions options, bool deferEvaluation)
         {
@@ -87,9 +87,7 @@ namespace Gear.ActiveExpressions
             }
         }
 
-        public override bool Equals(object obj) => Equals(obj as ActiveNewExpression);
-
-        public bool Equals(ActiveNewExpression other) => other?.Type == Type && other?.arguments == arguments && other?.options == options;
+        public override bool Equals(object obj) => obj is ActiveNewExpression other && Type.Equals(other.Type) && arguments.Equals(other.arguments) && (options?.Equals(other.options) ?? other.options is null);
 
         protected override void Evaluate()
         {

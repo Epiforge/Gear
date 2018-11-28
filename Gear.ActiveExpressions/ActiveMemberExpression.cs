@@ -7,37 +7,78 @@ using System.Reflection;
 
 namespace Gear.ActiveExpressions
 {
-    class ActiveMemberExpression : ActiveExpression, IEquatable<ActiveMemberExpression>
+    class ActiveMemberExpression : ActiveExpression
     {
         static readonly object[] emptyArray = new object[0];
         static readonly object instanceManagementLock = new object();
-        static readonly Dictionary<(ActiveExpression expression, MemberInfo member, ActiveExpressionOptions options), ActiveMemberExpression> instances = new Dictionary<(ActiveExpression expression, MemberInfo member, ActiveExpressionOptions options), ActiveMemberExpression>();
+        static readonly Dictionary<(ActiveExpression expression, MemberInfo member, ActiveExpressionOptions options), ActiveMemberExpression> instanceInstances = new Dictionary<(ActiveExpression expression, MemberInfo member, ActiveExpressionOptions options), ActiveMemberExpression>();
+        static readonly Dictionary<(MemberInfo member, ActiveExpressionOptions options), ActiveMemberExpression> staticInstances = new Dictionary<(MemberInfo member, ActiveExpressionOptions options), ActiveMemberExpression>();
 
         public static ActiveMemberExpression Create(MemberExpression memberExpression, ActiveExpressionOptions options, bool deferEvaluation)
         {
-            var expression = Create(memberExpression.Expression, options, deferEvaluation);
-            var member = memberExpression.Member;
-            var key = (expression, member, options);
-            lock (instanceManagementLock)
+            if (memberExpression.Expression == null)
             {
-                if (!instances.TryGetValue(key, out var activeMemberExpression))
+                var member = memberExpression.Member;
+                var key = (member, options);
+                lock (instanceManagementLock)
                 {
-                    activeMemberExpression = new ActiveMemberExpression(memberExpression.Type, expression, member, options, deferEvaluation);
-                    instances.Add(key, activeMemberExpression);
+                    if (!staticInstances.TryGetValue(key, out var activeMemberExpression))
+                    {
+                        activeMemberExpression = new ActiveMemberExpression(memberExpression.Type, member, options, deferEvaluation);
+                        staticInstances.Add(key, activeMemberExpression);
+                    }
+                    ++activeMemberExpression.disposalCount;
+                    return activeMemberExpression;
                 }
-                ++activeMemberExpression.disposalCount;
-                return activeMemberExpression;
+            }
+            else
+            {
+                var expression = Create(memberExpression.Expression, options, deferEvaluation);
+                var member = memberExpression.Member;
+                var key = (expression, member, options);
+                lock (instanceManagementLock)
+                {
+                    if (!instanceInstances.TryGetValue(key, out var activeMemberExpression))
+                    {
+                        activeMemberExpression = new ActiveMemberExpression(memberExpression.Type, expression, member, options, deferEvaluation);
+                        instanceInstances.Add(key, activeMemberExpression);
+                    }
+                    ++activeMemberExpression.disposalCount;
+                    return activeMemberExpression;
+                }
             }
         }
 
-        public static bool operator ==(ActiveMemberExpression a, ActiveMemberExpression b) => a?.Equals(b) ?? b is null;
+        public static bool operator ==(ActiveMemberExpression a, ActiveMemberExpression b) => a?.expression == b?.expression && a?.member == b?.member && a?.options == b?.options;
 
-        public static bool operator !=(ActiveMemberExpression a, ActiveMemberExpression b) => !(a == b);
+        public static bool operator !=(ActiveMemberExpression a, ActiveMemberExpression b) => a?.expression != b?.expression || a?.member != b?.member || a?.options != b?.options;
 
         ActiveMemberExpression(Type type, ActiveExpression expression, MemberInfo member, ActiveExpressionOptions options, bool deferEvaluation) : base(type, ExpressionType.MemberAccess, options, deferEvaluation)
         {
             this.expression = expression;
             this.expression.PropertyChanged += ExpressionPropertyChanged;
+            this.member = member;
+            switch (this.member)
+            {
+                case FieldInfo field:
+                    this.field = field;
+                    break;
+                case PropertyInfo property:
+                    this.property = property;
+                    getMethod = property.GetMethod;
+                    fastGetter = GetFastMethodInfo(getMethod);
+                    SubscribeToExpressionValueNotifications();
+                    break;
+                case null:
+                    throw new ArgumentNullException(nameof(member));
+                default:
+                    throw new NotSupportedException($"Cannot get value using {this.member.GetType().Name} for \"{member.DeclaringType.FullName}.{member.Name}\"");
+            }
+            EvaluateIfNotDeferred();
+        }
+
+        ActiveMemberExpression(Type type, MemberInfo member, ActiveExpressionOptions options, bool deferEvaluation) : base(type, ExpressionType.MemberAccess, options, deferEvaluation)
+        {
             this.member = member;
             switch (this.member)
             {
@@ -76,9 +117,14 @@ namespace Gear.ActiveExpressions
                 {
                     if (fastGetter != null)
                         UnsubscribeFromExpressionValueNotifications();
-                    expression.PropertyChanged -= ExpressionPropertyChanged;
-                    expression.Dispose();
-                    instances.Remove((expression, member, options));
+                    if (expression != null)
+                    {
+                        expression.PropertyChanged -= ExpressionPropertyChanged;
+                        expression.Dispose();
+                        instanceInstances.Remove((expression, member, options));
+                    }
+                    else
+                        staticInstances.Remove((member, options));
                     result = true;
                 }
             }
@@ -105,23 +151,21 @@ namespace Gear.ActiveExpressions
             }
         }
 
-        public override bool Equals(object obj) => Equals(obj as ActiveMemberExpression);
-
-        public bool Equals(ActiveMemberExpression other) => other?.expression == expression && other?.member == member && other?.options == options;
+        public override bool Equals(object obj) => obj is ActiveMemberExpression other && (expression?.Equals(other.expression) ?? other.expression is null) && member.Equals(other.member) && (options?.Equals(other.options) ?? other.options is null);
 
         protected override void Evaluate()
         {
             try
             {
                 DisposeValueIfNecessary();
-                var expressionFault = expression.Fault;
+                var expressionFault = expression?.Fault;
                 if (expressionFault != null)
                     Fault = expressionFault;
                 else
                 {
                     if (fastGetter != null)
                     {
-                        var newExpressionValue = expression.Value;
+                        var newExpressionValue = expression?.Value;
                         if (newExpressionValue != expressionValue)
                         {
                             UnsubscribeFromExpressionValueNotifications();

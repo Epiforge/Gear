@@ -8,7 +8,7 @@ using System.Reflection;
 
 namespace Gear.ActiveExpressions
 {
-    class ActiveUnaryExpression : ActiveExpression, IEquatable<ActiveUnaryExpression>
+    class ActiveUnaryExpression : ActiveExpression
     {
         static readonly object instanceManagementLock = new object();
         static readonly Dictionary<(ExpressionType nodeType, ActiveExpression opperand, Type type, MethodInfo method, ActiveExpressionOptions options), ActiveUnaryExpression> instances = new Dictionary<(ExpressionType nodeType, ActiveExpression opperand, Type type, MethodInfo method, ActiveExpressionOptions options), ActiveUnaryExpression>();
@@ -16,9 +16,9 @@ namespace Gear.ActiveExpressions
 
         static MethodInfo GetNullableConversionMethodInfo(Type nullableType) => nullableType.GetRuntimeMethod("op_Implicit", new Type[] { nullableType.GenericTypeArguments[0] });
 
-        public static bool operator ==(ActiveUnaryExpression a, ActiveUnaryExpression b) => a?.Equals(b) ?? b is null;
+        public static bool operator ==(ActiveUnaryExpression a, ActiveUnaryExpression b) => a?.method == b?.method && a?.nodeType == b?.nodeType && a?.operand == b?.operand && a?.options == b?.options;
 
-        public static bool operator !=(ActiveUnaryExpression a, ActiveUnaryExpression b) => !(a == b);
+        public static bool operator !=(ActiveUnaryExpression a, ActiveUnaryExpression b) => a?.method != b?.method || a?.nodeType != b?.nodeType || a?.operand != b?.operand || a?.options != b?.options;
 
         public static ActiveUnaryExpression Create(UnaryExpression unaryExpression, ActiveExpressionOptions options, bool deferEvaluation)
         {
@@ -96,9 +96,7 @@ namespace Gear.ActiveExpressions
             }
         }
 
-        public override bool Equals(object obj) => Equals(obj as ActiveUnaryExpression);
-
-        public bool Equals(ActiveUnaryExpression other) => other?.method == method && other?.nodeType == nodeType && other?.operand == operand && other?.options == options;
+        public override bool Equals(object obj) => obj is ActiveUnaryExpression other && (method?.Equals(other.method) ?? other.method is null) && nodeType.Equals(other.nodeType) && operand.Equals(other.operand) && (options?.Equals(other.options) ?? other.options is null);
 
         protected override void Evaluate()
         {

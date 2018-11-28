@@ -15,7 +15,11 @@ namespace Gear.ActiveExpressions
     /// Active expressions subscribe to notification events for values in each stage of evaluation and will re-evaluate dependent portions of the expression tree when a change occurs.
     /// Use <see cref="Create{TResult}(LambdaExpression, object[])"/> or one of its strongly-typed overloads to create an active expression.
     /// </summary>
+#pragma warning disable CS0660 // we can't override Equals in a meaningful way in this class, and besides, inheriting classes should be doing it anyway
+#pragma warning disable CS0661 // we can't override GetHashCode in a meaningful way in this class, and besides, inheriting classes should be doing it anyway
     public abstract class ActiveExpression : OverridableSyncDisposablePropertyChangeNotifier
+#pragma warning restore CS0660
+#pragma warning restore CS0661
     {
         static readonly ConcurrentDictionary<MethodInfo, FastMethodInfo> compiledMethods = new ConcurrentDictionary<MethodInfo, FastMethodInfo>();
 
@@ -80,8 +84,11 @@ namespace Gear.ActiveExpressions
         /// <param name="options">Active expression options to use instead of <see cref="ActiveExpressionOptions.Default"/></param>
         /// <param name="arguments">The arguments</param>
         /// <returns>The active expression</returns>
-        public static ActiveExpression<TResult> CreateWithOptions<TResult>(LambdaExpression lambdaExpression, ActiveExpressionOptions options, params object[] arguments) =>
-            ActiveExpression<TResult>.Create(lambdaExpression, options, arguments);
+        public static ActiveExpression<TResult> CreateWithOptions<TResult>(LambdaExpression lambdaExpression, ActiveExpressionOptions options, params object[] arguments)
+        {
+            options?.Freeze();
+            return ActiveExpression<TResult>.Create(lambdaExpression, options, arguments);
+        }
 
         /// <summary>
         /// Creates an active expression using a specified strongly-typed lambda expression with no arguments
@@ -91,8 +98,11 @@ namespace Gear.ActiveExpressions
         /// <param name="expression">The strongly-typed lambda expression</param>
         /// <param name="options">Active expression options to use instead of <see cref="ActiveExpressionOptions.Default"/></param>
         /// <returns>The active expression</returns>
-        public static ActiveExpression<TResult> Create<TResult>(Expression<Func<TResult>> expression, ActiveExpressionOptions options = null) =>
-            ActiveExpression<TResult>.Create(expression, options);
+        public static ActiveExpression<TResult> Create<TResult>(Expression<Func<TResult>> expression, ActiveExpressionOptions options = null)
+        {
+            options?.Freeze();
+            return ActiveExpression<TResult>.Create(expression, options);
+        }
 
         /// <summary>
         /// Creates an active expression using a specified strongly-typed lambda expression and one argument
@@ -103,8 +113,11 @@ namespace Gear.ActiveExpressions
         /// <param name="arg">The argument</param>
         /// <param name="options">Active expression options to use instead of <see cref="ActiveExpressionOptions.Default"/></param>
         /// <returns>The active expression</returns>
-        public static ActiveExpression<TArg, TResult> Create<TArg, TResult>(Expression<Func<TArg, TResult>> expression, TArg arg, ActiveExpressionOptions options = null) =>
-            ActiveExpression<TArg, TResult>.Create(expression, arg, options);
+        public static ActiveExpression<TArg, TResult> Create<TArg, TResult>(Expression<Func<TArg, TResult>> expression, TArg arg, ActiveExpressionOptions options = null)
+        {
+            options?.Freeze();
+            return ActiveExpression<TArg, TResult>.Create(expression, arg, options);
+        }
 
         /// <summary>
         /// Creates an active expression using a specified strongly-typed lambda expression and two arguments
@@ -117,8 +130,11 @@ namespace Gear.ActiveExpressions
         /// <param name="arg2">The second argument</param>
         /// <param name="options">Active expression options to use instead of <see cref="ActiveExpressionOptions.Default"/></param>
         /// <returns>The active expression</returns>
-        public static ActiveExpression<TArg1, TArg2, TResult> Create<TArg1, TArg2, TResult>(Expression<Func<TArg1, TArg2, TResult>> expression, TArg1 arg1, TArg2 arg2, ActiveExpressionOptions options = null) =>
-            ActiveExpression<TArg1, TArg2, TResult>.Create(expression, arg1, arg2, options);
+        public static ActiveExpression<TArg1, TArg2, TResult> Create<TArg1, TArg2, TResult>(Expression<Func<TArg1, TArg2, TResult>> expression, TArg1 arg1, TArg2 arg2, ActiveExpressionOptions options = null)
+        {
+            options?.Freeze();
+            return ActiveExpression<TArg1, TArg2, TResult>.Create(expression, arg1, arg2, options);
+        }
 
         /// <summary>
         /// Creates an active expression using a specified strongly-typed lambda expression and three arguments
@@ -133,8 +149,11 @@ namespace Gear.ActiveExpressions
         /// <param name="arg3">The third argument</param>
         /// <param name="options">Active expression options to use instead of <see cref="ActiveExpressionOptions.Default"/></param>
         /// <returns>The active expression</returns>
-        public static ActiveExpression<TArg1, TArg2, TArg3, TResult> Create<TArg1, TArg2, TArg3, TResult>(Expression<Func<TArg1, TArg2, TArg3, TResult>> expression, TArg1 arg1, TArg2 arg2, TArg3 arg3, ActiveExpressionOptions options = null) =>
-            ActiveExpression<TArg1, TArg2, TArg3, TResult>.Create(expression, arg1, arg2, arg3, options);
+        public static ActiveExpression<TArg1, TArg2, TArg3, TResult> Create<TArg1, TArg2, TArg3, TResult>(Expression<Func<TArg1, TArg2, TArg3, TResult>> expression, TArg1 arg1, TArg2 arg2, TArg3 arg3, ActiveExpressionOptions options = null)
+        {
+            options?.Freeze();
+            return ActiveExpression<TArg1, TArg2, TArg3, TResult>.Create(expression, arg1, arg2, arg3, options);
+        }
 
         internal static Expression ReplaceParameters(LambdaExpression lambdaExpression, params object[] arguments)
         {
@@ -177,6 +196,68 @@ namespace Gear.ActiveExpressions
                 default:
                     throw new NotSupportedException($"Cannot replace parameters in {expression.GetType().Name}");
             }
+        }
+
+        public static bool operator ==(ActiveExpression a, ActiveExpression b)
+        {
+            if (a is null && b is null)
+                return true;
+            if (a is null || b is null)
+                return false;
+            if (a is ActiveAndAlsoExpression andAlsoA && b is ActiveAndAlsoExpression andAlsoB)
+                return andAlsoA == andAlsoB;
+            if (a is ActiveCoalesceExpression coalesceA && b is ActiveCoalesceExpression coalesceB)
+                return coalesceA == coalesceB;
+            if (a is ActiveOrElseExpression orElseA && b is ActiveOrElseExpression orElseB)
+                return orElseA == orElseB;
+            if (a is ActiveBinaryExpression binaryA && b is ActiveBinaryExpression binaryB)
+                return binaryA == binaryB;
+            if (a is ActiveConditionalExpression conditionalA && b is ActiveConditionalExpression conditionalB)
+                return conditionalA == conditionalB;
+            if (a is ActiveConstantExpression constantA && b is ActiveConstantExpression constantB)
+                return constantA == constantB;
+            if (a is ActiveIndexExpression indexA && b is ActiveIndexExpression indexB)
+                return indexA == indexB;
+            if (a is ActiveMemberExpression memberA && b is ActiveMemberExpression memberB)
+                return memberA == memberB;
+            if (a is ActiveMethodCallExpression methodCallA && b is ActiveMethodCallExpression methodCallB)
+                return methodCallA == methodCallB;
+            if (a is ActiveNewExpression newA && b is ActiveNewExpression newB)
+                return newA == newB;
+            if (a is ActiveUnaryExpression unaryA && b is ActiveUnaryExpression unaryB)
+                return unaryA == unaryB;
+            throw new NotSupportedException();
+        }
+
+        public static bool operator !=(ActiveExpression a, ActiveExpression b)
+        {
+            if (a is null && b is null)
+                return false;
+            if (a is null || b is null)
+                return true;
+            if (a is ActiveAndAlsoExpression andAlsoA && b is ActiveAndAlsoExpression andAlsoB)
+                return andAlsoA != andAlsoB;
+            if (a is ActiveCoalesceExpression coalesceA && b is ActiveCoalesceExpression coalesceB)
+                return coalesceA != coalesceB;
+            if (a is ActiveOrElseExpression orElseA && b is ActiveOrElseExpression orElseB)
+                return orElseA != orElseB;
+            if (a is ActiveBinaryExpression binaryA && b is ActiveBinaryExpression binaryB)
+                return binaryA != binaryB;
+            if (a is ActiveConditionalExpression conditionalA && b is ActiveConditionalExpression conditionalB)
+                return conditionalA != conditionalB;
+            if (a is ActiveConstantExpression constantA && b is ActiveConstantExpression constantB)
+                return constantA != constantB;
+            if (a is ActiveIndexExpression indexA && b is ActiveIndexExpression indexB)
+                return indexA != indexB;
+            if (a is ActiveMemberExpression memberA && b is ActiveMemberExpression memberB)
+                return memberA != memberB;
+            if (a is ActiveMethodCallExpression methodCallA && b is ActiveMethodCallExpression methodCallB)
+                return methodCallA != methodCallB;
+            if (a is ActiveNewExpression newA && b is ActiveNewExpression newB)
+                return newA != newB;
+            if (a is ActiveUnaryExpression unaryA && b is ActiveUnaryExpression unaryB)
+                return unaryA != unaryB;
+            throw new NotSupportedException();
         }
 
         public ActiveExpression(Type type, ExpressionType nodeType, ActiveExpressionOptions options, bool deferEvaluation)
@@ -272,7 +353,7 @@ namespace Gear.ActiveExpressions
     /// <see cref="INotifyPropertyChanged"/>, <see cref="INotifyCollectionChanged"/>, and <see cref="INotifyDictionaryChanged"/> events raised by any value within the lambda expression will cause all dependent portions to be re-evaluated.
     /// </summary>
     /// <typeparam name="TResult">The type of the value returned by the lambda expression upon which this active expression is based</typeparam>
-    public class ActiveExpression<TResult> : OverridableSyncDisposablePropertyChangeNotifier, IEquatable<ActiveExpression<TResult>>
+    public class ActiveExpression<TResult> : OverridableSyncDisposablePropertyChangeNotifier
     {
         static readonly object instanceManagementLock = new object();
         static readonly Dictionary<(string expressionString, EquatableList<object> arguments, ActiveExpressionOptions options), ActiveExpression<TResult>> instances = new Dictionary<(string expressionString, EquatableList<object> arguments, ActiveExpressionOptions options), ActiveExpression<TResult>>();
@@ -294,9 +375,9 @@ namespace Gear.ActiveExpressions
             }
         }
 
-        public static bool operator ==(ActiveExpression<TResult> a, ActiveExpression<TResult> b) => a?.Equals(b) ?? b is null;
+        public static bool operator ==(ActiveExpression<TResult> a, ActiveExpression<TResult> b) => a?.expression == b?.expression;
 
-        public static bool operator !=(ActiveExpression<TResult> a, ActiveExpression<TResult> b) => !(a == b);
+        public static bool operator !=(ActiveExpression<TResult> a, ActiveExpression<TResult> b) => a?.expression != b?.expression;
 
         protected ActiveExpression(string expressionString, EquatableList<object> arguments, ActiveExpression expression, ActiveExpressionOptions options)
         {
@@ -329,9 +410,7 @@ namespace Gear.ActiveExpressions
             }
         }
 
-        public override bool Equals(object obj) => Equals(obj as ActiveExpression<TResult>);
-
-        public bool Equals(ActiveExpression<TResult> other) => other?.arguments == arguments && other?.expression == expression && other?.Options == Options;
+        public override bool Equals(object obj) => obj is ActiveExpression<TResult> other && expression.Equals(other.expression);
 
         void ExpressionPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
@@ -341,7 +420,7 @@ namespace Gear.ActiveExpressions
                 Value = expression.Value is TResult typedValue ? typedValue : default;
         }
 
-        public override int GetHashCode() => HashCodes.CombineObjects(typeof(ActiveExpression<TResult>), arguments, expression, Options);
+        public override int GetHashCode() => HashCodes.CombineObjects(typeof(ActiveExpression<TResult>), expression);
 
         /// <summary>
         /// Gets the arguments that were passed to the lambda expression
@@ -378,7 +457,7 @@ namespace Gear.ActiveExpressions
     /// </summary>
     /// <typeparam name="TArg">The type of the argument passed to the lambda expression</typeparam>
     /// <typeparam name="TResult">The type of the value returned by the expression upon which this active expression is based</typeparam>
-    public class ActiveExpression<TArg, TResult> : OverridableSyncDisposablePropertyChangeNotifier, IEquatable<ActiveExpression<TArg, TResult>>
+    public class ActiveExpression<TArg, TResult> : OverridableSyncDisposablePropertyChangeNotifier
     {
         static readonly object instanceManagementLock = new object();
         static readonly Dictionary<(string expressionString, TArg arg, ActiveExpressionOptions options), ActiveExpression<TArg, TResult>> instances = new Dictionary<(string expressionString, TArg arg, ActiveExpressionOptions options), ActiveExpression<TArg, TResult>>();
@@ -399,9 +478,9 @@ namespace Gear.ActiveExpressions
             }
         }
 
-        public static bool operator ==(ActiveExpression<TArg, TResult> a, ActiveExpression<TArg, TResult> b) => a?.Equals(b) ?? b is null;
+        public static bool operator ==(ActiveExpression<TArg, TResult> a, ActiveExpression<TArg, TResult> b) => a?.expression == b?.expression;
 
-        public static bool operator !=(ActiveExpression<TArg, TResult> a, ActiveExpression<TArg, TResult> b) => !(a == b);
+        public static bool operator !=(ActiveExpression<TArg, TResult> a, ActiveExpression<TArg, TResult> b) => a?.expression != b?.expression;
 
         protected ActiveExpression(string expressionString, TArg arg, ActiveExpression expression, ActiveExpressionOptions options)
         {
@@ -433,9 +512,7 @@ namespace Gear.ActiveExpressions
             }
         }
 
-        public override bool Equals(object obj) => Equals(obj as ActiveExpression<TArg, TResult>);
-
-        public bool Equals(ActiveExpression<TArg, TResult> other) => other != null && other.expression == expression && EqualityComparer<TArg>.Default.Equals(other.Arg, Arg) && other.Options == Options;
+        public override bool Equals(object obj) => obj is ActiveExpression<TArg, TResult> other && expression.Equals(other.expression);
 
         void ExpressionPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
@@ -483,7 +560,7 @@ namespace Gear.ActiveExpressions
     /// <typeparam name="TArg1">The type of the first argument passed to the lambda expression</typeparam>
     /// <typeparam name="TArg2">The type of the second argument passed to the lambda expression</typeparam>
     /// <typeparam name="TResult">The type of the value returned by the expression upon which this active expression is based</typeparam>
-    public class ActiveExpression<TArg1, TArg2, TResult> : OverridableSyncDisposablePropertyChangeNotifier, IEquatable<ActiveExpression<TArg1, TArg2, TResult>>
+    public class ActiveExpression<TArg1, TArg2, TResult> : OverridableSyncDisposablePropertyChangeNotifier
     {
         static readonly object instanceManagementLock = new object();
         static readonly Dictionary<(string expressionString, TArg1 arg1, TArg2 arg2, ActiveExpressionOptions options), ActiveExpression<TArg1, TArg2, TResult>> instances = new Dictionary<(string expressionString, TArg1 arg1, TArg2 arg2, ActiveExpressionOptions options), ActiveExpression<TArg1, TArg2, TResult>>();
@@ -504,9 +581,9 @@ namespace Gear.ActiveExpressions
             }
         }
 
-        public static bool operator ==(ActiveExpression<TArg1, TArg2, TResult> a, ActiveExpression<TArg1, TArg2, TResult> b) => a?.Equals(b) ?? b is null;
+        public static bool operator ==(ActiveExpression<TArg1, TArg2, TResult> a, ActiveExpression<TArg1, TArg2, TResult> b) => a?.expression == b?.expression;
 
-        public static bool operator !=(ActiveExpression<TArg1, TArg2, TResult> a, ActiveExpression<TArg1, TArg2, TResult> b) => !(a == b);
+        public static bool operator !=(ActiveExpression<TArg1, TArg2, TResult> a, ActiveExpression<TArg1, TArg2, TResult> b) => a?.expression != b?.expression;
 
         protected ActiveExpression(string expressionString, TArg1 arg1, TArg2 arg2, ActiveExpression expression, ActiveExpressionOptions options)
         {
@@ -539,9 +616,7 @@ namespace Gear.ActiveExpressions
             }
         }
 
-        public override bool Equals(object obj) => Equals(obj as ActiveExpression<TArg1, TArg2, TResult>);
-
-        public bool Equals(ActiveExpression<TArg1, TArg2, TResult> other) => other != null && other.expression == expression && EqualityComparer<TArg1>.Default.Equals(other.Arg1, Arg1) && EqualityComparer<TArg2>.Default.Equals(other.Arg2, Arg2) && other.Options == Options;
+        public override bool Equals(object obj) => obj is ActiveExpression<TArg1, TArg2, TResult> other && expression.Equals(other.expression);
 
         void ExpressionPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
@@ -551,7 +626,7 @@ namespace Gear.ActiveExpressions
                 Value = expression.Value is TResult typedValue ? typedValue : default;
         }
 
-        public override int GetHashCode() => HashCodes.CombineObjects(typeof(ActiveExpression<TArg1, TArg2, TResult>), expression, Arg1, Arg2, Options);
+        public override int GetHashCode() => HashCodes.CombineObjects(typeof(ActiveExpression<TArg1, TArg2, TResult>), expression);
 
         /// <summary>
         /// Gets the first argument that was passed to the lambda expression
@@ -595,7 +670,7 @@ namespace Gear.ActiveExpressions
     /// <typeparam name="TArg2">The type of the second argument passed to the lambda expression</typeparam>
     /// <typeparam name="TArg3">The type of the third argument passed to the lambda expression</typeparam>
     /// <typeparam name="TResult">The type of the value returned by the expression upon which this active expression is based</typeparam>
-    public class ActiveExpression<TArg1, TArg2, TArg3, TResult> : OverridableSyncDisposablePropertyChangeNotifier, IEquatable<ActiveExpression<TArg1, TArg2, TArg3, TResult>>
+    public class ActiveExpression<TArg1, TArg2, TArg3, TResult> : OverridableSyncDisposablePropertyChangeNotifier
     {
         static readonly object instanceManagementLock = new object();
         static readonly Dictionary<(string expressionString, TArg1 arg1, TArg2 arg2, TArg3 arg3, ActiveExpressionOptions options), ActiveExpression<TArg1, TArg2, TArg3, TResult>> instances = new Dictionary<(string expressionString, TArg1 arg1, TArg2 arg2, TArg3 arg3, ActiveExpressionOptions options), ActiveExpression<TArg1, TArg2, TArg3, TResult>>();
@@ -616,9 +691,9 @@ namespace Gear.ActiveExpressions
             }
         }
 
-        public static bool operator ==(ActiveExpression<TArg1, TArg2, TArg3, TResult> a, ActiveExpression<TArg1, TArg2, TArg3, TResult> b) => a?.Equals(b) ?? b is null;
+        public static bool operator ==(ActiveExpression<TArg1, TArg2, TArg3, TResult> a, ActiveExpression<TArg1, TArg2, TArg3, TResult> b) => a?.expression == b?.expression;
 
-        public static bool operator !=(ActiveExpression<TArg1, TArg2, TArg3, TResult> a, ActiveExpression<TArg1, TArg2, TArg3, TResult> b) => !(a == b);
+        public static bool operator !=(ActiveExpression<TArg1, TArg2, TArg3, TResult> a, ActiveExpression<TArg1, TArg2, TArg3, TResult> b) => a?.expression != b?.expression;
 
         protected ActiveExpression(string expressionString, TArg1 arg1, TArg2 arg2, TArg3 arg3, ActiveExpression expression, ActiveExpressionOptions options)
         {
@@ -652,9 +727,7 @@ namespace Gear.ActiveExpressions
             }
         }
 
-        public override bool Equals(object obj) => Equals(obj as ActiveExpression<TArg1, TArg2, TArg3, TResult>);
-
-        public bool Equals(ActiveExpression<TArg1, TArg2, TArg3, TResult> other) => other != null && other.expression == expression && EqualityComparer<TArg1>.Default.Equals(other.Arg1, Arg1) && EqualityComparer<TArg2>.Default.Equals(other.Arg2, Arg2) && EqualityComparer<TArg3>.Default.Equals(other.Arg3, Arg3) && other.Options == Options;
+        public override bool Equals(object obj) => obj is ActiveExpression<TArg1, TArg2, TArg3, TResult> other && expression.Equals(other.expression);
 
         void ExpressionPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
@@ -664,7 +737,7 @@ namespace Gear.ActiveExpressions
                 Value = expression.Value is TResult typedValue ? typedValue : default;
         }
 
-        public override int GetHashCode() => HashCodes.CombineObjects(typeof(ActiveExpression<TArg1, TArg2, TArg3, TResult>), expression, Arg1, Arg2, Arg3, Options);
+        public override int GetHashCode() => HashCodes.CombineObjects(typeof(ActiveExpression<TArg1, TArg2, TArg3, TResult>), expression);
 
         /// <summary>
         /// Gets the first argument that was passed to the lambda expression

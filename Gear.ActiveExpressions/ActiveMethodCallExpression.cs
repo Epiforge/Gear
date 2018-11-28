@@ -8,7 +8,7 @@ using System.Reflection;
 
 namespace Gear.ActiveExpressions
 {
-    class ActiveMethodCallExpression : ActiveExpression, IEquatable<ActiveMethodCallExpression>
+    class ActiveMethodCallExpression : ActiveExpression
     {
         static readonly object instanceManagementLock = new object();
         static readonly Dictionary<(ActiveExpression @object, MethodInfo method, EquatableList<ActiveExpression> arguments, ActiveExpressionOptions options), ActiveMethodCallExpression> instanceInstances = new Dictionary<(ActiveExpression @object, MethodInfo method, EquatableList<ActiveExpression> arguments, ActiveExpressionOptions options), ActiveMethodCallExpression>();
@@ -51,9 +51,9 @@ namespace Gear.ActiveExpressions
             }
         }
 
-        public static bool operator ==(ActiveMethodCallExpression a, ActiveMethodCallExpression b) => a?.Equals(b) ?? b is null;
+        public static bool operator ==(ActiveMethodCallExpression a, ActiveMethodCallExpression b) => a?.arguments == b?.arguments && a?.method == b?.method && a?.@object == b?.@object && a?.options == b?.options;
 
-        public static bool operator !=(ActiveMethodCallExpression a, ActiveMethodCallExpression b) => !(a == b);
+        public static bool operator !=(ActiveMethodCallExpression a, ActiveMethodCallExpression b) => a?.arguments != b?.arguments || a?.method != b?.method || a?.@object != b?.@object || a?.options != b?.options;
 
         ActiveMethodCallExpression(Type type, ActiveExpression @object, MethodInfo method, EquatableList<ActiveExpression> arguments, ActiveExpressionOptions options, bool deferEvaluation) : base(type, ExpressionType.Call, options, deferEvaluation)
         {
@@ -132,9 +132,7 @@ namespace Gear.ActiveExpressions
             }
         }
 
-        public override bool Equals(object obj) => Equals(obj as ActiveMethodCallExpression);
-
-        public bool Equals(ActiveMethodCallExpression other) => other?.arguments == arguments && other?.method == method && other?.@object == @object && other?.options == options;
+        public override bool Equals(object obj) => obj is ActiveMethodCallExpression other && arguments.Equals(other.arguments) && method.Equals(other.method) && (@object?.Equals(other.@object) ?? other.@object is null) && (options?.Equals(other.options) ?? other.options is null);
 
         protected override void Evaluate()
         {

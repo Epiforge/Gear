@@ -1,22 +1,19 @@
 using Gear.Components;
-using System;
 using System.Linq.Expressions;
 
 namespace Gear.ActiveExpressions
 {
-    class ActiveOrElseExpression : ActiveBinaryExpression, IEquatable<ActiveOrElseExpression>
+    class ActiveOrElseExpression : ActiveBinaryExpression
     {
-        public static bool operator ==(ActiveOrElseExpression a, ActiveOrElseExpression b) => a?.Equals(b) ?? b is null;
+        public static bool operator ==(ActiveOrElseExpression a, ActiveOrElseExpression b) => a?.left == b?.left && a?.right == b?.right && a?.options == b?.options;
 
-        public static bool operator !=(ActiveOrElseExpression a, ActiveOrElseExpression b) => !(a == b);
+        public static bool operator !=(ActiveOrElseExpression a, ActiveOrElseExpression b) => a?.left != b?.left || a?.right != b?.right || a?.options != b?.options;
 
         public ActiveOrElseExpression(ActiveExpression left, ActiveExpression right, bool deferEvaluation) : base(typeof(bool), ExpressionType.OrElse, left, right, null, deferEvaluation, false)
         {
         }
 
-        public override bool Equals(object obj) => Equals(obj as ActiveOrElseExpression);
-
-        public bool Equals(ActiveOrElseExpression other) => other?.left == left && other?.right == right;
+        public override bool Equals(object obj) => obj is ActiveOrElseExpression other && left.Equals(other.left) && right.Equals(other.right) && (options?.Equals(other.options) ?? other.options is null);
 
         protected override void Evaluate()
         {

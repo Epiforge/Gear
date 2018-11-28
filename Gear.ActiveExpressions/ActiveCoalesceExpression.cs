@@ -4,11 +4,11 @@ using System.Linq.Expressions;
 
 namespace Gear.ActiveExpressions
 {
-    class ActiveCoalesceExpression : ActiveBinaryExpression, IEquatable<ActiveCoalesceExpression>
+    class ActiveCoalesceExpression : ActiveBinaryExpression
     {
-        public static bool operator ==(ActiveCoalesceExpression a, ActiveCoalesceExpression b) => a?.Equals(b) ?? b is null;
+        public static bool operator ==(ActiveCoalesceExpression a, ActiveCoalesceExpression b) => a?.left == b?.left && a?.right == b?.right && a?.options == b?.options;
 
-        public static bool operator !=(ActiveCoalesceExpression a, ActiveCoalesceExpression b) => !(a == b);
+        public static bool operator !=(ActiveCoalesceExpression a, ActiveCoalesceExpression b) => a?.left != b?.left || a?.right != b?.right || a?.options != b?.options;
 
         public ActiveCoalesceExpression(Type type, ActiveExpression left, ActiveExpression right, LambdaExpression conversion, bool deferEvaluation) : base(type, ExpressionType.Coalesce, left, right, null, deferEvaluation, false)
         {
@@ -16,9 +16,7 @@ namespace Gear.ActiveExpressions
                 throw new NotSupportedException("Coalesce conversions are not yet supported");
         }
 
-        public override bool Equals(object obj) => Equals(obj as ActiveCoalesceExpression);
-
-        public bool Equals(ActiveCoalesceExpression other) => other?.left == left && other?.right == right;
+        public override bool Equals(object obj) => obj is ActiveCoalesceExpression other && left.Equals(other.left) && right.Equals(other.right) && (options?.Equals(other.options) ?? other.options is null);
 
         protected override void Evaluate()
         {
