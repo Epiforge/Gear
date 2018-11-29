@@ -157,5 +157,7 @@ namespace Gear.ActiveExpressions
         public override int GetHashCode() => HashCodes.CombineObjects(typeof(ActiveMethodCallExpression), arguments, method, @object, options);
 
         void ObjectPropertyChanged(object sender, PropertyChangedEventArgs e) => Evaluate();
+
+        public override string ToString() => $"{@object?.ToString() ?? method.DeclaringType.FullName}.{method.Name}({string.Join(", ", arguments.Select(argument => $"{argument}"))}) {ToStringSuffix}";
     }
 }

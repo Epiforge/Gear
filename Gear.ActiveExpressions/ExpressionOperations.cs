@@ -29,6 +29,72 @@ namespace Gear.ActiveExpressions
 
         public static FastMethodInfo GetFastMethodInfo(ExpressionType expressionType, Type returnType, params Type[] parameterTypes) => operationFastMethodInfos.GetOrAdd((expressionType, returnType, new EquatableList<Type>(parameterTypes)), CreateFastMethodInfo);
 
+        [ExcludeFromCodeCoverage]
+        public static string GetExpressionSyntax(ExpressionType expressionType, Type resultType, params ActiveExpression[] operands)
+        {
+            switch (expressionType)
+            {
+                case ExpressionType.Add:
+                    return $"({operands[0]} + {operands[1]})";
+                case ExpressionType.AddChecked:
+                    return $"checked({operands[0]} + {operands[1]})";
+                case ExpressionType.And:
+                    return $"({operands[0]} & {operands[1]})";
+                case ExpressionType.Convert:
+                    return $"(({resultType.FullName}){operands[0]})";
+                case ExpressionType.Decrement:
+                    return $"({operands[0]} - 1)";
+                case ExpressionType.Divide:
+                    return $"({operands[0]} / {operands[1]})";
+                case ExpressionType.Equal:
+                    return $"({operands[0]} == {operands[1]})";
+                case ExpressionType.ExclusiveOr:
+                    return $"({operands[0]} ^ {operands[1]})";
+                case ExpressionType.GreaterThan:
+                    return $"({operands[0]} > {operands[1]})";
+                case ExpressionType.GreaterThanOrEqual:
+                    return $"({operands[0]} >= {operands[1]})";
+                case ExpressionType.Increment:
+                    return $"({operands[0]} + 1)";
+                case ExpressionType.LeftShift:
+                    return $"({operands[0]} << {operands[1]})";
+                case ExpressionType.LessThan:
+                    return $"({operands[0]} < {operands[1]})";
+                case ExpressionType.LessThanOrEqual:
+                    return $"({operands[0]} <= {operands[1]})";
+                case ExpressionType.Modulo:
+                    return $"({operands[0]} % {operands[1]})";
+                case ExpressionType.Multiply:
+                    return $"({operands[0]} * {operands[1]})";
+                case ExpressionType.MultiplyChecked:
+                    return $"checked({operands[0]} * {operands[1]})";
+                case ExpressionType.Negate:
+                    return $"(-{operands[0]})";
+                case ExpressionType.Not when operands[0].Type == typeof(bool) || operands[0].Type == typeof(bool?):
+                    return $"(!{operands[0]})";
+                case ExpressionType.Not:
+                    return $"(~{operands[0]})";
+                case ExpressionType.NotEqual:
+                    return $"({operands[0]} != {operands[1]})";
+                case ExpressionType.OnesComplement:
+                    return $"(~{operands[0]})";
+                case ExpressionType.Or:
+                    return $"({operands[0]} | {operands[1]})";
+                case ExpressionType.Power:
+                    return $"{nameof(Math)}.{nameof(Math.Pow)}({operands[0]}, {operands[1]})";
+                case ExpressionType.RightShift:
+                    return $"({operands[0]} >> {operands[1]})";
+                case ExpressionType.Subtract:
+                    return $"({operands[0]} - {operands[1]})";
+                case ExpressionType.SubtractChecked:
+                    return $"checked({operands[0]} + {operands[1]})";
+                case ExpressionType.UnaryPlus:
+                    return $"(+{operands[0]})";
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(expressionType));
+            }
+        }
+
         #region Add
 
         [ExpressionOperation(ExpressionType.Add)]

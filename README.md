@@ -8,6 +8,8 @@ Supports `netstandard1.3`.
 
 ![Build Status](https://ci.appveyor.com/api/projects/status/3s25e4ldo2ji1ech?svg=true)
 
+[![Coverage Status](https://coveralls.io/repos/github/Epiforge/Gear/badge.svg?branch=master)](https://coveralls.io/github/Epiforge/Gear?branch=master)
+
 [![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2FEpiforge%2FGear.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2FEpiforge%2FGear?ref=badge_shield)
 
 - [Getting Started](#getting-started)

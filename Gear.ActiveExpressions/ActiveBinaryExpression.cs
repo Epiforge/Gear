@@ -82,13 +82,12 @@ namespace Gear.ActiveExpressions
             throw new NotSupportedException("ActiveBinaryExpressions do not yet support BinaryExpressions using Conversions");
         }
 
-        public static bool operator ==(ActiveBinaryExpression a, ActiveBinaryExpression b) => a?.left == b?.left && a?.method == b?.method && a?.nodeType == b?.nodeType && a?.right == b?.right && a?.options == b?.options;
+        public static bool operator ==(ActiveBinaryExpression a, ActiveBinaryExpression b) => a?.left == b?.left && a?.method == b?.method && a?.NodeType == b?.NodeType && a?.right == b?.right && a?.options == b?.options;
 
-        public static bool operator !=(ActiveBinaryExpression a, ActiveBinaryExpression b) => a?.left != b?.left || a?.method != b?.method || a?.nodeType != b?.nodeType || a?.right != b?.right || a?.options != b?.options;
+        public static bool operator !=(ActiveBinaryExpression a, ActiveBinaryExpression b) => a?.left != b?.left || a?.method != b?.method || a?.NodeType != b?.NodeType || a?.right != b?.right || a?.options != b?.options;
 
         protected ActiveBinaryExpression(Type type, ExpressionType nodeType, ActiveExpression left, ActiveExpression right, ActiveExpressionOptions options, bool deferEvaluation, bool getOperation = true) : base(type, nodeType, options, deferEvaluation)
         {
-            this.nodeType = nodeType;
             this.left = left;
             this.left.PropertyChanged += LeftPropertyChanged;
             this.right = right;
@@ -115,7 +114,6 @@ namespace Gear.ActiveExpressions
         readonly bool isLiftedToNull;
         protected readonly ActiveExpression left;
         readonly MethodInfo method;
-        readonly ExpressionType nodeType;
         protected readonly ActiveExpression right;
 
         protected override bool Dispose(bool disposing)
@@ -130,9 +128,9 @@ namespace Gear.ActiveExpressions
                     right.PropertyChanged -= RightPropertyChanged;
                     right.Dispose();
                     if (method == null)
-                        factoryInstances.Remove((nodeType, left, right, options));
+                        factoryInstances.Remove((NodeType, left, right, options));
                     else
-                        implementationInstances.Remove((nodeType, left, right, isLiftedToNull, method, options));
+                        implementationInstances.Remove((NodeType, left, right, isLiftedToNull, method, options));
                     result = true;
                 }
             }
@@ -159,7 +157,7 @@ namespace Gear.ActiveExpressions
             }
         }
 
-        public override bool Equals(object obj) => obj is ActiveBinaryExpression other && left.Equals(other.left) && (method?.Equals(other.method) ?? other.method is null) && nodeType.Equals(other.nodeType) && right.Equals(other.right) && (options?.Equals(other.options) ?? other.options is null);
+        public override bool Equals(object obj) => obj is ActiveBinaryExpression other && left.Equals(other.left) && (method?.Equals(other.method) ?? other.method is null) && NodeType.Equals(other.NodeType) && right.Equals(other.right) && (options?.Equals(other.options) ?? other.options is null);
 
         protected override void Evaluate()
         {
@@ -183,10 +181,12 @@ namespace Gear.ActiveExpressions
             }
         }
 
-        public override int GetHashCode() => HashCodes.CombineObjects(typeof(ActiveBinaryExpression), left, method, nodeType, right, options);
+        public override int GetHashCode() => HashCodes.CombineObjects(typeof(ActiveBinaryExpression), left, method, NodeType, right, options);
 
         void LeftPropertyChanged(object sender, PropertyChangedEventArgs e) => Evaluate();
 
         void RightPropertyChanged(object sender, PropertyChangedEventArgs e) => Evaluate();
+
+        public override string ToString() => $"{ExpressionOperations.GetExpressionSyntax(NodeType, Type, left, right)} {ToStringSuffix}";
     }
 }

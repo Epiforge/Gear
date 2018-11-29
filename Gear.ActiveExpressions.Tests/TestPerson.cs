@@ -43,6 +43,6 @@ namespace Gear.ActiveExpressions.Tests
 
         public long NameGets => Interlocked.Read(ref nameGets);
 
-        public override string ToString() => name;
+        public override string ToString() => "[TestPerson]";
     }
 }

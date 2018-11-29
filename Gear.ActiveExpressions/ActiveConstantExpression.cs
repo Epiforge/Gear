@@ -7,8 +7,15 @@ namespace Gear.ActiveExpressions
 {
     class ActiveConstantExpression : ActiveExpression
     {
+        static readonly Dictionary<ConstantExpression, string> convertedParameters = new Dictionary<ConstantExpression, string>();
         static readonly object instanceManagementLock = new object();
         static readonly Dictionary<(Type type, object value), ActiveConstantExpression> instances = new Dictionary<(Type type, object value), ActiveConstantExpression>();
+
+        public static void AddConvertedParameter(ConstantExpression constantExpression, string parameterName)
+        {
+            lock (instanceManagementLock)
+                convertedParameters.Add(constantExpression, parameterName);
+        }
 
         public static ActiveConstantExpression Create(ConstantExpression constantExpression, ActiveExpressionOptions options, bool deferEvaluation)
         {
@@ -19,7 +26,13 @@ namespace Gear.ActiveExpressions
             {
                 if (!instances.TryGetValue(key, out var activeConstantExpression))
                 {
-                    activeConstantExpression = new ActiveConstantExpression(type, value, options, deferEvaluation);
+                    if (convertedParameters.TryGetValue(constantExpression, out var parameterName))
+                    {
+                        convertedParameters.Remove(constantExpression);
+                        activeConstantExpression = new ActiveConstantExpression(type, parameterName, value, options, deferEvaluation);
+                    }
+                    else
+                        activeConstantExpression = new ActiveConstantExpression(type, value, options, deferEvaluation);
                     instances.Add(key, activeConstantExpression);
                 }
                 ++activeConstantExpression.disposalCount;
@@ -37,8 +50,11 @@ namespace Gear.ActiveExpressions
             EvaluateIfNotDeferred();
         }
 
+        ActiveConstantExpression(Type type, string parameterName, object value, ActiveExpressionOptions options, bool deferEvaluation) : this(type, value, options, deferEvaluation) => this.parameterName = parameterName;
+
         readonly object constant;
         int disposalCount;
+        readonly string parameterName;
 
         protected override bool Dispose(bool disposing)
         {
@@ -56,5 +72,12 @@ namespace Gear.ActiveExpressions
         protected override void Evaluate() => Value = constant;
 
         public override int GetHashCode() => HashCodes.CombineObjects(typeof(ActiveConstantExpression), Value);
+
+        public override string ToString()// => $"{parameterName ?? $"{constant}"} {ToStringSuffix}";
+        {
+            if (parameterName != null)
+                return $"{parameterName} {ToStringSuffix}";
+            return parameterName != null ? $"{parameterName} {ToStringSuffix}" : $"{GetValueLiteral(null, constant)}";
+        }
     }
 }

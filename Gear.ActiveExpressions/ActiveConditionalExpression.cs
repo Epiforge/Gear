@@ -139,5 +139,7 @@ namespace Gear.ActiveExpressions
                 }
             }
         }
+
+        public override string ToString() => $"({test} ? {ifTrue} : {ifFalse}) {ToStringSuffix}";
     }
 }

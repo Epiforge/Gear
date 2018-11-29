@@ -1,4 +1,5 @@
 using Gear.Components;
+using System;
 using System.Linq.Expressions;
 
 namespace Gear.ActiveExpressions
@@ -17,21 +18,30 @@ namespace Gear.ActiveExpressions
 
         protected override void Evaluate()
         {
-            var leftFault = left.Fault;
-            if (leftFault != null)
-                Fault = leftFault;
-            else if (!(bool)left.Value)
-                Value = false;
-            else
+            try
             {
-                var rightFault = right.Fault;
-                if (rightFault != null)
-                    Fault = rightFault;
+                var leftFault = left.Fault;
+                if (leftFault != null)
+                    Fault = leftFault;
+                else if (!(bool)left.Value)
+                    Value = false;
                 else
-                    Value = (bool)right.Value;
+                {
+                    var rightFault = right.Fault;
+                    if (rightFault != null)
+                        Fault = rightFault;
+                    else
+                        Value = (bool)right.Value;
+                }
+            }
+            catch (Exception ex)
+            {
+                Fault = ex;
             }
         }
 
         public override int GetHashCode() => HashCodes.CombineObjects(typeof(ActiveAndAlsoExpression), left, right);
+
+        public override string ToString() => $"({left} && {right}) {ToStringSuffix}";
     }
 }

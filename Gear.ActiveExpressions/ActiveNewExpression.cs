@@ -107,5 +107,7 @@ namespace Gear.ActiveExpressions
         }
 
         public override int GetHashCode() => HashCodes.CombineObjects(typeof(ActiveNewExpression), Type, arguments, options);
+
+        public override string ToString() => $"new {Type.FullName}({string.Join(", ", arguments.Select(argument => $"{argument}"))}) {ToStringSuffix}";
     }
 }

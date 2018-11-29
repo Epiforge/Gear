@@ -4,9 +4,11 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.ComponentModel;
+using System.IO;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Text;
 
 namespace Gear.ActiveExpressions
 {
@@ -155,13 +157,70 @@ namespace Gear.ActiveExpressions
             return ActiveExpression<TArg1, TArg2, TArg3, TResult>.Create(expression, arg1, arg2, arg3, options);
         }
 
+        protected static string GetValueLiteral(Exception fault, object value)
+        {
+            if (fault != null)
+                return $"[{fault.GetType().Name}: {fault.Message}]";
+            if (value == null)
+                return "null";
+            if (value is string str)
+            {
+                var sb = new StringBuilder(str);
+                sb.Replace("\\", "\\\\");
+                sb.Replace("\0", "\\0");
+                sb.Replace("\a", "\\a");
+                sb.Replace("\b", "\\b");
+                sb.Replace("\f", "\\f");
+                sb.Replace("\n", "\\n");
+                sb.Replace("\r", "\\r");
+                sb.Replace("\t", "\\t");
+                sb.Replace("\v", "\\v");
+                return $"\"{sb}\"";
+            }
+            if (value is char ch)
+            {
+                switch (ch)
+                {
+                    case '\\':
+                        return "'\\\\'";
+                    case '\0':
+                        return "'\\0'";
+                    case '\a':
+                        return "'\\a'";
+                    case '\b':
+                        return "'\\b'";
+                    case '\f':
+                        return "'\\f'";
+                    case '\n':
+                        return "'\\n'";
+                    case '\r':
+                        return "'\\r'";
+                    case '\t':
+                        return "'\\t'";
+                    case '\v':
+                        return "'\\v'";
+                    default:
+                        return $"'{ch}'";
+                }
+            }
+            if (value is DateTime dt)
+                return $"new DateTime({dt.Ticks})";
+            if (value is TimeSpan ts)
+                return $"new TimeSpan({ts.Ticks})";
+            if (value is Guid guid)
+                return $"new Guid(\"{guid}\")";
+            return $"{value}";
+        }
+
         internal static Expression ReplaceParameters(LambdaExpression lambdaExpression, params object[] arguments)
         {
             var parameterTranslation = new Dictionary<ParameterExpression, ConstantExpression>();
             for (var i = 0; i < lambdaExpression.Parameters.Count; ++i)
             {
                 var parameter = lambdaExpression.Parameters[i];
-                parameterTranslation.Add(parameter, Expression.Constant(arguments[i], parameter.Type));
+                var constant = Expression.Constant(arguments[i], parameter.Type);
+                parameterTranslation.Add(parameter, constant);
+                ActiveConstantExpression.AddConvertedParameter(constant, parameter.Name);
             }
             var expression = lambdaExpression.Body;
             while (expression?.CanReduce ?? false)
@@ -299,6 +358,8 @@ namespace Gear.ActiveExpressions
             }
         }
 
+        protected string ToStringSuffix => $"/* {GetValueLiteral(fault, val)} */";
+
         protected bool TryGetUndeferredValue(out object value)
         {
             lock (deferringEvaluationLock)
@@ -422,6 +483,8 @@ namespace Gear.ActiveExpressions
 
         public override int GetHashCode() => HashCodes.CombineObjects(typeof(ActiveExpression<TResult>), expression);
 
+        public override string ToString() => expression.ToString();
+
         /// <summary>
         /// Gets the arguments that were passed to the lambda expression
         /// </summary>
@@ -523,6 +586,8 @@ namespace Gear.ActiveExpressions
         }
 
         public override int GetHashCode() => HashCodes.CombineObjects(typeof(ActiveExpression<TArg, TResult>), expression, Arg, Options);
+
+        public override string ToString() => expression.ToString();
 
         /// <summary>
         /// Gets the argument that was passed to the lambda expression
@@ -627,6 +692,8 @@ namespace Gear.ActiveExpressions
         }
 
         public override int GetHashCode() => HashCodes.CombineObjects(typeof(ActiveExpression<TArg1, TArg2, TResult>), expression);
+
+        public override string ToString() => expression.ToString();
 
         /// <summary>
         /// Gets the first argument that was passed to the lambda expression
@@ -738,6 +805,8 @@ namespace Gear.ActiveExpressions
         }
 
         public override int GetHashCode() => HashCodes.CombineObjects(typeof(ActiveExpression<TArg1, TArg2, TArg3, TResult>), expression);
+
+        public override string ToString() => expression.ToString();
 
         /// <summary>
         /// Gets the first argument that was passed to the lambda expression

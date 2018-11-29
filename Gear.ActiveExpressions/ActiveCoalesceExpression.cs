@@ -40,5 +40,7 @@ namespace Gear.ActiveExpressions
         }
 
         public override int GetHashCode() => HashCodes.CombineObjects(typeof(ActiveCoalesceExpression), left, right);
+
+        public override string ToString() => $"({left} ?? {right}) {ToStringSuffix}";
     }
 }

@@ -194,6 +194,8 @@ namespace Gear.ActiveExpressions
 
         public override int GetHashCode() => HashCodes.CombineObjects(typeof(ActiveMemberExpression), expression, member, options);
 
+        public override string ToString() => $"{expression?.ToString() ?? member.DeclaringType.FullName}.{member.Name} {ToStringSuffix}";
+
         void SubscribeToExpressionValueNotifications()
         {
             if (expressionValue is INotifyPropertyChanged propertyChangedNotifier)

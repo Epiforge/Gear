@@ -266,6 +266,8 @@ namespace Gear.ActiveExpressions
                 propertyChangedNotifier.PropertyChanged += ObjectValuePropertyChanged;
         }
 
+        public override string ToString() => $"{@object}{string.Join(string.Empty, arguments.Select(argument => $"[{argument}]"))} {ToStringSuffix}";
+
         void UnsubscribeFromObjectValueNotifications()
         {
             if (objectValue is INotifyCollectionChanged collectionChangedNotifier)
