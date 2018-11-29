@@ -34,7 +34,7 @@
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
     <LangVersion>7.2</LangVersion>
-    <DebugType>embedded</DebugType>
+    <DebugType>full</DebugType>
     <DocumentationFile>bin\Release\netstandard1.3\Gear.Components.xml</DocumentationFile>
     <DebugSymbols>true</DebugSymbols>
   </PropertyGroup>
