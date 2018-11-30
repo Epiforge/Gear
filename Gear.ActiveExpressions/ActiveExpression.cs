@@ -285,7 +285,7 @@ namespace Gear.ActiveExpressions
                 return newA == newB;
             if (a is ActiveUnaryExpression unaryA && b is ActiveUnaryExpression unaryB)
                 return unaryA == unaryB;
-            throw new NotSupportedException();
+            return false;
         }
 
         public static bool operator !=(ActiveExpression a, ActiveExpression b)
@@ -316,7 +316,7 @@ namespace Gear.ActiveExpressions
                 return newA != newB;
             if (a is ActiveUnaryExpression unaryA && b is ActiveUnaryExpression unaryB)
                 return unaryA != unaryB;
-            throw new NotSupportedException();
+            return true;
         }
 
         public ActiveExpression(Type type, ExpressionType nodeType, ActiveExpressionOptions options, bool deferEvaluation)

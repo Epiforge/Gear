@@ -10,7 +10,10 @@ namespace Gear.ActiveExpressions
 
         public static bool operator !=(ActiveCoalesceExpression a, ActiveCoalesceExpression b) => a?.left != b?.left || a?.right != b?.right || a?.options != b?.options;
 
-        public ActiveCoalesceExpression(Type type, ActiveExpression left, ActiveExpression right, LambdaExpression conversion, ActiveExpressionOptions options, bool deferEvaluation) : base(type, ExpressionType.Coalesce, left, right, options, deferEvaluation, false)
+        public ActiveCoalesceExpression(Type type, ActiveExpression left, ActiveExpression right, LambdaExpression conversion, ActiveExpressionOptions options, bool deferEvaluation) : base(type, ExpressionType.Coalesce, left, right, options, deferEvaluation, false) => DisallowConversions(conversion);
+
+        [ExcludeFromCodeCoverage]
+        void DisallowConversions(LambdaExpression conversion)
         {
             if (conversion != null)
                 throw new NotSupportedException("Coalesce conversions are not yet supported");
