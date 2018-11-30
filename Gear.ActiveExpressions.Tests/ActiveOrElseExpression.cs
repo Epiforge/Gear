@@ -9,13 +9,92 @@ namespace Gear.ActiveExpressions.Tests
     class ActiveOrElseExpression
     {
         [Test]
+        public void ConsistentHashCode()
+        {
+            int hashCode1, hashCode2;
+            var john = TestPerson.CreateJohn();
+            using (var expr = ActiveExpression.Create(p1 => p1.Name != null || p1.Name.Length > 0, john))
+                hashCode1 = expr.GetHashCode();
+            using (var expr = ActiveExpression.Create(p1 => p1.Name != null || p1.Name.Length > 0, john))
+                hashCode2 = expr.GetHashCode();
+            Assert.IsTrue(hashCode1 == hashCode2);
+        }
+
+        [Test]
+        public void Equality()
+        {
+            var john = TestPerson.CreateJohn();
+            var emily = TestPerson.CreateEmily();
+            using (var expr1 = ActiveExpression.Create(p1 => p1.Name != null || p1.Name.Length > 0, john))
+            using (var expr2 = ActiveExpression.Create(p1 => p1.Name != null || p1.Name.Length > 0, john))
+            using (var expr3 = ActiveExpression.Create(p1 => p1.Name == null && p1.Name.Length == 0, john))
+            using (var expr4 = ActiveExpression.Create(p1 => p1.Name != null || p1.Name.Length > 0, emily))
+            {
+                Assert.IsTrue(expr1 == expr2);
+                Assert.IsFalse(expr1 == expr3);
+                Assert.IsFalse(expr1 == expr4);
+            }
+        }
+
+        [Test]
+        public void Equals()
+        {
+            var john = TestPerson.CreateJohn();
+            var emily = TestPerson.CreateEmily();
+            using (var expr1 = ActiveExpression.Create(p1 => p1.Name != null || p1.Name.Length > 0, john))
+            using (var expr2 = ActiveExpression.Create(p1 => p1.Name != null || p1.Name.Length > 0, john))
+            using (var expr3 = ActiveExpression.Create(p1 => p1.Name == null && p1.Name.Length == 0, john))
+            using (var expr4 = ActiveExpression.Create(p1 => p1.Name != null || p1.Name.Length > 0, emily))
+            {
+                Assert.IsTrue(expr1.Equals(expr2));
+                Assert.IsFalse(expr1.Equals(expr3));
+                Assert.IsFalse(expr1.Equals(expr4));
+            }
+        }
+
+        [Test]
+        public void FaultPropagation()
+        {
+            var john = TestPerson.CreateJohn();
+            var emily = TestPerson.CreateEmily();
+            using (var expr = ActiveExpression.Create((p1, p2) => p1.Name.Length > 0 || p2.Name.Length > 0, john, emily))
+            {
+                Assert.IsNull(expr.Fault);
+                john.Name = null;
+                Assert.IsNotNull(expr.Fault);
+                emily.Name = null;
+                john.Name = string.Empty;
+                Assert.IsNotNull(expr.Fault);
+                emily.Name = "Emily";
+                Assert.IsNull(expr.Fault);
+            }
+        }
+
+        [Test]
         public void FaultShortCircuiting()
         {
             var john = TestPerson.CreateJohn();
-            using (var expr = ActiveExpression.Create<TestPerson, TestPerson, bool>((p1, p2) => !string.IsNullOrEmpty(p1.Name) || !string.IsNullOrEmpty(p2.Name), john, null))
+            TestPerson noOne = null;
+            using (var expr = ActiveExpression.Create((p1, p2) => !string.IsNullOrEmpty(p1.Name) || !string.IsNullOrEmpty(p2.Name), john, noOne))
             {
                 Assert.IsTrue(expr.Value);
                 Assert.IsNull(expr.Fault);
+            }
+        }
+
+        [Test]
+        public void Inequality()
+        {
+            var john = TestPerson.CreateJohn();
+            var emily = TestPerson.CreateEmily();
+            using (var expr1 = ActiveExpression.Create(p1 => p1.Name != null || p1.Name.Length > 0, john))
+            using (var expr2 = ActiveExpression.Create(p1 => p1.Name != null || p1.Name.Length > 0, john))
+            using (var expr3 = ActiveExpression.Create(p1 => p1.Name == null && p1.Name.Length == 0, john))
+            using (var expr4 = ActiveExpression.Create(p1 => p1.Name != null || p1.Name.Length > 0, emily))
+            {
+                Assert.IsFalse(expr1 != expr2);
+                Assert.IsTrue(expr1 != expr3);
+                Assert.IsTrue(expr1 != expr4);
             }
         }
 
@@ -44,6 +123,15 @@ namespace Gear.ActiveExpressions.Tests
                 expr.PropertyChanged -= exprChanged;
             }
             Assert.IsTrue(new bool[] { false, true, false, true, false, true }.SequenceEqual(values));
+        }
+
+        [Test]
+        public void StringConversion()
+        {
+            var emily = TestPerson.CreateEmily();
+            emily.Name = "X";
+            using (var expr = ActiveExpression.Create(p1 => p1.Name == "X" || p1.Name.Length == 2, emily))
+                Assert.AreEqual("(({C} /* {X} */.Name /* \"X\" */ == {C} /* \"X\" */) /* True */ || ({C} /* {X} */.Name /* \"X\" */.Length /* ? */ == {C} /* 2 */) /* ? */) /* True */", expr.ToString());
         }
 
         [Test]

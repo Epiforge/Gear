@@ -1,5 +1,4 @@
 using Gear.Components;
-using System;
 using System.Linq.Expressions;
 
 namespace Gear.ActiveExpressions
@@ -10,7 +9,7 @@ namespace Gear.ActiveExpressions
 
         public static bool operator !=(ActiveOrElseExpression a, ActiveOrElseExpression b) => a?.left != b?.left || a?.right != b?.right || a?.options != b?.options;
 
-        public ActiveOrElseExpression(ActiveExpression left, ActiveExpression right, bool deferEvaluation) : base(typeof(bool), ExpressionType.OrElse, left, right, null, deferEvaluation, false)
+        public ActiveOrElseExpression(ActiveExpression left, ActiveExpression right, ActiveExpressionOptions options, bool deferEvaluation) : base(typeof(bool), ExpressionType.OrElse, left, right, options, deferEvaluation, false)
         {
         }
 
@@ -18,25 +17,18 @@ namespace Gear.ActiveExpressions
 
         protected override void Evaluate()
         {
-            try
+            var leftFault = left.Fault;
+            if (leftFault != null)
+                Fault = leftFault;
+            else if ((bool)left.Value)
+                Value = true;
+            else
             {
-                var leftFault = left.Fault;
-                if (leftFault != null)
-                    Fault = leftFault;
-                else if ((bool)left.Value)
-                    Value = true;
+                var rightFault = right.Fault;
+                if (rightFault != null)
+                    Fault = rightFault;
                 else
-                {
-                    var rightFault = right.Fault;
-                    if (rightFault != null)
-                        Fault = rightFault;
-                    else
-                        Value = (bool)right.Value;
-                }
-            }
-            catch (Exception ex)
-            {
-                Fault = ex;
+                    Value = (bool)right.Value;
             }
         }
 

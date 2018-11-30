@@ -74,7 +74,8 @@ namespace Gear.ActiveExpressions.Tests
         public void FaultShortCircuiting()
         {
             var john = TestPerson.CreateJohn();
-            using (var expr = ActiveExpression.Create<TestPerson, TestPerson, bool>((p1, p2) => string.IsNullOrEmpty(p1.Name) && string.IsNullOrEmpty(p2.Name), john, null))
+            TestPerson noOne = null;
+            using (var expr = ActiveExpression.Create((p1, p2) => string.IsNullOrEmpty(p1.Name) && string.IsNullOrEmpty(p2.Name), john, noOne))
             {
                 Assert.IsFalse(expr.Value);
                 Assert.IsNull(expr.Fault);
@@ -127,9 +128,9 @@ namespace Gear.ActiveExpressions.Tests
         public void StringConversion()
         {
             var emily = TestPerson.CreateEmily();
-            emily.Name = "E";
-            using (var expr = ActiveExpression.Create(p1 => p1.Name == "E" && p1.Name.Length == 1, emily))
-                Assert.AreEqual("((p1 /* [TestPerson] */.Name /* \"E\" */ == \"E\") /* True */ && (p1 /* [TestPerson] */.Name /* \"E\" */.Length /* 1 */ == 1) /* True */) /* True */", expr.ToString());
+            emily.Name = "X";
+            using (var expr = ActiveExpression.Create(p1 => p1.Name == "X" && p1.Name.Length == 1, emily))
+                Assert.AreEqual("(({C} /* {X} */.Name /* \"X\" */ == {C} /* \"X\" */) /* True */ && ({C} /* {X} */.Name /* \"X\" */.Length /* 1 */ == {C} /* 1 */) /* True */) /* True */", expr.ToString());
         }
 
         [Test]

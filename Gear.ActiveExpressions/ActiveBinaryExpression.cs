@@ -41,13 +41,13 @@ namespace Gear.ActiveExpressions
                         switch (nodeType)
                         {
                             case ExpressionType.AndAlso when type == typeof(bool):
-                                activeBinaryExpression = new ActiveAndAlsoExpression(left, right, deferEvaluation);
+                                activeBinaryExpression = new ActiveAndAlsoExpression(left, right, options, deferEvaluation);
                                 break;
                             case ExpressionType.Coalesce:
-                                activeBinaryExpression = new ActiveCoalesceExpression(type, left, right, binaryExpression.Conversion, deferEvaluation);
+                                activeBinaryExpression = new ActiveCoalesceExpression(type, left, right, binaryExpression.Conversion, options, deferEvaluation);
                                 break;
                             case ExpressionType.OrElse when type == typeof(bool):
-                                activeBinaryExpression = new ActiveOrElseExpression(left, right, deferEvaluation);
+                                activeBinaryExpression = new ActiveOrElseExpression(left, right, options, deferEvaluation);
                                 break;
                             default:
                                 activeBinaryExpression = new ActiveBinaryExpression(type, nodeType, left, right, options, deferEvaluation);

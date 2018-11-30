@@ -4,7 +4,6 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.ComponentModel;
-using System.IO;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
@@ -41,7 +40,7 @@ namespace Gear.ActiveExpressions
                     activeExpression = ActiveConditionalExpression.Create(conditionalExpression, options, deferEvaluation);
                     break;
                 case ConstantExpression constantExpression:
-                    activeExpression = ActiveConstantExpression.Create(constantExpression, options, deferEvaluation);
+                    activeExpression = ActiveConstantExpression.Create(constantExpression, options);
                     break;
                 case IndexExpression indexExpression:
                     activeExpression = ActiveIndexExpression.Create(indexExpression, options, deferEvaluation);
@@ -157,10 +156,12 @@ namespace Gear.ActiveExpressions
             return ActiveExpression<TArg1, TArg2, TArg3, TResult>.Create(expression, arg1, arg2, arg3, options);
         }
 
-        protected static string GetValueLiteral(Exception fault, object value)
+        protected static string GetValueLiteral(Exception fault, bool deferred, object value)
         {
             if (fault != null)
                 return $"[{fault.GetType().Name}: {fault.Message}]";
+            if (deferred)
+                return "?";
             if (value == null)
                 return "null";
             if (value is string str)
@@ -220,7 +221,6 @@ namespace Gear.ActiveExpressions
                 var parameter = lambdaExpression.Parameters[i];
                 var constant = Expression.Constant(arguments[i], parameter.Type);
                 parameterTranslation.Add(parameter, constant);
-                ActiveConstantExpression.AddConvertedParameter(constant, parameter.Name);
             }
             var expression = lambdaExpression.Body;
             while (expression?.CanReduce ?? false)
@@ -322,16 +322,23 @@ namespace Gear.ActiveExpressions
         public ActiveExpression(Type type, ExpressionType nodeType, ActiveExpressionOptions options, bool deferEvaluation)
         {
             Type = type;
+            defaultValue = FastDefault.Get(type);
+            val = defaultValue;
+            valueEqualityComparer = FastEqualityComparer.Create(type);
             NodeType = nodeType;
             this.options = options;
             deferringEvaluation = deferEvaluation;
         }
 
+        public ActiveExpression(Type type, ExpressionType nodeType, ActiveExpressionOptions options, object value) : this(type, nodeType, options, false) => val = value;
+
+        readonly object defaultValue;
         bool deferringEvaluation;
         readonly object deferringEvaluationLock = new object();
         Exception fault;
-        object val;
         protected readonly ActiveExpressionOptions options;
+        object val;
+        readonly FastEqualityComparer valueEqualityComparer;
 
         protected ActiveExpressionOptions ApplicableOptions => options ?? ActiveExpressionOptions.Default;
 
@@ -358,7 +365,7 @@ namespace Gear.ActiveExpressions
             }
         }
 
-        protected string ToStringSuffix => $"/* {GetValueLiteral(fault, val)} */";
+        protected string ToStringSuffix => $"/* {GetValueLiteral(fault, !TryGetUndeferredValue(out var value), value)} */";
 
         protected bool TryGetUndeferredValue(out object value)
         {
@@ -383,9 +390,8 @@ namespace Gear.ActiveExpressions
             }
             protected set
             {
-                if (value != null)
-                    Value = null;
-                SetBackedProperty(ref fault, in value);
+                SetBackedProperty(ref val, defaultValue, nameof(Value));
+                SetBackedProperty(ref fault, value);
             }
         }
 
@@ -402,9 +408,13 @@ namespace Gear.ActiveExpressions
             }
             protected set
             {
-                if (value != null)
-                    Fault = null;
-                SetBackedProperty(ref val, in value);
+                SetBackedProperty(ref fault, null, nameof(Fault));
+                if (!valueEqualityComparer.Equals(value, val))
+                {
+                    OnPropertyChanging();
+                    val = value;
+                    OnPropertyChanged();
+                }
             }
         }
     }
