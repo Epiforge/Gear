@@ -1,4 +1,5 @@
 using Gear.Components;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -11,6 +12,8 @@ namespace Gear.ActiveExpressions.Tests
         public static AsyncDisposableTestPerson CreateJohn() => new AsyncDisposableTestPerson { name = "John" };
 
         public static AsyncDisposableTestPerson operator +(AsyncDisposableTestPerson a, AsyncDisposableTestPerson b) => new AsyncDisposableTestPerson { name = $"{a.name} {b.name}" };
+
+        public static AsyncDisposableTestPerson operator -(AsyncDisposableTestPerson asyncDisposableTestPerson) => new AsyncDisposableTestPerson { name = new string(asyncDisposableTestPerson.name.Reverse().ToArray()) };
 
         string name;
         long nameGets;

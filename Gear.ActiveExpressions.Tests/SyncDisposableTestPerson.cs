@@ -1,5 +1,6 @@
 using Gear.Components;
 using System;
+using System.Linq;
 using System.Threading;
 
 namespace Gear.ActiveExpressions.Tests
@@ -10,7 +11,17 @@ namespace Gear.ActiveExpressions.Tests
 
         public static SyncDisposableTestPerson CreateJohn() => new SyncDisposableTestPerson { name = "John" };
 
-        public static SyncDisposableTestPerson operator +(SyncDisposableTestPerson a, SyncDisposableTestPerson b) => new SyncDisposableTestPerson { name = $"{a.name} {b.name}", throwOnDispose = a.throwOnDispose || b.throwOnDispose };
+        public static SyncDisposableTestPerson operator +(SyncDisposableTestPerson a, SyncDisposableTestPerson b) => new SyncDisposableTestPerson
+        {
+            name = $"{a.name} {b.name}",
+            throwOnDispose = a.throwOnDispose || b.throwOnDispose
+        };
+
+        public static SyncDisposableTestPerson operator -(SyncDisposableTestPerson syncDisposableTestPerson) => new SyncDisposableTestPerson
+        {
+            name = new string(syncDisposableTestPerson.name.Reverse().ToArray()),
+            throwOnDispose = syncDisposableTestPerson.throwOnDispose
+        };
 
         string name;
         long nameGets;

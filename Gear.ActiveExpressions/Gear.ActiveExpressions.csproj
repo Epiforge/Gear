@@ -40,7 +40,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Gear.Components" Version="1.0.67" />
+    <PackageReference Include="Gear.Components" Version="1.0.70" />
   </ItemGroup>
 
 </Project>

@@ -1,3 +1,4 @@
+using Gear.Components;
 using NUnit.Framework;
 using System.Collections.Concurrent;
 using System.ComponentModel;
@@ -106,12 +107,7 @@ namespace Gear.ActiveExpressions.Tests
             var values = new BlockingCollection<bool>();
             using (var expr = ActiveExpression.Create((p1, p2) => p1.Name.Length == 1 || p2.Name.Length == 1, john, emily))
             {
-                void exprChanged(object sender, PropertyChangedEventArgs e)
-                {
-                    if (e.PropertyName == nameof(ActiveExpression<TestPerson, TestPerson, bool>.Value))
-                        values.Add(expr.Value);
-                }
-                expr.PropertyChanged += exprChanged;
+                var disconnect = expr.OnPropertyChanged(ae => ae.Value, value => values.Add(value));
                 values.Add(expr.Value);
                 john.Name = "J";
                 john.Name = "John";
@@ -120,7 +116,7 @@ namespace Gear.ActiveExpressions.Tests
                 john.Name = "J";
                 emily.Name = "E";
                 john.Name = "John";
-                expr.PropertyChanged -= exprChanged;
+                disconnect();
             }
             Assert.IsTrue(new bool[] { false, true, false, true, false, true }.SequenceEqual(values));
         }
