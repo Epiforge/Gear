@@ -11,6 +11,7 @@ namespace Gear.Components
 
         public FastMethodInfo(MethodInfo methodInfo)
         {
+            MethodInfo = methodInfo;
             var instanceExpression = Expression.Parameter(typeof(object), "instance");
             var argumentsExpression = Expression.Parameter(typeof(object[]), "arguments");
             var argumentExpressions = new List<Expression>();
@@ -24,14 +25,16 @@ namespace Gear.Components
             if (callExpression.Type == typeof(void))
             {
                 var voidDelegate = Expression.Lambda<VoidDelegate>(callExpression, instanceExpression, argumentsExpression).Compile();
-                Delegate = (instance, arguments) => { voidDelegate(instance, arguments); return null; };
+                @delegate = (instance, arguments) => { voidDelegate(instance, arguments); return null; };
             }
             else
-                Delegate = Expression.Lambda<ReturnValueDelegate>(Expression.Convert(callExpression, typeof(object)), instanceExpression, argumentsExpression).Compile();
+                @delegate = Expression.Lambda<ReturnValueDelegate>(Expression.Convert(callExpression, typeof(object)), instanceExpression, argumentsExpression).Compile();
         }
 
-        private ReturnValueDelegate Delegate { get; }
+        readonly ReturnValueDelegate @delegate;
 
-        public object Invoke(object instance, params object[] arguments) => Delegate(instance, arguments);
+        public object Invoke(object instance, params object[] arguments) => @delegate(instance, arguments);
+
+        public MethodInfo MethodInfo { get; }
     }
 }
