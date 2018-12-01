@@ -6,11 +6,7 @@ General utilities to help with stuff in .NET Development, from Epiforge.
 
 Supports `netstandard1.3`.
 
-![Build Status](https://ci.appveyor.com/api/projects/status/3s25e4ldo2ji1ech?svg=true)
-
-[![Coverage Status](https://coveralls.io/repos/github/Epiforge/Gear/badge.svg?branch=master)](https://coveralls.io/github/Epiforge/Gear?branch=master)
-
-[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2FEpiforge%2FGear.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2FEpiforge%2FGear?ref=badge_shield)
+![Build Status](https://ci.appveyor.com/api/projects/status/3s25e4ldo2ji1ech?svg=true) [![Coverage Status](https://coveralls.io/repos/github/Epiforge/Gear/badge.svg?branch=master)](https://coveralls.io/github/Epiforge/Gear?branch=master) [![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2FEpiforge%2FGear.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2FEpiforge%2FGear?ref=badge_shield)
 
 - [Getting Started](#getting-started)
 - [License](#license)
@@ -21,13 +17,13 @@ Supports `netstandard1.3`.
 
 Install the NuGet packages for the functionality you need.
 
-| Package ID | Description | Docs
+| Package ID | Description | Testing
 | - | - | -
-| [Gear.ActiveExpressions](https://www.nuget.org/packages/Gear.ActiveExpressions/) | Active expressions of notifying objects
-| [Gear.ActiveQuery](https://www.nuget.org/packages/Gear.ActiveQuery/) | Active queries of notifying collections
-| [Gear.Caching](https://www.nuget.org/packages/Gear.Caching/) | Caching, including expiration and refreshing
-| [Gear.Components](https://www.nuget.org/packages/Gear.Components/) | Disposal; property change notification helpers | [Wiki](https://github.com/Epiforge/Gear/wiki/Components)
-| [Gear.Parallel](https://www.nuget.org/packages/Gear.Parallel/) | Get things done on multi-core systems faster
+| [Gear.ActiveExpressions](https://www.nuget.org/packages/Gear.ActiveExpressions/) | Expressions that automatically re-evaluate when changes occur | Some
+| [Gear.ActiveQuery](https://www.nuget.org/packages/Gear.ActiveQuery/) | LINQ-style queries that automatically update when changes occur | None
+| [Gear.Caching](https://www.nuget.org/packages/Gear.Caching/) | Caching, including expiration and refreshing | None
+| [Gear.Components](https://www.nuget.org/packages/Gear.Components/) | Basic, common functionality often used by other Gear libraries | Some
+| [Gear.Parallel](https://www.nuget.org/packages/Gear.Parallel/) | Extension methods that make utilizing [Dataflow](https://www.nuget.org/packages/System.Threading.Tasks.Dataflow/) quicker | None
 
 # License
 
