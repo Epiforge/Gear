@@ -41,7 +41,7 @@ namespace Gear.ActiveExpressions.Tests
         public bool ThrowOnDispose
         {
             get => throwOnDispose;
-            set => SetBackedProperty(ref throwOnDispose, in value);
+            set => SetBackedProperty(ref throwOnDispose, value);
         }
     }
 }
