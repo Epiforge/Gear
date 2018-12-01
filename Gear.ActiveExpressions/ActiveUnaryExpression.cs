@@ -3,6 +3,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 
@@ -10,15 +11,10 @@ namespace Gear.ActiveExpressions
 {
     class ActiveUnaryExpression : ActiveExpression
     {
+        static readonly ConcurrentDictionary<Type, MethodInfo> convertNullableGenericMethods = new ConcurrentDictionary<Type, MethodInfo>();
+        static readonly MethodInfo convertNullableMethod = typeof(ActiveUnaryExpression).GetRuntimeMethods().Single(m => m.Name == nameof(ConvertNullable));
         static readonly object instanceManagementLock = new object();
         static readonly Dictionary<(ExpressionType nodeType, ActiveExpression opperand, Type type, MethodInfo method, ActiveExpressionOptions options), ActiveUnaryExpression> instances = new Dictionary<(ExpressionType nodeType, ActiveExpression opperand, Type type, MethodInfo method, ActiveExpressionOptions options), ActiveUnaryExpression>();
-        static readonly ConcurrentDictionary<Type, MethodInfo> nullableConversions = new ConcurrentDictionary<Type, MethodInfo>();
-
-        static MethodInfo GetNullableConversionMethodInfo(Type nullableType) => nullableType.GetRuntimeMethod("op_Implicit", new Type[] { nullableType.GenericTypeArguments[0] });
-
-        public static bool operator ==(ActiveUnaryExpression a, ActiveUnaryExpression b) => a?.method == b?.method && a?.NodeType == b?.NodeType && a?.operand == b?.operand && a?.options == b?.options;
-
-        public static bool operator !=(ActiveUnaryExpression a, ActiveUnaryExpression b) => a?.method != b?.method || a?.NodeType != b?.NodeType || a?.operand != b?.operand || a?.options != b?.options;
 
         public static ActiveUnaryExpression Create(UnaryExpression unaryExpression, ActiveExpressionOptions options, bool deferEvaluation)
         {
@@ -39,6 +35,14 @@ namespace Gear.ActiveExpressions
             }
         }
 
+        static T? ConvertNullable<T>(object value) where T : struct => value is null ? null : (T?)value;
+
+        static MethodInfo GetConvertNullableGenericMethod(Type type) => convertNullableMethod.MakeGenericMethod(type);
+
+        public static bool operator ==(ActiveUnaryExpression a, ActiveUnaryExpression b) => a?.method == b?.method && a?.NodeType == b?.NodeType && a?.operand == b?.operand && a?.options == b?.options;
+
+        public static bool operator !=(ActiveUnaryExpression a, ActiveUnaryExpression b) => a?.method != b?.method || a?.NodeType != b?.NodeType || a?.operand != b?.operand || a?.options != b?.options;
+
         ActiveUnaryExpression(ExpressionType nodeType, ActiveExpression operand, Type type, MethodInfo method, ActiveExpressionOptions options, bool deferEvaluation) : base(type, nodeType, options, deferEvaluation)
         {
             this.operand = operand;
@@ -47,9 +51,9 @@ namespace Gear.ActiveExpressions
             if (this.method != null)
                 fastMethod = GetFastMethodInfo(this.method);
             else if (NodeType == ExpressionType.Convert && type.IsConstructedGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>))
-                fastMethod = GetFastMethodInfo(nullableConversions.GetOrAdd(type, GetNullableConversionMethodInfo));
+                fastMethod = GetFastMethodInfo(convertNullableGenericMethods.GetOrAdd(type.GenericTypeArguments[0], GetConvertNullableGenericMethod));
             else
-                fastMethod = ExpressionOperations.GetFastMethodInfo(nodeType, type, operand.Type);
+                fastMethod = ExpressionOperations.GetFastMethodInfo(nodeType, type, operand.Type) ?? throw new NotSupportedException($"There is no implementation of {nodeType} available that accepts a(n) {operand.Type.Name} operand and which returns a(n) {type.Name}");
             EvaluateIfNotDeferred();
         }
 
@@ -104,10 +108,8 @@ namespace Gear.ActiveExpressions
                 var operandFault = operand.Fault;
                 if (operandFault != null)
                     Fault = operandFault;
-                else if (fastMethod != null)
-                    Value = fastMethod.Invoke(null, new object[] { operand.Value });
                 else
-                    Value = operand.Value;
+                    Value = fastMethod.Invoke(null, new object[] { operand.Value });
             }
             catch (Exception ex)
             {

@@ -22,14 +22,13 @@ namespace Gear.ActiveExpressions
                 var (mi, eoa) = m;
                 return eoa.Type == expressionType && mi.ReturnType == returnType && mi.GetParameters().Select(p => p.ParameterType).SequenceEqual(parameterTypes);
             });
-            if (methodInfo == default)
-                return null;
-            return new FastMethodInfo(methodInfo);
+            if (methodInfo != default)
+                return new FastMethodInfo(methodInfo);
+            return null;
         }
 
         public static FastMethodInfo GetFastMethodInfo(ExpressionType expressionType, Type returnType, params Type[] parameterTypes) => operationFastMethodInfos.GetOrAdd((expressionType, returnType, new EquatableList<Type>(parameterTypes)), CreateFastMethodInfo);
 
-        [ExcludeFromCodeCoverage]
         public static string GetExpressionSyntax(ExpressionType expressionType, Type resultType, params ActiveExpression[] operands)
         {
             switch (expressionType)

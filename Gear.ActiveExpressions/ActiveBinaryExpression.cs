@@ -12,6 +12,7 @@ namespace Gear.ActiveExpressions
         static readonly object instanceManagementLock = new object();
         static readonly Dictionary<(ExpressionType nodeType, ActiveExpression left, ActiveExpression right, ActiveExpressionOptions options), ActiveBinaryExpression> factoryInstances = new Dictionary<(ExpressionType nodeType, ActiveExpression left, ActiveExpression right, ActiveExpressionOptions options), ActiveBinaryExpression>();
         static readonly Dictionary<(ExpressionType nodeType, ActiveExpression left, ActiveExpression right, bool isLiftedToNull, MethodInfo method, ActiveExpressionOptions options), ActiveBinaryExpression> implementationInstances = new Dictionary<(ExpressionType nodeType, ActiveExpression left, ActiveExpression right, bool isLiftedToNull, MethodInfo method, ActiveExpressionOptions options), ActiveBinaryExpression>();
+        static readonly FastMethodInfo referenceEqualsFastMethod = new FastMethodInfo(typeof(object).GetRuntimeMethod(nameof(object.ReferenceEquals), new Type[] { typeof(object), typeof(object) }));
 
         public static ActiveBinaryExpression Create(BinaryExpression binaryExpression, ActiveExpressionOptions options, bool deferEvaluation)
         {
@@ -88,7 +89,9 @@ namespace Gear.ActiveExpressions
             this.left.PropertyChanged += LeftPropertyChanged;
             this.right = right;
             this.right.PropertyChanged += RightPropertyChanged;
-            if (getOperation)
+            if (NodeType == ExpressionType.Equal && !left.Type.GetTypeInfo().IsValueType)
+                fastMethod = referenceEqualsFastMethod;
+            else if (getOperation)
                 fastMethod = ExpressionOperations.GetFastMethodInfo(nodeType, type, left.Type, right.Type) ?? throw new NotSupportedException($"There is no implementation of {nodeType} available that accepts a(n) {left.Type.Name} left-hand operand and a(n) {right.Type.Name} right-hand operand and which returns a(n) {type.Name}");
             EvaluateIfNotDeferred();
         }

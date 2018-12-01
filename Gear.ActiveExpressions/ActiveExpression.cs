@@ -371,8 +371,8 @@ namespace Gear.ActiveExpressions
             {
                 if (deferringEvaluation)
                 {
-                    Evaluate();
                     deferringEvaluation = false;
+                    Evaluate();
                 }
             }
         }
