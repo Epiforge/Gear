@@ -1,33 +1,20 @@
 using Gear.Components;
-using System;
 using System.Threading;
 
 namespace Gear.ActiveExpressions.Tests
 {
     class TestPerson : PropertyChangeNotifier
     {
-        public static TestPerson CreateEmily() => new TestPerson { Name = "Emily", Birth = new DateTime(1993, 10, 19) };
+        public static TestPerson CreateEmily() => new TestPerson { name = "Emily" };
 
-        public static TestPerson CreateJohn() => new TestPerson { Name = "John", Birth = new DateTime(1988, 2, 12) };
+        public static TestPerson CreateJohn() => new TestPerson { name = "John" };
 
-        DateTime birth;
-        long birthGets;
+        public static TestPerson operator +(TestPerson a, TestPerson b) => new TestPerson { name = $"{a.name} {b.name}" };
+
         string name;
         long nameGets;
 
-        public DateTime Birth
-        {
-            get
-            {
-                OnPropertyChanging(nameof(BirthGets));
-                Interlocked.Increment(ref birthGets);
-                OnPropertyChanged(nameof(BirthGets));
-                return birth;
-            }
-            set => SetBackedProperty(ref birth, value);
-        }
-
-        public long BirthGets => Interlocked.Read(ref birthGets);
+        public override string ToString() => $"{{{name}}}";
 
         public string Name
         {
@@ -42,7 +29,7 @@ namespace Gear.ActiveExpressions.Tests
         }
 
         public long NameGets => Interlocked.Read(ref nameGets);
-
-        public override string ToString() => $"{{{Name}}}";
     }
+
+
 }

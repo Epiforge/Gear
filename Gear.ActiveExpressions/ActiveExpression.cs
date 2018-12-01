@@ -23,6 +23,7 @@ namespace Gear.ActiveExpressions
 #pragma warning restore CS0661
     {
         static readonly ConcurrentDictionary<MethodInfo, FastMethodInfo> compiledMethods = new ConcurrentDictionary<MethodInfo, FastMethodInfo>();
+        static readonly ConcurrentDictionary<MethodInfo, PropertyInfo> propertyGetMethodToProperty = new ConcurrentDictionary<MethodInfo, PropertyInfo>();
 
         static FastMethodInfo CreateFastMethodInfo(MethodInfo key) => new FastMethodInfo(key);
 
@@ -48,6 +49,16 @@ namespace Gear.ActiveExpressions
                 case MemberExpression memberExpression:
                     activeExpression = ActiveMemberExpression.Create(memberExpression, options, deferEvaluation);
                     break;
+                case MethodCallExpression methodCallExpressionForPropertyGet when propertyGetMethodToProperty.GetOrAdd(methodCallExpressionForPropertyGet.Method, GetPropertyFromGetMethod) is PropertyInfo property:
+                    if (methodCallExpressionForPropertyGet.Arguments.Count > 0)
+                    {
+                        if (methodCallExpressionForPropertyGet.Object == null)
+                            DisallowStaticIndexers();
+                        activeExpression = ActiveIndexExpression.Create(Expression.MakeIndex(methodCallExpressionForPropertyGet.Object, property, methodCallExpressionForPropertyGet.Arguments), options, deferEvaluation);
+                    }
+                    else
+                        activeExpression = ActiveMemberExpression.Create(Expression.MakeMemberAccess(methodCallExpressionForPropertyGet.Object, property), options, deferEvaluation);
+                    break;
                 case MethodCallExpression methodCallExpression:
                     activeExpression = ActiveMethodCallExpression.Create(methodCallExpression, options, deferEvaluation);
                     break;
@@ -66,6 +77,8 @@ namespace Gear.ActiveExpressions
                 activeExpression.EvaluateIfDeferred();
             return activeExpression;
         }
+
+        static PropertyInfo GetPropertyFromGetMethod(MethodInfo getMethod) => getMethod.DeclaringType.GetRuntimeProperties().FirstOrDefault(property => property.GetMethod == getMethod);
 
         /// <summary>
         /// Creates an active expression using a specified lambda expression and arguments
@@ -155,6 +168,16 @@ namespace Gear.ActiveExpressions
             options?.Freeze();
             return ActiveExpression<TArg1, TArg2, TArg3, TResult>.Create(expression, arg1, arg2, arg3, options);
         }
+
+        [ExcludeFromCodeCoverage]
+        protected static void DisallowConversions(LambdaExpression conversion)
+        {
+            if (conversion != null)
+                throw new NotSupportedException("Expressions using conversion LambdaExpressions are not yet supported");
+        }
+
+        [ExcludeFromCodeCoverage]
+        protected static void DisallowStaticIndexers() => throw new NotSupportedException("Static indexers are not supported");
 
         protected static string GetValueLiteral(Exception fault, bool deferred, object value)
         {
@@ -340,8 +363,6 @@ namespace Gear.ActiveExpressions
         object val;
         readonly FastEqualityComparer valueEqualityComparer;
 
-        protected ActiveExpressionOptions ApplicableOptions => options ?? ActiveExpressionOptions.Default;
-
         protected abstract void Evaluate();
 
         void EvaluateIfDeferred()
@@ -365,8 +386,6 @@ namespace Gear.ActiveExpressions
             }
         }
 
-        protected string ToStringSuffix => $"/* {GetValueLiteral(fault, !TryGetUndeferredValue(out var value), value)} */";
-
         protected bool TryGetUndeferredValue(out object value)
         {
             lock (deferringEvaluationLock)
@@ -380,6 +399,10 @@ namespace Gear.ActiveExpressions
             value = val;
             return true;
         }
+
+        protected ActiveExpressionOptions ApplicableOptions => options ?? ActiveExpressionOptions.Default;
+
+        protected string ToStringSuffix => $"/* {GetValueLiteral(fault, !TryGetUndeferredValue(out var value), value)} */";
 
         public Exception Fault
         {

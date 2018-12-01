@@ -15,13 +15,14 @@ namespace Gear.ActiveExpressions
 
         public static ActiveBinaryExpression Create(BinaryExpression binaryExpression, ActiveExpressionOptions options, bool deferEvaluation)
         {
+            DisallowConversions(binaryExpression.Conversion);
             var type = binaryExpression.Type;
             var nodeType = binaryExpression.NodeType;
             var left = Create(binaryExpression.Left, options, deferEvaluation);
             var method = binaryExpression.Method;
+            ActiveExpression right;
             if (method == null)
             {
-                ActiveExpression right;
                 switch (nodeType)
                 {
                     case ExpressionType.AndAlso when type == typeof(bool):
@@ -61,25 +62,20 @@ namespace Gear.ActiveExpressions
             }
             else
             {
-                var right = Create(binaryExpression.Right, options, deferEvaluation);
+                right = Create(binaryExpression.Right, options, deferEvaluation);
                 var isLiftedToNull = binaryExpression.IsLiftedToNull;
-                var conversion = binaryExpression.Conversion;
-                if (conversion == null)
+                var key = (nodeType, left, right, isLiftedToNull, method, options);
+                lock (instanceManagementLock)
                 {
-                    var key = (nodeType, left, right, isLiftedToNull, method, options);
-                    lock (instanceManagementLock)
+                    if (!implementationInstances.TryGetValue(key, out var activeBinaryExpression))
                     {
-                        if (!implementationInstances.TryGetValue(key, out var activeBinaryExpression))
-                        {
-                            activeBinaryExpression = new ActiveBinaryExpression(type, nodeType, left, right, isLiftedToNull, method, options, deferEvaluation);
-                            implementationInstances.Add(key, activeBinaryExpression);
-                        }
-                        ++activeBinaryExpression.disposalCount;
-                        return activeBinaryExpression;
+                        activeBinaryExpression = new ActiveBinaryExpression(type, nodeType, left, right, isLiftedToNull, method, options, deferEvaluation);
+                        implementationInstances.Add(key, activeBinaryExpression);
                     }
+                    ++activeBinaryExpression.disposalCount;
+                    return activeBinaryExpression;
                 }
             }
-            throw new NotSupportedException("ActiveBinaryExpressions do not yet support BinaryExpressions using Conversions");
         }
 
         public static bool operator ==(ActiveBinaryExpression a, ActiveBinaryExpression b) => a?.left == b?.left && a?.method == b?.method && a?.NodeType == b?.NodeType && a?.right == b?.right && a?.options == b?.options;
