@@ -22,7 +22,7 @@ Install the NuGet packages for the functionality you need.
 | [Gear.ActiveExpressions](https://www.nuget.org/packages/Gear.ActiveExpressions/) | Expressions that automatically re-evaluate when changes occur | Some
 | [Gear.ActiveQuery](https://www.nuget.org/packages/Gear.ActiveQuery/) | LINQ-style queries that automatically update when changes occur | None
 | [Gear.Caching](https://www.nuget.org/packages/Gear.Caching/) | Caching, including expiration and refreshing | None
-| [Gear.Components](https://www.nuget.org/packages/Gear.Components/) | Basic, common functionality often used by other Gear libraries | Some
+| [Gear.Components](https://www.nuget.org/packages/Gear.Components/) | Basic, common functionality often used by other Gear libraries | None
 | [Gear.Parallel](https://www.nuget.org/packages/Gear.Parallel/) | Extension methods that make utilizing [Dataflow](https://www.nuget.org/packages/System.Threading.Tasks.Dataflow/) quicker | None
 
 # License
