@@ -10,9 +10,8 @@ namespace Gear.ActiveExpressions
     class ActiveBinaryExpression : ActiveExpression
     {
         static readonly object instanceManagementLock = new object();
-        static readonly Dictionary<(ExpressionType nodeType, ActiveExpression left, ActiveExpression right, ActiveExpressionOptions options), ActiveBinaryExpression> factoryInstances = new Dictionary<(ExpressionType nodeType, ActiveExpression left, ActiveExpression right, ActiveExpressionOptions options), ActiveBinaryExpression>();
-        static readonly Dictionary<(ExpressionType nodeType, ActiveExpression left, ActiveExpression right, bool isLiftedToNull, MethodInfo method, ActiveExpressionOptions options), ActiveBinaryExpression> implementationInstances = new Dictionary<(ExpressionType nodeType, ActiveExpression left, ActiveExpression right, bool isLiftedToNull, MethodInfo method, ActiveExpressionOptions options), ActiveBinaryExpression>();
-        static readonly FastMethodInfo referenceEqualsFastMethod = new FastMethodInfo(typeof(object).GetRuntimeMethod(nameof(object.ReferenceEquals), new Type[] { typeof(object), typeof(object) }));
+        static readonly Dictionary<(ExpressionType nodeType, ActiveExpression left, ActiveExpression right, bool isLifted, bool isLiftedToNull, ActiveExpressionOptions options), ActiveBinaryExpression> factoryInstances = new Dictionary<(ExpressionType nodeType, ActiveExpression left, ActiveExpression right, bool isLifted, bool isLiftedToNull, ActiveExpressionOptions options), ActiveBinaryExpression>();
+        static readonly Dictionary<(ExpressionType nodeType, ActiveExpression left, ActiveExpression right, bool isLifted, bool isLiftedToNull, MethodInfo method, ActiveExpressionOptions options), ActiveBinaryExpression> implementationInstances = new Dictionary<(ExpressionType nodeType, ActiveExpression left, ActiveExpression right, bool isLifted, bool isLiftedToNull, MethodInfo method, ActiveExpressionOptions options), ActiveBinaryExpression>();
 
         public static ActiveBinaryExpression Create(BinaryExpression binaryExpression, ActiveExpressionOptions options, bool deferEvaluation)
         {
@@ -20,6 +19,8 @@ namespace Gear.ActiveExpressions
             var type = binaryExpression.Type;
             var nodeType = binaryExpression.NodeType;
             var left = Create(binaryExpression.Left, options, deferEvaluation);
+            var isLifted = binaryExpression.IsLifted;
+            var isLiftedToNull = binaryExpression.IsLiftedToNull;
             var method = binaryExpression.Method;
             ActiveExpression right;
             if (method == null)
@@ -35,7 +36,7 @@ namespace Gear.ActiveExpressions
                         right = Create(binaryExpression.Right, options, deferEvaluation);
                         break;
                 }
-                var key = (nodeType, left, right, options);
+                var key = (nodeType, left, right, isLifted, isLiftedToNull, options);
                 lock (instanceManagementLock)
                 {
                     if (!factoryInstances.TryGetValue(key, out var activeBinaryExpression))
@@ -52,7 +53,7 @@ namespace Gear.ActiveExpressions
                                 activeBinaryExpression = new ActiveOrElseExpression(left, right, options, deferEvaluation);
                                 break;
                             default:
-                                activeBinaryExpression = new ActiveBinaryExpression(type, nodeType, left, right, options, deferEvaluation);
+                                activeBinaryExpression = new ActiveBinaryExpression(type, nodeType, left, right, isLifted, isLiftedToNull, options, deferEvaluation);
                                 break;
                         }
                         factoryInstances.Add(key, activeBinaryExpression);
@@ -64,13 +65,12 @@ namespace Gear.ActiveExpressions
             else
             {
                 right = Create(binaryExpression.Right, options, deferEvaluation);
-                var isLiftedToNull = binaryExpression.IsLiftedToNull;
-                var key = (nodeType, left, right, isLiftedToNull, method, options);
+                var key = (nodeType, left, right, isLifted, isLiftedToNull, method, options);
                 lock (instanceManagementLock)
                 {
                     if (!implementationInstances.TryGetValue(key, out var activeBinaryExpression))
                     {
-                        activeBinaryExpression = new ActiveBinaryExpression(type, nodeType, left, right, isLiftedToNull, method, options, deferEvaluation);
+                        activeBinaryExpression = new ActiveBinaryExpression(type, nodeType, left, right, isLifted, isLiftedToNull, method, options, deferEvaluation);
                         implementationInstances.Add(key, activeBinaryExpression);
                     }
                     ++activeBinaryExpression.disposalCount;
@@ -83,33 +83,38 @@ namespace Gear.ActiveExpressions
 
         public static bool operator !=(ActiveBinaryExpression a, ActiveBinaryExpression b) => a?.left != b?.left || a?.method != b?.method || a?.NodeType != b?.NodeType || a?.right != b?.right || a?.options != b?.options;
 
-        protected ActiveBinaryExpression(Type type, ExpressionType nodeType, ActiveExpression left, ActiveExpression right, ActiveExpressionOptions options, bool deferEvaluation, bool getOperation = true) : base(type, nodeType, options, deferEvaluation)
+        protected ActiveBinaryExpression(Type type, ExpressionType nodeType, ActiveExpression left, ActiveExpression right, bool isLifted, bool isLiftedToNull, ActiveExpressionOptions options, bool deferEvaluation, bool getOperation = true) : base(type, nodeType, options, deferEvaluation)
         {
             this.left = left;
             this.left.PropertyChanged += LeftPropertyChanged;
             this.right = right;
             this.right.PropertyChanged += RightPropertyChanged;
-            if (NodeType == ExpressionType.Equal && !left.Type.GetTypeInfo().IsValueType)
-                fastMethod = referenceEqualsFastMethod;
-            else if (getOperation)
+            this.isLifted = isLifted;
+            if (this.isLiftedToNull = isLiftedToNull)
+                fastLiftToNull = GetConvertNullableFastMethodInfo(type);
+            if (getOperation)
                 fastMethod = ExpressionOperations.GetFastMethodInfo(nodeType, type, left.Type, right.Type) ?? throw new NotSupportedException($"There is no implementation of {nodeType} available that accepts a(n) {left.Type.Name} left-hand operand and a(n) {right.Type.Name} right-hand operand and which returns a(n) {type.Name}");
             EvaluateIfNotDeferred();
         }
 
-        ActiveBinaryExpression(Type type, ExpressionType nodeType, ActiveExpression left, ActiveExpression right, bool isLiftedToNull, MethodInfo method, ActiveExpressionOptions options, bool deferEvaluation) : base(type, nodeType, options, deferEvaluation)
+        ActiveBinaryExpression(Type type, ExpressionType nodeType, ActiveExpression left, ActiveExpression right, bool isLifted, bool isLiftedToNull, MethodInfo method, ActiveExpressionOptions options, bool deferEvaluation) : base(type, nodeType, options, deferEvaluation)
         {
             this.left = left;
             this.left.PropertyChanged += LeftPropertyChanged;
             this.right = right;
             this.right.PropertyChanged += RightPropertyChanged;
-            this.isLiftedToNull = isLiftedToNull;
+            this.isLifted = isLifted;
+            if (this.isLiftedToNull = isLiftedToNull)
+                fastLiftToNull = GetConvertNullableFastMethodInfo(type);
             this.method = method;
             fastMethod = GetFastMethodInfo(this.method);
             EvaluateIfNotDeferred();
         }
 
         int disposalCount;
+        readonly FastMethodInfo fastLiftToNull;
         readonly FastMethodInfo fastMethod;
+        readonly bool isLifted;
         readonly bool isLiftedToNull;
         protected readonly ActiveExpression left;
         readonly MethodInfo method;
@@ -127,9 +132,9 @@ namespace Gear.ActiveExpressions
                     right.PropertyChanged -= RightPropertyChanged;
                     right.Dispose();
                     if (method == null)
-                        factoryInstances.Remove((NodeType, left, right, options));
+                        factoryInstances.Remove((NodeType, left, right, isLifted, isLiftedToNull, options));
                     else
-                        implementationInstances.Remove((NodeType, left, right, isLiftedToNull, method, options));
+                        implementationInstances.Remove((NodeType, left, right, isLifted, isLiftedToNull, method, options));
                     result = true;
                 }
             }
@@ -171,8 +176,26 @@ namespace Gear.ActiveExpressions
                     Fault = leftFault;
                 else if (rightFault != null)
                     Fault = rightFault;
+                else if (isLifted && (leftValue is null || rightValue is null))
+                    switch (NodeType)
+                    {
+                        case ExpressionType.Equal:
+                            Value = leftValue is null && rightValue is null;
+                            break;
+                        case ExpressionType.NotEqual:
+                            Value = leftValue is null ^ rightValue is null;
+                            break;
+                        default:
+                            Value = null;
+                            break;
+                    }
                 else
-                    Value = fastMethod.Invoke(null, new object[] { leftValue, rightValue });
+                {
+                    var newValue = fastMethod.Invoke(null, leftValue, rightValue);
+                    if (isLiftedToNull)
+                        newValue = fastLiftToNull.Invoke(null, new object[] { newValue });
+                    Value = newValue;
+                }
             }
             catch (Exception ex)
             {

@@ -1,9 +1,7 @@
 using Gear.Components;
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.ComponentModel;
-using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 
@@ -11,23 +9,23 @@ namespace Gear.ActiveExpressions
 {
     class ActiveUnaryExpression : ActiveExpression
     {
-        static readonly ConcurrentDictionary<Type, MethodInfo> convertNullableGenericMethods = new ConcurrentDictionary<Type, MethodInfo>();
-        static readonly MethodInfo convertNullableMethod = typeof(ActiveUnaryExpression).GetRuntimeMethods().Single(m => m.Name == nameof(ConvertNullable));
         static readonly object instanceManagementLock = new object();
-        static readonly Dictionary<(ExpressionType nodeType, ActiveExpression opperand, Type type, MethodInfo method, ActiveExpressionOptions options), ActiveUnaryExpression> instances = new Dictionary<(ExpressionType nodeType, ActiveExpression opperand, Type type, MethodInfo method, ActiveExpressionOptions options), ActiveUnaryExpression>();
+        static readonly Dictionary<(ExpressionType nodeType, ActiveExpression opperand, bool isLifted, bool isLiftedToNull, Type type, MethodInfo method, ActiveExpressionOptions options), ActiveUnaryExpression> instances = new Dictionary<(ExpressionType nodeType, ActiveExpression opperand, bool isLifted, bool isLiftedToNull, Type type, MethodInfo method, ActiveExpressionOptions options), ActiveUnaryExpression>();
 
         public static ActiveUnaryExpression Create(UnaryExpression unaryExpression, ActiveExpressionOptions options, bool deferEvaluation)
         {
             var nodeType = unaryExpression.NodeType;
             var operand = Create(unaryExpression.Operand, options, deferEvaluation);
+            var isLifted = unaryExpression.IsLifted;
+            var isLiftedToNull = unaryExpression.IsLiftedToNull;
             var type = unaryExpression.Type;
             var method = unaryExpression.Method;
-            var key = (nodeType, operand, type, method, options);
+            var key = (nodeType, operand, isLifted, isLiftedToNull, type, method, options);
             lock (instanceManagementLock)
             {
                 if (!instances.TryGetValue(key, out var activeUnaryExpression))
                 {
-                    activeUnaryExpression = new ActiveUnaryExpression(nodeType, operand, type, method, options, deferEvaluation);
+                    activeUnaryExpression = new ActiveUnaryExpression(nodeType, operand, isLifted, isLiftedToNull, type, method, options, deferEvaluation);
                     instances.Add(key, activeUnaryExpression);
                 }
                 ++activeUnaryExpression.disposalCount;
@@ -35,30 +33,32 @@ namespace Gear.ActiveExpressions
             }
         }
 
-        static T? ConvertNullable<T>(object value) where T : struct => value is null ? null : (T?)value;
-
-        static MethodInfo GetConvertNullableGenericMethod(Type type) => convertNullableMethod.MakeGenericMethod(type);
-
         public static bool operator ==(ActiveUnaryExpression a, ActiveUnaryExpression b) => a?.method == b?.method && a?.NodeType == b?.NodeType && a?.operand == b?.operand && a?.options == b?.options;
 
         public static bool operator !=(ActiveUnaryExpression a, ActiveUnaryExpression b) => a?.method != b?.method || a?.NodeType != b?.NodeType || a?.operand != b?.operand || a?.options != b?.options;
 
-        ActiveUnaryExpression(ExpressionType nodeType, ActiveExpression operand, Type type, MethodInfo method, ActiveExpressionOptions options, bool deferEvaluation) : base(type, nodeType, options, deferEvaluation)
+        ActiveUnaryExpression(ExpressionType nodeType, ActiveExpression operand, bool isLifted, bool isLiftedToNull, Type type, MethodInfo method, ActiveExpressionOptions options, bool deferEvaluation) : base(type, nodeType, options, deferEvaluation)
         {
             this.operand = operand;
             this.operand.PropertyChanged += OperandPropertyChanged;
+            this.isLifted = isLifted;
+            if (this.isLiftedToNull = isLiftedToNull)
+                fastLiftToNull = GetConvertNullableFastMethodInfo(type);
             this.method = method;
             if (this.method != null)
                 fastMethod = GetFastMethodInfo(this.method);
             else if (NodeType == ExpressionType.Convert && type.IsConstructedGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>))
-                fastMethod = GetFastMethodInfo(convertNullableGenericMethods.GetOrAdd(type.GenericTypeArguments[0], GetConvertNullableGenericMethod));
+                fastMethod = GetConvertNullableFastMethodInfo(type);
             else
                 fastMethod = ExpressionOperations.GetFastMethodInfo(nodeType, type, operand.Type) ?? throw new NotSupportedException($"There is no implementation of {nodeType} available that accepts a(n) {operand.Type.Name} operand and which returns a(n) {type.Name}");
             EvaluateIfNotDeferred();
         }
 
         int disposalCount;
+        readonly FastMethodInfo fastLiftToNull;
         readonly FastMethodInfo fastMethod;
+        readonly bool isLifted;
+        readonly bool isLiftedToNull;
         readonly MethodInfo method;
         readonly ActiveExpression operand;
 
@@ -71,7 +71,7 @@ namespace Gear.ActiveExpressions
                 {
                     operand.PropertyChanged -= OperandPropertyChanged;
                     operand.Dispose();
-                    instances.Remove((NodeType, operand, Type, method, options));
+                    instances.Remove((NodeType, operand, isLifted, isLiftedToNull, Type, method, options));
                     result = true;
                 }
             }
@@ -106,10 +106,18 @@ namespace Gear.ActiveExpressions
             {
                 DisposeValueIfNecessary();
                 var operandFault = operand.Fault;
+                var operandValue = operand.Value;
                 if (operandFault != null)
                     Fault = operandFault;
+                else if (isLifted && operandValue is null)
+                    Value = null;
                 else
-                    Value = fastMethod.Invoke(null, new object[] { operand.Value });
+                {
+                    var newValue = fastMethod.Invoke(null, new object[] { operandValue });
+                    if (isLiftedToNull)
+                        newValue = fastLiftToNull.Invoke(this, new object[] { newValue });
+                    Value = newValue;
+                }
             }
             catch (Exception ex)
             {

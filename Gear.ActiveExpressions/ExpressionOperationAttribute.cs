@@ -3,7 +3,7 @@ using System.Linq.Expressions;
 
 namespace Gear.ActiveExpressions
 {
-    class ExpressionOperationAttribute : Attribute
+    public class ExpressionOperationAttribute : Attribute
     {
         public ExpressionOperationAttribute(ExpressionType type) => Type = type;
 

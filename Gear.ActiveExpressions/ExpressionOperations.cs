@@ -17,13 +17,26 @@ namespace Gear.ActiveExpressions
         static FastMethodInfo CreateFastMethodInfo((ExpressionType expressionType, Type returnType, EquatableList<Type> parameterTypes) key)
         {
             var (expressionType, returnType, parameterTypes) = key;
-            var (methodInfo, expressionOperationAttribute) = operationMethods.SingleOrDefault(m =>
+            var (exactMethodInfo, exactExpressionOperationAttribute) = operationMethods.SingleOrDefault(m =>
             {
                 var (mi, eoa) = m;
                 return eoa.Type == expressionType && mi.ReturnType == returnType && mi.GetParameters().Select(p => p.ParameterType).SequenceEqual(parameterTypes);
             });
-            if (methodInfo != default)
-                return new FastMethodInfo(methodInfo);
+            if (exactMethodInfo != default)
+                return new FastMethodInfo(exactMethodInfo);
+            var parameterTypeInfos = parameterTypes.Select(p => p.GetTypeInfo()).ToImmutableList();
+            var (approximateMethodInfo, approximateExpressionOperationAttribute) = operationMethods.SingleOrDefault(m =>
+            {
+                var (mi, eoa) = m;
+                if (eoa.Type != expressionType || mi.ReturnType != returnType)
+                    return false;
+                var parameters = mi.GetParameters();
+                if (parameters.Length != parameterTypes.Count)
+                    return false;
+                return parameters.Select((p, i) => p.ParameterType.GetTypeInfo().IsAssignableFrom(parameterTypeInfos[i])).All(assignable => assignable);
+            });
+            if (approximateMethodInfo != default)
+                return new FastMethodInfo(approximateMethodInfo);
             return null;
         }
 
@@ -97,18 +110,6 @@ namespace Gear.ActiveExpressions
         #region Add
 
         [ExpressionOperation(ExpressionType.Add)]
-        public static byte Add(byte a, byte b) => (byte)(a + b);
-
-        [ExpressionOperation(ExpressionType.Add)]
-        public static byte? Add(byte? a, byte? b) => (byte?)(a + b);
-
-        [ExpressionOperation(ExpressionType.Add)]
-        public static sbyte Add(sbyte a, sbyte b) => (sbyte)(a + b);
-
-        [ExpressionOperation(ExpressionType.Add)]
-        public static sbyte? Add(sbyte? a, sbyte? b) => (sbyte?)(a + b);
-
-        [ExpressionOperation(ExpressionType.Add)]
         public static short Add(short a, short b) => (short)(a + b);
 
         [ExpressionOperation(ExpressionType.Add)]
@@ -156,42 +157,9 @@ namespace Gear.ActiveExpressions
         [ExpressionOperation(ExpressionType.Add)]
         public static double? Add(double? a, double? b) => a + b;
 
-        [ExpressionOperation(ExpressionType.Add)]
-        public static decimal Add(decimal a, decimal b) => a + b;
-
-        [ExpressionOperation(ExpressionType.Add)]
-        public static decimal? Add(decimal? a, decimal? b) => a + b;
-
-        [ExpressionOperation(ExpressionType.Add)]
-        public static DateTime Add(DateTime a, TimeSpan b) => a + b;
-
-        [ExpressionOperation(ExpressionType.Add)]
-        public static DateTime? Add(DateTime? a, TimeSpan? b) => a + b;
-
-        [ExpressionOperation(ExpressionType.Add)]
-        public static TimeSpan Add(TimeSpan a, TimeSpan b) => a + b;
-
-        [ExpressionOperation(ExpressionType.Add)]
-        public static TimeSpan? Add(TimeSpan? a, TimeSpan? b) => a + b;
-
-        [ExpressionOperation(ExpressionType.Add)]
-        public static string Add(string a, string b) => a + b;
-
         #endregion Add
 
         #region AddChecked
-
-        [ExpressionOperation(ExpressionType.AddChecked)]
-        public static byte AddChecked(byte a, byte b) => checked((byte)(a + b));
-
-        [ExpressionOperation(ExpressionType.AddChecked)]
-        public static byte? AddChecked(byte? a, byte? b) => checked((byte?)(a + b));
-
-        [ExpressionOperation(ExpressionType.AddChecked)]
-        public static sbyte AddChecked(sbyte a, sbyte b) => checked((sbyte)(a + b));
-
-        [ExpressionOperation(ExpressionType.AddChecked)]
-        public static sbyte? AddChecked(sbyte? a, sbyte? b) => checked((sbyte?)(a + b));
 
         [ExpressionOperation(ExpressionType.AddChecked)]
         public static short AddChecked(short a, short b) => checked((short)(a + b));
@@ -1395,18 +1363,6 @@ namespace Gear.ActiveExpressions
         #region Decrement
 
         [ExpressionOperation(ExpressionType.Decrement)]
-        public static byte Decrement(byte a) => (byte)(a - 1);
-
-        [ExpressionOperation(ExpressionType.Decrement)]
-        public static byte? Decrement(byte? a) => (byte?)(a - 1);
-
-        [ExpressionOperation(ExpressionType.Decrement)]
-        public static sbyte Decrement(sbyte a) => (sbyte)(a - 1);
-
-        [ExpressionOperation(ExpressionType.Decrement)]
-        public static sbyte? Decrement(sbyte? a) => (sbyte?)(a - 1);
-
-        [ExpressionOperation(ExpressionType.Decrement)]
         public static short Decrement(short a) => (short)(a - 1);
 
         [ExpressionOperation(ExpressionType.Decrement)]
@@ -1454,27 +1410,9 @@ namespace Gear.ActiveExpressions
         [ExpressionOperation(ExpressionType.Decrement)]
         public static double? Decrement(double? a) => a - 1;
 
-        [ExpressionOperation(ExpressionType.Decrement)]
-        public static decimal Decrement(decimal a) => a - 1;
-
-        [ExpressionOperation(ExpressionType.Decrement)]
-        public static decimal? Decrement(decimal? a) => a - 1;
-
         #endregion Decrement
 
         #region Divide
-
-        [ExpressionOperation(ExpressionType.Divide)]
-        public static byte Divide(byte a, byte b) => (byte)(a / b);
-
-        [ExpressionOperation(ExpressionType.Divide)]
-        public static byte? Divide(byte? a, byte? b) => (byte?)(a / b);
-
-        [ExpressionOperation(ExpressionType.Divide)]
-        public static sbyte Divide(sbyte a, sbyte b) => (sbyte)(a / b);
-
-        [ExpressionOperation(ExpressionType.Divide)]
-        public static sbyte? Divide(sbyte? a, sbyte? b) => (sbyte?)(a / b);
 
         [ExpressionOperation(ExpressionType.Divide)]
         public static short Divide(short a, short b) => (short)(a / b);
@@ -1524,12 +1462,6 @@ namespace Gear.ActiveExpressions
         [ExpressionOperation(ExpressionType.Divide)]
         public static double? Divide(double? a, double? b) => a / b;
 
-        [ExpressionOperation(ExpressionType.Divide)]
-        public static decimal Divide(decimal a, decimal b) => a / b;
-
-        [ExpressionOperation(ExpressionType.Divide)]
-        public static decimal? Divide(decimal? a, decimal? b) => a / b;
-
         #endregion Divide
 
         #region Equal
@@ -1575,24 +1507,6 @@ namespace Gear.ActiveExpressions
 
         [ExpressionOperation(ExpressionType.Equal)]
         public static bool Equal(double? a, double? b) => a == b;
-
-        [ExpressionOperation(ExpressionType.Equal)]
-        public static bool Equal(decimal a, decimal b) => a == b;
-
-        [ExpressionOperation(ExpressionType.Equal)]
-        public static bool Equal(decimal? a, decimal? b) => a == b;
-
-        [ExpressionOperation(ExpressionType.Equal)]
-        public static bool Equal(DateTime a, DateTime b) => a == b;
-
-        [ExpressionOperation(ExpressionType.Equal)]
-        public static bool Equal(DateTime? a, DateTime? b) => a == b;
-
-        [ExpressionOperation(ExpressionType.Equal)]
-        public static bool Equal(TimeSpan a, TimeSpan b) => a == b;
-
-        [ExpressionOperation(ExpressionType.Equal)]
-        public static bool Equal(TimeSpan? a, TimeSpan? b) => a == b;
 
         [ExpressionOperation(ExpressionType.Equal)]
         public static bool Equal(object a, object b) => a == b;
@@ -1701,24 +1615,6 @@ namespace Gear.ActiveExpressions
         [ExpressionOperation(ExpressionType.GreaterThan)]
         public static bool GreaterThan(double? a, double? b) => a > b;
 
-        [ExpressionOperation(ExpressionType.GreaterThan)]
-        public static bool GreaterThan(decimal a, decimal b) => a > b;
-
-        [ExpressionOperation(ExpressionType.GreaterThan)]
-        public static bool GreaterThan(decimal? a, decimal? b) => a > b;
-
-        [ExpressionOperation(ExpressionType.GreaterThan)]
-        public static bool GreaterThan(DateTime a, DateTime b) => a > b;
-
-        [ExpressionOperation(ExpressionType.GreaterThan)]
-        public static bool GreaterThan(DateTime? a, DateTime? b) => a > b;
-
-        [ExpressionOperation(ExpressionType.GreaterThan)]
-        public static bool GreaterThan(TimeSpan a, TimeSpan b) => a > b;
-
-        [ExpressionOperation(ExpressionType.GreaterThan)]
-        public static bool GreaterThan(TimeSpan? a, TimeSpan? b) => a > b;
-
         #endregion GreaterThan
 
         #region GreaterThanOrEqual
@@ -1765,39 +1661,9 @@ namespace Gear.ActiveExpressions
         [ExpressionOperation(ExpressionType.GreaterThanOrEqual)]
         public static bool GreaterThanOrEqual(double? a, double? b) => a >= b;
 
-        [ExpressionOperation(ExpressionType.GreaterThanOrEqual)]
-        public static bool GreaterThanOrEqual(decimal a, decimal b) => a >= b;
-
-        [ExpressionOperation(ExpressionType.GreaterThanOrEqual)]
-        public static bool GreaterThanOrEqual(decimal? a, decimal? b) => a >= b;
-
-        [ExpressionOperation(ExpressionType.GreaterThanOrEqual)]
-        public static bool GreaterThanOrEqual(DateTime a, DateTime b) => a >= b;
-
-        [ExpressionOperation(ExpressionType.GreaterThanOrEqual)]
-        public static bool GreaterThanOrEqual(DateTime? a, DateTime? b) => a >= b;
-
-        [ExpressionOperation(ExpressionType.GreaterThanOrEqual)]
-        public static bool GreaterThanOrEqual(TimeSpan a, TimeSpan b) => a >= b;
-
-        [ExpressionOperation(ExpressionType.GreaterThanOrEqual)]
-        public static bool GreaterThanOrEqual(TimeSpan? a, TimeSpan? b) => a >= b;
-
         #endregion GreaterThanOrEqual
 
         #region Increment
-
-        [ExpressionOperation(ExpressionType.Increment)]
-        public static byte Increment(byte a) => (byte)(a + 1);
-
-        [ExpressionOperation(ExpressionType.Increment)]
-        public static byte? Increment(byte? a) => (byte?)(a + 1);
-
-        [ExpressionOperation(ExpressionType.Increment)]
-        public static sbyte Increment(sbyte a) => (sbyte)(a + 1);
-
-        [ExpressionOperation(ExpressionType.Increment)]
-        public static sbyte? Increment(sbyte? a) => (sbyte?)(a + 1);
 
         [ExpressionOperation(ExpressionType.Increment)]
         public static short Increment(short a) => (short)(a + 1);
@@ -1847,39 +1713,9 @@ namespace Gear.ActiveExpressions
         [ExpressionOperation(ExpressionType.Increment)]
         public static double? Increment(double? a) => a + 1;
 
-        [ExpressionOperation(ExpressionType.Increment)]
-        public static decimal Increment(decimal a) => a + 1;
-
-        [ExpressionOperation(ExpressionType.Increment)]
-        public static decimal? Increment(decimal? a) => a + 1;
-
         #endregion Increment
 
         #region LeftShift
-
-        [ExpressionOperation(ExpressionType.LeftShift)]
-        public static byte LeftShift(byte a, byte b) => (byte)(a << b);
-
-        [ExpressionOperation(ExpressionType.LeftShift)]
-        public static byte? LeftShift(byte? a, byte? b) => (byte?)(a << b);
-
-        [ExpressionOperation(ExpressionType.LeftShift)]
-        public static sbyte LeftShift(sbyte a, sbyte b) => (sbyte)(a << b);
-
-        [ExpressionOperation(ExpressionType.LeftShift)]
-        public static sbyte? LeftShift(sbyte? a, sbyte? b) => (sbyte?)(a << b);
-
-        [ExpressionOperation(ExpressionType.LeftShift)]
-        public static short LeftShift(short a, short b) => (short)(a << b);
-
-        [ExpressionOperation(ExpressionType.LeftShift)]
-        public static short? LeftShift(short? a, short? b) => (short?)(a << b);
-
-        [ExpressionOperation(ExpressionType.LeftShift)]
-        public static ushort LeftShift(ushort a, ushort b) => (ushort)(a << b);
-
-        [ExpressionOperation(ExpressionType.LeftShift)]
-        public static ushort? LeftShift(ushort? a, ushort? b) => (ushort?)(a << b);
 
         [ExpressionOperation(ExpressionType.LeftShift)]
         public static int LeftShift(int a, int b) => a << b;
@@ -1951,24 +1787,6 @@ namespace Gear.ActiveExpressions
         [ExpressionOperation(ExpressionType.LessThan)]
         public static bool LessThan(double? a, double? b) => a < b;
 
-        [ExpressionOperation(ExpressionType.LessThan)]
-        public static bool LessThan(decimal a, decimal b) => a < b;
-
-        [ExpressionOperation(ExpressionType.LessThan)]
-        public static bool LessThan(decimal? a, decimal? b) => a < b;
-
-        [ExpressionOperation(ExpressionType.LessThan)]
-        public static bool LessThan(DateTime a, DateTime b) => a < b;
-
-        [ExpressionOperation(ExpressionType.LessThan)]
-        public static bool LessThan(DateTime? a, DateTime? b) => a < b;
-
-        [ExpressionOperation(ExpressionType.LessThan)]
-        public static bool LessThan(TimeSpan a, TimeSpan b) => a < b;
-
-        [ExpressionOperation(ExpressionType.LessThan)]
-        public static bool LessThan(TimeSpan? a, TimeSpan? b) => a < b;
-
         #endregion LessThan
 
         #region LessThanOrEqual
@@ -2015,39 +1833,9 @@ namespace Gear.ActiveExpressions
         [ExpressionOperation(ExpressionType.LessThanOrEqual)]
         public static bool LessThanOrEqual(double? a, double? b) => a <= b;
 
-        [ExpressionOperation(ExpressionType.LessThanOrEqual)]
-        public static bool LessThanOrEqual(decimal a, decimal b) => a <= b;
-
-        [ExpressionOperation(ExpressionType.LessThanOrEqual)]
-        public static bool LessThanOrEqual(decimal? a, decimal? b) => a <= b;
-
-        [ExpressionOperation(ExpressionType.LessThanOrEqual)]
-        public static bool LessThanOrEqual(DateTime a, DateTime b) => a <= b;
-
-        [ExpressionOperation(ExpressionType.LessThanOrEqual)]
-        public static bool LessThanOrEqual(DateTime? a, DateTime? b) => a <= b;
-
-        [ExpressionOperation(ExpressionType.LessThanOrEqual)]
-        public static bool LessThanOrEqual(TimeSpan a, TimeSpan b) => a <= b;
-
-        [ExpressionOperation(ExpressionType.LessThanOrEqual)]
-        public static bool LessThanOrEqual(TimeSpan? a, TimeSpan? b) => a <= b;
-
         #endregion LessThanOrEqual
 
         #region Modulo
-
-        [ExpressionOperation(ExpressionType.Modulo)]
-        public static byte Modulo(byte a, byte b) => (byte)(a % b);
-
-        [ExpressionOperation(ExpressionType.Modulo)]
-        public static byte? Modulo(byte? a, byte? b) => (byte?)(a % b);
-
-        [ExpressionOperation(ExpressionType.Modulo)]
-        public static sbyte Modulo(sbyte a, sbyte b) => (sbyte)(a % b);
-
-        [ExpressionOperation(ExpressionType.Modulo)]
-        public static sbyte? Modulo(sbyte? a, sbyte? b) => (sbyte?)(a % b);
 
         [ExpressionOperation(ExpressionType.Modulo)]
         public static short Modulo(short a, short b) => (short)(a % b);
@@ -2097,27 +1885,9 @@ namespace Gear.ActiveExpressions
         [ExpressionOperation(ExpressionType.Modulo)]
         public static double? Modulo(double? a, double? b) => a % b;
 
-        [ExpressionOperation(ExpressionType.Modulo)]
-        public static decimal Modulo(decimal a, decimal b) => a % b;
-
-        [ExpressionOperation(ExpressionType.Modulo)]
-        public static decimal? Modulo(decimal? a, decimal? b) => a % b;
-
         #endregion Modulo
 
         #region Multiply
-
-        [ExpressionOperation(ExpressionType.Multiply)]
-        public static byte Multiply(byte a, byte b) => (byte)(a * b);
-
-        [ExpressionOperation(ExpressionType.Multiply)]
-        public static byte? Multiply(byte? a, byte? b) => (byte?)(a * b);
-
-        [ExpressionOperation(ExpressionType.Multiply)]
-        public static sbyte Multiply(sbyte a, sbyte b) => (sbyte)(a * b);
-
-        [ExpressionOperation(ExpressionType.Multiply)]
-        public static sbyte? Multiply(sbyte? a, sbyte? b) => (sbyte?)(a * b);
 
         [ExpressionOperation(ExpressionType.Multiply)]
         public static short Multiply(short a, short b) => (short)(a * b);
@@ -2167,27 +1937,9 @@ namespace Gear.ActiveExpressions
         [ExpressionOperation(ExpressionType.Multiply)]
         public static double? Multiply(double? a, double? b) => a * b;
 
-        [ExpressionOperation(ExpressionType.Multiply)]
-        public static decimal Multiply(decimal a, decimal b) => a * b;
-
-        [ExpressionOperation(ExpressionType.Multiply)]
-        public static decimal? Multiply(decimal? a, decimal? b) => a * b;
-
         #endregion Multiply
 
         #region MultiplyChecked
-
-        [ExpressionOperation(ExpressionType.MultiplyChecked)]
-        public static byte MultiplyChecked(byte a, byte b) => checked((byte)(a * b));
-
-        [ExpressionOperation(ExpressionType.MultiplyChecked)]
-        public static byte? MultiplyChecked(byte? a, byte? b) => checked((byte?)(a * b));
-
-        [ExpressionOperation(ExpressionType.MultiplyChecked)]
-        public static sbyte MultiplyChecked(sbyte a, sbyte b) => checked((sbyte)(a * b));
-
-        [ExpressionOperation(ExpressionType.MultiplyChecked)]
-        public static sbyte? MultiplyChecked(sbyte? a, sbyte? b) => checked((sbyte?)(a * b));
 
         [ExpressionOperation(ExpressionType.MultiplyChecked)]
         public static short MultiplyChecked(short a, short b) => checked((short)(a * b));
@@ -2230,28 +1982,10 @@ namespace Gear.ActiveExpressions
         #region Negate
 
         [ExpressionOperation(ExpressionType.Negate)]
-        public static byte Negate(byte a) => (byte)(a * -1);
-
-        [ExpressionOperation(ExpressionType.Negate)]
-        public static byte? Negate(byte? a) => (byte?)(a * -1);
-
-        [ExpressionOperation(ExpressionType.Negate)]
-        public static sbyte Negate(sbyte a) => (sbyte)(a * -1);
-
-        [ExpressionOperation(ExpressionType.Negate)]
-        public static sbyte? Negate(sbyte? a) => (sbyte?)(a * -1);
-
-        [ExpressionOperation(ExpressionType.Negate)]
         public static short Negate(short a) => (short)(a * -1);
 
         [ExpressionOperation(ExpressionType.Negate)]
         public static short? Negate(short? a) => (short?)(a * -1);
-
-        [ExpressionOperation(ExpressionType.Negate)]
-        public static ushort Negate(ushort a) => (ushort)(a * -1);
-
-        [ExpressionOperation(ExpressionType.Negate)]
-        public static ushort? Negate(ushort? a) => (ushort?)(a * -1);
 
         [ExpressionOperation(ExpressionType.Negate)]
         public static int Negate(int a) => a * -1;
@@ -2260,22 +1994,10 @@ namespace Gear.ActiveExpressions
         public static int? Negate(int? a) => a * -1;
 
         [ExpressionOperation(ExpressionType.Negate)]
-        public static uint Negate(uint a) => (uint)(a * -1);
-
-        [ExpressionOperation(ExpressionType.Negate)]
-        public static uint? Negate(uint? a) => (uint?)(a * -1);
-
-        [ExpressionOperation(ExpressionType.Negate)]
         public static long Negate(long a) => a * -1;
 
         [ExpressionOperation(ExpressionType.Negate)]
         public static long? Negate(long? a) => a * -1;
-
-        [ExpressionOperation(ExpressionType.Negate)]
-        public static ulong Negate(ulong a) => a * unchecked((ulong)-1);
-
-        [ExpressionOperation(ExpressionType.Negate)]
-        public static ulong? Negate(ulong? a) => a * unchecked((ulong)-1);
 
         [ExpressionOperation(ExpressionType.Negate)]
         public static float Negate(float a) => a * -1;
@@ -2288,12 +2010,6 @@ namespace Gear.ActiveExpressions
 
         [ExpressionOperation(ExpressionType.Negate)]
         public static double? Negate(double? a) => a * -1;
-
-        [ExpressionOperation(ExpressionType.Negate)]
-        public static decimal Negate(decimal a) => a * -1;
-
-        [ExpressionOperation(ExpressionType.Negate)]
-        public static decimal? Negate(decimal? a) => a * -1;
 
         #endregion Negate
 
@@ -2398,24 +2114,6 @@ namespace Gear.ActiveExpressions
 
         [ExpressionOperation(ExpressionType.NotEqual)]
         public static bool NotEqual(double? a, double? b) => a != b;
-
-        [ExpressionOperation(ExpressionType.NotEqual)]
-        public static bool NotEqual(decimal a, decimal b) => a != b;
-
-        [ExpressionOperation(ExpressionType.NotEqual)]
-        public static bool NotEqual(decimal? a, decimal? b) => a != b;
-
-        [ExpressionOperation(ExpressionType.NotEqual)]
-        public static bool NotEqual(DateTime a, DateTime b) => a != b;
-
-        [ExpressionOperation(ExpressionType.NotEqual)]
-        public static bool NotEqual(DateTime? a, DateTime? b) => a != b;
-
-        [ExpressionOperation(ExpressionType.NotEqual)]
-        public static bool NotEqual(TimeSpan a, TimeSpan b) => a != b;
-
-        [ExpressionOperation(ExpressionType.NotEqual)]
-        public static bool NotEqual(TimeSpan? a, TimeSpan? b) => a != b;
 
         [ExpressionOperation(ExpressionType.NotEqual)]
         public static bool NotEqual(object a, object b) => a != b;
@@ -2529,101 +2227,7 @@ namespace Gear.ActiveExpressions
 
         #endregion Or
 
-        #region Power
-
-        [ExpressionOperation(ExpressionType.Power)]
-        public static byte Power(byte a, byte b) => (byte)Math.Pow(a, b);
-
-        [ExpressionOperation(ExpressionType.Power)]
-        public static byte? Power(byte? a, byte? b) => a == null || b == null ? null : (byte?)Math.Pow(a.Value, b.Value);
-
-        [ExpressionOperation(ExpressionType.Power)]
-        public static sbyte Power(sbyte a, sbyte b) => (sbyte)Math.Pow(a, b);
-
-        [ExpressionOperation(ExpressionType.Power)]
-        public static sbyte? Power(sbyte? a, sbyte? b) => a == null || b == null ? null : (sbyte?)Math.Pow(a.Value, b.Value);
-
-        [ExpressionOperation(ExpressionType.Power)]
-        public static short Power(short a, short b) => (short)Math.Pow(a, b);
-
-        [ExpressionOperation(ExpressionType.Power)]
-        public static short? Power(short? a, short? b) => a == null || b == null ? null : (short?)Math.Pow(a.Value, b.Value);
-
-        [ExpressionOperation(ExpressionType.Power)]
-        public static ushort Power(ushort a, ushort b) => (ushort)Math.Pow(a, b);
-
-        [ExpressionOperation(ExpressionType.Power)]
-        public static ushort? Power(ushort? a, ushort? b) => a == null || b == null ? null : (ushort?)Math.Pow(a.Value, b.Value);
-
-        [ExpressionOperation(ExpressionType.Power)]
-        public static int Power(int a, int b) => (int)Math.Pow(a, b);
-
-        [ExpressionOperation(ExpressionType.Power)]
-        public static int? Power(int? a, int? b) => a == null || b == null ? null : (int?)Math.Pow(a.Value, b.Value);
-
-        [ExpressionOperation(ExpressionType.Power)]
-        public static uint Power(uint a, uint b) => (uint)Math.Pow(a, b);
-
-        [ExpressionOperation(ExpressionType.Power)]
-        public static uint? Power(uint? a, uint? b) => a == null || b == null ? null : (uint?)Math.Pow(a.Value, b.Value);
-
-        [ExpressionOperation(ExpressionType.Power)]
-        public static long Power(long a, long b) => (long)Math.Pow(a, b);
-
-        [ExpressionOperation(ExpressionType.Power)]
-        public static long? Power(long? a, long? b) => a == null || b == null ? null : (long?)Math.Pow(a.Value, b.Value);
-
-        [ExpressionOperation(ExpressionType.Power)]
-        public static ulong Power(ulong a, ulong b) => (ulong)Math.Pow(a, b);
-
-        [ExpressionOperation(ExpressionType.Power)]
-        public static ulong? Power(ulong? a, ulong? b) => a == null || b == null ? null : (ulong?)Math.Pow(a.Value, b.Value);
-
-        [ExpressionOperation(ExpressionType.Power)]
-        public static float Power(float a, float b) => (float)Math.Pow(a, b);
-
-        [ExpressionOperation(ExpressionType.Power)]
-        public static float? Power(float? a, float? b) => a == null || b == null ? null : (float?)Math.Pow(a.Value, b.Value);
-
-        [ExpressionOperation(ExpressionType.Power)]
-        public static double Power(double a, double b) => Math.Pow(a, b);
-
-        [ExpressionOperation(ExpressionType.Power)]
-        public static double? Power(double? a, double? b) => a == null || b == null ? null : (double?)Math.Pow(a.Value, b.Value);
-
-        [ExpressionOperation(ExpressionType.Power)]
-        public static decimal Power(decimal a, decimal b) => (decimal)Math.Pow((double)a, (double)b);
-
-        [ExpressionOperation(ExpressionType.Power)]
-        public static decimal? Power(decimal? a, decimal? b) => a == null || b == null ? null : (decimal?)Math.Pow((double)a.Value, (double)b.Value);
-
-        #endregion Power
-
         #region RightShift
-
-        [ExpressionOperation(ExpressionType.RightShift)]
-        public static byte RightShift(byte a, byte b) => (byte)(a >> b);
-
-        [ExpressionOperation(ExpressionType.RightShift)]
-        public static byte? RightShift(byte? a, byte? b) => (byte?)(a >> b);
-
-        [ExpressionOperation(ExpressionType.RightShift)]
-        public static sbyte RightShift(sbyte a, sbyte b) => (sbyte)(a >> b);
-
-        [ExpressionOperation(ExpressionType.RightShift)]
-        public static sbyte? RightShift(sbyte? a, sbyte? b) => (sbyte?)(a >> b);
-
-        [ExpressionOperation(ExpressionType.RightShift)]
-        public static short RightShift(short a, short b) => (short)(a >> b);
-
-        [ExpressionOperation(ExpressionType.RightShift)]
-        public static short? RightShift(short? a, short? b) => (short?)(a >> b);
-
-        [ExpressionOperation(ExpressionType.RightShift)]
-        public static ushort RightShift(ushort a, ushort b) => (ushort)(a >> b);
-
-        [ExpressionOperation(ExpressionType.RightShift)]
-        public static ushort? RightShift(ushort? a, ushort? b) => (ushort?)(a >> b);
 
         [ExpressionOperation(ExpressionType.RightShift)]
         public static int RightShift(int a, int b) => a >> b;
@@ -2652,18 +2256,6 @@ namespace Gear.ActiveExpressions
         #endregion RightShift
 
         #region Subtract
-
-        [ExpressionOperation(ExpressionType.Subtract)]
-        public static byte Subtract(byte a, byte b) => (byte)(a - b);
-
-        [ExpressionOperation(ExpressionType.Subtract)]
-        public static byte? Subtract(byte? a, byte? b) => (byte?)(a - b);
-
-        [ExpressionOperation(ExpressionType.Subtract)]
-        public static sbyte Subtract(sbyte a, sbyte b) => (sbyte)(a - b);
-
-        [ExpressionOperation(ExpressionType.Subtract)]
-        public static sbyte? Subtract(sbyte? a, sbyte? b) => (sbyte?)(a - b);
 
         [ExpressionOperation(ExpressionType.Subtract)]
         public static short Subtract(short a, short b) => (short)(a - b);
@@ -2713,39 +2305,9 @@ namespace Gear.ActiveExpressions
         [ExpressionOperation(ExpressionType.Subtract)]
         public static double? Subtract(double? a, double? b) => a - b;
 
-        [ExpressionOperation(ExpressionType.Subtract)]
-        public static decimal Subtract(decimal a, decimal b) => a - b;
-
-        [ExpressionOperation(ExpressionType.Subtract)]
-        public static decimal? Subtract(decimal? a, decimal? b) => a - b;
-
-        [ExpressionOperation(ExpressionType.Subtract)]
-        public static DateTime Subtract(DateTime a, TimeSpan b) => a - b;
-
-        [ExpressionOperation(ExpressionType.Subtract)]
-        public static DateTime? Subtract(DateTime? a, TimeSpan? b) => a - b;
-
-        [ExpressionOperation(ExpressionType.Subtract)]
-        public static TimeSpan Subtract(TimeSpan a, TimeSpan b) => a - b;
-
-        [ExpressionOperation(ExpressionType.Subtract)]
-        public static TimeSpan? Subtract(TimeSpan? a, TimeSpan? b) => a - b;
-
         #endregion Subtract
 
         #region SubtractChecked
-
-        [ExpressionOperation(ExpressionType.SubtractChecked)]
-        public static byte SubtractChecked(byte a, byte b) => checked((byte)(a - b));
-
-        [ExpressionOperation(ExpressionType.SubtractChecked)]
-        public static byte? SubtractChecked(byte? a, byte? b) => checked((byte?)(a - b));
-
-        [ExpressionOperation(ExpressionType.SubtractChecked)]
-        public static sbyte SubtractChecked(sbyte a, sbyte b) => checked((sbyte)(a - b));
-
-        [ExpressionOperation(ExpressionType.SubtractChecked)]
-        public static sbyte? SubtractChecked(sbyte? a, sbyte? b) => checked((sbyte?)(a - b));
 
         [ExpressionOperation(ExpressionType.SubtractChecked)]
         public static short SubtractChecked(short a, short b) => checked((short)(a - b));
@@ -2786,18 +2348,6 @@ namespace Gear.ActiveExpressions
         #endregion SubtractChecked
 
         #region UnaryPlus
-
-        [ExpressionOperation(ExpressionType.UnaryPlus)]
-        public static byte UnaryPlus(byte a) => a;
-
-        [ExpressionOperation(ExpressionType.UnaryPlus)]
-        public static byte? UnaryPlus(byte? a) => a;
-
-        [ExpressionOperation(ExpressionType.UnaryPlus)]
-        public static sbyte UnaryPlus(sbyte a) => a;
-
-        [ExpressionOperation(ExpressionType.UnaryPlus)]
-        public static sbyte? UnaryPlus(sbyte? a) => a;
 
         [ExpressionOperation(ExpressionType.UnaryPlus)]
         public static short UnaryPlus(short a) => a;
@@ -2846,12 +2396,6 @@ namespace Gear.ActiveExpressions
 
         [ExpressionOperation(ExpressionType.UnaryPlus)]
         public static double? UnaryPlus(double? a) => a;
-
-        [ExpressionOperation(ExpressionType.UnaryPlus)]
-        public static decimal UnaryPlus(decimal a) => a;
-
-        [ExpressionOperation(ExpressionType.UnaryPlus)]
-        public static decimal? UnaryPlus(decimal? a) => a;
 
         #endregion UnaryPlus
     }

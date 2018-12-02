@@ -23,11 +23,11 @@ namespace Gear.ActiveExpressions
 #pragma warning restore CS0661
     {
         static readonly ConcurrentDictionary<MethodInfo, FastMethodInfo> compiledMethods = new ConcurrentDictionary<MethodInfo, FastMethodInfo>();
+        static readonly ConcurrentDictionary<Type, MethodInfo> convertNullableGenericMethods = new ConcurrentDictionary<Type, MethodInfo>();
+        static readonly MethodInfo convertNullableMethod = typeof(ActiveExpression).GetRuntimeMethods().Single(m => m.Name == nameof(ConvertNullable));
         static readonly ConcurrentDictionary<MethodInfo, PropertyInfo> propertyGetMethodToProperty = new ConcurrentDictionary<MethodInfo, PropertyInfo>();
 
-        static FastMethodInfo CreateFastMethodInfo(MethodInfo key) => new FastMethodInfo(key);
-
-        protected static FastMethodInfo GetFastMethodInfo(MethodInfo methodInfo) => compiledMethods.GetOrAdd(methodInfo, CreateFastMethodInfo);
+        static T? ConvertNullable<T>(object value) where T : struct => value is null ? null : (T?)value;
 
         internal static ActiveExpression Create(Expression expression, ActiveExpressionOptions options, bool deferEvaluation)
         {
@@ -77,6 +77,14 @@ namespace Gear.ActiveExpressions
                 activeExpression.EvaluateIfDeferred();
             return activeExpression;
         }
+
+        static FastMethodInfo CreateFastMethodInfo(MethodInfo key) => new FastMethodInfo(key);
+
+        static MethodInfo GetConvertNullableGenericMethod(Type type) => convertNullableMethod.MakeGenericMethod(type);
+
+        protected static FastMethodInfo GetFastMethodInfo(MethodInfo methodInfo) => compiledMethods.GetOrAdd(methodInfo, CreateFastMethodInfo);
+
+        protected static FastMethodInfo GetConvertNullableFastMethodInfo(Type nullableType) => GetFastMethodInfo(convertNullableGenericMethods.GetOrAdd(nullableType.GenericTypeArguments[0], GetConvertNullableGenericMethod));
 
         static PropertyInfo GetPropertyFromGetMethod(MethodInfo getMethod) => getMethod.DeclaringType.GetRuntimeProperties().FirstOrDefault(property => property.GetMethod == getMethod);
 
