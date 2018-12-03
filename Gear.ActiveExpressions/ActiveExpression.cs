@@ -2,6 +2,7 @@ using Gear.Components;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Linq;
@@ -507,61 +508,33 @@ namespace Gear.ActiveExpressions
     /// <see cref="INotifyPropertyChanged"/>, <see cref="INotifyCollectionChanged"/>, and <see cref="INotifyDictionaryChanged"/> events raised by any value within the lambda expression will cause all dependent portions to be re-evaluated.
     /// </summary>
     /// <typeparam name="TResult">The type of the value returned by the lambda expression upon which this active expression is based</typeparam>
-    public class ActiveExpression<TResult> : OverridableSyncDisposablePropertyChangeNotifier
+    public class ActiveExpression<TResult> : SyncDisposablePropertyChangeNotifier
     {
-        static readonly object instanceManagementLock = new object();
-        static readonly Dictionary<(string expressionString, EquatableList<object> arguments, ActiveExpressionOptions options), ActiveExpression<TResult>> instances = new Dictionary<(string expressionString, EquatableList<object> arguments, ActiveExpressionOptions options), ActiveExpression<TResult>>();
-
-        internal static ActiveExpression<TResult> Create(LambdaExpression expression, ActiveExpressionOptions options, params object[] args)
-        {
-            var expressionString = expression.ToString();
-            var arguments = new EquatableList<object>(args);
-            var key = (expressionString, arguments, options);
-            lock (instanceManagementLock)
-            {
-                if (!instances.TryGetValue(key, out var activeExpression))
-                {
-                    activeExpression = new ActiveExpression<TResult>(expressionString, arguments, ActiveExpression.Create(ActiveExpression.ReplaceParameters(expression, args), options, false), options);
-                    instances.Add(key, activeExpression);
-                }
-                ++activeExpression.disposalCount;
-                return activeExpression;
-            }
-        }
+        internal static ActiveExpression<TResult> Create(LambdaExpression expression, ActiveExpressionOptions options, params object[] args) =>
+            new ActiveExpression<TResult>(ActiveExpression.Create(ActiveExpression.ReplaceParameters(expression, args), options, false), options, args.ToImmutableList());
 
         public static bool operator ==(ActiveExpression<TResult> a, ActiveExpression<TResult> b) => a?.expression == b?.expression;
 
         public static bool operator !=(ActiveExpression<TResult> a, ActiveExpression<TResult> b) => a?.expression != b?.expression;
 
-        protected ActiveExpression(string expressionString, EquatableList<object> arguments, ActiveExpression expression, ActiveExpressionOptions options)
+        ActiveExpression(ActiveExpression expression, ActiveExpressionOptions options, IReadOnlyList<object> arguments)
         {
-            this.expressionString = expressionString;
-            this.arguments = arguments;
             this.expression = expression;
             Options = options;
+            Arguments = arguments;
             fault = this.expression.Fault;
             val = (TResult)this.expression.Value;
             this.expression.PropertyChanged += ExpressionPropertyChanged;
         }
 
-        readonly EquatableList<object> arguments;
-        int disposalCount;
         readonly ActiveExpression expression;
-        readonly string expressionString;
         Exception fault;
         TResult val;
 
-        protected override bool Dispose(bool disposing)
+        protected override void Dispose(bool disposing)
         {
-            lock (instanceManagementLock)
-            {
-                if (--disposalCount > 0)
-                    return false;
-                expression.PropertyChanged -= ExpressionPropertyChanged;
-                expression.Dispose();
-                instances.Remove((expressionString, arguments, Options));
-                return true;
-            }
+            expression.PropertyChanged -= ExpressionPropertyChanged;
+            expression.Dispose();
         }
 
         public override bool Equals(object obj) => obj is ActiveExpression<TResult> other && expression.Equals(other.expression);
@@ -581,7 +554,7 @@ namespace Gear.ActiveExpressions
         /// <summary>
         /// Gets the arguments that were passed to the lambda expression
         /// </summary>
-        public IReadOnlyList<object> Arguments => arguments;
+        public IReadOnlyList<object> Arguments { get; }
 
         /// <summary>
         /// Gets the exception that was thrown while evaluating the lambda expression; <c>null</c> if there was no such exception
@@ -613,59 +586,33 @@ namespace Gear.ActiveExpressions
     /// </summary>
     /// <typeparam name="TArg">The type of the argument passed to the lambda expression</typeparam>
     /// <typeparam name="TResult">The type of the value returned by the expression upon which this active expression is based</typeparam>
-    public class ActiveExpression<TArg, TResult> : OverridableSyncDisposablePropertyChangeNotifier
+    public class ActiveExpression<TArg, TResult> : SyncDisposablePropertyChangeNotifier
     {
-        static readonly object instanceManagementLock = new object();
-        static readonly Dictionary<(string expressionString, TArg arg, ActiveExpressionOptions options), ActiveExpression<TArg, TResult>> instances = new Dictionary<(string expressionString, TArg arg, ActiveExpressionOptions options), ActiveExpression<TArg, TResult>>();
-
-        internal static ActiveExpression<TArg, TResult> Create(LambdaExpression expression, TArg arg, ActiveExpressionOptions options = null)
-        {
-            var expressionString = expression.ToString();
-            var key = (expressionString, arg, options);
-            lock (instanceManagementLock)
-            {
-                if (!instances.TryGetValue(key, out var activeExpression))
-                {
-                    activeExpression = new ActiveExpression<TArg, TResult>(expressionString, arg, ActiveExpression.Create(ActiveExpression.ReplaceParameters(expression, arg), options, false), options);
-                    instances.Add(key, activeExpression);
-                }
-                ++activeExpression.disposalCount;
-                return activeExpression;
-            }
-        }
+        internal static ActiveExpression<TArg, TResult> Create(LambdaExpression expression, TArg arg, ActiveExpressionOptions options = null) =>
+            new ActiveExpression<TArg, TResult>(ActiveExpression.Create(ActiveExpression.ReplaceParameters(expression, arg), options, false), options, arg);
 
         public static bool operator ==(ActiveExpression<TArg, TResult> a, ActiveExpression<TArg, TResult> b) => a?.expression == b?.expression;
 
         public static bool operator !=(ActiveExpression<TArg, TResult> a, ActiveExpression<TArg, TResult> b) => a?.expression != b?.expression;
 
-        protected ActiveExpression(string expressionString, TArg arg, ActiveExpression expression, ActiveExpressionOptions options)
+        ActiveExpression(ActiveExpression expression, ActiveExpressionOptions options, TArg arg)
         {
-            this.expressionString = expressionString;
-            Arg = arg;
             this.expression = expression;
             Options = options;
+            Arg = arg;
             fault = this.expression.Fault;
             val = (TResult)this.expression.Value;
             this.expression.PropertyChanged += ExpressionPropertyChanged;
         }
 
-        int disposalCount;
         readonly ActiveExpression expression;
-        readonly string expressionString;
         Exception fault;
         TResult val;
 
-        protected override bool Dispose(bool disposing)
+        protected override void Dispose(bool disposing)
         {
-            lock (instanceManagementLock)
-            {
-                if (--disposalCount > 0)
-                    return false;
-                expression.PropertyChanged -= ExpressionPropertyChanged;
-                expression.Dispose();
-                instances.Remove((expressionString, Arg, Options));
-                return true;
-            }
+            expression.PropertyChanged -= ExpressionPropertyChanged;
+            expression.Dispose();
         }
 
         public override bool Equals(object obj) => obj is ActiveExpression<TArg, TResult> other && expression.Equals(other.expression);
@@ -718,60 +665,34 @@ namespace Gear.ActiveExpressions
     /// <typeparam name="TArg1">The type of the first argument passed to the lambda expression</typeparam>
     /// <typeparam name="TArg2">The type of the second argument passed to the lambda expression</typeparam>
     /// <typeparam name="TResult">The type of the value returned by the expression upon which this active expression is based</typeparam>
-    public class ActiveExpression<TArg1, TArg2, TResult> : OverridableSyncDisposablePropertyChangeNotifier
+    public class ActiveExpression<TArg1, TArg2, TResult> : SyncDisposablePropertyChangeNotifier
     {
-        static readonly object instanceManagementLock = new object();
-        static readonly Dictionary<(string expressionString, TArg1 arg1, TArg2 arg2, ActiveExpressionOptions options), ActiveExpression<TArg1, TArg2, TResult>> instances = new Dictionary<(string expressionString, TArg1 arg1, TArg2 arg2, ActiveExpressionOptions options), ActiveExpression<TArg1, TArg2, TResult>>();
-
-        internal static ActiveExpression<TArg1, TArg2, TResult> Create(LambdaExpression expression, TArg1 arg1, TArg2 arg2, ActiveExpressionOptions options = null)
-        {
-            var expressionString = expression.ToString();
-            var key = (expressionString, arg1, arg2, options);
-            lock (instanceManagementLock)
-            {
-                if (!instances.TryGetValue(key, out var activeExpression))
-                {
-                    activeExpression = new ActiveExpression<TArg1, TArg2, TResult>(expressionString, arg1, arg2, ActiveExpression.Create(ActiveExpression.ReplaceParameters(expression, arg1, arg2), options, false), options);
-                    instances.Add(key, activeExpression);
-                }
-                ++activeExpression.disposalCount;
-                return activeExpression;
-            }
-        }
+        internal static ActiveExpression<TArg1, TArg2, TResult> Create(LambdaExpression expression, TArg1 arg1, TArg2 arg2, ActiveExpressionOptions options = null) =>
+            new ActiveExpression<TArg1, TArg2, TResult>(ActiveExpression.Create(ActiveExpression.ReplaceParameters(expression, arg1, arg2), options, false), options, arg1, arg2);
 
         public static bool operator ==(ActiveExpression<TArg1, TArg2, TResult> a, ActiveExpression<TArg1, TArg2, TResult> b) => a?.expression == b?.expression;
 
         public static bool operator !=(ActiveExpression<TArg1, TArg2, TResult> a, ActiveExpression<TArg1, TArg2, TResult> b) => a?.expression != b?.expression;
 
-        protected ActiveExpression(string expressionString, TArg1 arg1, TArg2 arg2, ActiveExpression expression, ActiveExpressionOptions options)
+        ActiveExpression(ActiveExpression expression, ActiveExpressionOptions options, TArg1 arg1, TArg2 arg2)
         {
-            this.expressionString = expressionString;
-            Arg1 = arg1;
-            Arg2 = arg2;
             this.expression = expression;
             Options = options;
+            Arg1 = arg1;
+            Arg2 = arg2;
             fault = this.expression.Fault;
             val = (TResult)this.expression.Value;
             this.expression.PropertyChanged += ExpressionPropertyChanged;
         }
 
-        int disposalCount;
         readonly ActiveExpression expression;
-        readonly string expressionString;
         Exception fault;
         TResult val;
 
-        protected override bool Dispose(bool disposing)
+        protected override void Dispose(bool disposing)
         {
-            lock (instanceManagementLock)
-            {
-                if (--disposalCount > 0)
-                    return false;
-                expression.PropertyChanged -= ExpressionPropertyChanged;
-                expression.Dispose();
-                instances.Remove((expressionString, Arg1, Arg2, Options));
-                return true;
-            }
+            expression.PropertyChanged -= ExpressionPropertyChanged;
+            expression.Dispose();
         }
 
         public override bool Equals(object obj) => obj is ActiveExpression<TArg1, TArg2, TResult> other && expression.Equals(other.expression);
@@ -830,61 +751,35 @@ namespace Gear.ActiveExpressions
     /// <typeparam name="TArg2">The type of the second argument passed to the lambda expression</typeparam>
     /// <typeparam name="TArg3">The type of the third argument passed to the lambda expression</typeparam>
     /// <typeparam name="TResult">The type of the value returned by the expression upon which this active expression is based</typeparam>
-    public class ActiveExpression<TArg1, TArg2, TArg3, TResult> : OverridableSyncDisposablePropertyChangeNotifier
+    public class ActiveExpression<TArg1, TArg2, TArg3, TResult> : SyncDisposablePropertyChangeNotifier
     {
-        static readonly object instanceManagementLock = new object();
-        static readonly Dictionary<(string expressionString, TArg1 arg1, TArg2 arg2, TArg3 arg3, ActiveExpressionOptions options), ActiveExpression<TArg1, TArg2, TArg3, TResult>> instances = new Dictionary<(string expressionString, TArg1 arg1, TArg2 arg2, TArg3 arg3, ActiveExpressionOptions options), ActiveExpression<TArg1, TArg2, TArg3, TResult>>();
-
-        internal static ActiveExpression<TArg1, TArg2, TArg3, TResult> Create(LambdaExpression expression, TArg1 arg1, TArg2 arg2, TArg3 arg3, ActiveExpressionOptions options = null)
-        {
-            var expressionString = expression.ToString();
-            var key = (expressionString, arg1, arg2, arg3, options);
-            lock (instanceManagementLock)
-            {
-                if (!instances.TryGetValue(key, out var activeExpression))
-                {
-                    activeExpression = new ActiveExpression<TArg1, TArg2, TArg3, TResult>(expressionString, arg1, arg2, arg3, ActiveExpression.Create(ActiveExpression.ReplaceParameters(expression, arg1, arg2, arg3), options, false), options);
-                    instances.Add(key, activeExpression);
-                }
-                ++activeExpression.disposalCount;
-                return activeExpression;
-            }
-        }
+        internal static ActiveExpression<TArg1, TArg2, TArg3, TResult> Create(LambdaExpression expression, TArg1 arg1, TArg2 arg2, TArg3 arg3, ActiveExpressionOptions options = null) =>
+            new ActiveExpression<TArg1, TArg2, TArg3, TResult>(ActiveExpression.Create(ActiveExpression.ReplaceParameters(expression, arg1, arg2, arg3), options, false), options, arg1, arg2, arg3);
 
         public static bool operator ==(ActiveExpression<TArg1, TArg2, TArg3, TResult> a, ActiveExpression<TArg1, TArg2, TArg3, TResult> b) => a?.expression == b?.expression;
 
         public static bool operator !=(ActiveExpression<TArg1, TArg2, TArg3, TResult> a, ActiveExpression<TArg1, TArg2, TArg3, TResult> b) => a?.expression != b?.expression;
 
-        protected ActiveExpression(string expressionString, TArg1 arg1, TArg2 arg2, TArg3 arg3, ActiveExpression expression, ActiveExpressionOptions options)
+        ActiveExpression(ActiveExpression expression, ActiveExpressionOptions options, TArg1 arg1, TArg2 arg2, TArg3 arg3)
         {
-            this.expressionString = expressionString;
+            this.expression = expression;
+            Options = options;
             Arg1 = arg1;
             Arg2 = arg2;
             Arg3 = arg3;
-            this.expression = expression;
-            Options = options;
             fault = this.expression.Fault;
             val = (TResult)this.expression.Value;
             this.expression.PropertyChanged += ExpressionPropertyChanged;
         }
 
-        int disposalCount;
         readonly ActiveExpression expression;
-        readonly string expressionString;
         Exception fault;
         TResult val;
 
-        protected override bool Dispose(bool disposing)
+        protected override void Dispose(bool disposing)
         {
-            lock (instanceManagementLock)
-            {
-                if (--disposalCount > 0)
-                    return false;
-                expression.PropertyChanged -= ExpressionPropertyChanged;
-                expression.Dispose();
-                instances.Remove((expressionString, Arg1, Arg2, Arg3, Options));
-                return true;
-            }
+            expression.PropertyChanged -= ExpressionPropertyChanged;
+            expression.Dispose();
         }
 
         public override bool Equals(object obj) => obj is ActiveExpression<TArg1, TArg2, TArg3, TResult> other && expression.Equals(other.expression);
