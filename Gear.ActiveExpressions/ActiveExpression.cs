@@ -235,13 +235,6 @@ namespace Gear.ActiveExpressions
         }
 
         [ExcludeFromCodeCoverage]
-        protected static void DisallowConversions(LambdaExpression conversion)
-        {
-            if (conversion != null)
-                throw new NotSupportedException("Expressions using conversion LambdaExpressions are not yet supported");
-        }
-
-        [ExcludeFromCodeCoverage]
         protected static void DisallowStaticIndexers() => throw new NotSupportedException("Static indexers are not supported");
 
         protected static string GetValueLiteral(Exception fault, bool deferred, object value)
@@ -321,7 +314,7 @@ namespace Gear.ActiveExpressions
             switch (expression)
             {
                 case BinaryExpression binaryExpression:
-                    return Expression.MakeBinary(binaryExpression.NodeType, ReplaceParameters(parameterTranslation, binaryExpression.Left), ReplaceParameters(parameterTranslation, binaryExpression.Right), binaryExpression.IsLiftedToNull, binaryExpression.Method, (LambdaExpression)ReplaceParameters(parameterTranslation, binaryExpression.Conversion));
+                    return Expression.MakeBinary(binaryExpression.NodeType, ReplaceParameters(parameterTranslation, binaryExpression.Left), ReplaceParameters(parameterTranslation, binaryExpression.Right), binaryExpression.IsLiftedToNull, binaryExpression.Method, binaryExpression.Conversion);
                 case ConditionalExpression conditionalExpression:
                     return Expression.Condition(ReplaceParameters(parameterTranslation, conditionalExpression.Test), ReplaceParameters(parameterTranslation, conditionalExpression.IfTrue), ReplaceParameters(parameterTranslation, conditionalExpression.IfFalse), conditionalExpression.Type);
                 case ConstantExpression constantExpression:

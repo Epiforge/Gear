@@ -15,7 +15,6 @@ namespace Gear.ActiveExpressions
 
         public static ActiveBinaryExpression Create(BinaryExpression binaryExpression, ActiveExpressionOptions options, bool deferEvaluation)
         {
-            DisallowConversions(binaryExpression.Conversion);
             var type = binaryExpression.Type;
             var nodeType = binaryExpression.NodeType;
             var left = Create(binaryExpression.Left, options, deferEvaluation);
@@ -64,7 +63,7 @@ namespace Gear.ActiveExpressions
 
         public static bool operator !=(ActiveBinaryExpression a, ActiveBinaryExpression b) => a?.left != b?.left || a?.method != b?.method || a?.NodeType != b?.NodeType || a?.right != b?.right || a?.options != b?.options;
 
-        protected ActiveBinaryExpression(Type type, ExpressionType nodeType, ActiveExpression left, ActiveExpression right, bool isLiftedToNull, MethodInfo method, ActiveExpressionOptions options, bool deferEvaluation, bool getDelegate = true) : base(type, nodeType, options, deferEvaluation)
+        protected ActiveBinaryExpression(Type type, ExpressionType nodeType, ActiveExpression left, ActiveExpression right, bool isLiftedToNull, MethodInfo method, ActiveExpressionOptions options, bool deferEvaluation, bool getDelegate = true, bool evaluateIfNotDeferred = true) : base(type, nodeType, options, deferEvaluation)
         {
             this.left = left;
             this.left.PropertyChanged += LeftPropertyChanged;
@@ -86,7 +85,8 @@ namespace Gear.ActiveExpressions
                 }
                 this.@delegate = @delegate;
             }
-            EvaluateIfNotDeferred();
+            if (evaluateIfNotDeferred)
+                EvaluateIfNotDeferred();
         }
 
         readonly BinaryOperationDelegate @delegate;

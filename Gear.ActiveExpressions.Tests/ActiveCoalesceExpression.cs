@@ -1,7 +1,6 @@
 using Gear.Components;
 using NUnit.Framework;
 using System.Collections.Concurrent;
-using System.ComponentModel;
 using System.Linq;
 
 namespace Gear.ActiveExpressions.Tests
@@ -79,6 +78,29 @@ namespace Gear.ActiveExpressions.Tests
                 Assert.IsNull(expr.Fault);
             }
         }
+
+        [Test]
+        public void ImplicitConversion()
+        {
+            using (var expr = ActiveExpression.Create(() => new A() ?? new B()))
+            {
+                Assert.IsNull(expr.Fault);
+                Assert.IsNull(expr.Value);
+            }
+        }
+
+        #region ImplicitConversion Classes
+
+        class A
+        {
+            public static implicit operator B(A a) => null;
+        }
+
+        class B
+        {
+        }
+
+        #endregion ImplicitConversion Classes
 
         [Test]
         public void Inequality()
