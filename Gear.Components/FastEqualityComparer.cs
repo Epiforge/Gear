@@ -15,6 +15,7 @@ namespace Gear.Components
 
         FastEqualityComparer(Type type)
         {
+            Type = type;
             var equalityComparerType = typeof(EqualityComparer<>).MakeGenericType(type);
             equalityComparer = equalityComparerType.GetRuntimeProperty(nameof(EqualityComparer<object>.Default)).GetValue(null);
             equals = new FastMethodInfo(equalityComparerType.GetRuntimeMethod(nameof(EqualityComparer<object>.Equals), new Type[] { type, type }));
@@ -28,5 +29,7 @@ namespace Gear.Components
         public bool Equals(object x, object y) => (bool)equals.Invoke(equalityComparer, x, y);
 
         public int GetHashCode(object obj) => (int)getHashCode.Invoke(equalityComparer, obj);
+
+        public Type Type { get; }
     }
 }

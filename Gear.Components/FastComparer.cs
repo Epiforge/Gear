@@ -15,6 +15,7 @@ namespace Gear.Components
 
         FastComparer(Type type)
         {
+            Type = type;
             var comparerType = typeof(Comparer<>).MakeGenericType(type);
             comparer = comparerType.GetRuntimeProperty(nameof(Comparer<object>.Default)).GetValue(null);
             compare = new FastMethodInfo(comparerType.GetRuntimeMethod(nameof(Comparer<object>.Compare), new Type[] { type }));
@@ -24,5 +25,7 @@ namespace Gear.Components
         readonly object comparer;
 
         public int Compare(object x, object y) => (int)compare.Invoke(comparer, x, y);
+
+        public Type Type { get; }
     }
 }
