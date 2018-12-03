@@ -35,7 +35,6 @@ namespace Gear.ActiveExpressions
         {
         }
 
-        readonly object constant;
         int disposalCount;
 
         protected override bool Dispose(bool disposing)
@@ -50,8 +49,6 @@ namespace Gear.ActiveExpressions
         }
 
         public override bool Equals(object obj) => obj is ActiveConstantExpression other && Type == other.Type && FastEqualityComparer.Create(Type).Equals(Value, other.Value) && (options?.Equals(other.options) ?? other.options is null);
-
-        protected override void Evaluate() => Value = constant;
 
         public override int GetHashCode() => HashCodes.CombineObjects(typeof(ActiveConstantExpression), Value);
 

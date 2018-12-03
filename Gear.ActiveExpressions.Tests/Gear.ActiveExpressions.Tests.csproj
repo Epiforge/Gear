@@ -124,7 +124,6 @@
     <Compile Include="ActiveBinaryExpression.cs" />
     <Compile Include="ActiveUnaryExpression.cs" />
     <Compile Include="AsyncDisposableTestPerson.cs" />
-    <Compile Include="ExpressionOperations.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="ActiveCoalesceExpression.cs" />
     <Compile Include="ActiveConditionalExpression.cs" />

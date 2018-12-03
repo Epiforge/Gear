@@ -23,11 +23,7 @@ namespace Gear.ActiveExpressions
 #pragma warning restore CS0661
     {
         static readonly ConcurrentDictionary<MethodInfo, FastMethodInfo> compiledMethods = new ConcurrentDictionary<MethodInfo, FastMethodInfo>();
-        static readonly ConcurrentDictionary<Type, MethodInfo> convertNullableGenericMethods = new ConcurrentDictionary<Type, MethodInfo>();
-        static readonly MethodInfo convertNullableMethod = typeof(ActiveExpression).GetRuntimeMethods().Single(m => m.Name == nameof(ConvertNullable));
         static readonly ConcurrentDictionary<MethodInfo, PropertyInfo> propertyGetMethodToProperty = new ConcurrentDictionary<MethodInfo, PropertyInfo>();
-
-        static T? ConvertNullable<T>(object value) where T : struct => value is null ? null : (T?)value;
 
         internal static ActiveExpression Create(Expression expression, ActiveExpressionOptions options, bool deferEvaluation)
         {
@@ -80,11 +76,72 @@ namespace Gear.ActiveExpressions
 
         static FastMethodInfo CreateFastMethodInfo(MethodInfo key) => new FastMethodInfo(key);
 
-        static MethodInfo GetConvertNullableGenericMethod(Type type) => convertNullableMethod.MakeGenericMethod(type);
-
         protected static FastMethodInfo GetFastMethodInfo(MethodInfo methodInfo) => compiledMethods.GetOrAdd(methodInfo, CreateFastMethodInfo);
 
-        protected static FastMethodInfo GetConvertNullableFastMethodInfo(Type nullableType) => GetFastMethodInfo(convertNullableGenericMethods.GetOrAdd(nullableType.GenericTypeArguments[0], GetConvertNullableGenericMethod));
+        protected static string GetOperatorExpressionSyntax(ExpressionType expressionType, Type resultType, params ActiveExpression[] operands)
+        {
+            switch (expressionType)
+            {
+                case ExpressionType.Add:
+                    return $"({operands[0]} + {operands[1]})";
+                case ExpressionType.AddChecked:
+                    return $"checked({operands[0]} + {operands[1]})";
+                case ExpressionType.And:
+                    return $"({operands[0]} & {operands[1]})";
+                case ExpressionType.Convert:
+                    return $"(({resultType.FullName}){operands[0]})";
+                case ExpressionType.Decrement:
+                    return $"({operands[0]} - 1)";
+                case ExpressionType.Divide:
+                    return $"({operands[0]} / {operands[1]})";
+                case ExpressionType.Equal:
+                    return $"({operands[0]} == {operands[1]})";
+                case ExpressionType.ExclusiveOr:
+                    return $"({operands[0]} ^ {operands[1]})";
+                case ExpressionType.GreaterThan:
+                    return $"({operands[0]} > {operands[1]})";
+                case ExpressionType.GreaterThanOrEqual:
+                    return $"({operands[0]} >= {operands[1]})";
+                case ExpressionType.Increment:
+                    return $"({operands[0]} + 1)";
+                case ExpressionType.LeftShift:
+                    return $"({operands[0]} << {operands[1]})";
+                case ExpressionType.LessThan:
+                    return $"({operands[0]} < {operands[1]})";
+                case ExpressionType.LessThanOrEqual:
+                    return $"({operands[0]} <= {operands[1]})";
+                case ExpressionType.Modulo:
+                    return $"({operands[0]} % {operands[1]})";
+                case ExpressionType.Multiply:
+                    return $"({operands[0]} * {operands[1]})";
+                case ExpressionType.MultiplyChecked:
+                    return $"checked({operands[0]} * {operands[1]})";
+                case ExpressionType.Negate:
+                    return $"(-{operands[0]})";
+                case ExpressionType.Not when operands[0].Type == typeof(bool) || operands[0].Type == typeof(bool?):
+                    return $"(!{operands[0]})";
+                case ExpressionType.Not:
+                    return $"(~{operands[0]})";
+                case ExpressionType.NotEqual:
+                    return $"({operands[0]} != {operands[1]})";
+                case ExpressionType.OnesComplement:
+                    return $"(~{operands[0]})";
+                case ExpressionType.Or:
+                    return $"({operands[0]} | {operands[1]})";
+                case ExpressionType.Power:
+                    return $"{nameof(Math)}.{nameof(Math.Pow)}({operands[0]}, {operands[1]})";
+                case ExpressionType.RightShift:
+                    return $"({operands[0]} >> {operands[1]})";
+                case ExpressionType.Subtract:
+                    return $"({operands[0]} - {operands[1]})";
+                case ExpressionType.SubtractChecked:
+                    return $"checked({operands[0]} + {operands[1]})";
+                case ExpressionType.UnaryPlus:
+                    return $"(+{operands[0]})";
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(expressionType));
+            }
+        }
 
         static PropertyInfo GetPropertyFromGetMethod(MethodInfo getMethod) => getMethod.DeclaringType.GetRuntimeProperties().FirstOrDefault(property => property.GetMethod == getMethod);
 
@@ -371,7 +428,9 @@ namespace Gear.ActiveExpressions
         object val;
         readonly FastEqualityComparer valueEqualityComparer;
 
-        protected abstract void Evaluate();
+        protected virtual void Evaluate()
+        {
+        }
 
         void EvaluateIfDeferred()
         {
