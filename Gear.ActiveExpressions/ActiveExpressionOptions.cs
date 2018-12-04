@@ -55,6 +55,8 @@ namespace Gear.ActiveExpressions
             {
                 case BinaryExpression binary:
                     return AddMethodReturnValueDisposal(binary.Method);
+                case MemberExpression member when member.Member is PropertyInfo property:
+                    return AddPropertyValueDisposal(property);
                 case MethodCallExpression methodCall:
                     return AddMethodReturnValueDisposal(methodCall.Method);
                 case UnaryExpression unary:
@@ -102,6 +104,8 @@ namespace Gear.ActiveExpressions
             {
                 case BinaryExpression binary:
                     return IsMethodReturnValueDisposed(binary.Method);
+                case MemberExpression member when member.Member is PropertyInfo property:
+                    return IsPropertyValueDisposed(property);
                 case MethodCallExpression methodCall:
                     return IsMethodReturnValueDisposed(methodCall.Method);
                 case UnaryExpression unary:
@@ -134,6 +138,8 @@ namespace Gear.ActiveExpressions
             {
                 case BinaryExpression binary:
                     return RemoveMethodReturnValueDisposal(binary.Method);
+                case MemberExpression member when member.Member is PropertyInfo property:
+                    return RemovePropertyValueDisposal(property);
                 case MethodCallExpression methodCall:
                     return RemoveMethodReturnValueDisposal(methodCall.Method);
                 case UnaryExpression unary:

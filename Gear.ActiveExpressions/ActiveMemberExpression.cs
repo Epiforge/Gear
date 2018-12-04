@@ -68,10 +68,6 @@ namespace Gear.ActiveExpressions
                     getMethod = property.GetMethod;
                     fastGetter = GetFastMethodInfo(getMethod);
                     break;
-                case null:
-                    throw new ArgumentNullException(nameof(member));
-                default:
-                    throw new NotSupportedException($"Cannot get value using {this.member.GetType().Name} for \"{member.DeclaringType.FullName}.{member.Name}\"");
             }
             EvaluateIfNotDeferred();
         }
@@ -89,10 +85,6 @@ namespace Gear.ActiveExpressions
                     getMethod = property.GetMethod;
                     fastGetter = GetFastMethodInfo(getMethod);
                     break;
-                case null:
-                    throw new ArgumentNullException(nameof(member));
-                default:
-                    throw new NotSupportedException($"Cannot get value using {this.member.GetType().Name} for \"{member.DeclaringType.FullName}.{member.Name}\"");
             }
             EvaluateIfNotDeferred();
         }
@@ -173,7 +165,7 @@ namespace Gear.ActiveExpressions
                         Value = fastGetter.Invoke(expressionValue, emptyArray);
                     }
                     else
-                        Value = field.GetValue(expressionValue);
+                        Value = field.GetValue(expression?.Value);
                 }
             }
             catch (Exception ex)

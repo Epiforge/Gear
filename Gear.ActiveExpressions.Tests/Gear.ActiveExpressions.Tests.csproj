@@ -123,6 +123,7 @@
     <Compile Include="ActiveAndAlsoExpression.cs" />
     <Compile Include="ActiveBinaryExpression.cs" />
     <Compile Include="ActiveIndexExpression.cs" />
+    <Compile Include="ActiveMemberExpression.cs" />
     <Compile Include="ActiveUnaryExpression.cs" />
     <Compile Include="AsyncDisposableTestPerson.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
