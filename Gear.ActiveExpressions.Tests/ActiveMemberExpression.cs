@@ -30,6 +30,20 @@ namespace Gear.ActiveExpressions.Tests
         #endregion Test Classes
 
         [Test]
+        public void Closure()
+        {
+            var x = 3;
+            var john = TestPerson.CreateJohn();
+            var emily = TestPerson.CreateEmily();
+            using (var expr = ActiveExpression.Create(p1 => p1.Name == null ? x : emily.Name.Length, john))
+            {
+                Assert.AreEqual(5, expr.Value);
+                john.Name = null;
+                Assert.AreEqual(3, expr.Value);
+            }
+        }
+
+        [Test]
         public void FieldValue()
         {
             var team = (developer: TestPerson.CreateJohn(), artist: TestPerson.CreateEmily());
