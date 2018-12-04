@@ -3,6 +3,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Reflection;
 
 namespace Gear.ActiveExpressions
@@ -38,19 +39,35 @@ namespace Gear.ActiveExpressions
         public bool AddConstructedTypeDisposal(Type type, params Type[] constuctorParameterTypes)
         {
             RequireUnfrozen();
-            return disposeConstructedTypes.TryAdd((type, new EquatableList<Type>(constuctorParameterTypes)), false);
+            return disposeConstructedTypes.TryAdd((type, new EquatableList<Type>(constuctorParameterTypes)), true);
         }
 
         public bool AddConstructedTypeDisposal(ConstructorInfo constructor)
         {
             RequireUnfrozen();
-            return disposeConstructedTypes.TryAdd((constructor.DeclaringType, new EquatableList<Type>(constructor.GetParameters().Select(parameterInfo => parameterInfo.ParameterType).ToList())), false);
+            return disposeConstructedTypes.TryAdd((constructor.DeclaringType, new EquatableList<Type>(constructor.GetParameters().Select(parameterInfo => parameterInfo.ParameterType).ToList())), true);
+        }
+
+        public bool AddExpressionValueDisposal<T>(Expression<Func<T>> lambda)
+        {
+            RequireUnfrozen();
+            switch (lambda.Body)
+            {
+                case BinaryExpression binary:
+                    return AddMethodReturnValueDisposal(binary.Method);
+                case MethodCallExpression methodCall:
+                    return AddMethodReturnValueDisposal(methodCall.Method);
+                case UnaryExpression unary:
+                    return AddMethodReturnValueDisposal(unary.Method);
+                default:
+                    throw new ArgumentException("Expression type not supported", nameof(lambda));
+            }
         }
 
         public bool AddMethodReturnValueDisposal(MethodInfo method)
         {
             RequireUnfrozen();
-            return disposeMethodReturnValues.TryAdd(method, false);
+            return disposeMethodReturnValues.TryAdd(method, true);
         }
 
         public bool AddPropertyValueDisposal(PropertyInfo property)
@@ -79,6 +96,21 @@ namespace Gear.ActiveExpressions
 
         public bool IsConstructedTypeDisposed(ConstructorInfo constructor) => disposeConstructedTypes.ContainsKey((constructor.DeclaringType, new EquatableList<Type>(constructor.GetParameters().Select(parameterInfo => parameterInfo.ParameterType).ToList())));
 
+        public bool IsExpressionValueDisposal<T>(Expression<Func<T>> lambda)
+        {
+            switch (lambda.Body)
+            {
+                case BinaryExpression binary:
+                    return IsMethodReturnValueDisposed(binary.Method);
+                case MethodCallExpression methodCall:
+                    return IsMethodReturnValueDisposed(methodCall.Method);
+                case UnaryExpression unary:
+                    return IsMethodReturnValueDisposed(unary.Method);
+                default:
+                    throw new ArgumentException("Expression type not supported", nameof(lambda));
+            }
+        }
+
         public bool IsMethodReturnValueDisposed(MethodInfo method) => (method.IsStatic && DisposeStaticMethodReturnValues) || disposeMethodReturnValues.ContainsKey(method);
 
         public bool IsPropertyValueDisposed(PropertyInfo property) => IsMethodReturnValueDisposed(property.GetMethod);
@@ -93,6 +125,22 @@ namespace Gear.ActiveExpressions
         {
             RequireUnfrozen();
             return disposeConstructedTypes.TryRemove((constructor.DeclaringType, new EquatableList<Type>(constructor.GetParameters().Select(parameterInfo => parameterInfo.ParameterType).ToList())), out var discard);
+        }
+
+        public bool RemoveExpressionValueDisposal<T>(Expression<Func<T>> lambda)
+        {
+            RequireUnfrozen();
+            switch (lambda.Body)
+            {
+                case BinaryExpression binary:
+                    return RemoveMethodReturnValueDisposal(binary.Method);
+                case MethodCallExpression methodCall:
+                    return RemoveMethodReturnValueDisposal(methodCall.Method);
+                case UnaryExpression unary:
+                    return RemoveMethodReturnValueDisposal(unary.Method);
+                default:
+                    throw new ArgumentException("Expression type not supported", nameof(lambda));
+            }
         }
 
         public bool RemoveMethodReturnValueDisposal(MethodInfo method)

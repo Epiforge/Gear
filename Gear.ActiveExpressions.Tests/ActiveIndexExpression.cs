@@ -4,7 +4,10 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Collections.ObjectModel;
 using System.Linq;
+using System.Linq.Expressions;
+using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -84,6 +87,62 @@ namespace Gear.ActiveExpressions.Tests
                 Assert.IsFalse(expr1 != expr2);
                 Assert.IsTrue(expr1 != expr3);
                 Assert.IsTrue(expr1 != expr4);
+            }
+        }
+
+        [Test]
+        public void ValueAsyncDisposal()
+        {
+            var john = AsyncDisposableTestPerson.CreateJohn();
+            var emily = AsyncDisposableTestPerson.CreateEmily();
+            var people = new ObservableCollection<AsyncDisposableTestPerson> { john };
+            var options = new ActiveExpressionOptions();
+            options.AddExpressionValueDisposal(() => new ObservableCollection<AsyncDisposableTestPerson>()[0]);
+            using (var ae = ActiveExpression.Create(p => p[0], people, options))
+            {
+                Assert.AreSame(john, ae.Value);
+                Assert.IsFalse(john.IsDisposed);
+                people[0] = emily;
+                Assert.AreSame(emily, ae.Value);
+                Assert.IsTrue(john.IsDisposed);
+            }
+            Assert.IsTrue(emily.IsDisposed);
+        }
+
+        [Test]
+        public void ValueDisposal()
+        {
+            var john = SyncDisposableTestPerson.CreateJohn();
+            var emily = SyncDisposableTestPerson.CreateEmily();
+            var people = new ObservableCollection<SyncDisposableTestPerson> { john };
+            var options = new ActiveExpressionOptions();
+            options.AddExpressionValueDisposal(() => new ObservableCollection<SyncDisposableTestPerson>()[0]);
+            using (var expr = ActiveExpression.Create(p => p[0], people, options))
+            {
+                Assert.AreSame(john, expr.Value);
+                Assert.IsFalse(john.IsDisposed);
+                people[0] = emily;
+                Assert.AreSame(emily, expr.Value);
+                Assert.IsTrue(john.IsDisposed);
+            }
+            Assert.IsTrue(emily.IsDisposed);
+        }
+
+        [Test]
+        public void ValueDisposalFault()
+        {
+            var john = SyncDisposableTestPerson.CreateJohn();
+            john.ThrowOnDispose = true;
+            var people = new ObservableCollection<SyncDisposableTestPerson> { john };
+            var options = new ActiveExpressionOptions();
+            options.AddExpressionValueDisposal(() => new ObservableCollection<SyncDisposableTestPerson>()[0]);
+            using (var expr = ActiveExpression.Create(p => p[0], people, options))
+            {
+                Assert.IsNull(expr.Fault);
+                people[0] = SyncDisposableTestPerson.CreateJohn();
+                Assert.IsNotNull(expr.Fault);
+                people[0] = SyncDisposableTestPerson.CreateJohn();
+                Assert.IsNull(expr.Fault);
             }
         }
     }
