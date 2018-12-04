@@ -108,8 +108,8 @@ namespace Gear.Components
 
         event EventHandler<NotifyDictionaryValueEventArgs> INotifyDictionaryChanged.ValueRemoved
         {
-            add => UntypedValueAdded += value;
-            remove => UntypedValueAdded -= value;
+            add => UntypedValueRemoved += value;
+            remove => UntypedValueRemoved -= value;
         }
 
         event EventHandler<NotifyDictionaryValueReplacedEventArgs> INotifyDictionaryChanged.ValueReplaced
