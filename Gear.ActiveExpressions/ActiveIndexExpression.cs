@@ -46,7 +46,6 @@ namespace Gear.ActiveExpressions
             this.arguments = arguments;
             foreach (var argument in this.arguments)
                 argument.PropertyChanged += ArgumentPropertyChanged;
-            SubscribeToObjectValueNotifications();
             EvaluateIfNotDeferred();
         }
 
@@ -148,8 +147,6 @@ namespace Gear.ActiveExpressions
                             if (e.NewStartingIndex <= index)
                                 Evaluate();
                         }
-                        else
-                            Evaluate();
                     }
                     break;
                 case NotifyCollectionChangedAction.Move:
@@ -160,8 +157,6 @@ namespace Gear.ActiveExpressions
                             if ((index >= e.OldStartingIndex && index < e.OldStartingIndex + movingCount) || (index >= e.NewStartingIndex && index < e.NewStartingIndex + movingCount))
                                 Evaluate();
                         }
-                        else
-                            Evaluate();
                     }
                     break;
                 case NotifyCollectionChangedAction.Remove:
@@ -171,8 +166,6 @@ namespace Gear.ActiveExpressions
                             if (e.OldStartingIndex <= index)
                                 Evaluate();
                         }
-                        else
-                            Evaluate();
                     }
                     break;
                 case NotifyCollectionChangedAction.Replace:
@@ -184,8 +177,6 @@ namespace Gear.ActiveExpressions
                             if ((oldCount != newCount && (e.OldStartingIndex >= 0 || e.NewStartingIndex >= 0) && index >= Math.Min(Math.Max(e.OldStartingIndex, 0), Math.Max(e.NewStartingIndex, 0))) || (e.OldStartingIndex >= 0 && index >= e.OldStartingIndex && index < e.OldStartingIndex + oldCount) || (e.NewStartingIndex >= 0 && index >= e.NewStartingIndex && index < e.NewStartingIndex + newCount))
                                 Evaluate();
                         }
-                        else
-                            Evaluate();
                     }
                     break;
                 case NotifyCollectionChangedAction.Reset:
@@ -223,9 +214,9 @@ namespace Gear.ActiveExpressions
                 var key = arguments[0].Value;
                 if (key != null)
                 {
-                    var keyValuePair = e.KeyValuePairs?.FirstOrDefault(kv => key.Equals(kv.Key));
-                    if (keyValuePair != null)
-                        Value = keyValuePair.Value.Value;
+                    var keyValuePair = e.KeyValuePairs?.FirstOrDefault(kv => key.Equals(kv.Key)) ?? default;
+                    if (keyValuePair.Key != null)
+                        Value = keyValuePair.Value;
                 }
             }
         }
@@ -235,12 +226,8 @@ namespace Gear.ActiveExpressions
             if (arguments.Count == 1)
             {
                 var key = arguments[0].Value;
-                if (key != null)
-                {
-                    var keyValuePair = e.KeyValuePairs?.FirstOrDefault(kv => key.Equals(kv.Key));
-                    if (keyValuePair != null)
-                        Fault = new KeyNotFoundException($"Key '{key}' was removed");
-                }
+                if (key != null && (e.KeyValuePairs?.Any(kv => key.Equals(kv.Key)) ?? false))
+                    Fault = new KeyNotFoundException($"Key '{key}' was removed");
             }
         }
 

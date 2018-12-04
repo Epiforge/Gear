@@ -67,7 +67,6 @@ namespace Gear.ActiveExpressions
                     this.property = property;
                     getMethod = property.GetMethod;
                     fastGetter = GetFastMethodInfo(getMethod);
-                    SubscribeToExpressionValueNotifications();
                     break;
                 case null:
                     throw new ArgumentNullException(nameof(member));
@@ -89,7 +88,6 @@ namespace Gear.ActiveExpressions
                     this.property = property;
                     getMethod = property.GetMethod;
                     fastGetter = GetFastMethodInfo(getMethod);
-                    SubscribeToExpressionValueNotifications();
                     break;
                 case null:
                     throw new ArgumentNullException(nameof(member));
