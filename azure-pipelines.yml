@@ -37,8 +37,7 @@ steps:
   displayName: 'Publish to NuGet.org'
   inputs:
     command: push
-    nuGetFeedType: external
+    publishVstsFeed: 'gear'
     packagesToPush: '$(Build.SourcesDirectory)/Gear.*/bin/Release/*.nupkg'
     allowPackageConflicts: true
-    publishFeedCredentials: 'NuGet'
   condition: and(succeeded(), eq(variables['publishNuGet'], 'true'))
