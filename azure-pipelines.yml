@@ -34,7 +34,7 @@ steps:
     configuration: '$(buildConfiguration)'
 
 - task: NuGetCommand@2
-  displayName: 'Publish to NuGet.org'
+  displayName: 'Publish to internal NuGet feed'
   inputs:
     command: push
     publishVstsFeed: 'gear'
