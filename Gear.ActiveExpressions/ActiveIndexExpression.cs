@@ -42,6 +42,7 @@ namespace Gear.ActiveExpressions
             getMethod = this.indexer.GetMethod;
             fastGetter = GetFastMethodInfo(getMethod);
             this.@object = @object;
+            DisallowStaticIndexers();
             this.@object.PropertyChanged += ObjectPropertyChanged;
             this.arguments = arguments;
             foreach (var argument in this.arguments)
@@ -58,6 +59,13 @@ namespace Gear.ActiveExpressions
         object objectValue;
 
         void ArgumentPropertyChanged(object sender, PropertyChangedEventArgs e) => Evaluate();
+
+        [ExcludeFromCodeCoverage]
+        void DisallowStaticIndexers()
+        {
+            if (@object == null)
+                throw new NotSupportedException("Static indexers are not supported");
+        }
 
         protected override bool Dispose(bool disposing)
         {

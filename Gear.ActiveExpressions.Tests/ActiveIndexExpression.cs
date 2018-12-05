@@ -1,11 +1,14 @@
 using Gear.Components;
 using NUnit.Framework;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
+using System.Linq.Expressions;
+using System.Reflection;
 
 namespace Gear.ActiveExpressions.Tests
 {
@@ -158,6 +161,17 @@ namespace Gear.ActiveExpressions.Tests
                 Assert.IsTrue(expr1.Equals(expr2));
                 Assert.IsFalse(expr1.Equals(expr3));
                 Assert.IsFalse(expr1.Equals(expr4));
+            }
+        }
+
+        [Test]
+        public void ManualCreation()
+        {
+            var people = new List<TestPerson>() { TestPerson.CreateEmily() };
+            using (var expr = ActiveExpression.Create(Expression.Lambda<Func<string>>(Expression.MakeMemberAccess(Expression.MakeIndex(Expression.Constant(people), typeof(List<TestPerson>).GetRuntimeProperties().First(p => p.GetIndexParameters().Length > 0), new Expression[] { Expression.Constant(0) }), typeof(TestPerson).GetRuntimeProperty(nameof(TestPerson.Name))))))
+            {
+                Assert.IsNull(expr.Fault);
+                Assert.AreEqual("Emily", expr.Value);
             }
         }
 

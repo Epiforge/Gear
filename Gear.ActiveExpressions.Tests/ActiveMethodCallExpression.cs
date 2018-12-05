@@ -1,5 +1,10 @@
 using NUnit.Framework;
+using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Linq;
+using System.Linq.Expressions;
+using System.Reflection;
 
 namespace Gear.ActiveExpressions.Tests
 {
@@ -17,6 +22,20 @@ namespace Gear.ActiveExpressions.Tests
         TestPerson ReversedCombinePeople(TestPerson a, TestPerson b) => new TestPerson { Name = $"{b.Name} {a.Name}" };
 
         #endregion Test Methods
+
+        [Test]
+        public void ActuallyAProperty()
+        {
+            var emily = TestPerson.CreateEmily();
+            using (var expr = ActiveExpression.Create(Expression.Lambda<Func<string>>(Expression.Call(Expression.Constant(emily), typeof(TestPerson).GetRuntimeProperty(nameof(TestPerson.Name)).GetMethod))))
+            {
+                Assert.IsNull(expr.Fault);
+                Assert.AreEqual("Emily", expr.Value);
+                emily.Name = "E";
+                Assert.IsNull(expr.Fault);
+                Assert.AreEqual("E", expr.Value);
+            }
+        }
 
         [Test]
         public void ArgumentFaultPropagation()

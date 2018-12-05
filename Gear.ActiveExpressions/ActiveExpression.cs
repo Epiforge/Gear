@@ -48,11 +48,7 @@ namespace Gear.ActiveExpressions
                     break;
                 case MethodCallExpression methodCallExpressionForPropertyGet when propertyGetMethodToProperty.GetOrAdd(methodCallExpressionForPropertyGet.Method, GetPropertyFromGetMethod) is PropertyInfo property:
                     if (methodCallExpressionForPropertyGet.Arguments.Count > 0)
-                    {
-                        if (methodCallExpressionForPropertyGet.Object == null)
-                            DisallowStaticIndexers();
                         activeExpression = ActiveIndexExpression.Create(Expression.MakeIndex(methodCallExpressionForPropertyGet.Object, property, methodCallExpressionForPropertyGet.Arguments), options, deferEvaluation);
-                    }
                     else
                         activeExpression = ActiveMemberExpression.Create(Expression.MakeMemberAccess(methodCallExpressionForPropertyGet.Object, property), options, deferEvaluation);
                     break;
@@ -234,9 +230,6 @@ namespace Gear.ActiveExpressions
             options?.Freeze();
             return ActiveExpression<TArg1, TArg2, TArg3, TResult>.Create(expression, arg1, arg2, arg3, options);
         }
-
-        [ExcludeFromCodeCoverage]
-        protected static void DisallowStaticIndexers() => throw new NotSupportedException("Static indexers are not supported");
 
         protected static string GetValueLiteral(Exception fault, bool deferred, object value)
         {
@@ -423,6 +416,7 @@ namespace Gear.ActiveExpressions
         object val;
         readonly FastEqualityComparer valueEqualityComparer;
 
+        [ExcludeFromCodeCoverage]
         protected virtual void Evaluate()
         {
         }
