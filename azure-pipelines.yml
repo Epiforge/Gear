@@ -29,12 +29,15 @@ steps:
     configuration: '$(buildConfiguration)'
 
 - task: CopyFiles@2
+  displayName: 'Copy artifacts to staging'
   inputs:
     sourceFolder: '$(Build.SourcesDirectory)'
     contents: '**/$(BuildConfiguration)/**/?(*.nupkg)'
     targetFolder: '$(Build.ArtifactStagingDirectory)'
+    flattenFolders: true
     
 - task: PublishBuildArtifacts@1
+  displayName: 'Publish artifacts'
   inputs:
     pathtoPublish: '$(Build.ArtifactStagingDirectory)'
     artifactName: drop
