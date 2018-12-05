@@ -11,33 +11,36 @@ variables:
   buildPlatform: 'Any CPU'
   buildConfiguration: 'Release'
 
-steps:
-- task: NuGetToolInstaller@0
-  displayName: 'Initialize NuGet tooling'
+jobs:
+- job: Build, test, and deploy Gear
 
-- task: NuGetCommand@2
-  displayName: 'Restore NuGet packages'
-  inputs:
-    restoreSolution: '$(solution)'
+  steps:
+  - task: NuGetToolInstaller@0
+    displayName: 'Initialize NuGet tooling'
 
-- task: VSBuild@1
-  displayName: 'Build solution'
-  inputs:
-    solution: '$(solution)'
-    platform: '$(buildPlatform)'
-    configuration: '$(buildConfiguration)'
+  - task: NuGetCommand@2
+    displayName: 'Restore NuGet packages'
+    inputs:
+      restoreSolution: '$(solution)'
 
-- task: VSTest@2
-  displayName: 'Run unit tests'
-  inputs:
-    platform: '$(buildPlatform)'
-    configuration: '$(buildConfiguration)'
+  - task: VSBuild@1
+    displayName: 'Build solution'
+    inputs:
+      solution: '$(solution)'
+      platform: '$(buildPlatform)'
+      configuration: '$(buildConfiguration)'
 
-- task: NuGetCommand@2
-  displayName: 'Publish to NuGet.org'
-  inputs:
-    command: push
-    nuGetFeedType: external
-    packagesToPush: '$(Build.ArtifactStagingDirectory)/**/*.nupkg'
-    publishFeedCredentials: 'NuGet'
-  condition: and(succeeded(), eq(variables['publishNuGet'], 'true'))
+  - task: VSTest@2
+    displayName: 'Run unit tests'
+    inputs:
+      platform: '$(buildPlatform)'
+      configuration: '$(buildConfiguration)'
+
+  - task: NuGetCommand@2
+    displayName: 'Publish to NuGet.org'
+    inputs:
+      command: push
+      nuGetFeedType: external
+      packagesToPush: 'Gear.*/Release/*.nupkg'
+      publishFeedCredentials: 'NuGet'
+    condition: and(succeeded(), eq(variables['publishNuGet'], 'true'))
