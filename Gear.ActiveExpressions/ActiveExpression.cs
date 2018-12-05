@@ -327,7 +327,8 @@ namespace Gear.ActiveExpressions
                 case MethodCallExpression methodCallExpression:
                     return methodCallExpression.Object == null ? Expression.Call(methodCallExpression.Method, methodCallExpression.Arguments.Select(argument => ReplaceParameters(parameterTranslation, argument))) : Expression.Call(ReplaceParameters(parameterTranslation, methodCallExpression.Object), methodCallExpression.Method, methodCallExpression.Arguments.Select(argument => ReplaceParameters(parameterTranslation, argument)));
                 case NewExpression newExpression:
-                    return Expression.New(newExpression.Constructor, newExpression.Arguments.Select(argument => ReplaceParameters(parameterTranslation, argument)), newExpression.Members);
+                    var newArguments = newExpression.Arguments.Select(argument => ReplaceParameters(parameterTranslation, argument));
+                    return newExpression.Members == null ? Expression.New(newExpression.Constructor, newArguments) : Expression.New(newExpression.Constructor, newArguments, newExpression.Members);
                 case ParameterExpression parameterExpression:
                     return parameterTranslation[parameterExpression];
                 case UnaryExpression unaryExpression:

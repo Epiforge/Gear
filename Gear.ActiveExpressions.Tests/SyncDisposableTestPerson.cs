@@ -23,6 +23,14 @@ namespace Gear.ActiveExpressions.Tests
             throwOnDispose = syncDisposableTestPerson.throwOnDispose
         };
 
+        public SyncDisposableTestPerson()
+        {
+        }
+
+        public SyncDisposableTestPerson(string name) => this.name = name;
+
+        public SyncDisposableTestPerson(string name, bool throwOnDispose) : this(name) => this.throwOnDispose = throwOnDispose;
+
         string name;
         long nameGets;
         bool throwOnDispose;

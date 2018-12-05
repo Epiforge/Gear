@@ -15,6 +15,12 @@ namespace Gear.ActiveExpressions.Tests
 
         public static AsyncDisposableTestPerson operator -(AsyncDisposableTestPerson asyncDisposableTestPerson) => new AsyncDisposableTestPerson { name = new string(asyncDisposableTestPerson.name.Reverse().ToArray()) };
 
+        public AsyncDisposableTestPerson()
+        {
+        }
+
+        public AsyncDisposableTestPerson(string name) => this.name = name;
+
         string name;
         long nameGets;
 

@@ -125,6 +125,7 @@
     <Compile Include="ActiveIndexExpression.cs" />
     <Compile Include="ActiveMemberExpression.cs" />
     <Compile Include="ActiveMethodCallExpression.cs" />
+    <Compile Include="ActiveNewExpression.cs" />
     <Compile Include="ActiveUnaryExpression.cs" />
     <Compile Include="AsyncDisposableTestPerson.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

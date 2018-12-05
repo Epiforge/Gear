@@ -17,14 +17,14 @@ namespace Gear.ActiveExpressions
         public static bool operator ==(ActiveExpressionOptions a, ActiveExpressionOptions b) =>
             a?.DisposeConstructedObjects == b?.DisposeConstructedObjects &&
             a?.DisposeStaticMethodReturnValues == b?.DisposeStaticMethodReturnValues &&
-            (a?.disposeConstructedTypes.OrderBy(kv => kv.Key).Select(kv => (key: kv.Key, value: kv.Value)) ?? Enumerable.Empty<((Type type, EquatableList<Type> constuctorParameterTypes) key, bool value)>()).SequenceEqual(b?.disposeConstructedTypes.OrderBy(kv => kv.Key).Select(kv => (key: kv.Key, value: kv.Value)) ?? Enumerable.Empty<((Type type, EquatableList<Type> constuctorParameterTypes) key, bool value)>()) &&
-            (a?.disposeMethodReturnValues.OrderBy(kv => kv.Key).Select(kv => (key: kv.Key, value: kv.Value)) ?? Enumerable.Empty<(MethodInfo key, bool value)>()).SequenceEqual(b?.disposeMethodReturnValues.OrderBy(kv => kv.Key).Select(kv => (key: kv.Key, value: kv.Value)) ?? Enumerable.Empty<(MethodInfo key, bool value)>());
+            (a?.disposeConstructedTypes.OrderBy(kv => $"{kv.Key.type}({string.Join(", ", kv.Key.constuctorParameterTypes.Select(p => p))})").Select(kv => (key: kv.Key, value: kv.Value)) ?? Enumerable.Empty<((Type type, EquatableList<Type> constuctorParameterTypes) key, bool value)>()).SequenceEqual(b?.disposeConstructedTypes.OrderBy(kv => $"{kv.Key.type}({string.Join(", ", kv.Key.constuctorParameterTypes.Select(p => p))})").Select(kv => (key: kv.Key, value: kv.Value)) ?? Enumerable.Empty<((Type type, EquatableList<Type> constuctorParameterTypes) key, bool value)>()) &&
+            (a?.disposeMethodReturnValues.OrderBy(kv => $"{kv.Key.DeclaringType.FullName}.{kv.Key.Name}({string.Join(", ", kv.Key.GetParameters().Select(p => p.ParameterType))})").Select(kv => (key: kv.Key, value: kv.Value)) ?? Enumerable.Empty<(MethodInfo key, bool value)>()).SequenceEqual(b?.disposeMethodReturnValues.OrderBy(kv => $"{kv.Key.DeclaringType.FullName}.{kv.Key.Name}({string.Join(", ", kv.Key.GetParameters().Select(p => p.ParameterType))})").Select(kv => (key: kv.Key, value: kv.Value)) ?? Enumerable.Empty<(MethodInfo key, bool value)>());
 
         public static bool operator !=(ActiveExpressionOptions a, ActiveExpressionOptions b) =>
             a?.DisposeConstructedObjects != b?.DisposeConstructedObjects ||
             a?.DisposeStaticMethodReturnValues != b?.DisposeStaticMethodReturnValues ||
-            !(a?.disposeConstructedTypes.OrderBy(kv => kv.Key).Select(kv => (key: kv.Key, value: kv.Value)) ?? Enumerable.Empty<((Type type, EquatableList<Type> constuctorParameterTypes) key, bool value)>()).SequenceEqual(b?.disposeConstructedTypes.OrderBy(kv => kv.Key).Select(kv => (key: kv.Key, value: kv.Value)) ?? Enumerable.Empty<((Type type, EquatableList<Type> constuctorParameterTypes) key, bool value)>()) ||
-            !(a?.disposeMethodReturnValues.OrderBy(kv => kv.Key).Select(kv => (key: kv.Key, value: kv.Value)) ?? Enumerable.Empty<(MethodInfo key, bool value)>()).SequenceEqual(b?.disposeMethodReturnValues.OrderBy(kv => kv.Key).Select(kv => (key: kv.Key, value: kv.Value)) ?? Enumerable.Empty<(MethodInfo key, bool value)>());
+            !(a?.disposeConstructedTypes.OrderBy(kv => $"{kv.Key.type}({string.Join(", ", kv.Key.constuctorParameterTypes.Select(p => p))})").Select(kv => (key: kv.Key, value: kv.Value)) ?? Enumerable.Empty<((Type type, EquatableList<Type> constuctorParameterTypes) key, bool value)>()).SequenceEqual(b?.disposeConstructedTypes.OrderBy(kv => $"{kv.Key.type}({string.Join(", ", kv.Key.constuctorParameterTypes.Select(p => p))})").Select(kv => (key: kv.Key, value: kv.Value)) ?? Enumerable.Empty<((Type type, EquatableList<Type> constuctorParameterTypes) key, bool value)>()) ||
+            !(a?.disposeMethodReturnValues.OrderBy(kv => $"{kv.Key.DeclaringType.FullName}.{kv.Key.Name}({string.Join(", ", kv.Key.GetParameters().Select(p => p.ParameterType))})").Select(kv => (key: kv.Key, value: kv.Value)) ?? Enumerable.Empty<(MethodInfo key, bool value)>()).SequenceEqual(b?.disposeMethodReturnValues.OrderBy(kv => $"{kv.Key.DeclaringType.FullName}.{kv.Key.Name}({string.Join(", ", kv.Key.GetParameters().Select(p => p.ParameterType))})").Select(kv => (key: kv.Key, value: kv.Value)) ?? Enumerable.Empty<(MethodInfo key, bool value)>());
 
         public ActiveExpressionOptions()
         {
@@ -55,6 +55,8 @@ namespace Gear.ActiveExpressions
             {
                 case BinaryExpression binary:
                     return AddMethodReturnValueDisposal(binary.Method);
+                case NewExpression @new:
+                    return AddConstructedTypeDisposal(@new.Constructor);
                 case MemberExpression member when member.Member is PropertyInfo property:
                     return AddPropertyValueDisposal(property);
                 case MethodCallExpression methodCall:
@@ -87,8 +89,8 @@ namespace Gear.ActiveExpressions
             if (!isFrozen)
                 return base.GetHashCode();
             var objects = new List<object>() { DisposeConstructedObjects, DisposeStaticMethodReturnValues };
-            objects.AddRange(disposeConstructedTypes.OrderBy(kv => kv.Key).Select(kv => (key: kv.Key, value: kv.Value)).Cast<object>());
-            objects.AddRange(disposeConstructedTypes.OrderBy(kv => kv.Key).Select(kv => (key: kv.Key, value: kv.Value)).Cast<object>());
+            objects.AddRange(disposeConstructedTypes.OrderBy(kv => $"{kv.Key.type}({string.Join(", ", kv.Key.constuctorParameterTypes.Select(p => p))})").Select(kv => (key: kv.Key, value: kv.Value)).Cast<object>());
+            objects.AddRange(disposeMethodReturnValues.OrderBy(kv => $"{kv.Key.DeclaringType.FullName}.{kv.Key.Name}({string.Join(", ", kv.Key.GetParameters().Select(p => p.ParameterType))})").Select(kv => (key: kv.Key, value: kv.Value)).Cast<object>());
             return HashCodes.CombineObjects(objects.ToArray());
         }
 
@@ -104,6 +106,8 @@ namespace Gear.ActiveExpressions
             {
                 case BinaryExpression binary:
                     return IsMethodReturnValueDisposed(binary.Method);
+                case NewExpression @new:
+                    return IsConstructedTypeDisposed(@new.Constructor);
                 case MemberExpression member when member.Member is PropertyInfo property:
                     return IsPropertyValueDisposed(property);
                 case MethodCallExpression methodCall:
@@ -138,6 +142,8 @@ namespace Gear.ActiveExpressions
             {
                 case BinaryExpression binary:
                     return RemoveMethodReturnValueDisposal(binary.Method);
+                case NewExpression @new:
+                    return RemoveConstructedTypeDisposal(@new.Constructor);
                 case MemberExpression member when member.Member is PropertyInfo property:
                     return RemovePropertyValueDisposal(property);
                 case MethodCallExpression methodCall:

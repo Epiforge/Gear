@@ -14,6 +14,12 @@ namespace Gear.ActiveExpressions.Tests
 
         public static TestPerson operator -(TestPerson testPerson) => new TestPerson { name = new string(testPerson.name.Reverse().ToArray()) };
 
+        public TestPerson()
+        {
+        }
+
+        public TestPerson(string name) => this.name = name;
+
         string name;
         long nameGets;
 
