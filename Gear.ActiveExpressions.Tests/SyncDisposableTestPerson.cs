@@ -37,7 +37,7 @@ namespace Gear.ActiveExpressions.Tests
 
         protected override void Dispose(bool disposing)
         {
-            if (throwOnDispose)
+            if (disposing && throwOnDispose)
                 throw new Exception("Throwing like I'm s'posed to!");
         }
 
