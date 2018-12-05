@@ -38,6 +38,6 @@ steps:
   inputs:
     command: push
     nuGetFeedType: external
-    packagesToPush: 'Gear.*/Release/*.nupkg'
+    packagesToPush: '$(Build.SourcesDirectory)/Gear.*/bin/Release/*.nupkg'
     publishFeedCredentials: 'NuGet'
   condition: and(succeeded(), eq(variables['publishNuGet'], 'true'))
