@@ -33,11 +33,13 @@ steps:
     platform: '$(buildPlatform)'
     configuration: '$(buildConfiguration)'
 
-- task: NuGetCommand@2
-  displayName: 'Publish to internal NuGet feed'
+- task: CopyFiles@2
   inputs:
-    command: push
-    publishVstsFeed: 'gear'
-    packagesToPush: '$(Build.SourcesDirectory)/Gear.*/bin/Release/*.nupkg'
-    allowPackageConflicts: true
-  condition: and(succeeded(), eq(variables['publishNuGet'], 'true'))
+    sourceFolder: '$(Build.SourcesDirectory)'
+    contents: '**/$(BuildConfiguration)/**/?(*.nupkg)'
+    targetFolder: '$(Build.ArtifactStagingDirectory)'
+    
+- task: PublishBuildArtifacts@1
+  inputs:
+    pathtoPublish: '$(Build.ArtifactStagingDirectory)'
+    artifactName: drop
