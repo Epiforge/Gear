@@ -13,25 +13,31 @@ variables:
 
 steps:
 - task: NuGetToolInstaller@0
+  displayName: 'Initialize NuGet tooling'
 
 - task: NuGetCommand@2
+  displayName: 'Restore NuGet packages'
   inputs:
     restoreSolution: '$(solution)'
 
 - task: VSBuild@1
+  displayName: 'Build solution'
   inputs:
     solution: '$(solution)'
     platform: '$(buildPlatform)'
     configuration: '$(buildConfiguration)'
 
 - task: VSTest@2
+  displayName: 'Run unit tests'
   inputs:
     platform: '$(buildPlatform)'
     configuration: '$(buildConfiguration)'
 
 - task: NuGetCommand@2
+  displayName: 'Publish to NuGet.org'
   inputs:
     command: push
     nuGetFeedType: external
+    packagesToPush: '$(Build.ArtifactStagingDirectory)/**/*.nupkg'
     publishFeedCredentials: 'NuGet'
   condition: and(succeeded(), eq(variables['publishNuGet'], 'true'))
