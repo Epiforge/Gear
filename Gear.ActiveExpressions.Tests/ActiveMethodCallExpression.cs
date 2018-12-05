@@ -97,6 +97,15 @@ namespace Gear.ActiveExpressions.Tests
         }
 
         [Test]
+        public void StringConversion()
+        {
+            var john = TestPerson.CreateJohn();
+            var emily = TestPerson.CreateEmily();
+            using (var expr = ActiveExpression.Create((p1, p2) => CombinePeople(p1, p2), john, emily))
+                Assert.AreEqual($"{{C}} /* {this} */.CombinePeople({{C}} /* {john} */, {{C}} /* {emily} */) /* {expr.Value} */", expr.ToString());
+        }
+
+        [Test]
         public void ValueAsyncDisposal()
         {
             var john = AsyncDisposableTestPerson.CreateJohn();
