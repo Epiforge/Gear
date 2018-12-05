@@ -44,13 +44,11 @@ namespace Gear.ActiveExpressions.Tests
         public void FaultPropagationIfFalse()
         {
             var john = TestPerson.CreateJohn();
+            john.Name = null;
             var emily = TestPerson.CreateEmily();
+            emily.Name = null;
             using (var expr = ActiveExpression.Create((p1, p2) => p1.Name != null ? p1.Name.Length : p2.Name.Length, john, emily))
             {
-                Assert.IsNull(expr.Fault);
-                john.Name = null;
-                Assert.IsNull(expr.Fault);
-                emily.Name = null;
                 Assert.IsNotNull(expr.Fault);
                 john.Name = "John";
                 Assert.IsNull(expr.Fault);
@@ -65,13 +63,11 @@ namespace Gear.ActiveExpressions.Tests
         public void FaultPropagationIfTrue()
         {
             var john = TestPerson.CreateJohn();
+            john.Name = null;
             var emily = TestPerson.CreateEmily();
+            emily.Name = null;
             using (var expr = ActiveExpression.Create((p1, p2) => p2.Name == null ? p1.Name.Length : p2.Name.Length, john, emily))
             {
-                Assert.IsNull(expr.Fault);
-                emily.Name = null;
-                Assert.IsNull(expr.Fault);
-                john.Name = null;
                 Assert.IsNotNull(expr.Fault);
                 emily.Name = "Emily";
                 Assert.IsNull(expr.Fault);
@@ -86,11 +82,10 @@ namespace Gear.ActiveExpressions.Tests
         public void FaultPropagationTest()
         {
             var john = TestPerson.CreateJohn();
+            john.Name = null;
             var emily = TestPerson.CreateEmily();
             using (var expr = ActiveExpression.Create((p1, p2) => p1.Name.Length > 0 ? p1.Name : p2.Name, john, emily))
             {
-                Assert.IsNull(expr.Fault);
-                john.Name = null;
                 Assert.IsNotNull(expr.Fault);
                 john.Name = "John";
                 Assert.IsNull(expr.Fault);
@@ -113,10 +108,10 @@ namespace Gear.ActiveExpressions.Tests
         {
             var john = TestPerson.CreateJohn();
             var emily = TestPerson.CreateEmily();
-            using (var expr1 = ActiveExpression.Create(p1 => p1.Name ?? string.Empty, john))
-            using (var expr2 = ActiveExpression.Create(p1 => p1.Name ?? string.Empty, john))
-            using (var expr3 = ActiveExpression.Create(p1 => p1.Name ?? "Another String", john))
-            using (var expr4 = ActiveExpression.Create(p1 => p1.Name ?? string.Empty, emily))
+            using (var expr1 = ActiveExpression.Create((p1, p2) => p1.Name.Length > 0 ? p1.Name : p2.Name, john, emily))
+            using (var expr2 = ActiveExpression.Create((p1, p2) => p1.Name.Length > 0 ? p1.Name : p2.Name, john, emily))
+            using (var expr3 = ActiveExpression.Create((p1, p2) => p2.Name.Length > 0 ? p2.Name : p1.Name, john, emily))
+            using (var expr4 = ActiveExpression.Create((p1, p2) => p1.Name.Length > 0 ? p1.Name : p2.Name, emily, john))
             {
                 Assert.IsFalse(expr1 != expr2);
                 Assert.IsTrue(expr1 != expr3);
@@ -155,6 +150,17 @@ namespace Gear.ActiveExpressions.Tests
             using (var expr = ActiveExpression.Create((p1, p2) => p1.Name.Length > 0 ? p1.Name : p2.Name, john, emily))
                 Assert.AreEqual(john.Name, expr.Value);
             Assert.AreEqual(0, emily.NameGets);
+        }
+
+        [Test]
+        public void StringConversion()
+        {
+            var john = TestPerson.CreateJohn();
+            john.Name = "X";
+            var emily = TestPerson.CreateEmily();
+            emily.Name = "Y";
+            using (var expr = ActiveExpression.Create((p1, p2) => p1.Name == null ? p1 : p2, john, emily))
+                Assert.AreEqual($"(({{C}} /* {john} */.Name /* \"X\" */ == {{C}} /* null */) /* False */ ? {{C}} /* {john} */ : {{C}} /* {emily} */) /* {emily} */", expr.ToString());
         }
     }
 }
