@@ -10,22 +10,76 @@ Supports `netstandard1.3`.
 ![Tests](https://img.shields.io/azure-devops/tests/epiforge/gear/1.svg?logo=microsoft&logoColor=white)
 ![Coverage](https://img.shields.io/azure-devops/coverage/epiforge/gear/1.svg?logo=microsoft&logoColor=white)
 
-- [Getting Started](#getting-started)
+- [Libraries](#libraries)
+    - [Nifty Stuff](#nifty-stuff)
+        - [Components](#components)
+        - [Active Expressions](#active-expressions)
+        - [Parallel](#parallel)
+    - [Under Construction](#under-construction)
+        - [Active Query](#active-query)
+    - [Retired](#retired)
+        - [Caching](#caching)
 - [License](#license)
 - [Contributing](#contributing)
 - [Acknowledgements](#acknowledgements)
 
-# Getting Started
+# Libraries
 
-Install the NuGet packages for the functionality you need.
+## Nifty Stuff
 
-| Library  | Description | &nbsp;
-| - | - | -
-| Gear.ActiveExpressions | Expressions that automatically re-evaluate when changes occur | [![Gear.ActiveExpressions Nuget](https://img.shields.io/nuget/v/Gear.ActiveExpressions.svg)](https://www.nuget.org/packages/Gear.ActiveExpressions)
-| Gear.ActiveQuery | LINQ-style queries that automatically update when changes occur | [![Gear.ActiveQuery Nuget](https://img.shields.io/nuget/v/Gear.ActiveQuery.svg)](https://www.nuget.org/packages/Gear.ActiveQuery)
-| Gear.Caching | Caching, including expiration and refreshing | [![Gear.Caching Nuget](https://img.shields.io/nuget/v/Gear.Caching.svg)](https://www.nuget.org/packages/Gear.Caching)
-| Gear.Components | Basic, common functionality often used by other Gear libraries | [![Gear.Components Nuget](https://img.shields.io/nuget/v/Gear.Components.svg)](https://www.nuget.org/packages/Gear.Components)
-| Gear.Parallel | Extension methods that make utilizing [Dataflow](https://www.nuget.org/packages/System.Threading.Tasks.Dataflow/) quicker | [![Gear.Parallel Nuget](https://img.shields.io/nuget/v/Gear.Parallel.svg)](https://www.nuget.org/packages/Gear.Parallel)
+### Components
+
+[![Gear.Components Nuget](https://img.shields.io/nuget/v/Gear.Components.svg)](https://www.nuget.org/packages/Gear.Components)
+
+Every group of library authors has their ultimate base class / kitchen sink NuGet, and this one is ours.
+It definitely needs more unit test coverage, and we're working on that.
+Nab it for yourself if you want to do any of the following stuff our way:
+- disposal (async too!)
+- generating hash codes
+- invoking methods, getting default values, and performing comparisons using reflection as quickly as possible
+- property change notification
+- range observable collections and observable dictionaries
+- stringifying exceptions
+- synchronized collections and dictionaries (i.e. for binding with UI elements)
+- task resolution (i.e. you have an object that just might be `Task<T>`, and if so, you want to await the `T`)
+
+### Active Expressions
+
+[![Gear.ActiveExpressions Nuget](https://img.shields.io/nuget/v/Gear.ActiveExpressions.svg)](https://www.nuget.org/packages/Gear.ActiveExpressions)
+
+This library accepts expressions (including lambdas), dissects them, and hooks into change notification events for properties, collections, and dictionaries.
+Then, as changes involving any elements of the expression occur, a chain of automatic re-evaluation will get kicked off, possibly causing the active expression's `Value` property to change.
+Also, since exceptions may be encountered long after an active expression was created, they have also have a `Fault` property, which will be set to the exception that was encountered during evaluation.
+Active expressions raise property change events of their own, so listen for those (kinda the whole point)!
+When you dispose of your active expression, it will, of course, disconnect from all the events.
+Active expressions will also try to automatically dispose of disposable objects they create in the course of their evaluation when and where it makes sense.
+Use the `ActiveExpressionOptions` class for more direct control over this behavior.
+
+### Parallel
+
+[![Gear.Parallel Nuget](https://img.shields.io/nuget/v/Gear.Parallel.svg)](https://www.nuget.org/packages/Gear.Parallel)
+
+This is the library where we stuff all our groovy parallel programming stuff.
+Unfortunately, we haven't thought of much groovyness to add to Microsoft's already bad-ass [Dataflow](https://www.nuget.org/packages/System.Threading.Tasks.Dataflow/).
+Writing some extension methods that make it quicker to use it seemed like the least we could do... so we did it.
+
+## Under Construction
+
+### Active Query
+
+[![Gear.ActiveQuery Nuget](https://img.shields.io/nuget/v/Gear.ActiveQuery.svg)](https://www.nuget.org/packages/Gear.ActiveQuery)
+
+Combining the power of Active Expressions and LINQ extension methods. You can let that thought sate your apetite for awesome, but you probably shouldn't install this NuGet yet. It has known bugs, essentially no QA, and definitely zero unit test coverage. Check back again later, though. This is next on deck!
+
+## Retired
+
+### Caching
+
+[![Gear.Caching Nuget](https://img.shields.io/nuget/v/Gear.Caching.svg)](https://www.nuget.org/packages/Gear.Caching)
+
+We made this library for a very specific application and don't really use it any more.
+But, it was open sourced and did eventually end up in some other people's stuff, so we still let it live here.
+Our advice would be not to write anything new using it.
 
 # License
 
