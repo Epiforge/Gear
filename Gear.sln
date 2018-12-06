@@ -28,6 +28,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Gear.Parallel", "Gear.Paral
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gear.ActiveExpressions.MSTest", "Gear.ActiveExpressions.MSTest\Gear.ActiveExpressions.MSTest.csproj", "{3DC05C7A-F9D9-4BFF-A298-1A8105F1FC84}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gear.Components.MSTest", "Gear.Components.MSTest\Gear.Components.MSTest.csproj", "{1C322F98-6A3D-44E3-BD55-6B649AEE7FBF}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -58,6 +60,10 @@ Global
 		{3DC05C7A-F9D9-4BFF-A298-1A8105F1FC84}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3DC05C7A-F9D9-4BFF-A298-1A8105F1FC84}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{3DC05C7A-F9D9-4BFF-A298-1A8105F1FC84}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1C322F98-6A3D-44E3-BD55-6B649AEE7FBF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1C322F98-6A3D-44E3-BD55-6B649AEE7FBF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1C322F98-6A3D-44E3-BD55-6B649AEE7FBF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1C322F98-6A3D-44E3-BD55-6B649AEE7FBF}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
