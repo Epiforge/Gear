@@ -17,13 +17,13 @@ namespace Gear.ActiveExpressions.MSTest
             public AsyncDisposableTestPerson AsyncDisposable
             {
                 get => asyncDisposable;
-                set => SetBackedProperty(ref asyncDisposable, value);
+                set => SetBackedProperty(ref asyncDisposable, in value);
             }
 
             public SyncDisposableTestPerson SyncDisposable
             {
                 get => syncDisposable;
-                set => SetBackedProperty(ref syncDisposable, value);
+                set => SetBackedProperty(ref syncDisposable, in value);
             }
         }
 

@@ -466,8 +466,8 @@ namespace Gear.ActiveExpressions
             }
             protected set
             {
-                SetBackedProperty(ref val, defaultValue, nameof(Value));
-                SetBackedProperty(ref fault, value);
+                SetBackedProperty(ref val, in defaultValue, nameof(Value));
+                SetBackedProperty(ref fault, in value);
             }
         }
 

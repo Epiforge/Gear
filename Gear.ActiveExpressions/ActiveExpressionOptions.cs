@@ -12,7 +12,9 @@ namespace Gear.ActiveExpressions
     {
         static ActiveExpressionOptions() => Default = new ActiveExpressionOptions();
 
-        public static ActiveExpressionOptions Default { get; }
+        static readonly ConcurrentDictionary<MethodInfo, PropertyInfo> propertyGetMethodToProperty = new ConcurrentDictionary<MethodInfo, PropertyInfo>();
+
+        static PropertyInfo GetPropertyFromGetMethod(MethodInfo getMethod) => getMethod.DeclaringType.GetRuntimeProperties().FirstOrDefault(property => property.GetMethod == getMethod);
 
         public static bool operator ==(ActiveExpressionOptions a, ActiveExpressionOptions b) =>
             a?.disposeConstructedObjects == b?.disposeConstructedObjects &&
@@ -25,6 +27,8 @@ namespace Gear.ActiveExpressions
             a?.DisposeStaticMethodReturnValues != b?.DisposeStaticMethodReturnValues ||
             !(a?.disposeConstructedTypes.OrderBy(kv => $"{kv.Key.type}({string.Join(", ", kv.Key.constuctorParameterTypes.Select(p => p))})").Select(kv => (key: kv.Key, value: kv.Value)) ?? Enumerable.Empty<((Type type, EquatableList<Type> constuctorParameterTypes) key, bool value)>()).SequenceEqual(b?.disposeConstructedTypes.OrderBy(kv => $"{kv.Key.type}({string.Join(", ", kv.Key.constuctorParameterTypes.Select(p => p))})").Select(kv => (key: kv.Key, value: kv.Value)) ?? Enumerable.Empty<((Type type, EquatableList<Type> constuctorParameterTypes) key, bool value)>()) ||
             !(a?.disposeMethodReturnValues.OrderBy(kv => $"{kv.Key.DeclaringType.FullName}.{kv.Key.Name}({string.Join(", ", kv.Key.GetParameters().Select(p => p.ParameterType))})").Select(kv => (key: kv.Key, value: kv.Value)) ?? Enumerable.Empty<(MethodInfo key, bool value)>()).SequenceEqual(b?.disposeMethodReturnValues.OrderBy(kv => $"{kv.Key.DeclaringType.FullName}.{kv.Key.Name}({string.Join(", ", kv.Key.GetParameters().Select(p => p.ParameterType))})").Select(kv => (key: kv.Key, value: kv.Value)) ?? Enumerable.Empty<(MethodInfo key, bool value)>());
+
+        public static ActiveExpressionOptions Default { get; }
 
         public ActiveExpressionOptions()
         {
@@ -57,16 +61,20 @@ namespace Gear.ActiveExpressions
             {
                 case BinaryExpression binary:
                     return AddMethodReturnValueDisposal(binary.Method);
+                case IndexExpression index:
+                    return AddPropertyValueDisposal(index.Indexer);
                 case NewExpression @new:
                     return AddConstructedTypeDisposal(@new.Constructor);
                 case MemberExpression member when member.Member is PropertyInfo property:
+                    return AddPropertyValueDisposal(property);
+                case MethodCallExpression methodCallExpressionForPropertyGet when propertyGetMethodToProperty.GetOrAdd(methodCallExpressionForPropertyGet.Method, GetPropertyFromGetMethod) is PropertyInfo property:
                     return AddPropertyValueDisposal(property);
                 case MethodCallExpression methodCall:
                     return AddMethodReturnValueDisposal(methodCall.Method);
                 case UnaryExpression unary:
                     return AddMethodReturnValueDisposal(unary.Method);
                 default:
-                    throw new ArgumentException("Expression type not supported", nameof(lambda));
+                    throw new NotSupportedException();
             }
         }
 
@@ -102,22 +110,26 @@ namespace Gear.ActiveExpressions
 
         public bool IsConstructedTypeDisposed(ConstructorInfo constructor) => disposeConstructedTypes.ContainsKey((constructor.DeclaringType, new EquatableList<Type>(constructor.GetParameters().Select(parameterInfo => parameterInfo.ParameterType).ToList())));
 
-        public bool IsExpressionValueDisposal<T>(Expression<Func<T>> lambda)
+        public bool IsExpressionValueDisposed<T>(Expression<Func<T>> lambda)
         {
             switch (lambda.Body)
             {
                 case BinaryExpression binary:
                     return IsMethodReturnValueDisposed(binary.Method);
+                case IndexExpression index:
+                    return IsPropertyValueDisposed(index.Indexer);
                 case NewExpression @new:
                     return IsConstructedTypeDisposed(@new.Constructor);
                 case MemberExpression member when member.Member is PropertyInfo property:
+                    return IsPropertyValueDisposed(property);
+                case MethodCallExpression methodCallExpressionForPropertyGet when propertyGetMethodToProperty.GetOrAdd(methodCallExpressionForPropertyGet.Method, GetPropertyFromGetMethod) is PropertyInfo property:
                     return IsPropertyValueDisposed(property);
                 case MethodCallExpression methodCall:
                     return IsMethodReturnValueDisposed(methodCall.Method);
                 case UnaryExpression unary:
                     return IsMethodReturnValueDisposed(unary.Method);
                 default:
-                    throw new ArgumentException("Expression type not supported", nameof(lambda));
+                    throw new NotSupportedException();
             }
         }
 
@@ -144,16 +156,20 @@ namespace Gear.ActiveExpressions
             {
                 case BinaryExpression binary:
                     return RemoveMethodReturnValueDisposal(binary.Method);
+                case IndexExpression index:
+                    return RemovePropertyValueDisposal(index.Indexer);
                 case NewExpression @new:
                     return RemoveConstructedTypeDisposal(@new.Constructor);
                 case MemberExpression member when member.Member is PropertyInfo property:
+                    return RemovePropertyValueDisposal(property);
+                case MethodCallExpression methodCallExpressionForPropertyGet when propertyGetMethodToProperty.GetOrAdd(methodCallExpressionForPropertyGet.Method, GetPropertyFromGetMethod) is PropertyInfo property:
                     return RemovePropertyValueDisposal(property);
                 case MethodCallExpression methodCall:
                     return RemoveMethodReturnValueDisposal(methodCall.Method);
                 case UnaryExpression unary:
                     return RemoveMethodReturnValueDisposal(unary.Method);
                 default:
-                    throw new ArgumentException("Expression type not supported", nameof(lambda));
+                    throw new NotSupportedException();
             }
         }
 
