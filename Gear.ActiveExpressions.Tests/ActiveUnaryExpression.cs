@@ -1,12 +1,8 @@
 using Gear.Components;
 using NUnit.Framework;
-using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Gear.ActiveExpressions.Tests
 {
@@ -167,25 +163,6 @@ namespace Gear.ActiveExpressions.Tests
                 Assert.IsFalse(newPerson.IsDisposed);
             }
             Assert.IsTrue(newPerson.IsDisposed);
-        }
-
-        [Test]
-        public void ValueDisposalFault()
-        {
-            var john = SyncDisposableTestPerson.CreateJohn();
-            john.ThrowOnDispose = true;
-            var people = new ObservableCollection<SyncDisposableTestPerson>
-            {
-                john
-            };
-            using (var expr = ActiveExpression.Create(p => -p[0], people))
-            {
-                Assert.IsNull(expr.Fault);
-                people[0] = SyncDisposableTestPerson.CreateJohn();
-                Assert.IsNotNull(expr.Fault);
-                people[0] = SyncDisposableTestPerson.CreateJohn();
-                Assert.IsNull(expr.Fault);
-            }
         }
     }
 }

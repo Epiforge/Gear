@@ -52,20 +52,20 @@ namespace Gear.ActiveExpressions
         {
             var result = false;
             lock (instanceManagementLock)
-            {
                 if (--disposalCount == 0)
                 {
-                    foreach (var argument in arguments)
-                    {
-                        argument.PropertyChanged -= ArgumentPropertyChanged;
-                        argument.Dispose();
-                    }
                     instances.Remove((Type, arguments, options));
                     result = true;
                 }
-            }
             if (result)
+            {
+                foreach (var argument in arguments)
+                {
+                    argument.PropertyChanged -= ArgumentPropertyChanged;
+                    argument.Dispose();
+                }
                 DisposeValueIfNecessary();
+            }
             return result;
         }
 
@@ -73,17 +73,10 @@ namespace Gear.ActiveExpressions
         {
             if (ApplicableOptions.IsConstructedTypeDisposed(Type, constructorParameterTypes) && TryGetUndeferredValue(out var value))
             {
-                try
-                {
-                    if (value is IDisposable disposable)
-                        disposable.Dispose();
-                    else if (value is IAsyncDisposable asyncDisposable)
-                        asyncDisposable.DisposeAsync().Wait();
-                }
-                catch (Exception ex)
-                {
-                    throw new Exception("Disposal of constructed object failed", ex);
-                }
+                if (value is IDisposable disposable)
+                    disposable.Dispose();
+                else if (value is IAsyncDisposable asyncDisposable)
+                    asyncDisposable.DisposeAsync().Wait();
             }
         }
 

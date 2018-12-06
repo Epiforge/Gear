@@ -89,28 +89,28 @@ namespace Gear.ActiveExpressions
         {
             var result = false;
             lock (instanceManagementLock)
-            {
                 if (--disposalCount == 0)
                 {
-                    if (@object != null)
-                    {
-                        @object.PropertyChanged -= ObjectPropertyChanged;
-                        @object.Dispose();
-                    }
-                    foreach (var argument in arguments)
-                    {
-                        argument.PropertyChanged -= ArgumentPropertyChanged;
-                        argument.Dispose();
-                    }
                     if (@object == null)
                         staticInstances.Remove((method, arguments, options));
                     else
                         instanceInstances.Remove((@object, method, arguments, options));
                     result = true;
                 }
-            }
             if (result)
+            {
+                if (@object != null)
+                {
+                    @object.PropertyChanged -= ObjectPropertyChanged;
+                    @object.Dispose();
+                }
+                foreach (var argument in arguments)
+                {
+                    argument.PropertyChanged -= ArgumentPropertyChanged;
+                    argument.Dispose();
+                }
                 DisposeValueIfNecessary();
+            }
             return result;
         }
 
@@ -118,17 +118,10 @@ namespace Gear.ActiveExpressions
         {
             if (ApplicableOptions.IsMethodReturnValueDisposed(method) && TryGetUndeferredValue(out var value))
             {
-                try
-                {
-                    if (value is IDisposable disposable)
-                        disposable.Dispose();
-                    else if (value is IAsyncDisposable asyncDisposable)
-                        asyncDisposable.DisposeAsync().Wait();
-                }
-                catch (Exception ex)
-                {
-                    throw new Exception("Disposal of method return value failed", ex);
-                }
+                if (value is IDisposable disposable)
+                    disposable.Dispose();
+                else if (value is IAsyncDisposable asyncDisposable)
+                    asyncDisposable.DisposeAsync().Wait();
             }
         }
 

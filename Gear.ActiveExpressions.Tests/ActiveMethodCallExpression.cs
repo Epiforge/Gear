@@ -1,8 +1,5 @@
 using NUnit.Framework;
 using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 
@@ -17,7 +14,7 @@ namespace Gear.ActiveExpressions.Tests
 
         TestPerson CombinePeople(TestPerson a, TestPerson b) => new TestPerson { Name = $"{a.Name} {b.Name}" };
 
-        SyncDisposableTestPerson CombineSyncDisposablePeople(SyncDisposableTestPerson a, SyncDisposableTestPerson b) => new SyncDisposableTestPerson { Name = $"{a.Name} {b.Name}", ThrowOnDispose = a.ThrowOnDispose || b.ThrowOnDispose };
+        SyncDisposableTestPerson CombineSyncDisposablePeople(SyncDisposableTestPerson a, SyncDisposableTestPerson b) => new SyncDisposableTestPerson { Name = $"{a.Name} {b.Name}" };
 
         TestPerson ReversedCombinePeople(TestPerson a, TestPerson b) => new TestPerson { Name = $"{b.Name} {a.Name}" };
 
@@ -166,25 +163,6 @@ namespace Gear.ActiveExpressions.Tests
                 Assert.IsTrue(first.IsDisposed);
             }
             Assert.IsTrue(second.IsDisposed);
-        }
-
-        [Test]
-        public void ValueDisposalFault()
-        {
-            var john = SyncDisposableTestPerson.CreateJohn();
-            john.ThrowOnDispose = true;
-            var people = new ObservableCollection<SyncDisposableTestPerson> { john };
-            var emily = SyncDisposableTestPerson.CreateEmily();
-            var options = new ActiveExpressionOptions();
-            options.AddExpressionValueDisposal(() => CombineSyncDisposablePeople(null, null));
-            using (var expr = ActiveExpression.Create(() => CombineSyncDisposablePeople(people[0], emily), options))
-            {
-                Assert.IsNull(expr.Fault);
-                people[0] = SyncDisposableTestPerson.CreateJohn();
-                Assert.IsNotNull(expr.Fault);
-                people[0] = SyncDisposableTestPerson.CreateJohn();
-                Assert.IsNull(expr.Fault);
-            }
         }
     }
 }

@@ -1,9 +1,4 @@
 using NUnit.Framework;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Gear.ActiveExpressions.Tests
 {
@@ -119,25 +114,6 @@ namespace Gear.ActiveExpressions.Tests
                 Assert.IsTrue(first.IsDisposed);
             }
             Assert.IsTrue(second.IsDisposed);
-        }
-
-        [Test]
-        public void ValueDisposalFault()
-        {
-            var john = SyncDisposableTestPerson.CreateJohn();
-            john.Name = string.Empty;
-            var options = new ActiveExpressionOptions();
-            options.AddConstructedTypeDisposal(typeof(SyncDisposableTestPerson));
-            using (var expr = ActiveExpression.Create(() => new SyncDisposableTestPerson(null, john.Name.Length == 0), options))
-            {
-                Assert.IsNull(expr.Fault);
-                john.Name = "John";
-                Assert.IsNotNull(expr.Fault);
-                john.Name = string.Empty;
-                Assert.IsNull(expr.Fault);
-                john.Name = "John";
-                Assert.IsNotNull(expr.Fault);
-            }
         }
     }
 }

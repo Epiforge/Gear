@@ -264,42 +264,5 @@ namespace Gear.ActiveExpressions.Tests
             }
             Assert.IsTrue(emily.IsDisposed);
         }
-
-        [Test]
-        public void ValueDisposal()
-        {
-            var john = SyncDisposableTestPerson.CreateJohn();
-            var emily = SyncDisposableTestPerson.CreateEmily();
-            var people = new ObservableCollection<SyncDisposableTestPerson> { john };
-            var options = new ActiveExpressionOptions();
-            options.AddExpressionValueDisposal(() => new ObservableCollection<SyncDisposableTestPerson>()[0]);
-            using (var expr = ActiveExpression.Create(p => p[0], people, options))
-            {
-                Assert.AreSame(john, expr.Value);
-                Assert.IsFalse(john.IsDisposed);
-                people[0] = emily;
-                Assert.AreSame(emily, expr.Value);
-                Assert.IsTrue(john.IsDisposed);
-            }
-            Assert.IsTrue(emily.IsDisposed);
-        }
-
-        [Test]
-        public void ValueDisposalFault()
-        {
-            var john = SyncDisposableTestPerson.CreateJohn();
-            john.ThrowOnDispose = true;
-            var people = new ObservableCollection<SyncDisposableTestPerson> { john };
-            var options = new ActiveExpressionOptions();
-            options.AddExpressionValueDisposal(() => new ObservableCollection<SyncDisposableTestPerson>()[0]);
-            using (var expr = ActiveExpression.Create(p => p[0], people, options))
-            {
-                Assert.IsNull(expr.Fault);
-                people[0] = SyncDisposableTestPerson.CreateJohn();
-                Assert.IsNotNull(expr.Fault);
-                people[0] = SyncDisposableTestPerson.CreateJohn();
-                Assert.IsNull(expr.Fault);
-            }
-        }
     }
 }

@@ -51,19 +51,23 @@ namespace Gear.ActiveExpressions
 
         protected override bool Dispose(bool disposing)
         {
+            var result = false;
             lock (instanceManagementLock)
+                if (--disposalCount == 0)
+                {
+                    instances.Remove((test, ifTrue, ifFalse, options));
+                    result = true;
+                }
+            if (result)
             {
-                if (--disposalCount > 0)
-                    return false;
                 test.PropertyChanged -= TestPropertyChanged;
                 test.Dispose();
                 ifTrue.PropertyChanged -= IfTruePropertyChanged;
                 ifTrue.Dispose();
                 ifFalse.PropertyChanged -= IfFalsePropertyChanged;
                 ifFalse.Dispose();
-                instances.Remove((test, ifTrue, ifFalse, options));
-                return true;
             }
+            return result;
         }
 
         public override bool Equals(object obj) => obj is ActiveConditionalExpression other && ifFalse.Equals(other.ifFalse) && ifTrue.Equals(other.ifTrue) && test.Equals(other.test) && (options?.Equals(other.options) ?? other.options is null);

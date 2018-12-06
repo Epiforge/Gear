@@ -102,24 +102,25 @@ namespace Gear.ActiveExpressions
         {
             var result = false;
             lock (instanceManagementLock)
-            {
                 if (--disposalCount == 0)
                 {
-                    if (fastGetter != null)
-                        UnsubscribeFromExpressionValueNotifications();
                     if (expression != null)
-                    {
-                        expression.PropertyChanged -= ExpressionPropertyChanged;
-                        expression.Dispose();
                         instanceInstances.Remove((expression, member, options));
-                    }
                     else
                         staticInstances.Remove((member, options));
                     result = true;
                 }
-            }
             if (result)
+            {
+                if (fastGetter != null)
+                    UnsubscribeFromExpressionValueNotifications();
+                if (expression != null)
+                {
+                    expression.PropertyChanged -= ExpressionPropertyChanged;
+                    expression.Dispose();
+                }
                 DisposeValueIfNecessary();
+            }
             return result;
         }
 
@@ -127,17 +128,10 @@ namespace Gear.ActiveExpressions
         {
             if (property != null && ApplicableOptions.IsMethodReturnValueDisposed(getMethod) && TryGetUndeferredValue(out var value))
             {
-                try
-                {
-                    if (value is IDisposable disposable)
-                        disposable.Dispose();
-                    else if (value is IAsyncDisposable asyncDisposable)
-                        asyncDisposable.DisposeAsync().Wait();
-                }
-                catch (Exception ex)
-                {
-                    throw new Exception("Disposal of property value failed", ex);
-                }
+                if (value is IDisposable disposable)
+                    disposable.Dispose();
+                else if (value is IAsyncDisposable asyncDisposable)
+                    asyncDisposable.DisposeAsync().Wait();
             }
         }
 

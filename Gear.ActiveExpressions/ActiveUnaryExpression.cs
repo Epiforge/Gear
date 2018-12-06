@@ -62,17 +62,17 @@ namespace Gear.ActiveExpressions
         {
             var result = false;
             lock (instanceManagementLock)
-            {
                 if (--disposalCount == 0)
                 {
-                    operand.PropertyChanged -= OperandPropertyChanged;
-                    operand.Dispose();
                     instances.Remove((NodeType, operand, Type, method, options));
                     result = true;
                 }
-            }
             if (result)
+            {
+                operand.PropertyChanged -= OperandPropertyChanged;
+                operand.Dispose();
                 DisposeValueIfNecessary();
+            }
             return result;
         }
 
@@ -80,17 +80,10 @@ namespace Gear.ActiveExpressions
         {
             if (method != null && ApplicableOptions.IsMethodReturnValueDisposed(method) && TryGetUndeferredValue(out var value))
             {
-                try
-                {
-                    if (value is IDisposable disposable)
-                        disposable.Dispose();
-                    else if (value is IAsyncDisposable asyncDisposable)
-                        asyncDisposable.DisposeAsync().Wait();
-                }
-                catch (Exception ex)
-                {
-                    throw new Exception("Disposal of method return value failed", ex);
-                }
+                if (value is IDisposable disposable)
+                    disposable.Dispose();
+                else if (value is IAsyncDisposable asyncDisposable)
+                    asyncDisposable.DisposeAsync().Wait();
             }
         }
 

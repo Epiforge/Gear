@@ -112,23 +112,5 @@ namespace Gear.ActiveExpressions.Tests
             }
             Assert.IsTrue(emily.IsDisposed);
         }
-
-        [Test]
-        public void ValueDisposalFault()
-        {
-            var john = SyncDisposableTestPerson.CreateJohn();
-            john.ThrowOnDispose = true;
-            var testObject = new TestObject { SyncDisposable = john };
-            var options = new ActiveExpressionOptions();
-            options.AddExpressionValueDisposal(() => new TestObject().SyncDisposable);
-            using (var expr = ActiveExpression.Create(p1 => p1.SyncDisposable, testObject, options))
-            {
-                Assert.IsNull(expr.Fault);
-                testObject.SyncDisposable = SyncDisposableTestPerson.CreateJohn();
-                Assert.IsNotNull(expr.Fault);
-                testObject.SyncDisposable = SyncDisposableTestPerson.CreateJohn();
-                Assert.IsNull(expr.Fault);
-            }
-        }
     }
 }

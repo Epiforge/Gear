@@ -15,8 +15,8 @@ namespace Gear.ActiveExpressions
         public static ActiveExpressionOptions Default { get; }
 
         public static bool operator ==(ActiveExpressionOptions a, ActiveExpressionOptions b) =>
-            a?.DisposeConstructedObjects == b?.DisposeConstructedObjects &&
-            a?.DisposeStaticMethodReturnValues == b?.DisposeStaticMethodReturnValues &&
+            a?.disposeConstructedObjects == b?.disposeConstructedObjects &&
+            a?.disposeStaticMethodReturnValues == b?.disposeStaticMethodReturnValues &&
             (a?.disposeConstructedTypes.OrderBy(kv => $"{kv.Key.type}({string.Join(", ", kv.Key.constuctorParameterTypes.Select(p => p))})").Select(kv => (key: kv.Key, value: kv.Value)) ?? Enumerable.Empty<((Type type, EquatableList<Type> constuctorParameterTypes) key, bool value)>()).SequenceEqual(b?.disposeConstructedTypes.OrderBy(kv => $"{kv.Key.type}({string.Join(", ", kv.Key.constuctorParameterTypes.Select(p => p))})").Select(kv => (key: kv.Key, value: kv.Value)) ?? Enumerable.Empty<((Type type, EquatableList<Type> constuctorParameterTypes) key, bool value)>()) &&
             (a?.disposeMethodReturnValues.OrderBy(kv => $"{kv.Key.DeclaringType.FullName}.{kv.Key.Name}({string.Join(", ", kv.Key.GetParameters().Select(p => p.ParameterType))})").Select(kv => (key: kv.Key, value: kv.Value)) ?? Enumerable.Empty<(MethodInfo key, bool value)>()).SequenceEqual(b?.disposeMethodReturnValues.OrderBy(kv => $"{kv.Key.DeclaringType.FullName}.{kv.Key.Name}({string.Join(", ", kv.Key.GetParameters().Select(p => p.ParameterType))})").Select(kv => (key: kv.Key, value: kv.Value)) ?? Enumerable.Empty<(MethodInfo key, bool value)>());
 
@@ -32,8 +32,10 @@ namespace Gear.ActiveExpressions
             DisposeStaticMethodReturnValues = true;
         }
 
+        bool disposeConstructedObjects;
         readonly ConcurrentDictionary<(Type type, EquatableList<Type> constuctorParameterTypes), bool> disposeConstructedTypes = new ConcurrentDictionary<(Type type, EquatableList<Type> constuctorParameterTypes), bool>();
         readonly ConcurrentDictionary<MethodInfo, bool> disposeMethodReturnValues = new ConcurrentDictionary<MethodInfo, bool>();
+        bool disposeStaticMethodReturnValues;
         bool isFrozen;
 
         public bool AddConstructedTypeDisposal(Type type, params Type[] constuctorParameterTypes)
@@ -88,7 +90,7 @@ namespace Gear.ActiveExpressions
         {
             if (!isFrozen)
                 return base.GetHashCode();
-            var objects = new List<object>() { DisposeConstructedObjects, DisposeStaticMethodReturnValues };
+            var objects = new List<object>() { disposeConstructedObjects, disposeStaticMethodReturnValues };
             objects.AddRange(disposeConstructedTypes.OrderBy(kv => $"{kv.Key.type}({string.Join(", ", kv.Key.constuctorParameterTypes.Select(p => p))})").Select(kv => (key: kv.Key, value: kv.Value)).Cast<object>());
             objects.AddRange(disposeMethodReturnValues.OrderBy(kv => $"{kv.Key.DeclaringType.FullName}.{kv.Key.Name}({string.Join(", ", kv.Key.GetParameters().Select(p => p.ParameterType))})").Select(kv => (key: kv.Key, value: kv.Value)).Cast<object>());
             return HashCodes.CombineObjects(objects.ToArray());
@@ -173,8 +175,24 @@ namespace Gear.ActiveExpressions
                 throw new InvalidOperationException();
         }
 
-        public bool DisposeConstructedObjects { get; set; }
+        public bool DisposeConstructedObjects
+        {
+            get => disposeConstructedObjects;
+            set
+            {
+                RequireUnfrozen();
+                disposeConstructedObjects = value;
+            }
+        }
 
-        public bool DisposeStaticMethodReturnValues { get; set; }
+        public bool DisposeStaticMethodReturnValues
+        {
+            get => disposeStaticMethodReturnValues;
+            set
+            {
+                RequireUnfrozen();
+                disposeStaticMethodReturnValues = value;
+            }
+        }
     }
 }

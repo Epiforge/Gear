@@ -1,5 +1,4 @@
 using Gear.Components;
-using System;
 using System.Linq;
 using System.Threading;
 
@@ -14,13 +13,11 @@ namespace Gear.ActiveExpressions.Tests
         public static SyncDisposableTestPerson operator +(SyncDisposableTestPerson a, SyncDisposableTestPerson b) => new SyncDisposableTestPerson
         {
             name = $"{a.name} {b.name}",
-            throwOnDispose = a.throwOnDispose || b.throwOnDispose
         };
 
         public static SyncDisposableTestPerson operator -(SyncDisposableTestPerson syncDisposableTestPerson) => new SyncDisposableTestPerson
         {
             name = new string(syncDisposableTestPerson.name.Reverse().ToArray()),
-            throwOnDispose = syncDisposableTestPerson.throwOnDispose
         };
 
         public SyncDisposableTestPerson()
@@ -29,16 +26,11 @@ namespace Gear.ActiveExpressions.Tests
 
         public SyncDisposableTestPerson(string name) => this.name = name;
 
-        public SyncDisposableTestPerson(string name, bool throwOnDispose) : this(name) => this.throwOnDispose = throwOnDispose;
-
         string name;
         long nameGets;
-        bool throwOnDispose;
 
         protected override void Dispose(bool disposing)
         {
-            if (disposing && throwOnDispose)
-                throw new Exception("Throwing like I'm s'posed to!");
         }
 
         public override string ToString() => $"{{{name}}}";
@@ -56,11 +48,5 @@ namespace Gear.ActiveExpressions.Tests
         }
 
         public long NameGets => Interlocked.Read(ref nameGets);
-
-        public bool ThrowOnDispose
-        {
-            get => throwOnDispose;
-            set => SetBackedProperty(ref throwOnDispose, value);
-        }
     }
 }
