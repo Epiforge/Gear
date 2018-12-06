@@ -27,6 +27,7 @@ steps:
   inputs:
     platform: '$(buildPlatform)'
     configuration: '$(buildConfiguration)'
+    testAssemblyVer2: '**\Gear.ActiveExpressions.Tests.dll,!**\*TestAdapter.dll,!**\obj\**'
     codeCoverageEnabled: true
 
 - task: CopyFiles@2
