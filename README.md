@@ -6,7 +6,10 @@ General utilities to help with stuff in .NET Development, from Epiforge.
 
 Supports `netstandard1.3`.
 
-![Build Status](https://ci.appveyor.com/api/projects/status/3s25e4ldo2ji1ech?svg=true) ![AppVeyor tests](https://img.shields.io/appveyor/tests/BigBadBleuCheese/gear.svg?logo=appveyor) [![Coverage Status](https://coveralls.io/repos/github/Epiforge/Gear/badge.svg?branch=master)](https://coveralls.io/github/Epiforge/Gear?branch=master) [![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2FEpiforge%2FGear.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2FEpiforge%2FGear?ref=badge_shield)
+![Build](https://img.shields.io/azure-devops/build/epiforge/gear/1.svg?logo=microsoft&logoColor=white)
+![Tests](https://img.shields.io/azure-devops/tests/epiforge/gear/1.svg?logo=microsoft&logoColor=white)
+![Coverage](https://img.shields.io/azure-devops/coverage/epiforge/gear/1.svg?logo=microsoft&logoColor=white)
+![Deployment](https://img.shields.io/azure-devops/release/epiforge/086f3e4c-7edb-4f34-bf9d-72c3556362bc/2/2.svg?logo=microsoft&logoColor=white)
 
 - [Getting Started](#getting-started)
 - [License](#license)
