@@ -1,3 +1,4 @@
+using Gear.Components;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace Gear.ActiveExpressions.MSTest
@@ -49,6 +50,13 @@ namespace Gear.ActiveExpressions.MSTest
                 Assert.IsFalse(expr1.Equals(expr3));
                 Assert.IsFalse(expr1.Equals(expr4));
             }
+        }
+
+        [TestMethod]
+        public void EvaluationFault()
+        {
+            using (var expr = ActiveExpression.Create(() => new EquatableList<string>(null)))
+                Assert.IsNotNull(expr.Fault);
         }
 
         [TestMethod]
