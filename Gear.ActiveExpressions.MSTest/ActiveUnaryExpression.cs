@@ -54,6 +54,14 @@ namespace Gear.ActiveExpressions.MSTest
         }
 
         [TestMethod]
+        public void EvaluationFault()
+        {
+            TestPerson noOne = null;
+            using (var expr = ActiveExpression.Create(() => -noOne))
+                Assert.IsNotNull(expr.Fault);
+        }
+
+        [TestMethod]
         public void FaultPropagation()
         {
             var john = TestPerson.CreateJohn();
