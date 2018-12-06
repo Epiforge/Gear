@@ -28,6 +28,7 @@ steps:
     platform: '$(buildPlatform)'
     configuration: '$(buildConfiguration)'
     codeCoverageEnabled: true
+    runSettingsFile: '$(Build.SourcesDirectory)\codecoverage.runsettings'
 
 - task: CopyFiles@2
   displayName: 'Copy artifacts to staging'
