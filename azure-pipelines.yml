@@ -27,14 +27,14 @@ steps:
   inputs:
     platform: '$(buildPlatform)'
     configuration: '$(buildConfiguration)'
-    testAssemblyVer2: '**\Gear.ActiveExpressions.test*.dll,!**\*TestAdapter.dll,!**\obj\**'
+    testAssemblyVer2: '$(Build.SourcesDirectory)\Gear.ActiveExpressions.Tests\bin\Release\Gear.ActiveExpressions.Tests.dll'
     codeCoverageEnabled: true
 
 - task: CopyFiles@2
   displayName: 'Copy artifacts to staging'
   inputs:
     sourceFolder: '$(Build.SourcesDirectory)'
-    contents: '**/$(BuildConfiguration)/**/?(*.nupkg)'
+    contents: '**\$(BuildConfiguration)\**\?(*.nupkg)'
     targetFolder: '$(Build.ArtifactStagingDirectory)'
     flattenFolders: true
     
