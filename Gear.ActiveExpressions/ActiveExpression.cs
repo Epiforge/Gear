@@ -279,11 +279,11 @@ namespace Gear.ActiveExpressions
                 }
             }
             if (value is DateTime dt)
-                return $"new DateTime({dt.Ticks})";
+                return $"new System.DateTime({dt.Ticks}, System.DateTimeKind.{dt.Kind})";
             if (value is TimeSpan ts)
-                return $"new TimeSpan({ts.Ticks})";
+                return $"new System.TimeSpan({ts.Ticks})";
             if (value is Guid guid)
-                return $"new Guid(\"{guid}\")";
+                return $"new System.Guid(\"{guid}\")";
             return $"{value}";
         }
 
@@ -297,8 +297,6 @@ namespace Gear.ActiveExpressions
                 parameterTranslation.Add(parameter, constant);
             }
             var expression = lambdaExpression.Body;
-            while (expression?.CanReduce ?? false)
-                expression = expression.ReduceAndCheck();
             return ReplaceParameters(parameterTranslation, expression);
         }
 
