@@ -1,5 +1,5 @@
 using Gear.Components;
-using NUnit.Framework;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -10,10 +10,10 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 
-namespace Gear.ActiveExpressions.Tests
+namespace Gear.ActiveExpressions.MSTest
 {
-    [TestFixture]
-    class ActiveIndexExpression
+    [TestClass]
+    public class ActiveIndexExpression
     {
         #region TestRangeObservableCollection
 
@@ -36,7 +36,7 @@ namespace Gear.ActiveExpressions.Tests
 
         #endregion TestRangeObservableCollection
 
-        [Test]
+        [TestMethod]
         public void ArgumentChanges()
         {
             var reversedNumbersList = Enumerable.Range(1, 10).Reverse().ToImmutableList();
@@ -56,7 +56,7 @@ namespace Gear.ActiveExpressions.Tests
             Assert.IsTrue(new int[] { 6, 9, 7, 10, 4, 6 }.SequenceEqual(values));
         }
 
-        [Test]
+        [TestMethod]
         public void ArgumentFaultPropagation()
         {
             var numbers = new ObservableCollection<int>(Enumerable.Range(0, 10));
@@ -71,7 +71,7 @@ namespace Gear.ActiveExpressions.Tests
             }
         }
 
-        [Test]
+        [TestMethod]
         public void CollectionChanges()
         {
             var numbers = new RangeObservableCollection<int>(Enumerable.Range(1, 10));
@@ -102,7 +102,7 @@ namespace Gear.ActiveExpressions.Tests
             Assert.IsTrue(new int[] { 6, 5, 6, 60, 6, 1, 6, 1, 6, 60 }.SequenceEqual(values));
         }
 
-        [Test]
+        [TestMethod]
         public void DictionaryChanges()
         {
             var perfectNumbers = new ObservableDictionary<int, int>(Enumerable.Range(1, 10).ToDictionary(i => i, i => i * i));
@@ -128,7 +128,7 @@ namespace Gear.ActiveExpressions.Tests
             Assert.IsTrue(new int[] { 25, 0, 30, 25, 0, 25 }.SequenceEqual(values));
         }
 
-        [Test]
+        [TestMethod]
         public void Equality()
         {
             var john = TestPerson.CreateJohn();
@@ -146,7 +146,7 @@ namespace Gear.ActiveExpressions.Tests
             }
         }
 
-        [Test]
+        [TestMethod]
         public void Equals()
         {
             var john = TestPerson.CreateJohn();
@@ -164,7 +164,7 @@ namespace Gear.ActiveExpressions.Tests
             }
         }
 
-        [Test]
+        [TestMethod]
         public void ManualCreation()
         {
             var people = new List<TestPerson>() { TestPerson.CreateEmily() };
@@ -175,7 +175,7 @@ namespace Gear.ActiveExpressions.Tests
             }
         }
 
-        [Test]
+        [TestMethod]
         public void Inequality()
         {
             var john = TestPerson.CreateJohn();
@@ -193,7 +193,7 @@ namespace Gear.ActiveExpressions.Tests
             }
         }
 
-        [Test]
+        [TestMethod]
         public void ObjectChanges()
         {
             var john = TestPerson.CreateJohn();
@@ -208,7 +208,7 @@ namespace Gear.ActiveExpressions.Tests
             }
         }
 
-        [Test]
+        [TestMethod]
         public void ObjectFaultPropagation()
         {
             var numbers = new ObservableCollection<int>(Enumerable.Range(0, 10));
@@ -224,7 +224,7 @@ namespace Gear.ActiveExpressions.Tests
             }
         }
 
-        [Test]
+        [TestMethod]
         public void ObjectValueChanges()
         {
             var numbers = new TestRangeObservableCollection<int>(Enumerable.Range(0, 10));
@@ -236,7 +236,7 @@ namespace Gear.ActiveExpressions.Tests
             }
         }
 
-        [Test]
+        [TestMethod]
         public void StringConversion()
         {
             var emily = TestPerson.CreateEmily();
@@ -246,7 +246,7 @@ namespace Gear.ActiveExpressions.Tests
                 Assert.AreEqual($"({{C}} /* {people} */[{{C}} /* 0 */] /* {{X}} */.Name /* \"X\" */.Length /* 1 */ + {{C}} /* 1 */) /* 2 */", expr.ToString());
         }
 
-        [Test]
+        [TestMethod]
         public void ValueAsyncDisposal()
         {
             var john = AsyncDisposableTestPerson.CreateJohn();

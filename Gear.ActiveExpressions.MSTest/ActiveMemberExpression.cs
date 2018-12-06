@@ -1,13 +1,13 @@
 using Gear.Components;
-using NUnit.Framework;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 
-namespace Gear.ActiveExpressions.Tests
+namespace Gear.ActiveExpressions.MSTest
 {
-    [TestFixture]
-    class ActiveMemberExpression
+    [TestClass]
+    public class ActiveMemberExpression
     {
-        #region Test Classes
+        #region TestMethod Classes
 
         class TestObject : PropertyChangeNotifier
         {
@@ -27,9 +27,9 @@ namespace Gear.ActiveExpressions.Tests
             }
         }
 
-        #endregion Test Classes
+        #endregion TestMethod Classes
 
-        [Test]
+        [TestMethod]
         public void Closure()
         {
             var x = 3;
@@ -43,7 +43,7 @@ namespace Gear.ActiveExpressions.Tests
             }
         }
 
-        [Test]
+        [TestMethod]
         public void FieldValue()
         {
             var team = (developer: TestPerson.CreateJohn(), artist: TestPerson.CreateEmily());
@@ -51,7 +51,7 @@ namespace Gear.ActiveExpressions.Tests
                 Assert.AreEqual("Emily", expr.Value);
         }
 
-        [Test]
+        [TestMethod]
         public void ObjectFaultPropagation()
         {
             var john = TestPerson.CreateJohn();
@@ -66,14 +66,14 @@ namespace Gear.ActiveExpressions.Tests
             }
         }
 
-        [Test]
+        [TestMethod]
         public void StaticPropertyValue()
         {
             using (var expr = ActiveExpression.Create(() => Environment.UserName))
                 Assert.AreEqual(Environment.UserName, expr.Value);
         }
 
-        [Test]
+        [TestMethod]
         public void ValueAsyncDisposal()
         {
             var john = AsyncDisposableTestPerson.CreateJohn();
@@ -93,7 +93,7 @@ namespace Gear.ActiveExpressions.Tests
             Assert.IsTrue(emily.IsDisposed);
         }
 
-        [Test]
+        [TestMethod]
         public void ValueDisposal()
         {
             var john = SyncDisposableTestPerson.CreateJohn();

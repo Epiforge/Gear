@@ -1,11 +1,11 @@
-using NUnit.Framework;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-namespace Gear.ActiveExpressions.Tests
+namespace Gear.ActiveExpressions.MSTest
 {
-    [TestFixture]
-    class ActiveNewExpression
+    [TestClass]
+    public class ActiveNewExpression
     {
-        [Test]
+        [TestMethod]
         public void ArgumentFaultPropagation()
         {
             var john = TestPerson.CreateJohn();
@@ -19,7 +19,7 @@ namespace Gear.ActiveExpressions.Tests
             }
         }
 
-        [Test]
+        [TestMethod]
         public void Equality()
         {
             var john = TestPerson.CreateJohn();
@@ -35,7 +35,7 @@ namespace Gear.ActiveExpressions.Tests
             }
         }
 
-        [Test]
+        [TestMethod]
         public void Equals()
         {
             var john = TestPerson.CreateJohn();
@@ -51,7 +51,7 @@ namespace Gear.ActiveExpressions.Tests
             }
         }
 
-        [Test]
+        [TestMethod]
         public void Inequality()
         {
             var john = TestPerson.CreateJohn();
@@ -67,14 +67,14 @@ namespace Gear.ActiveExpressions.Tests
             }
         }
 
-        [Test]
+        [TestMethod]
         public void StringConversion()
         {
             using (var expr = ActiveExpression.Create(() => new TestPerson("Charles")))
                 Assert.AreEqual($"new {typeof(TestPerson)}({{C}} /* \"Charles\" */) /* {expr.Value} */", expr.ToString());
         }
 
-        [Test]
+        [TestMethod]
         public void ValueAsyncDisposal()
         {
             var john = AsyncDisposableTestPerson.CreateJohn();
@@ -95,7 +95,7 @@ namespace Gear.ActiveExpressions.Tests
             Assert.IsTrue(second.IsDisposed);
         }
 
-        [Test]
+        [TestMethod]
         public void ValueDisposal()
         {
             var john = SyncDisposableTestPerson.CreateJohn();

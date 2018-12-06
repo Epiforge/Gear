@@ -1,15 +1,15 @@
 using Gear.Components;
-using NUnit.Framework;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Collections.Concurrent;
 using System.Linq;
 
-namespace Gear.ActiveExpressions.Tests
+namespace Gear.ActiveExpressions.MSTest
 {
-    [TestFixture]
-    class ActiveCoalesceExpression
+    [TestClass]
+    public class ActiveCoalesceExpression
     {
-        [Test]
+        [TestMethod]
         public void ConsistentHashCode()
         {
             int hashCode1, hashCode2;
@@ -21,7 +21,7 @@ namespace Gear.ActiveExpressions.Tests
             Assert.IsTrue(hashCode1 == hashCode2);
         }
 
-        [Test]
+        [TestMethod]
         public void Equality()
         {
             var john = TestPerson.CreateJohn();
@@ -37,7 +37,7 @@ namespace Gear.ActiveExpressions.Tests
             }
         }
 
-        [Test]
+        [TestMethod]
         public void Equals()
         {
             var john = TestPerson.CreateJohn();
@@ -53,7 +53,7 @@ namespace Gear.ActiveExpressions.Tests
             }
         }
 
-        [Test]
+        [TestMethod]
         public void FaultPropagation()
         {
             var john = TestPerson.CreateJohn();
@@ -69,7 +69,7 @@ namespace Gear.ActiveExpressions.Tests
             }
         }
 
-        [Test]
+        [TestMethod]
         public void FaultShortCircuiting()
         {
             var john = TestPerson.CreateJohn();
@@ -80,7 +80,7 @@ namespace Gear.ActiveExpressions.Tests
             }
         }
 
-        #region Implicit Conversion Test Classes
+        #region Implicit Conversion TestMethod Classes
 
         class A
         {
@@ -97,9 +97,9 @@ namespace Gear.ActiveExpressions.Tests
         {
         }
 
-        #endregion Implicit Conversion Test Classes
+        #endregion Implicit Conversion TestMethod Classes
 
-        [Test]
+        [TestMethod]
         public void ImplicitConversion()
         {
             using (var expr = ActiveExpression.Create(() => new A() ?? new B()))
@@ -109,14 +109,14 @@ namespace Gear.ActiveExpressions.Tests
             }
         }
 
-        [Test]
+        [TestMethod]
         public void ImplicitConversionFailure()
         {
             using (var expr = ActiveExpression.Create(() => new A() ?? new C()))
                 Assert.IsNotNull(expr.Fault);
         }
 
-        [Test]
+        [TestMethod]
         public void Inequality()
         {
             var john = TestPerson.CreateJohn();
@@ -132,7 +132,7 @@ namespace Gear.ActiveExpressions.Tests
             }
         }
 
-        [Test]
+        [TestMethod]
         public void PropertyChanges()
         {
             var john = TestPerson.CreateJohn();
@@ -155,7 +155,7 @@ namespace Gear.ActiveExpressions.Tests
             Assert.IsTrue(new string[] { "John", "J", "John", "Emily", "E", "Emily", null, "Emily", "John" }.SequenceEqual(values));
         }
 
-        [Test]
+        [TestMethod]
         public void StringConversion()
         {
             var emily = TestPerson.CreateEmily();
@@ -164,7 +164,7 @@ namespace Gear.ActiveExpressions.Tests
                 Assert.AreEqual("({C} /* {X} */.Name /* \"X\" */ ?? {C} /* {X} */.Name /* \"X\" */.Length /* ? */.ToString() /* ? */) /* \"X\" */", expr.ToString());
         }
 
-        [Test]
+        [TestMethod]
         public void ValueShortCircuiting()
         {
             var john = TestPerson.CreateJohn();

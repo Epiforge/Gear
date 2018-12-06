@@ -1,14 +1,14 @@
-using NUnit.Framework;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Linq.Expressions;
 using System.Reflection;
 
-namespace Gear.ActiveExpressions.Tests
+namespace Gear.ActiveExpressions.MSTest
 {
-    [TestFixture]
-    class ActiveMethodCallExpression
+    [TestClass]
+    public class ActiveMethodCallExpression
     {
-        #region Test Methods
+        #region TestMethod Methods
 
         AsyncDisposableTestPerson CombineAsyncDisposablePeople(AsyncDisposableTestPerson a, AsyncDisposableTestPerson b) => new AsyncDisposableTestPerson { Name = $"{a.Name} {b.Name}" };
 
@@ -18,9 +18,9 @@ namespace Gear.ActiveExpressions.Tests
 
         TestPerson ReversedCombinePeople(TestPerson a, TestPerson b) => new TestPerson { Name = $"{b.Name} {a.Name}" };
 
-        #endregion Test Methods
+        #endregion TestMethod Methods
 
-        [Test]
+        [TestMethod]
         public void ActuallyAProperty()
         {
             var emily = TestPerson.CreateEmily();
@@ -34,7 +34,7 @@ namespace Gear.ActiveExpressions.Tests
             }
         }
 
-        [Test]
+        [TestMethod]
         public void ArgumentFaultPropagation()
         {
             var john = TestPerson.CreateJohn();
@@ -49,7 +49,7 @@ namespace Gear.ActiveExpressions.Tests
             }
         }
 
-        [Test]
+        [TestMethod]
         public void Equality()
         {
             var john = TestPerson.CreateJohn();
@@ -65,7 +65,7 @@ namespace Gear.ActiveExpressions.Tests
             }
         }
 
-        [Test]
+        [TestMethod]
         public void Equals()
         {
             var john = TestPerson.CreateJohn();
@@ -81,7 +81,7 @@ namespace Gear.ActiveExpressions.Tests
             }
         }
 
-        [Test]
+        [TestMethod]
         public void Inequality()
         {
             var john = TestPerson.CreateJohn();
@@ -97,7 +97,7 @@ namespace Gear.ActiveExpressions.Tests
             }
         }
 
-        [Test]
+        [TestMethod]
         public void ObjectFaultPropagation()
         {
             var john = TestPerson.CreateJohn();
@@ -112,7 +112,7 @@ namespace Gear.ActiveExpressions.Tests
             }
         }
 
-        [Test]
+        [TestMethod]
         public void StringConversion()
         {
             var john = TestPerson.CreateJohn();
@@ -121,7 +121,7 @@ namespace Gear.ActiveExpressions.Tests
                 Assert.AreEqual($"{{C}} /* {this} */.CombinePeople({{C}} /* {john} */, {{C}} /* {emily} */) /* {expr.Value} */", expr.ToString());
         }
 
-        [Test]
+        [TestMethod]
         public void ValueAsyncDisposal()
         {
             var john = AsyncDisposableTestPerson.CreateJohn();
@@ -143,7 +143,7 @@ namespace Gear.ActiveExpressions.Tests
             Assert.IsTrue(second.IsDisposed);
         }
 
-        [Test]
+        [TestMethod]
         public void ValueDisposal()
         {
             var john = SyncDisposableTestPerson.CreateJohn();

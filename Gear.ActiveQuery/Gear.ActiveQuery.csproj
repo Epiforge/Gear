@@ -27,7 +27,7 @@
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
-    <LangVersion>7.2</LangVersion>
+    <LangVersion>7.3</LangVersion>
     <DebugType>full</DebugType>
     <DebugSymbols>true</DebugSymbols>
   </PropertyGroup>
@@ -41,7 +41,7 @@
 
   <ItemGroup>
     <PackageReference Include="Gear.ActiveExpressions" Version="1.0.15" />
-    <PackageReference Include="Gear.Components" Version="1.0.63" />
+    <PackageReference Include="Gear.Components" Version="1.0.73" />
     <PackageReference Include="System.ValueTuple" Version="4.5.0" />
   </ItemGroup>
 

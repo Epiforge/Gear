@@ -3,7 +3,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Gear.ActiveExpressions.Tests
+namespace Gear.ActiveExpressions.MSTest
 {
     class AsyncDisposableTestPerson : AsyncDisposablePropertyChangeNotifier
     {
@@ -24,7 +24,7 @@ namespace Gear.ActiveExpressions.Tests
         string name;
         long nameGets;
 
-        protected override Task DisposeAsync(bool disposing, CancellationToken cancellationToken = default(CancellationToken)) => Task.CompletedTask;
+        protected override Task DisposeAsync(bool disposing, CancellationToken cancellationToken = default) => Task.CompletedTask;
 
         public override string ToString() => $"{{{name}}}";
 
@@ -37,7 +37,7 @@ namespace Gear.ActiveExpressions.Tests
                 OnPropertyChanged(nameof(NameGets));
                 return name;
             }
-            set => SetBackedProperty(ref name, value);
+            set => SetBackedProperty(ref name, in value);
         }
 
         public long NameGets => Interlocked.Read(ref nameGets);

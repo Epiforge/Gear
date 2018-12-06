@@ -1,14 +1,14 @@
 using Gear.Components;
-using NUnit.Framework;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Collections.Concurrent;
 using System.Linq;
 
-namespace Gear.ActiveExpressions.Tests
+namespace Gear.ActiveExpressions.MSTest
 {
-    [TestFixture]
-    class ActiveConditionalExpression
+    [TestClass]
+    public class ActiveConditionalExpression
     {
-        [Test]
+        [TestMethod]
         public void Equality()
         {
             var john = TestPerson.CreateJohn();
@@ -24,7 +24,7 @@ namespace Gear.ActiveExpressions.Tests
             }
         }
 
-        [Test]
+        [TestMethod]
         public void Equals()
         {
             var john = TestPerson.CreateJohn();
@@ -40,7 +40,7 @@ namespace Gear.ActiveExpressions.Tests
             }
         }
 
-        [Test]
+        [TestMethod]
         public void FaultPropagationIfFalse()
         {
             var john = TestPerson.CreateJohn();
@@ -59,7 +59,7 @@ namespace Gear.ActiveExpressions.Tests
             }
         }
 
-        [Test]
+        [TestMethod]
         public void FaultPropagationIfTrue()
         {
             var john = TestPerson.CreateJohn();
@@ -78,7 +78,7 @@ namespace Gear.ActiveExpressions.Tests
             }
         }
 
-        [Test]
+        [TestMethod]
         public void FaultPropagationTest()
         {
             var john = TestPerson.CreateJohn();
@@ -92,7 +92,7 @@ namespace Gear.ActiveExpressions.Tests
             }
         }
 
-        [Test]
+        [TestMethod]
         public void FaultShortCircuiting()
         {
             var john = TestPerson.CreateJohn();
@@ -103,7 +103,7 @@ namespace Gear.ActiveExpressions.Tests
             }
         }
 
-        [Test]
+        [TestMethod]
         public void Inequality()
         {
             var john = TestPerson.CreateJohn();
@@ -119,7 +119,7 @@ namespace Gear.ActiveExpressions.Tests
             }
         }
 
-        [Test]
+        [TestMethod]
         public void PropertyChanges()
         {
             var john = TestPerson.CreateJohn();
@@ -142,7 +142,7 @@ namespace Gear.ActiveExpressions.Tests
             Assert.IsTrue(new string[] { "John", "J", "John", "Emily", "E", "Emily", null, "Emily", "John" }.SequenceEqual(values));
         }
 
-        [Test]
+        [TestMethod]
         public void ValueShortCircuiting()
         {
             var john = TestPerson.CreateJohn();
@@ -152,7 +152,7 @@ namespace Gear.ActiveExpressions.Tests
             Assert.AreEqual(0, emily.NameGets);
         }
 
-        [Test]
+        [TestMethod]
         public void StringConversion()
         {
             var john = TestPerson.CreateJohn();

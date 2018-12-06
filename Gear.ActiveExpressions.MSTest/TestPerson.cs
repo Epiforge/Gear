@@ -2,7 +2,7 @@ using Gear.Components;
 using System.Linq;
 using System.Threading;
 
-namespace Gear.ActiveExpressions.Tests
+namespace Gear.ActiveExpressions.MSTest
 {
     class TestPerson : PropertyChangeNotifier
     {
@@ -34,11 +34,9 @@ namespace Gear.ActiveExpressions.Tests
                 OnPropertyChanged(nameof(NameGets));
                 return name;
             }
-            set => SetBackedProperty(ref name, value);
+            set => SetBackedProperty(ref name, in value);
         }
 
         public long NameGets => Interlocked.Read(ref nameGets);
     }
-
-
 }
