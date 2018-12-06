@@ -71,7 +71,7 @@ namespace Gear.ActiveExpressions
 
         protected static FastMethodInfo GetFastMethodInfo(MethodInfo methodInfo) => compiledMethods.GetOrAdd(methodInfo, CreateFastMethodInfo);
 
-        protected static string GetOperatorExpressionSyntax(ExpressionType expressionType, Type resultType, params ActiveExpression[] operands)
+        public static string GetOperatorExpressionSyntax(ExpressionType expressionType, Type resultType, params object[] operands)
         {
             switch (expressionType)
             {
@@ -83,6 +83,8 @@ namespace Gear.ActiveExpressions
                     return $"({operands[0]} & {operands[1]})";
                 case ExpressionType.Convert:
                     return $"(({resultType.FullName}){operands[0]})";
+                case ExpressionType.ConvertChecked:
+                    return $"checked(({resultType.FullName}){operands[0]})";
                 case ExpressionType.Decrement:
                     return $"({operands[0]} - 1)";
                 case ExpressionType.Divide:
@@ -111,14 +113,15 @@ namespace Gear.ActiveExpressions
                     return $"checked({operands[0]} * {operands[1]})";
                 case ExpressionType.Negate:
                     return $"(-{operands[0]})";
-                case ExpressionType.Not when operands[0].Type == typeof(bool) || operands[0].Type == typeof(bool?):
+                case ExpressionType.NegateChecked:
+                    return $"checked(-{operands[0]})";
+                case ExpressionType.Not when operands[0] is bool || (operands[0] is ActiveExpression notOperand && (notOperand.Type == typeof(bool) || notOperand.Type == typeof(bool?))):
                     return $"(!{operands[0]})";
                 case ExpressionType.Not:
+                case ExpressionType.OnesComplement:
                     return $"(~{operands[0]})";
                 case ExpressionType.NotEqual:
                     return $"({operands[0]} != {operands[1]})";
-                case ExpressionType.OnesComplement:
-                    return $"(~{operands[0]})";
                 case ExpressionType.Or:
                     return $"({operands[0]} | {operands[1]})";
                 case ExpressionType.Power:
@@ -128,7 +131,7 @@ namespace Gear.ActiveExpressions
                 case ExpressionType.Subtract:
                     return $"({operands[0]} - {operands[1]})";
                 case ExpressionType.SubtractChecked:
-                    return $"checked({operands[0]} + {operands[1]})";
+                    return $"checked({operands[0]} - {operands[1]})";
                 case ExpressionType.UnaryPlus:
                     return $"(+{operands[0]})";
                 default:
