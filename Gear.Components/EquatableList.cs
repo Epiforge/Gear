@@ -23,7 +23,7 @@ namespace Gear.Components
 
         public override bool Equals(object obj) => obj is EquatableList<T> other ? Equals(other) : false;
 
-        public bool Equals(EquatableList<T> other) => other != null && elements.SequenceEqual(other.elements);
+        public bool Equals(EquatableList<T> other) => elements?.SequenceEqual(other.elements) ?? other.elements == null;
 
         public IEnumerator<T> GetEnumerator() => elements.GetEnumerator();
 
