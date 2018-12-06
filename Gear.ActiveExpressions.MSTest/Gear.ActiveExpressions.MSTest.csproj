@@ -80,6 +80,7 @@
     <Compile Include="ActiveNewExpression.cs" />
     <Compile Include="ActiveOrElseExpression.cs" />
     <Compile Include="ActiveUnaryExpression.cs" />
+    <Compile Include="General.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="app.config" />

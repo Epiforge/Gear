@@ -28,7 +28,7 @@ namespace Gear.ActiveExpressions
 
         internal static ActiveExpression Create(Expression expression, ActiveExpressionOptions options, bool deferEvaluation)
         {
-            ActiveExpression activeExpression;
+            ActiveExpression activeExpression = null;
             switch (expression)
             {
                 case BinaryExpression binaryExpression:
@@ -61,10 +61,6 @@ namespace Gear.ActiveExpressions
                 case UnaryExpression unaryExpression:
                     activeExpression = ActiveUnaryExpression.Create(unaryExpression, options, deferEvaluation);
                     break;
-                case null:
-                    throw new ArgumentNullException(nameof(expression));
-                default:
-                    throw new NotSupportedException($"Cannot create an expression of type \"{expression.GetType().Name}\"");
             }
             if (!deferEvaluation)
                 activeExpression.EvaluateIfDeferred();
