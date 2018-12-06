@@ -9,7 +9,6 @@ Supports `netstandard1.3`.
 ![Build](https://img.shields.io/azure-devops/build/epiforge/gear/1.svg?logo=microsoft&logoColor=white)
 ![Tests](https://img.shields.io/azure-devops/tests/epiforge/gear/1.svg?logo=microsoft&logoColor=white)
 ![Coverage](https://img.shields.io/azure-devops/coverage/epiforge/gear/1.svg?logo=microsoft&logoColor=white)
-![Deployment](https://img.shields.io/azure-devops/release/epiforge/086f3e4c-7edb-4f34-bf9d-72c3556362bc/2/2.svg?logo=microsoft&logoColor=white)
 
 - [Getting Started](#getting-started)
 - [License](#license)
