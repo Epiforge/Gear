@@ -103,6 +103,23 @@ using (var expr = ActiveExpression.Create(e => e.Name.Length, elizabeth))
 Active expressions will also try to automatically dispose of disposable objects they create in the course of their evaluation when and where it makes sense.
 Use the `ActiveExpressionOptions` class for more direct control over this behavior.
 
+You can use the static property `Optimizer` to specify an optimization method to invoke automatically during the active expression creation process.
+We recommend Tuomas Hietanen's [Linq.Expression.Optimizer](https://thorium.github.io/Linq.Expression.Optimizer), the utilization of which would like like so:
+
+```csharp
+ActiveExpression.Optimizer = ExpressionOptimizer.tryVisit;
+
+var a = Expression.Parameter(typeof(bool));
+var b = Expression.Parameter(typeof(bool));
+
+// lambda explicitly defined as (a, b) => !a && !b
+var lambda = Expression.Lambda<Func<bool, bool, bool>>(Expression.AndAlso(Expression.Not(a), Expression.Not(b)), a, b);
+
+// optimizer has made expr actually (a, b) => !(a || b)
+// (because Augustus De Morgan said they're essentially the same thing, but this one involves less steps)
+var expr = ActiveExpression.Create<bool>(lambda, false, false);
+```
+
 ### Parallel
 
 [![Gear.Parallel Nuget](https://img.shields.io/nuget/v/Gear.Parallel.svg)](https://www.nuget.org/packages/Gear.Parallel)

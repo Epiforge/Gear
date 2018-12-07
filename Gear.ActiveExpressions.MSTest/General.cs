@@ -10,6 +10,9 @@ namespace Gear.ActiveExpressions.MSTest
     [TestClass]
     public class General
     {
+        [AssemblyInitialize]
+        public static void AssemblyInit(TestContext context) => ActiveExpression.Optimizer = ExpressionOptimizer.tryVisit;
+
         [TestMethod]
         public void CharStringConversion()
         {
@@ -139,6 +142,15 @@ namespace Gear.ActiveExpressions.MSTest
         }
 
         [TestMethod]
+        public void OptimizerAppliedDeMorgan()
+        {
+            var a = Expression.Parameter(typeof(bool));
+            var b = Expression.Parameter(typeof(bool));
+            using (var expr = ActiveExpression.Create<bool>(Expression.Lambda<Func<bool, bool, bool>>(Expression.AndAlso(Expression.Not(a), Expression.Not(b)), a, b), false, false))
+                Assert.AreEqual("(!({C} /* False */ || {C} /* False */) /* False */) /* True */", expr.ToString());
+        }
+
+        [TestMethod]
         public void ThreeArgumentConsistentHashCode()
         {
             int hashCode1, hashCode2;
@@ -152,10 +164,13 @@ namespace Gear.ActiveExpressions.MSTest
         [TestMethod]
         public void ThreeArgumentEquality()
         {
-            using (var expr1 = ActiveExpression.Create((a, b, c) => a + b + c, 1, 2, 3))
-            using (var expr2 = ActiveExpression.Create((a, b, c) => a + b + c, 1, 2, 3))
-            using (var expr3 = ActiveExpression.Create((a, b, c) => a - b + c, 1, 2, 3))
-            using (var expr4 = ActiveExpression.Create((a, b, c) => a + b + c, 3, 2, 1))
+            var john = TestPerson.CreateJohn();
+            var emily = TestPerson.CreateEmily();
+            var charles = new TestPerson("Charles");
+            using (var expr1 = ActiveExpression.Create((a, b, c) => a + b + c, john, emily, charles))
+            using (var expr2 = ActiveExpression.Create((a, b, c) => a + b + c, john, emily, charles))
+            using (var expr3 = ActiveExpression.Create((a, b, c) => a + c + b, john, emily, charles))
+            using (var expr4 = ActiveExpression.Create((a, b, c) => a + b + c, charles, emily, john))
             {
                 Assert.IsTrue(expr1 == expr2);
                 Assert.IsFalse(expr1 == expr3);
@@ -166,10 +181,13 @@ namespace Gear.ActiveExpressions.MSTest
         [TestMethod]
         public void ThreeArgumentEquals()
         {
-            using (var expr1 = ActiveExpression.Create((a, b, c) => a + b + c, 1, 2, 3))
-            using (var expr2 = ActiveExpression.Create((a, b, c) => a + b + c, 1, 2, 3))
-            using (var expr3 = ActiveExpression.Create((a, b, c) => a - b + c, 1, 2, 3))
-            using (var expr4 = ActiveExpression.Create((a, b, c) => a + b + c, 3, 2, 1))
+            var john = TestPerson.CreateJohn();
+            var emily = TestPerson.CreateEmily();
+            var charles = new TestPerson("Charles");
+            using (var expr1 = ActiveExpression.Create((a, b, c) => a + b + c, john, emily, charles))
+            using (var expr2 = ActiveExpression.Create((a, b, c) => a + b + c, john, emily, charles))
+            using (var expr3 = ActiveExpression.Create((a, b, c) => a + c + b, john, emily, charles))
+            using (var expr4 = ActiveExpression.Create((a, b, c) => a + b + c, charles, emily, john))
             {
                 Assert.IsTrue(expr1.Equals(expr2));
                 Assert.IsFalse(expr1.Equals(expr3));
@@ -180,10 +198,13 @@ namespace Gear.ActiveExpressions.MSTest
         [TestMethod]
         public void ThreeArgumentInequality()
         {
-            using (var expr1 = ActiveExpression.Create((a, b, c) => a + b + c, 1, 2, 3))
-            using (var expr2 = ActiveExpression.Create((a, b, c) => a + b + c, 1, 2, 3))
-            using (var expr3 = ActiveExpression.Create((a, b, c) => a - b + c, 1, 2, 3))
-            using (var expr4 = ActiveExpression.Create((a, b, c) => a + b + c, 3, 2, 1))
+            var john = TestPerson.CreateJohn();
+            var emily = TestPerson.CreateEmily();
+            var charles = new TestPerson("Charles");
+            using (var expr1 = ActiveExpression.Create((a, b, c) => a + b + c, john, emily, charles))
+            using (var expr2 = ActiveExpression.Create((a, b, c) => a + b + c, john, emily, charles))
+            using (var expr3 = ActiveExpression.Create((a, b, c) => a + c + b, john, emily, charles))
+            using (var expr4 = ActiveExpression.Create((a, b, c) => a + b + c, charles, emily, john))
             {
                 Assert.IsFalse(expr1 != expr2);
                 Assert.IsTrue(expr1 != expr3);
@@ -194,8 +215,11 @@ namespace Gear.ActiveExpressions.MSTest
         [TestMethod]
         public void ThreeArgumentStringConversion()
         {
-            using (var expr = ActiveExpression.Create((a, b, c) => a + b + c, 1, 2, 3))
-                Assert.AreEqual($"(({{C}} /* 1 */ + {{C}} /* 2 */) /* 3 */ + {{C}} /* 3 */) /* 6 */", expr.ToString());
+            var john = TestPerson.CreateJohn();
+            var emily = TestPerson.CreateEmily();
+            var charles = new TestPerson("Charles");
+            using (var expr = ActiveExpression.Create((a, b, c) => a + b + c, john, emily, charles))
+                Assert.AreEqual("(({C} /* {John} */ + {C} /* {Emily} */) /* {John Emily} */ + {C} /* {Charles} */) /* {John Emily Charles} */", expr.ToString());
         }
 
         [TestMethod]

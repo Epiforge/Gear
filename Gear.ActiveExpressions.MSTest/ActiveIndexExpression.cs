@@ -165,17 +165,6 @@ namespace Gear.ActiveExpressions.MSTest
         }
 
         [TestMethod]
-        public void ManualCreation()
-        {
-            var people = new List<TestPerson>() { TestPerson.CreateEmily() };
-            using (var expr = ActiveExpression.Create(Expression.Lambda<Func<string>>(Expression.MakeMemberAccess(Expression.MakeIndex(Expression.Constant(people), typeof(List<TestPerson>).GetRuntimeProperties().First(p => p.GetIndexParameters().Length > 0), new Expression[] { Expression.Constant(0) }), typeof(TestPerson).GetRuntimeProperty(nameof(TestPerson.Name))))))
-            {
-                Assert.IsNull(expr.Fault);
-                Assert.AreEqual("Emily", expr.Value);
-            }
-        }
-
-        [TestMethod]
         public void Inequality()
         {
             var john = TestPerson.CreateJohn();
@@ -190,6 +179,17 @@ namespace Gear.ActiveExpressions.MSTest
                 Assert.IsFalse(expr1 != expr2);
                 Assert.IsTrue(expr1 != expr3);
                 Assert.IsTrue(expr1 != expr4);
+            }
+        }
+
+        [TestMethod]
+        public void ManualCreation()
+        {
+            var people = new List<TestPerson>() { TestPerson.CreateEmily() };
+            using (var expr = ActiveExpression.Create(Expression.Lambda<Func<string>>(Expression.MakeMemberAccess(Expression.MakeIndex(Expression.Constant(people), typeof(List<TestPerson>).GetRuntimeProperties().First(p => p.GetIndexParameters().Length > 0), new Expression[] { Expression.Constant(0) }), typeof(TestPerson).GetRuntimeProperty(nameof(TestPerson.Name))))))
+            {
+                Assert.IsNull(expr.Fault);
+                Assert.AreEqual("Emily", expr.Value);
             }
         }
 

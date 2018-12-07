@@ -3,7 +3,6 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Linq;
 using System.Linq.Expressions;
@@ -295,14 +294,14 @@ namespace Gear.ActiveExpressions
         internal static Expression ReplaceParameters(LambdaExpression lambdaExpression, params object[] arguments)
         {
             var parameterTranslation = new Dictionary<ParameterExpression, ConstantExpression>();
+            lambdaExpression = (LambdaExpression)(Optimizer?.Invoke(lambdaExpression) ?? lambdaExpression);
             for (var i = 0; i < lambdaExpression.Parameters.Count; ++i)
             {
                 var parameter = lambdaExpression.Parameters[i];
                 var constant = Expression.Constant(arguments[i], parameter.Type);
                 parameterTranslation.Add(parameter, constant);
             }
-            var expression = lambdaExpression.Body;
-            return ReplaceParameters(parameterTranslation, expression);
+            return ReplaceParameters(parameterTranslation, lambdaExpression.Body);
         }
 
         static Expression ReplaceParameters(Dictionary<ParameterExpression, ConstantExpression> parameterTranslation, Expression expression)
@@ -408,6 +407,11 @@ namespace Gear.ActiveExpressions
                 return unaryA != unaryB;
             return true;
         }
+
+        /// <summary>
+        /// Gets/sets the method that will be invoked during the active expression creation process to optimize expressions (default is null)
+        /// </summary>
+        public static Func<Expression, Expression> Optimizer { get; set; }
 
         internal ActiveExpression(Type type, ExpressionType nodeType, ActiveExpressionOptions options, bool deferEvaluation)
         {
