@@ -107,7 +107,7 @@ Use the `ActiveExpressionOptions` class for more direct control over this behavi
 
 [![Gear.Parallel Nuget](https://img.shields.io/nuget/v/Gear.Parallel.svg)](https://www.nuget.org/packages/Gear.Parallel)
 
-This is the library where we stuff all our groovy parallel programming stuff.
+This is the library where we stuff all our groovy parallel programming utilities.
 Unfortunately, we haven't thought of much groovyness to add to Microsoft's already bad-ass [Dataflow](https://www.nuget.org/packages/System.Threading.Tasks.Dataflow/).
 Writing some extension methods that make it quicker to use it seemed like the least we could do... so we did it.
 
