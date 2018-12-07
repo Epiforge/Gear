@@ -143,30 +143,21 @@ namespace Gear.ActiveExpressions
             {
                 case NotifyCollectionChangedAction.Add:
                     {
-                        if (e.NewStartingIndex >= 0 && (e.NewItems?.Count ?? 0) > 0 && arguments.Count == 1 && arguments[0].Value is int index)
-                        {
-                            if (e.NewStartingIndex <= index)
-                                Evaluate();
-                        }
+                        if (e.NewStartingIndex >= 0 && (e.NewItems?.Count ?? 0) > 0 && arguments.Count == 1 && arguments[0].Value is int index && e.NewStartingIndex <= index)
+                            Evaluate();
                     }
                     break;
                 case NotifyCollectionChangedAction.Move:
                     {
                         var movingCount = Math.Max(e.OldItems?.Count ?? 0, e.NewItems?.Count ?? 0);
-                        if (e.OldStartingIndex >= 0 && e.NewStartingIndex >= 0 && movingCount > 0 && arguments.Count == 1 && arguments[0].Value is int index)
-                        {
-                            if ((index >= e.OldStartingIndex && index < e.OldStartingIndex + movingCount) || (index >= e.NewStartingIndex && index < e.NewStartingIndex + movingCount))
-                                Evaluate();
-                        }
+                        if (e.OldStartingIndex >= 0 && e.NewStartingIndex >= 0 && movingCount > 0 && arguments.Count == 1 && arguments[0].Value is int index && ((index >= e.OldStartingIndex && index < e.OldStartingIndex + movingCount) || (index >= e.NewStartingIndex && index < e.NewStartingIndex + movingCount)))
+                            Evaluate();
                     }
                     break;
                 case NotifyCollectionChangedAction.Remove:
                     {
-                        if (e.OldStartingIndex >= 0 && (e.OldItems?.Count ?? 0) > 0 && arguments.Count == 1 && arguments[0].Value is int index)
-                        {
-                            if (e.OldStartingIndex <= index)
-                                Evaluate();
-                        }
+                        if (e.OldStartingIndex >= 0 && (e.OldItems?.Count ?? 0) > 0 && arguments.Count == 1 && arguments[0].Value is int index && e.OldStartingIndex <= index)
+                            Evaluate();
                     }
                     break;
                 case NotifyCollectionChangedAction.Replace:
