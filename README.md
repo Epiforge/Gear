@@ -51,15 +51,15 @@ This library accepts expressions (including lambdas), dissects them, and hooks i
 
 ```csharp
 var elizabeth = Employee.GetByName("Elizabeth"); // Employee implements INotifyPropertyChanged
-var expr = ActiveExpression.Create(e => e.Name.Length, elizabeth); // expr has automatically subscribed to PropertyChanged on elizabeth
+var expr = ActiveExpression.Create(e => e.Name.Length, elizabeth); // expr has subscribed to PropertyChanged on elizabeth
 ```
 
 Then, as changes involving any elements of the expression occur, a chain of automatic re-evaluation will get kicked off, possibly causing the active expression's `Value` property to change.
 
 ```csharp
 var elizabeth = Employee.GetByName("Elizabeth");
-var expr = ActiveExpression.Create(e => e.Name.Length, elizabeth); // expr.Value = 9
-elizabeth.Name = "Lizzy"; // expr.Value = 5
+var expr = ActiveExpression.Create(e => e.Name.Length, elizabeth); // expr.Value == 9
+elizabeth.Name = "Lizzy"; // expr.Value == 5
 ```
 
 Also, since exceptions may be encountered long after an active expression was created, they also have a `Fault` property, which will be set to the exception that was encountered during evaluation.
@@ -94,9 +94,9 @@ When you dispose of your active expression, it will disconnect from all the even
 var elizabeth = Employee.GetByName("Elizabeth");
 using (var expr = ActiveExpression.Create(e => e.Name.Length, elizabeth))
 {
-    // expr has subscribed to INotifyPropertyChanged on elizabeth
+    // expr has subscribed to PropertyChanged on elizabeth
 }
-// expr has unsubcribed from INotifyPropertyChanged on elizabeth
+// expr has unsubcribed from PropertyChanged on elizabeth
 ```
 
 Active expressions will also try to automatically dispose of disposable objects they create in the course of their evaluation when and where it makes sense.
