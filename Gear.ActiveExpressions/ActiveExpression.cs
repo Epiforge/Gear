@@ -13,9 +13,7 @@ using System.Text;
 namespace Gear.ActiveExpressions
 {
     /// <summary>
-    /// Provides the base class from which the classes that represent active expression tree nodes are derived.
-    /// Active expressions subscribe to notification events for values in each stage of evaluation and will re-evaluate dependent portions of the expression tree when a change occurs.
-    /// Use <see cref="Create{TResult}(LambdaExpression, object[])"/> or one of its strongly-typed overloads to create an active expression.
+    /// Provides the base class from which the classes that represent active expression tree nodes are derived; use <see cref="Create{TResult}(LambdaExpression, object[])"/> or one of its overloads to create an active expression
     /// </summary>
 #pragma warning disable CS0660 // we can't override Equals in a meaningful way in this class, and besides, inheriting classes should be doing it anyway
 #pragma warning disable CS0661 // we can't override GetHashCode in a meaningful way in this class, and besides, inheriting classes should be doing it anyway
@@ -71,6 +69,13 @@ namespace Gear.ActiveExpressions
 
         protected static FastMethodInfo GetFastMethodInfo(MethodInfo methodInfo) => compiledMethods.GetOrAdd(methodInfo, CreateFastMethodInfo);
 
+        /// <summary>
+        /// Produces a human-readable representation of an expression
+        /// </summary>
+        /// <param name="expressionType">The type of expression</param>
+        /// <param name="resultType">The type of the result when the expression is evaluated</param>
+        /// <param name="operands">The operands (or arguments) of the expression</param>
+        /// <returns>A human-readable representation of the expression</returns>
         public static string GetOperatorExpressionSyntax(ExpressionType expressionType, Type resultType, params object[] operands)
         {
             switch (expressionType)
@@ -152,7 +157,7 @@ namespace Gear.ActiveExpressions
             CreateWithOptions<TResult>(lambdaExpression, null, arguments);
 
         /// <summary>
-        /// Creates an active expression using a specified lambda expression and arguments
+        /// Creates an active expression using a specified lambda expression, options and arguments
         /// </summary>
         /// <typeparam name="TResult">The type that <paramref name="lambdaExpression"/> returns</typeparam>
         /// <param name="lambdaExpression">The lambda expression</param>
@@ -330,6 +335,12 @@ namespace Gear.ActiveExpressions
             }
         }
 
+        /// <summary>
+        /// Determines whether two active expression tree nodes are the same
+        /// </summary>
+        /// <param name="a">The first node to compare, or null</param>
+        /// <param name="b">The second node to compare, or null</param>
+        /// <returns><c>true</c> is <paramref name="a"/> is the same as <paramref name="b"/>; otherwise, <c>false</c></returns>
         public static bool operator ==(ActiveExpression a, ActiveExpression b)
         {
             if (a is null && b is null)
@@ -361,6 +372,12 @@ namespace Gear.ActiveExpressions
             return false;
         }
 
+        /// <summary>
+        /// Determines whether two active expression tree nodes are different
+        /// </summary>
+        /// <param name="a">The first node to compare, or null</param>
+        /// <param name="b">The second node to compare, or null</param>
+        /// <returns><c>true</c> is <paramref name="a"/> is different from <paramref name="b"/>; otherwise, <c>false</c></returns>
         public static bool operator !=(ActiveExpression a, ActiveExpression b)
         {
             if (a is null && b is null)
@@ -392,7 +409,7 @@ namespace Gear.ActiveExpressions
             return true;
         }
 
-        public ActiveExpression(Type type, ExpressionType nodeType, ActiveExpressionOptions options, bool deferEvaluation)
+        internal ActiveExpression(Type type, ExpressionType nodeType, ActiveExpressionOptions options, bool deferEvaluation)
         {
             Type = type;
             defaultValue = FastDefault.Get(type);
@@ -403,7 +420,7 @@ namespace Gear.ActiveExpressions
             deferringEvaluation = deferEvaluation;
         }
 
-        public ActiveExpression(Type type, ExpressionType nodeType, ActiveExpressionOptions options, object value) : this(type, nodeType, options, false) => val = value;
+        internal ActiveExpression(Type type, ExpressionType nodeType, ActiveExpressionOptions options, object value) : this(type, nodeType, options, false) => val = value;
 
         readonly object defaultValue;
         bool deferringEvaluation;
@@ -496,8 +513,7 @@ namespace Gear.ActiveExpressions
     }
 
     /// <summary>
-    /// Represents an active evaluation of a lambda expression.
-    /// <see cref="INotifyPropertyChanged"/>, <see cref="INotifyCollectionChanged"/>, and <see cref="INotifyDictionaryChanged"/> events raised by any value within the lambda expression will cause all dependent portions to be re-evaluated.
+    /// Represents an active evaluation of a lambda expression
     /// </summary>
     /// <typeparam name="TResult">The type of the value returned by the lambda expression upon which this active expression is based</typeparam>
     public class ActiveExpression<TResult> : SyncDisposablePropertyChangeNotifier
@@ -505,8 +521,20 @@ namespace Gear.ActiveExpressions
         internal static ActiveExpression<TResult> Create(LambdaExpression expression, ActiveExpressionOptions options, params object[] args) =>
             new ActiveExpression<TResult>(ActiveExpression.Create(ActiveExpression.ReplaceParameters(expression, args), options, false), options, args.ToImmutableList());
 
+        /// <summary>
+        /// Determines whether two active expressions are the same
+        /// </summary>
+        /// <param name="a">The first expression to compare, or null</param>
+        /// <param name="b">The second expression to compare, or null</param>
+        /// <returns><c>true</c> is <paramref name="a"/> is the same as <paramref name="b"/>; otherwise, <c>false</c></returns>
         public static bool operator ==(ActiveExpression<TResult> a, ActiveExpression<TResult> b) => a?.expression == b?.expression;
 
+        /// <summary>
+        /// Determines whether two active expressions are different
+        /// </summary>
+        /// <param name="a">The first expression to compare, or null</param>
+        /// <param name="b">The second expression to compare, or null</param>
+        /// <returns><c>true</c> is <paramref name="a"/> is different from <paramref name="b"/>; otherwise, <c>false</c></returns>
         public static bool operator !=(ActiveExpression<TResult> a, ActiveExpression<TResult> b) => a?.expression != b?.expression;
 
         ActiveExpression(ActiveExpression expression, ActiveExpressionOptions options, IReadOnlyList<object> arguments)
@@ -573,8 +601,7 @@ namespace Gear.ActiveExpressions
     }
 
     /// <summary>
-    /// Represents an active evaluation of a strongly-typed lambda expression with a single argument.
-    /// <see cref="INotifyPropertyChanged"/>, <see cref="INotifyCollectionChanged"/>, and <see cref="INotifyDictionaryChanged"/> events raised by any value within the lambda expression will cause all dependent portions to be re-evaluated.
+    /// Represents an active evaluation of a strongly-typed lambda expression with a single argument
     /// </summary>
     /// <typeparam name="TArg">The type of the argument passed to the lambda expression</typeparam>
     /// <typeparam name="TResult">The type of the value returned by the expression upon which this active expression is based</typeparam>
@@ -583,8 +610,20 @@ namespace Gear.ActiveExpressions
         internal static ActiveExpression<TArg, TResult> Create(LambdaExpression expression, TArg arg, ActiveExpressionOptions options = null) =>
             new ActiveExpression<TArg, TResult>(ActiveExpression.Create(ActiveExpression.ReplaceParameters(expression, arg), options, false), options, arg);
 
+        /// <summary>
+        /// Determines whether two active expressions are the same
+        /// </summary>
+        /// <param name="a">The first expression to compare, or null</param>
+        /// <param name="b">The second expression to compare, or null</param>
+        /// <returns><c>true</c> is <paramref name="a"/> is the same as <paramref name="b"/>; otherwise, <c>false</c></returns>
         public static bool operator ==(ActiveExpression<TArg, TResult> a, ActiveExpression<TArg, TResult> b) => a?.expression == b?.expression;
 
+        /// <summary>
+        /// Determines whether two active expressions are different
+        /// </summary>
+        /// <param name="a">The first expression to compare, or null</param>
+        /// <param name="b">The second expression to compare, or null</param>
+        /// <returns><c>true</c> is <paramref name="a"/> is different from <paramref name="b"/>; otherwise, <c>false</c></returns>
         public static bool operator !=(ActiveExpression<TArg, TResult> a, ActiveExpression<TArg, TResult> b) => a?.expression != b?.expression;
 
         ActiveExpression(ActiveExpression expression, ActiveExpressionOptions options, TArg arg)
@@ -651,8 +690,7 @@ namespace Gear.ActiveExpressions
     }
 
     /// <summary>
-    /// Represents an active evaluation of a strongly-typed lambda expression with two arguments.
-    /// <see cref="INotifyPropertyChanged"/>, <see cref="INotifyCollectionChanged"/>, and <see cref="INotifyDictionaryChanged"/> events raised by any value within the lambda expression will cause all dependent portions to be re-evaluated.
+    /// Represents an active evaluation of a strongly-typed lambda expression with two arguments
     /// </summary>
     /// <typeparam name="TArg1">The type of the first argument passed to the lambda expression</typeparam>
     /// <typeparam name="TArg2">The type of the second argument passed to the lambda expression</typeparam>
@@ -662,8 +700,20 @@ namespace Gear.ActiveExpressions
         internal static ActiveExpression<TArg1, TArg2, TResult> Create(LambdaExpression expression, TArg1 arg1, TArg2 arg2, ActiveExpressionOptions options = null) =>
             new ActiveExpression<TArg1, TArg2, TResult>(ActiveExpression.Create(ActiveExpression.ReplaceParameters(expression, arg1, arg2), options, false), options, arg1, arg2);
 
+        /// <summary>
+        /// Determines whether two active expressions are the same
+        /// </summary>
+        /// <param name="a">The first expression to compare, or null</param>
+        /// <param name="b">The second expression to compare, or null</param>
+        /// <returns><c>true</c> is <paramref name="a"/> is the same as <paramref name="b"/>; otherwise, <c>false</c></returns>
         public static bool operator ==(ActiveExpression<TArg1, TArg2, TResult> a, ActiveExpression<TArg1, TArg2, TResult> b) => a?.expression == b?.expression;
 
+        /// <summary>
+        /// Determines whether two active expressions are different
+        /// </summary>
+        /// <param name="a">The first expression to compare, or null</param>
+        /// <param name="b">The second expression to compare, or null</param>
+        /// <returns><c>true</c> is <paramref name="a"/> is different from <paramref name="b"/>; otherwise, <c>false</c></returns>
         public static bool operator !=(ActiveExpression<TArg1, TArg2, TResult> a, ActiveExpression<TArg1, TArg2, TResult> b) => a?.expression != b?.expression;
 
         ActiveExpression(ActiveExpression expression, ActiveExpressionOptions options, TArg1 arg1, TArg2 arg2)
@@ -736,8 +786,7 @@ namespace Gear.ActiveExpressions
     }
 
     /// <summary>
-    /// Represents an active evaluation of a strongly-typed lambda expression with two arguments.
-    /// <see cref="INotifyPropertyChanged"/>, <see cref="INotifyCollectionChanged"/>, and <see cref="INotifyDictionaryChanged"/> events raised by any value within the lambda expression will cause all dependent portions to be re-evaluated.
+    /// Represents an active evaluation of a strongly-typed lambda expression with three arguments
     /// </summary>
     /// <typeparam name="TArg1">The type of the first argument passed to the lambda expression</typeparam>
     /// <typeparam name="TArg2">The type of the second argument passed to the lambda expression</typeparam>
@@ -748,8 +797,20 @@ namespace Gear.ActiveExpressions
         internal static ActiveExpression<TArg1, TArg2, TArg3, TResult> Create(LambdaExpression expression, TArg1 arg1, TArg2 arg2, TArg3 arg3, ActiveExpressionOptions options = null) =>
             new ActiveExpression<TArg1, TArg2, TArg3, TResult>(ActiveExpression.Create(ActiveExpression.ReplaceParameters(expression, arg1, arg2, arg3), options, false), options, arg1, arg2, arg3);
 
+        /// <summary>
+        /// Determines whether two active expressions are the same
+        /// </summary>
+        /// <param name="a">The first expression to compare, or null</param>
+        /// <param name="b">The second expression to compare, or null</param>
+        /// <returns><c>true</c> is <paramref name="a"/> is the same as <paramref name="b"/>; otherwise, <c>false</c></returns>
         public static bool operator ==(ActiveExpression<TArg1, TArg2, TArg3, TResult> a, ActiveExpression<TArg1, TArg2, TArg3, TResult> b) => a?.expression == b?.expression;
 
+        /// <summary>
+        /// Determines whether two active expressions are different
+        /// </summary>
+        /// <param name="a">The first expression to compare, or null</param>
+        /// <param name="b">The second expression to compare, or null</param>
+        /// <returns><c>true</c> is <paramref name="a"/> is different from <paramref name="b"/>; otherwise, <c>false</c></returns>
         public static bool operator !=(ActiveExpression<TArg1, TArg2, TArg3, TResult> a, ActiveExpression<TArg1, TArg2, TArg3, TResult> b) => a?.expression != b?.expression;
 
         ActiveExpression(ActiveExpression expression, ActiveExpressionOptions options, TArg1 arg1, TArg2 arg2, TArg3 arg3)

@@ -47,11 +47,58 @@ Nab it for yourself if you want to do any of the following stuff our way:
 
 [![Gear.ActiveExpressions Nuget](https://img.shields.io/nuget/v/Gear.ActiveExpressions.svg)](https://www.nuget.org/packages/Gear.ActiveExpressions)
 
-This library accepts expressions (including lambdas), dissects them, and hooks into change notification events for properties, collections, and dictionaries.
+This library accepts expressions (including lambdas), dissects them, and hooks into change notification events for properties (`INotifyPropertyChanged`), collections (`INotifyCollectionChanged`), and dictionaries (`Gear.Components.INotifyDictionaryChanged`).
+
+```csharp
+var elizabeth = Employee.GetByName("Elizabeth"); // Employee implements INotifyPropertyChanged
+var expr = ActiveExpression.Create(e => e.Name.Length, elizabeth); // expr has automatically subscribed to PropertyChanged on elizabeth
+```
+
 Then, as changes involving any elements of the expression occur, a chain of automatic re-evaluation will get kicked off, possibly causing the active expression's `Value` property to change.
-Also, since exceptions may be encountered long after an active expression was created, they have also have a `Fault` property, which will be set to the exception that was encountered during evaluation.
+
+```csharp
+var elizabeth = Employee.GetByName("Elizabeth");
+var expr = ActiveExpression.Create(e => e.Name.Length, elizabeth); // expr.Value = 9
+elizabeth.Name = "Lizzy"; // expr.Value = 5
+```
+
+Also, since exceptions may be encountered long after an active expression was created, they also have a `Fault` property, which will be set to the exception that was encountered during evaluation.
+
+```csharp
+var elizabeth = Employee.GetByName("Elizabeth");
+var expr = ActiveExpression.Create(e => e.Name.Length, elizabeth); // expr.Fault is null
+elizabeth.Name = null; // expr.Fault is NullReferenceException
+```
+
 Active expressions raise property change events of their own, so listen for those (kinda the whole point)!
-When you dispose of your active expression, it will, of course, disconnect from all the events.
+
+```csharp
+var elizabeth = Employee.GetByName("Elizabeth");
+var expr = ActiveExpression.Create(e => e.Name.Length, elizabeth);
+expr.PropertyChanged += (sender, e) =>
+{
+    if (e.PropertyName == "Fault")
+    {
+        // Whoops
+    }
+    else if (e.PropertyName == "Value")
+    {
+        // Do something
+    }
+};
+```
+
+When you dispose of your active expression, it will disconnect from all the events.
+
+```csharp
+var elizabeth = Employee.GetByName("Elizabeth");
+using (var expr = ActiveExpression.Create(e => e.Name.Length, elizabeth))
+{
+    // expr has subscribed to INotifyPropertyChanged on elizabeth
+}
+// expr has unsubcribed from INotifyPropertyChanged on elizabeth
+```
+
 Active expressions will also try to automatically dispose of disposable objects they create in the course of their evaluation when and where it makes sense.
 Use the `ActiveExpressionOptions` class for more direct control over this behavior.
 
