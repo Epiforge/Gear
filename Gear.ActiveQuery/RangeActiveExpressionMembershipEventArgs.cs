@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 
 namespace Gear.ActiveQuery
 {
@@ -7,7 +8,7 @@ namespace Gear.ActiveQuery
     {
         public RangeActiveExpressionMembershipEventArgs(IReadOnlyList<(TElement element, TResult result)> elementResults, int index)
         {
-            ElementResults = elementResults;
+            ElementResults = elementResults.ToImmutableArray();
             Index = index;
         }
 

@@ -1,6 +1,7 @@
 using Gear.Components;
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 
 namespace Gear.ActiveQuery
@@ -40,6 +41,6 @@ namespace Gear.ActiveQuery
         void ElementFaultChangeNotifierElementFaultChanging(object sender, ElementFaultChangeEventArgs e) => ElementFaultChanging?.Invoke(sender, e);
 
         public IReadOnlyList<(object element, Exception fault)> GetElementFaults() =>
-            elementFaultChangeNotifiers.SelectMany(elementFaultChangeNotifier => elementFaultChangeNotifier?.GetElementFaults() ?? Enumerable.Empty<(object element, Exception fault)>()).ToList();
+            elementFaultChangeNotifiers.SelectMany(elementFaultChangeNotifier => elementFaultChangeNotifier?.GetElementFaults() ?? Enumerable.Empty<(object element, Exception fault)>()).ToImmutableArray();
     }
 }

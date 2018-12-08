@@ -30,6 +30,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gear.ActiveExpressions.MSTe
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gear.Components.MSTest", "Gear.Components.MSTest\Gear.Components.MSTest.csproj", "{1C322F98-6A3D-44E3-BD55-6B649AEE7FBF}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gear.ActiveQuery.MSTest", "Gear.ActiveQuery.MSTest\Gear.ActiveQuery.MSTest.csproj", "{57265215-6652-4D57-873A-7F20B500FC0D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -64,6 +66,10 @@ Global
 		{1C322F98-6A3D-44E3-BD55-6B649AEE7FBF}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1C322F98-6A3D-44E3-BD55-6B649AEE7FBF}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{1C322F98-6A3D-44E3-BD55-6B649AEE7FBF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{57265215-6652-4D57-873A-7F20B500FC0D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{57265215-6652-4D57-873A-7F20B500FC0D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{57265215-6652-4D57-873A-7F20B500FC0D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{57265215-6652-4D57-873A-7F20B500FC0D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

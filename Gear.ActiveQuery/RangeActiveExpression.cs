@@ -6,7 +6,7 @@ using System.Linq.Expressions;
 
 namespace Gear.ActiveQuery
 {
-    public static class RangeActiveExpression
+    static class RangeActiveExpression
     {
         public static DictionaryRangeActiveExpression<TResult> Create<TResult>(IDictionary source, Expression<Func<object, object, TResult>> expression, ActiveExpressionOptions options = null) => DictionaryRangeActiveExpression<TResult>.Create(source, expression, options);
 

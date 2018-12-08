@@ -3,6 +3,7 @@ using Gear.Components;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.ComponentModel;
 using System.Linq;
 using System.Linq.Expressions;
@@ -14,7 +15,7 @@ namespace Gear.ActiveQuery
     /// Represents the dictionary of results derived from creating an active expression for each key-value pair in a dictionary
     /// </summary>
     /// <typeparam name="TResult">The type of the result of the active expression</typeparam>
-    public class DictionaryRangeActiveExpression<TResult> : OverridableSyncDisposablePropertyChangeNotifier, INotifyElementFaultChanges
+    class DictionaryRangeActiveExpression<TResult> : OverridableSyncDisposablePropertyChangeNotifier, INotifyElementFaultChanges
     {
         static readonly object rangeActiveExpressionsAccess = new object();
         static readonly Dictionary<(IDictionary source, string expressionString), DictionaryRangeActiveExpression<TResult>> rangeActiveExpressions = new Dictionary<(IDictionary source, string expressionString), DictionaryRangeActiveExpression<TResult>>();
@@ -135,8 +136,8 @@ namespace Gear.ActiveQuery
 
         TResult AddActiveExpression(object key, object value)
         {
-            OnPropertyChanging(nameof(Count));
             activeExpressionsAccess.EnterWriteLock();
+            OnPropertyChanging(nameof(Count));
             try
             {
                 var activeExpression = ActiveExpression.Create(expression, key, value, Options);
@@ -146,8 +147,8 @@ namespace Gear.ActiveQuery
             }
             finally
             {
-                activeExpressionsAccess.ExitWriteLock();
                 OnPropertyChanged(nameof(Count));
+                activeExpressionsAccess.ExitWriteLock();
             }
         }
 
@@ -156,8 +157,8 @@ namespace Gear.ActiveQuery
             if (keyValuePairs.Any())
             {
                 var addedActiveExpressions = new List<ActiveExpression<object, object, TResult>>();
-                OnPropertyChanging(nameof(Count));
                 activeExpressionsAccess.EnterWriteLock();
+                OnPropertyChanging(nameof(Count));
                 try
                 {
                     foreach (var keyValuePair in keyValuePairs)
@@ -170,10 +171,10 @@ namespace Gear.ActiveQuery
                 }
                 finally
                 {
-                    activeExpressionsAccess.ExitWriteLock();
                     OnPropertyChanged(nameof(Count));
+                    activeExpressionsAccess.ExitWriteLock();
                 }
-                return addedActiveExpressions.Select(ae => new KeyValuePair<object, TResult>(ae.Arg1, ae.Value)).ToList();
+                return addedActiveExpressions.Select(ae => new KeyValuePair<object, TResult>(ae.Arg1, ae.Value)).ToImmutableArray();
             }
             return null;
         }
@@ -208,20 +209,22 @@ namespace Gear.ActiveQuery
             activeExpressionsAccess.EnterReadLock();
             try
             {
-                return activeExpressions.Select(ae => ((object)ae.Key, ae.Value.Fault)).ToList();
+                return GetElementFaultsUnderLock();
             }
             finally
             {
                 activeExpressionsAccess.ExitReadLock();
             }
         }
+
+        internal IReadOnlyList<(object element, Exception fault)> GetElementFaultsUnderLock() => activeExpressions.Select(ae => ((object)ae.Key, ae.Value.Fault)).ToImmutableArray();
 
         public IReadOnlyList<(object key, TResult result)> GetResults()
         {
             activeExpressionsAccess.EnterReadLock();
             try
             {
-                return activeExpressions.Select(ae => (ae.Key, ae.Value.Value)).ToList();
+                return GetResultsUnderLock();
             }
             finally
             {
@@ -229,18 +232,22 @@ namespace Gear.ActiveQuery
             }
         }
 
+        internal IReadOnlyList<(object key, TResult result)> GetResultsUnderLock() => activeExpressions.Select(ae => (ae.Key, ae.Value.Value)).ToImmutableArray();
+
         public IReadOnlyList<(object key, TResult result, Exception fault)> GetResultsAndFaults()
         {
             activeExpressionsAccess.EnterReadLock();
             try
             {
-                return activeExpressions.Select(ae => (ae.Key, ae.Value.Value, ae.Value.Fault)).ToList();
+                return GetResultsAndFaultsUnderLock();
             }
             finally
             {
                 activeExpressionsAccess.ExitReadLock();
             }
         }
+
+        internal IReadOnlyList<(object key, TResult result, Exception fault)> GetResultsAndFaultsUnderLock() => activeExpressions.Select(ae => (ae.Key, ae.Value.Value, ae.Value.Fault)).ToImmutableArray();
 
         void Initialize()
         {
@@ -344,29 +351,32 @@ namespace Gear.ActiveQuery
 
         IReadOnlyList<KeyValuePair<object, TResult>> RemoveActiveExpressions(IEnumerable<object> keys)
         {
-            if (!(keys?.Any() ?? false))
-                throw new ArgumentException($"{nameof(keys)} cannot be empty", nameof(keys));
-            var result = new List<KeyValuePair<object, TResult>>();
-            OnPropertyChanging(nameof(Count));
+            List<KeyValuePair<object, TResult>> result = null;
             activeExpressionsAccess.EnterWriteLock();
             try
             {
-                foreach (var key in keys)
+                if (keys?.Any() ?? false)
                 {
-                    var activeExpression = activeExpressions[key];
-                    result.Add(new KeyValuePair<object, TResult>(key, activeExpression.Value));
-                    activeExpressions.Remove(key);
-                    activeExpression.PropertyChanging -= ActiveExpressionPropertyChanging;
-                    activeExpression.PropertyChanged -= ActiveExpressionPropertyChanged;
-                    activeExpression.Dispose();
+                    result = new List<KeyValuePair<object, TResult>>();
+                    OnPropertyChanging(nameof(Count));
+                    foreach (var key in keys)
+                    {
+                        var activeExpression = activeExpressions[key];
+                        result.Add(new KeyValuePair<object, TResult>(key, activeExpression.Value));
+                        activeExpressions.Remove(key);
+                        activeExpression.PropertyChanging -= ActiveExpressionPropertyChanging;
+                        activeExpression.PropertyChanged -= ActiveExpressionPropertyChanged;
+                        activeExpression.Dispose();
+                    }
                 }
             }
             finally
             {
+                if (result != null)
+                    OnPropertyChanged(nameof(Count));
                 activeExpressionsAccess.ExitWriteLock();
-                OnPropertyChanged(nameof(Count));
             }
-            return result;
+            return (result ?? Enumerable.Empty<KeyValuePair<object, TResult>>()).ToImmutableArray();
         }
 
         (TResult oldResult, TResult newResult) ReplaceActiveExpression(object key, object value)
@@ -417,7 +427,7 @@ namespace Gear.ActiveQuery
                 activeExpressionsAccess.EnterReadLock();
                 try
                 {
-                    return activeExpressions.Count;
+                    return CountUnderLock;
                 }
                 finally
                 {
@@ -425,24 +435,10 @@ namespace Gear.ActiveQuery
                 }
             }
         }
+
+        internal int CountUnderLock => activeExpressions.Count;
 
         public ActiveExpressionOptions Options { get; }
-
-        public TResult this[object key]
-        {
-            get
-            {
-                activeExpressionsAccess.EnterReadLock();
-                try
-                {
-                    return activeExpressions[key].Value;
-                }
-                finally
-                {
-                    activeExpressionsAccess.ExitReadLock();
-                }
-            }
-        }
     }
 
     /// <summary>
@@ -451,7 +447,7 @@ namespace Gear.ActiveQuery
     /// <typeparam name="TKey">The type of the keys</typeparam>
     /// <typeparam name="TValue">The type of the values in the dictionary</typeparam>
     /// <typeparam name="TResult">The type of the result of the active expression</typeparam>
-    public class DictionaryRangeActiveExpression<TKey, TValue, TResult> : OverridableSyncDisposablePropertyChangeNotifier, INotifyElementFaultChanges
+    class DictionaryRangeActiveExpression<TKey, TValue, TResult> : OverridableSyncDisposablePropertyChangeNotifier, INotifyElementFaultChanges
     {
         static readonly object rangeActiveExpressionsAccess = new object();
         static readonly Dictionary<(IDictionary<TKey, TValue> source, string expressionString), DictionaryRangeActiveExpression<TKey, TValue, TResult>> rangeActiveExpressions = new Dictionary<(IDictionary<TKey, TValue> source, string expressionString), DictionaryRangeActiveExpression<TKey, TValue, TResult>>();
@@ -572,8 +568,8 @@ namespace Gear.ActiveQuery
 
         TResult AddActiveExpression(TKey key, TValue value)
         {
-            OnPropertyChanging(nameof(Count));
             activeExpressionsAccess.EnterWriteLock();
+            OnPropertyChanging(nameof(Count));
             try
             {
                 var activeExpression = ActiveExpression.Create(expression, key, value, Options);
@@ -583,8 +579,8 @@ namespace Gear.ActiveQuery
             }
             finally
             {
-                activeExpressionsAccess.ExitWriteLock();
                 OnPropertyChanged(nameof(Count));
+                activeExpressionsAccess.ExitWriteLock();
             }
         }
 
@@ -593,8 +589,8 @@ namespace Gear.ActiveQuery
             if (keyValuePairs.Any())
             {
                 var addedActiveExpressions = new List<ActiveExpression<TKey, TValue, TResult>>();
-                OnPropertyChanging(nameof(Count));
                 activeExpressionsAccess.EnterWriteLock();
+                OnPropertyChanging(nameof(Count));
                 try
                 {
                     foreach (var keyValuePair in keyValuePairs)
@@ -607,10 +603,10 @@ namespace Gear.ActiveQuery
                 }
                 finally
                 {
-                    activeExpressionsAccess.ExitWriteLock();
                     OnPropertyChanged(nameof(Count));
+                    activeExpressionsAccess.ExitWriteLock();
                 }
-                return addedActiveExpressions.Select(ae => new KeyValuePair<TKey, TResult>(ae.Arg1, ae.Value)).ToList();
+                return addedActiveExpressions.Select(ae => new KeyValuePair<TKey, TResult>(ae.Arg1, ae.Value)).ToImmutableArray();
             }
             return null;
         }
@@ -645,20 +641,22 @@ namespace Gear.ActiveQuery
             activeExpressionsAccess.EnterReadLock();
             try
             {
-                return activeExpressions.Select(ae => ((object)ae.Key, ae.Value.Fault)).ToList();
+                return GetElementFaultsUnderLock();
             }
             finally
             {
                 activeExpressionsAccess.ExitReadLock();
             }
         }
+
+        internal IReadOnlyList<(object element, Exception fault)> GetElementFaultsUnderLock() => activeExpressions.Select(ae => ((object)ae.Key, ae.Value.Fault)).ToImmutableArray();
 
         public IReadOnlyList<(TKey key, TResult result)> GetResults()
         {
             activeExpressionsAccess.EnterReadLock();
             try
             {
-                return activeExpressions.Select(ae => (ae.Key, ae.Value.Value)).ToList();
+                return GetResultsUnderLock();
             }
             finally
             {
@@ -666,18 +664,22 @@ namespace Gear.ActiveQuery
             }
         }
 
+        internal IReadOnlyList<(TKey key, TResult result)> GetResultsUnderLock() => activeExpressions.Select(ae => (ae.Key, ae.Value.Value)).ToImmutableArray();
+
         public IReadOnlyList<(TKey key, TResult result, Exception fault)> GetResultsAndFaults()
         {
             activeExpressionsAccess.EnterReadLock();
             try
             {
-                return activeExpressions.Select(ae => (ae.Key, ae.Value.Value, ae.Value.Fault)).ToList();
+                return GetResultsAndFaultsUnderLock();
             }
             finally
             {
                 activeExpressionsAccess.ExitReadLock();
             }
         }
+
+        internal IReadOnlyList<(TKey key, TResult result, Exception fault)> GetResultsAndFaultsUnderLock() => activeExpressions.Select(ae => (ae.Key, ae.Value.Value, ae.Value.Fault)).ToImmutableArray();
 
         void Initialize()
         {
@@ -774,29 +776,32 @@ namespace Gear.ActiveQuery
 
         IReadOnlyList<KeyValuePair<TKey, TResult>> RemoveActiveExpressions(IEnumerable<TKey> keys)
         {
-            if (!(keys?.Any() ?? false))
-                throw new ArgumentException($"{nameof(keys)} cannot be empty", nameof(keys));
-            var result = new List<KeyValuePair<TKey, TResult>>();
-            OnPropertyChanging(nameof(Count));
+            List<KeyValuePair<TKey, TResult>> result = null;
             activeExpressionsAccess.EnterWriteLock();
             try
             {
-                foreach (var key in keys)
+                if (keys?.Any() ?? false)
                 {
-                    var activeExpression = activeExpressions[key];
-                    result.Add(new KeyValuePair<TKey, TResult>(key, activeExpression.Value));
-                    activeExpressions.Remove(key);
-                    activeExpression.PropertyChanging -= ActiveExpressionPropertyChanging;
-                    activeExpression.PropertyChanged -= ActiveExpressionPropertyChanged;
-                    activeExpression.Dispose();
+                    result = new List<KeyValuePair<TKey, TResult>>();
+                    OnPropertyChanging(nameof(Count));
+                    foreach (var key in keys)
+                    {
+                        var activeExpression = activeExpressions[key];
+                        result.Add(new KeyValuePair<TKey, TResult>(key, activeExpression.Value));
+                        activeExpressions.Remove(key);
+                        activeExpression.PropertyChanging -= ActiveExpressionPropertyChanging;
+                        activeExpression.PropertyChanged -= ActiveExpressionPropertyChanged;
+                        activeExpression.Dispose();
+                    }
                 }
             }
             finally
             {
+                if (result != null)
+                    OnPropertyChanged(nameof(Count));
                 activeExpressionsAccess.ExitWriteLock();
-                OnPropertyChanged(nameof(Count));
             }
-            return result;
+            return (result ?? Enumerable.Empty<KeyValuePair<TKey, TResult>>()).ToImmutableArray();
         }
 
         (TResult oldResult, TResult newResult) ReplaceActiveExpression(TKey key, TValue value)
@@ -847,7 +852,7 @@ namespace Gear.ActiveQuery
                 activeExpressionsAccess.EnterReadLock();
                 try
                 {
-                    return activeExpressions.Count;
+                    return CountUnderLock;
                 }
                 finally
                 {
@@ -855,24 +860,10 @@ namespace Gear.ActiveQuery
                 }
             }
         }
+
+        public int CountUnderLock => activeExpressions.Count;
 
         public ActiveExpressionOptions Options { get; }
-
-        public TResult this[TKey key]
-        {
-            get
-            {
-                activeExpressionsAccess.EnterReadLock();
-                try
-                {
-                    return activeExpressions[key].Value;
-                }
-                finally
-                {
-                    activeExpressionsAccess.ExitReadLock();
-                }
-            }
-        }
     }
 
     /// <summary>
@@ -881,7 +872,7 @@ namespace Gear.ActiveQuery
     /// <typeparam name="TKey">The type of the keys</typeparam>
     /// <typeparam name="TValue">The type of the values in the dictionary</typeparam>
     /// <typeparam name="TResult">The type of the result of the active expression</typeparam>
-    public class ReadOnlyDictionaryRangeActiveExpression<TKey, TValue, TResult> : OverridableSyncDisposablePropertyChangeNotifier, INotifyElementFaultChanges
+    class ReadOnlyDictionaryRangeActiveExpression<TKey, TValue, TResult> : OverridableSyncDisposablePropertyChangeNotifier, INotifyElementFaultChanges
     {
         static readonly object rangeActiveExpressionsAccess = new object();
         static readonly Dictionary<(IReadOnlyDictionary<TKey, TValue> source, string expressionString), ReadOnlyDictionaryRangeActiveExpression<TKey, TValue, TResult>> rangeActiveExpressions = new Dictionary<(IReadOnlyDictionary<TKey, TValue> source, string expressionString), ReadOnlyDictionaryRangeActiveExpression<TKey, TValue, TResult>>();
@@ -1002,8 +993,8 @@ namespace Gear.ActiveQuery
 
         TResult AddActiveExpression(TKey key, TValue value)
         {
-            OnPropertyChanging(nameof(Count));
             activeExpressionsAccess.EnterWriteLock();
+            OnPropertyChanging(nameof(Count));
             try
             {
                 var activeExpression = ActiveExpression.Create(expression, key, value, Options);
@@ -1013,8 +1004,8 @@ namespace Gear.ActiveQuery
             }
             finally
             {
-                activeExpressionsAccess.ExitWriteLock();
                 OnPropertyChanged(nameof(Count));
+                activeExpressionsAccess.ExitWriteLock();
             }
         }
 
@@ -1023,8 +1014,8 @@ namespace Gear.ActiveQuery
             if (keyValuePairs.Any())
             {
                 var addedActiveExpressions = new List<ActiveExpression<TKey, TValue, TResult>>();
-                OnPropertyChanging(nameof(Count));
                 activeExpressionsAccess.EnterWriteLock();
+                OnPropertyChanging(nameof(Count));
                 try
                 {
                     foreach (var keyValuePair in keyValuePairs)
@@ -1037,10 +1028,10 @@ namespace Gear.ActiveQuery
                 }
                 finally
                 {
-                    activeExpressionsAccess.ExitWriteLock();
                     OnPropertyChanged(nameof(Count));
+                    activeExpressionsAccess.ExitWriteLock();
                 }
-                return addedActiveExpressions.Select(ae => new KeyValuePair<TKey, TResult>(ae.Arg1, ae.Value)).ToList();
+                return addedActiveExpressions.Select(ae => new KeyValuePair<TKey, TResult>(ae.Arg1, ae.Value)).ToImmutableArray();
             }
             return null;
         }
@@ -1075,20 +1066,22 @@ namespace Gear.ActiveQuery
             activeExpressionsAccess.EnterReadLock();
             try
             {
-                return activeExpressions.Select(ae => ((object)ae.Key, ae.Value.Fault)).ToList();
+                return GetElementFaultsUnderLock();
             }
             finally
             {
                 activeExpressionsAccess.ExitReadLock();
             }
         }
+
+        internal IReadOnlyList<(object element, Exception fault)> GetElementFaultsUnderLock() => activeExpressions.Select(ae => ((object)ae.Key, ae.Value.Fault)).ToImmutableArray();
 
         public IReadOnlyList<(TKey key, TResult result)> GetResults()
         {
             activeExpressionsAccess.EnterReadLock();
             try
             {
-                return activeExpressions.Select(ae => (ae.Key, ae.Value.Value)).ToList();
+                return GetResultsUnderLock();
             }
             finally
             {
@@ -1096,18 +1089,22 @@ namespace Gear.ActiveQuery
             }
         }
 
+        internal IReadOnlyList<(TKey key, TResult result)> GetResultsUnderLock() => activeExpressions.Select(ae => (ae.Key, ae.Value.Value)).ToImmutableArray();
+
         public IReadOnlyList<(TKey key, TResult result, Exception fault)> GetResultsAndFaults()
         {
             activeExpressionsAccess.EnterReadLock();
             try
             {
-                return activeExpressions.Select(ae => (ae.Key, ae.Value.Value, ae.Value.Fault)).ToList();
+                return GetResultsAndFaultsUnderLock();
             }
             finally
             {
                 activeExpressionsAccess.ExitReadLock();
             }
         }
+
+        internal IReadOnlyList<(TKey key, TResult result, Exception fault)> GetResultsAndFaultsUnderLock() => activeExpressions.Select(ae => (ae.Key, ae.Value.Value, ae.Value.Fault)).ToImmutableArray();
 
         void Initialize()
         {
@@ -1204,29 +1201,32 @@ namespace Gear.ActiveQuery
 
         IReadOnlyList<KeyValuePair<TKey, TResult>> RemoveActiveExpressions(IEnumerable<TKey> keys)
         {
-            if (!(keys?.Any() ?? false))
-                throw new ArgumentException($"{nameof(keys)} cannot be empty", nameof(keys));
-            var result = new List<KeyValuePair<TKey, TResult>>();
-            OnPropertyChanging(nameof(Count));
+            List<KeyValuePair<TKey, TResult>> result = null;
             activeExpressionsAccess.EnterWriteLock();
             try
             {
-                foreach (var key in keys)
+                if (keys?.Any() ?? false)
                 {
-                    var activeExpression = activeExpressions[key];
-                    result.Add(new KeyValuePair<TKey, TResult>(key, activeExpression.Value));
-                    activeExpressions.Remove(key);
-                    activeExpression.PropertyChanging -= ActiveExpressionPropertyChanging;
-                    activeExpression.PropertyChanged -= ActiveExpressionPropertyChanged;
-                    activeExpression.Dispose();
+                    result = new List<KeyValuePair<TKey, TResult>>();
+                    OnPropertyChanging(nameof(Count));
+                    foreach (var key in keys)
+                    {
+                        var activeExpression = activeExpressions[key];
+                        result.Add(new KeyValuePair<TKey, TResult>(key, activeExpression.Value));
+                        activeExpressions.Remove(key);
+                        activeExpression.PropertyChanging -= ActiveExpressionPropertyChanging;
+                        activeExpression.PropertyChanged -= ActiveExpressionPropertyChanged;
+                        activeExpression.Dispose();
+                    }
                 }
             }
             finally
             {
+                if (result != null)
+                    OnPropertyChanged(nameof(Count));
                 activeExpressionsAccess.ExitWriteLock();
-                OnPropertyChanged(nameof(Count));
             }
-            return result;
+            return (result ?? Enumerable.Empty<KeyValuePair<TKey, TResult>>()).ToImmutableArray();
         }
 
         (TResult oldResult, TResult newResult) ReplaceActiveExpression(TKey key, TValue value)
@@ -1277,7 +1277,7 @@ namespace Gear.ActiveQuery
                 activeExpressionsAccess.EnterReadLock();
                 try
                 {
-                    return activeExpressions.Count;
+                    return CountUnderLock;
                 }
                 finally
                 {
@@ -1285,23 +1285,9 @@ namespace Gear.ActiveQuery
                 }
             }
         }
+
+        internal int CountUnderLock => activeExpressions.Count;
 
         public ActiveExpressionOptions Options { get; }
-
-        public TResult this[TKey key]
-        {
-            get
-            {
-                activeExpressionsAccess.EnterReadLock();
-                try
-                {
-                    return activeExpressions[key].Value;
-                }
-                finally
-                {
-                    activeExpressionsAccess.ExitReadLock();
-                }
-            }
-        }
     }
 }

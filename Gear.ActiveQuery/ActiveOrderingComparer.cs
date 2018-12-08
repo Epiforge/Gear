@@ -1,6 +1,7 @@
 using Gear.Components;
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 
 namespace Gear.ActiveQuery
@@ -16,7 +17,7 @@ namespace Gear.ActiveQuery
             {
                 case IndexingStrategy.HashTable:
                     comparables = new Dictionary<TElement, List<IComparable>>();
-                    counts = new SortedDictionary<TElement, int>();
+                    counts = new Dictionary<TElement, int>();
                     break;
                 case IndexingStrategy.SelfBalancingBinarySearchTree:
                     comparables = new SortedDictionary<TElement, List<IComparable>>();
@@ -26,7 +27,7 @@ namespace Gear.ActiveQuery
 
             lock (comparablesAccess)
             {
-                this.selectors = selectors;
+                this.selectors = selectors.ToImmutableArray();
                 if (this.indexingStrategy != IndexingStrategy.NoneOrInherit)
                 {
                     foreach (var (rangeActiveExpression, isDescending) in this.selectors)
@@ -50,8 +51,11 @@ namespace Gear.ActiveQuery
                         }
                     }
                     foreach (var (rangeActiveExpression, isDescending) in this.selectors.Skip(1))
+                    {
+                        rangeActiveExpressionIndicies.Add(rangeActiveExpression, ++index);
                         foreach (var elementAndResults in rangeActiveExpression.GetResults().GroupBy(er => er.element, er => er.result))
                             comparables[elementAndResults.Key].Add(elementAndResults.First());
+                    }
                 }
             }
         }
@@ -106,7 +110,7 @@ namespace Gear.ActiveQuery
         }
 
         IReadOnlyList<IComparable> GetComparables(TElement element) =>
-            selectors.Select(expressionAndOrder => expressionAndOrder.rangeActiveExpression.GetResults().First(er => equalityComparer.Equals(er.element, element)).result).ToList();
+            selectors.Select(expressionAndOrder => expressionAndOrder.rangeActiveExpression.GetResults().First(er => equalityComparer.Equals(er.element, element)).result).ToImmutableArray();
 
         void RangeActiveExpressionElementResultChanged(object sender, RangeActiveExpressionResultChangeEventArgs<TElement, IComparable> e)
         {

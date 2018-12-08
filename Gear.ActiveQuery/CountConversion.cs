@@ -11,7 +11,7 @@ namespace Gear.ActiveQuery
         static CountConversionDelegate CreateConverter(Type type)
         {
             var countParameter = Expression.Parameter(typeof(int));
-            return Expression.Lambda<CountConversionDelegate>(Expression.Convert(countParameter, type), countParameter).Compile();
+            return Expression.Lambda<CountConversionDelegate>(Expression.Convert(Expression.Convert(countParameter, type), typeof(object)), countParameter).Compile();
         }
 
         public static CountConversionDelegate GetConverter(Type type) => converters.GetOrAdd(type, CreateConverter);

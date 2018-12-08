@@ -17,7 +17,8 @@ namespace Gear.ActiveQuery
 
         public static ActiveValue<bool> ActiveAll<TSource>(this IEnumerable<TSource> source, Expression<Func<TSource, bool>> predicate, ActiveExpressionOptions predicateOptions = null)
         {
-            var readOnlyCollection = source as IReadOnlyCollection<TSource>;
+            var readOnlySource = source as IReadOnlyCollection<TSource>;
+            var changeNotifyingSource = source as INotifyCollectionChanged;
             var activeValueAccess = new object();
             ActiveEnumerable<TSource> where;
             Action<bool> setValue = null;
@@ -25,17 +26,21 @@ namespace Gear.ActiveQuery
             void collectionChanged(object sender, NotifyCollectionChangedEventArgs e)
             {
                 lock (activeValueAccess)
-                    setValue(where.Count == (readOnlyCollection?.Count ?? source.Count()));
+                    setValue(where.Count == (readOnlySource?.Count ?? source.Count()));
             }
 
             lock (activeValueAccess)
             {
                 where = ActiveWhere(source, predicate, predicateOptions);
                 where.CollectionChanged += collectionChanged;
+                if (changeNotifyingSource != null)
+                    changeNotifyingSource.CollectionChanged += collectionChanged;
 
-                return new ActiveValue<bool>(where.Count == (readOnlyCollection?.Count ?? source.Count()), out setValue, elementFaultChangeNotifier: where, onDispose: () =>
+                return new ActiveValue<bool>(where.Count == (readOnlySource?.Count ?? source.Count()), out setValue, elementFaultChangeNotifier: where, onDispose: () =>
                 {
                     where.CollectionChanged -= collectionChanged;
+                    if (changeNotifyingSource != null)
+                        changeNotifyingSource.CollectionChanged -= collectionChanged;
                     where.Dispose();
                 });
             }
@@ -1294,7 +1299,7 @@ namespace Gear.ActiveQuery
                     if (comparison < 0)
                         setValue(e.Result);
                     else if (comparison > 0)
-                        setValue(rangeActiveExpression.GetResults().Select(er => er.result).Max());
+                        setValue(rangeActiveExpression.GetResultsUnderLock().Select(er => er.result).Max());
                 }
             }
 
@@ -1322,7 +1327,7 @@ namespace Gear.ActiveQuery
                         {
                             try
                             {
-                                var value = rangeActiveExpression.GetResults().Select(er => er.result).Max();
+                                var value = rangeActiveExpression.GetResultsUnderLock().Select(er => er.result).Max();
                                 setOperationFault(null);
                                 setValue(value);
                             }
@@ -1343,7 +1348,7 @@ namespace Gear.ActiveQuery
 
                 try
                 {
-                    return activeValue = new ActiveValue<TResult>(rangeActiveExpression.GetResults().Select(er => er.result).Max(), out setValue, null, out setOperationFault, rangeActiveExpression, dispose);
+                    return activeValue = new ActiveValue<TResult>(rangeActiveExpression.GetResultsUnderLock().Select(er => er.result).Max(), out setValue, null, out setOperationFault, rangeActiveExpression, dispose);
                 }
                 catch (Exception ex)
                 {
@@ -1384,7 +1389,7 @@ namespace Gear.ActiveQuery
                     if (comparison > 0)
                         setValue(e.Result);
                     else if (comparison < 0)
-                        setValue(rangeActiveExpression.GetResults().Select(er => er.result).Min());
+                        setValue(rangeActiveExpression.GetResultsUnderLock().Select(er => er.result).Min());
                 }
             }
 
@@ -1412,7 +1417,7 @@ namespace Gear.ActiveQuery
                         {
                             try
                             {
-                                var value = rangeActiveExpression.GetResults().Select(er => er.result).Min();
+                                var value = rangeActiveExpression.GetResultsUnderLock().Select(er => er.result).Min();
                                 setOperationFault(null);
                                 setValue(value);
                             }
@@ -1433,7 +1438,7 @@ namespace Gear.ActiveQuery
 
                 try
                 {
-                    return activeValue = new ActiveValue<TResult>(rangeActiveExpression.GetResults().Select(er => er.result).Min(), out setValue, null, out setOperationFault, rangeActiveExpression, dispose);
+                    return activeValue = new ActiveValue<TResult>(rangeActiveExpression.GetResultsUnderLock().Select(er => er.result).Min(), out setValue, null, out setOperationFault, rangeActiveExpression, dispose);
                 }
                 catch (Exception ex)
                 {
@@ -1445,6 +1450,12 @@ namespace Gear.ActiveQuery
         #endregion Min
 
         #region OrderBy
+
+        public static ActiveEnumerable<TSource> ActiveOrderBy<TSource>(this IEnumerable<TSource> source, Expression<Func<TSource, IComparable>> selector, ActiveExpressionOptions selectorOptions = null, bool isDescending = false) =>
+            ActiveOrderBy(source, (selector, selectorOptions, isDescending));
+
+        public static ActiveEnumerable<TSource> ActiveOrderBy<TSource>(this IEnumerable<TSource> source, IndexingStrategy indexingStrategy, Expression<Func<TSource, IComparable>> selector, ActiveExpressionOptions selectorOptions = null, bool isDescending = false) =>
+            ActiveOrderBy(source, indexingStrategy, (selector, selectorOptions, isDescending));
 
         public static ActiveEnumerable<TSource> ActiveOrderBy<TSource>(this IEnumerable<TSource> source, params (Expression<Func<TSource, IComparable>> expression, ActiveExpressionOptions expressionOptions, bool isDescending)[] selectors) =>
             ActiveOrderBy(source, IndexingStrategy.HashTable, selectors);
@@ -1494,12 +1505,26 @@ namespace Gear.ActiveQuery
                 else
                     (startingIndex, count) = startingIndiciesAndCounts[element];
                 var index = startingIndex;
+
+                bool performMove()
+                {
+                    if (startingIndex != index)
+                    {
+                        if (indexingStrategy != IndexingStrategy.NoneOrInherit)
+                            startingIndiciesAndCounts[element] = (index, count);
+                        rangeObservableCollection.MoveRange(startingIndex, index, count);
+                        return true;
+                    }
+                    return false;
+                }
+
                 if (indexingStrategy == IndexingStrategy.NoneOrInherit)
                 {
                     while (index > 0 && comparer.Compare(element, rangeObservableCollection[index - 1]) < 0)
                         --index;
                     while (index < rangeObservableCollection.Count - 1 && comparer.Compare(element, rangeObservableCollection[index + 1]) > 0)
                         ++index;
+                    performMove();
                 }
                 else
                 {
@@ -1512,21 +1537,19 @@ namespace Gear.ActiveQuery
                         startingIndiciesAndCounts[otherElement] = (otherStartingIndex + count, otherCount);
                         index -= otherCount;
                     }
-                    while (index < rangeObservableCollection.Count - count)
+                    if (!performMove())
                     {
-                        var otherElement = rangeObservableCollection[index + count];
-                        if (comparer.Compare(element, otherElement) <= 0)
-                            break;
-                        var (otherStartingIndex, otherCount) = startingIndiciesAndCounts[otherElement];
-                        startingIndiciesAndCounts[otherElement] = (otherStartingIndex - count, otherCount);
-                        index += otherCount;
+                        while (index < rangeObservableCollection.Count - count)
+                        {
+                            var otherElement = rangeObservableCollection[index + count];
+                            if (comparer.Compare(element, otherElement) <= 0)
+                                break;
+                            var (otherStartingIndex, otherCount) = startingIndiciesAndCounts[otherElement];
+                            startingIndiciesAndCounts[otherElement] = (otherStartingIndex - count, otherCount);
+                            index += otherCount;
+                        }
+                        performMove();
                     }
-                }
-                if (startingIndex != index)
-                {
-                    if (indexingStrategy != IndexingStrategy.NoneOrInherit)
-                        startingIndiciesAndCounts[element] = (index, count);
-                    rangeObservableCollection.MoveRange(startingIndex, index, count);
                 }
             }
 
@@ -2739,7 +2762,7 @@ namespace Gear.ActiveQuery
                 rangeActiveExpression.ElementsAdded += elementsAdded;
                 rangeActiveExpression.ElementsRemoved += elementsRemoved;
 
-                return activeValue = new ActiveValue<TResult>(rangeActiveExpression.GetResults().Select(er => er.result).Aggregate(operations.Add), out setValue, null, rangeActiveExpression, () =>
+                void dispose()
                 {
                     rangeActiveExpression.ElementResultChanged -= elementResultChanged;
                     rangeActiveExpression.ElementResultChanging -= elementResultChanging;
@@ -2747,7 +2770,16 @@ namespace Gear.ActiveQuery
                     rangeActiveExpression.ElementsRemoved -= elementsRemoved;
 
                     rangeActiveExpression.Dispose();
-                });
+                }
+
+                try
+                {
+                    return activeValue = new ActiveValue<TResult>(rangeActiveExpression.GetResults().Select(er => er.result).Aggregate(operations.Add), out setValue, null, rangeActiveExpression, dispose);
+                }
+                catch (InvalidOperationException)
+                {
+                    return activeValue = new ActiveValue<TResult>(default, out setValue, null, rangeActiveExpression, dispose);
+                }
             }
         }
 
