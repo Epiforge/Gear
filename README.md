@@ -7,7 +7,7 @@ General utilities to help with stuff in .NET Development, from Epiforge.
 Supports `netstandard1.3`.
 
 ![Build](https://img.shields.io/azure-devops/build/epiforge/gear/1.svg?logo=microsoft&logoColor=white)
-![Tests](https://img.shields.io/azure-devops/tests/epiforge/gear/1.svg?logo=microsoft&logoColor=white)
+![Tests](https://img.shields.io/azure-devops/tests/epiforge/gear/1.svg?compact_message=&logo=microsoft&logoColor=white)
 ![Coverage](https://img.shields.io/azure-devops/coverage/epiforge/gear/1.svg?logo=microsoft&logoColor=white)
 [![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2FEpiforge%2FGear.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2FEpiforge%2FGear?ref=badge_shield)
 
