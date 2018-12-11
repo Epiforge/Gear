@@ -138,7 +138,7 @@ namespace Gear.Components
         }
 
         public virtual void AddRange(IEnumerable<KeyValuePair<TKey, TValue>> keyValuePairs) =>
-            AddRange(keyValuePairs.ToList());
+            AddRange(keyValuePairs.ToImmutableArray());
 
         public virtual void AddRange(IReadOnlyList<KeyValuePair<TKey, TValue>> keyValuePairs)
         {
@@ -153,7 +153,7 @@ namespace Gear.Components
 
         public virtual void Clear()
         {
-            var removed = gsd.ToList();
+            var removed = gsd.ToImmutableArray();
             if (removed.Any())
                 NotifyCountChanging();
             gsd.Clear();
@@ -244,7 +244,7 @@ namespace Gear.Components
         protected void OnValuesAdded(IReadOnlyList<KeyValuePair<TKey, TValue>> keyValuePairs)
         {
             if (UntypedValuesAdded != null)
-                OnUntypedValuesAdded(new NotifyDictionaryValuesEventArgs(keyValuePairs.Select(kv => new KeyValuePair<object, object>(kv.Key, kv.Value)).ToList()));
+                OnUntypedValuesAdded(new NotifyDictionaryValuesEventArgs(keyValuePairs.Select(kv => new KeyValuePair<object, object>(kv.Key, kv.Value)).ToImmutableArray()));
             if (ValuesAdded != null)
                 OnValuesAdded(new NotifyDictionaryValuesEventArgs<TKey, TValue>(keyValuePairs));
         }
@@ -254,7 +254,7 @@ namespace Gear.Components
         protected void OnValuesRemoved(IReadOnlyList<KeyValuePair<TKey, TValue>> keyValuePairs)
         {
             if (UntypedValuesRemoved != null)
-                OnUntypedValuesRemoved(new NotifyDictionaryValuesEventArgs(keyValuePairs.Select(kv => new KeyValuePair<object, object>(kv.Key, kv.Value)).ToList()));
+                OnUntypedValuesRemoved(new NotifyDictionaryValuesEventArgs(keyValuePairs.Select(kv => new KeyValuePair<object, object>(kv.Key, kv.Value)).ToImmutableArray()));
             if (ValuesRemoved != null)
                 OnValuesRemoved(new NotifyDictionaryValuesEventArgs<TKey, TValue>(keyValuePairs));
         }
