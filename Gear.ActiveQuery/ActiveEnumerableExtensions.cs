@@ -2924,7 +2924,7 @@ namespace Gear.ActiveQuery
             var synchronizableSource = source as ISynchronizable;
             var rangeObservableDictionaryAccess = new object();
             IDictionary<TKey, int> duplicateKeys;
-            ISynchronizableRangeDictionary<TKey, TValue> rangeObservableDictionary;
+            ISynchronizableObservableRangeDictionary<TKey, TValue> rangeObservableDictionary;
             Action<Exception> setOperationFault = null;
             var valueComparer = EqualityComparer<TValue>.Default;
 
@@ -2932,11 +2932,11 @@ namespace Gear.ActiveQuery
             {
                 case IndexingStrategy.SelfBalancingBinarySearchTree:
                     duplicateKeys = keyComparer == null ? new SortedDictionary<TKey, int>() : new SortedDictionary<TKey, int>(keyComparer);
-                    rangeObservableDictionary = (ISynchronizableRangeDictionary<TKey, TValue>)(keyComparer == null ? new SynchronizedObservableSortedDictionary<TKey, TValue>(synchronizableSource?.SynchronizationContext, synchronizableSource?.IsSynchronized ?? false) : new SynchronizedObservableSortedDictionary<TKey, TValue>(synchronizableSource?.SynchronizationContext, keyComparer, synchronizableSource?.IsSynchronized ?? false));
+                    rangeObservableDictionary = keyComparer == null ? new SynchronizedObservableSortedDictionary<TKey, TValue>(synchronizableSource?.SynchronizationContext, synchronizableSource?.IsSynchronized ?? false) : new SynchronizedObservableSortedDictionary<TKey, TValue>(synchronizableSource?.SynchronizationContext, keyComparer, synchronizableSource?.IsSynchronized ?? false);
                     break;
                 default:
                     duplicateKeys = keyEqualityComparer == null ? new Dictionary<TKey, int>() : new Dictionary<TKey, int>(keyEqualityComparer);
-                    rangeObservableDictionary = (ISynchronizableRangeDictionary<TKey, TValue>)(keyEqualityComparer == null ? new SynchronizedObservableDictionary<TKey, TValue>(synchronizableSource?.SynchronizationContext, synchronizableSource?.IsSynchronized ?? false) : new SynchronizedObservableDictionary<TKey, TValue>(synchronizableSource?.SynchronizationContext, keyEqualityComparer, synchronizableSource?.IsSynchronized ?? false));
+                    rangeObservableDictionary = keyEqualityComparer == null ? new SynchronizedObservableDictionary<TKey, TValue>(synchronizableSource?.SynchronizationContext, synchronizableSource?.IsSynchronized ?? false) : new SynchronizedObservableDictionary<TKey, TValue>(synchronizableSource?.SynchronizationContext, keyEqualityComparer, synchronizableSource?.IsSynchronized ?? false);
                     break;
             }
 
@@ -2982,7 +2982,7 @@ namespace Gear.ActiveQuery
                         var count = e.Count;
                         if (duplicateKeys.TryGetValue(key, out var duplicates))
                         {
-                            if (duplicates == count - 1)
+                            if (duplicates == count)
                             {
                                 duplicateKeys.Remove(key);
                                 if (duplicateKeys.Count == 0)

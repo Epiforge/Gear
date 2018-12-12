@@ -10,9 +10,6 @@ namespace Gear.ActiveExpressions.MSTest
     [TestClass]
     public class General
     {
-        [AssemblyInitialize]
-        public static void AssemblyInit(TestContext context) => ActiveExpression.Optimizer = ExpressionOptimizer.tryVisit;
-
         [TestMethod]
         public void CharStringConversion()
         {
