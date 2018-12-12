@@ -660,7 +660,7 @@ namespace Gear.ActiveExpressions
                 Value = expression.Value is TResult typedValue ? typedValue : default;
         }
 
-        public override int GetHashCode() => HashCodes.CombineObjects(typeof(ActiveExpression<TArg, TResult>), expression, Arg, Options);
+        public override int GetHashCode() => HashCodes.CombineObjects(typeof(ActiveExpression<TArg, TResult>), expression);
 
         public override string ToString() => expression.ToString();
 
