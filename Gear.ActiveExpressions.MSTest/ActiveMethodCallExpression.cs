@@ -50,6 +50,19 @@ namespace Gear.ActiveExpressions.MSTest
         }
 
         [TestMethod]
+        public void ConsistentHashCode()
+        {
+            int hashCode1, hashCode2;
+            var john = TestPerson.CreateJohn();
+            var emily = TestPerson.CreateEmily();
+            using (var expr = ActiveExpression.Create((p1, p2) => CombinePeople(p1, p2), john, emily))
+                hashCode1 = expr.GetHashCode();
+            using (var expr = ActiveExpression.Create((p1, p2) => CombinePeople(p1, p2), john, emily))
+                hashCode2 = expr.GetHashCode();
+            Assert.IsTrue(hashCode1 == hashCode2);
+        }
+
+        [TestMethod]
         public void Equality()
         {
             var john = TestPerson.CreateJohn();

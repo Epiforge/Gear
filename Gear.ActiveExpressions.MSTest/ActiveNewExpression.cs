@@ -21,10 +21,19 @@ namespace Gear.ActiveExpressions.MSTest
         }
 
         [TestMethod]
+        public void ConsistentHashCode()
+        {
+            int hashCode1, hashCode2;
+            using (var expr = ActiveExpression.Create(() => new TestPerson("Charles")))
+                hashCode1 = expr.GetHashCode();
+            using (var expr = ActiveExpression.Create(() => new TestPerson("Charles")))
+                hashCode2 = expr.GetHashCode();
+            Assert.IsTrue(hashCode1 == hashCode2);
+        }
+
+        [TestMethod]
         public void Equality()
         {
-            var john = TestPerson.CreateJohn();
-            var emily = TestPerson.CreateEmily();
             using (var expr1 = ActiveExpression.Create(() => new TestPerson("Charles")))
             using (var expr2 = ActiveExpression.Create(() => new TestPerson("Charles")))
             using (var expr3 = ActiveExpression.Create(() => new TestPerson()))
@@ -39,8 +48,6 @@ namespace Gear.ActiveExpressions.MSTest
         [TestMethod]
         public void Equals()
         {
-            var john = TestPerson.CreateJohn();
-            var emily = TestPerson.CreateEmily();
             using (var expr1 = ActiveExpression.Create(() => new TestPerson("Charles")))
             using (var expr2 = ActiveExpression.Create(() => new TestPerson("Charles")))
             using (var expr3 = ActiveExpression.Create(() => new TestPerson()))
@@ -62,8 +69,6 @@ namespace Gear.ActiveExpressions.MSTest
         [TestMethod]
         public void Inequality()
         {
-            var john = TestPerson.CreateJohn();
-            var emily = TestPerson.CreateEmily();
             using (var expr1 = ActiveExpression.Create(() => new TestPerson("Charles")))
             using (var expr2 = ActiveExpression.Create(() => new TestPerson("Charles")))
             using (var expr3 = ActiveExpression.Create(() => new TestPerson()))

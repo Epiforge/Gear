@@ -103,6 +103,19 @@ namespace Gear.ActiveExpressions.MSTest
         }
 
         [TestMethod]
+        public void ConsistentHashCode()
+        {
+            int hashCode1, hashCode2;
+            var john = TestPerson.CreateJohn();
+            var men = new List<TestPerson> { john, null };
+            using (var expr = ActiveExpression.Create(p1 => p1[0], men))
+                hashCode1 = expr.GetHashCode();
+            using (var expr = ActiveExpression.Create(p1 => p1[0], men))
+                hashCode2 = expr.GetHashCode();
+            Assert.IsTrue(hashCode1 == hashCode2);
+        }
+
+        [TestMethod]
         public void DictionaryChanges()
         {
             var perfectNumbers = new ObservableDictionary<int, int>(Enumerable.Range(1, 10).ToDictionary(i => i, i => i * i));

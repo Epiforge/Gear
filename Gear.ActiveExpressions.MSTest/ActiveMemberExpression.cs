@@ -44,11 +44,71 @@ namespace Gear.ActiveExpressions.MSTest
         }
 
         [TestMethod]
+        public void ConsistentHashCode()
+        {
+            int hashCode1, hashCode2;
+            var john = TestPerson.CreateJohn();
+            using (var expr = ActiveExpression.Create(p1 => p1.Name, john))
+                hashCode1 = expr.GetHashCode();
+            using (var expr = ActiveExpression.Create(p1 => p1.Name, john))
+                hashCode2 = expr.GetHashCode();
+            Assert.IsTrue(hashCode1 == hashCode2);
+        }
+
+        [TestMethod]
+        public void Equality()
+        {
+            var john = TestPerson.CreateJohn();
+            var emily = TestPerson.CreateEmily();
+            using (var expr1 = ActiveExpression.Create(p1 => p1.Name, john))
+            using (var expr2 = ActiveExpression.Create(p1 => p1.Name, john))
+            using (var expr3 = ActiveExpression.Create(p1 => p1.Placeholder, john))
+            using (var expr4 = ActiveExpression.Create(p1 => p1.Name, emily))
+            {
+                Assert.IsTrue(expr1 == expr2);
+                Assert.IsFalse(expr1 == expr3);
+                Assert.IsFalse(expr1 == expr4);
+            }
+        }
+
+        [TestMethod]
+        public void Equals()
+        {
+            var john = TestPerson.CreateJohn();
+            var emily = TestPerson.CreateEmily();
+            using (var expr1 = ActiveExpression.Create(p1 => p1.Name, john))
+            using (var expr2 = ActiveExpression.Create(p1 => p1.Name, john))
+            using (var expr3 = ActiveExpression.Create(p1 => p1.Placeholder, john))
+            using (var expr4 = ActiveExpression.Create(p1 => p1.Name, emily))
+            {
+                Assert.IsTrue(expr1.Equals(expr2));
+                Assert.IsFalse(expr1.Equals(expr3));
+                Assert.IsFalse(expr1.Equals(expr4));
+            }
+        }
+
+        [TestMethod]
         public void FieldValue()
         {
             var team = (developer: TestPerson.CreateJohn(), artist: TestPerson.CreateEmily());
             using (var expr = ActiveExpression.Create(p1 => p1.artist.Name, team))
                 Assert.AreEqual("Emily", expr.Value);
+        }
+
+        [TestMethod]
+        public void Inequality()
+        {
+            var john = TestPerson.CreateJohn();
+            var emily = TestPerson.CreateEmily();
+            using (var expr1 = ActiveExpression.Create(p1 => p1.Name, john))
+            using (var expr2 = ActiveExpression.Create(p1 => p1.Name, john))
+            using (var expr3 = ActiveExpression.Create(p1 => p1.Placeholder, john))
+            using (var expr4 = ActiveExpression.Create(p1 => p1.Name, emily))
+            {
+                Assert.IsFalse(expr1 != expr2);
+                Assert.IsTrue(expr1 != expr3);
+                Assert.IsTrue(expr1 != expr4);
+            }
         }
 
         [TestMethod]

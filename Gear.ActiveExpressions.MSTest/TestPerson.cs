@@ -38,5 +38,7 @@ namespace Gear.ActiveExpressions.MSTest
         }
 
         public long NameGets => Interlocked.Read(ref nameGets);
+
+        public string Placeholder => null;
     }
 }

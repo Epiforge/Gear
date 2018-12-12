@@ -9,6 +9,19 @@ namespace Gear.ActiveExpressions.MSTest
     public class ActiveConditionalExpression
     {
         [TestMethod]
+        public void ConsistentHashCode()
+        {
+            int hashCode1, hashCode2;
+            var john = TestPerson.CreateJohn();
+            var emily = TestPerson.CreateEmily();
+            using (var expr = ActiveExpression.Create((p1, p2) => p1.Name.Length > 0 ? p1.Name : p2.Name, john, emily))
+                hashCode1 = expr.GetHashCode();
+            using (var expr = ActiveExpression.Create((p1, p2) => p1.Name.Length > 0 ? p1.Name : p2.Name, john, emily))
+                hashCode2 = expr.GetHashCode();
+            Assert.IsTrue(hashCode1 == hashCode2);
+        }
+
+        [TestMethod]
         public void Equality()
         {
             var john = TestPerson.CreateJohn();
