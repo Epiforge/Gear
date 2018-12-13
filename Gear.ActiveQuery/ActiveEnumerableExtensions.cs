@@ -2789,8 +2789,6 @@ namespace Gear.ActiveQuery
 
         public static ActiveEnumerable<TSource> ToActiveEnumerable<TSource>(this IEnumerable<TSource> source)
         {
-            if (source is ActiveEnumerable<TSource> activeEnumerable)
-                return activeEnumerable;
             if (source is IReadOnlyList<TSource> readOnlyList)
                 return new ActiveEnumerable<TSource>(readOnlyList);
 
