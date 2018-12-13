@@ -21,11 +21,8 @@ namespace Gear.Components
         public void Dispose()
         {
             lock (disposalAccess.Lock())
-                if (!isDisposed)
-                {
-                    IsDisposed = Dispose(true);
+                if (!isDisposed && (IsDisposed = Dispose(true)))
                     GC.SuppressFinalize(this);
-                }
         }
 
         /// <summary>
@@ -43,11 +40,8 @@ namespace Gear.Components
         public async Task DisposeAsync(CancellationToken cancellationToken = default)
         {
             using (await disposalAccess.LockAsync(cancellationToken).ConfigureAwait(false))
-                if (!isDisposed)
-                {
-                    IsDisposed = await DisposeAsync(true, cancellationToken).ConfigureAwait(false);
+                if (!isDisposed && (IsDisposed = await DisposeAsync(true, cancellationToken).ConfigureAwait(false)))
                     GC.SuppressFinalize(this);
-                }
         }
 
         /// <summary>

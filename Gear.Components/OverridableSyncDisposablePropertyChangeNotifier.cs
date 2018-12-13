@@ -18,11 +18,8 @@ namespace Gear.Components
         public void Dispose()
         {
             lock (disposalAccess)
-                if (!IsDisposed)
-                {
-                    IsDisposed = Dispose(true);
+                if (!IsDisposed && (IsDisposed = Dispose(true)))
                     GC.SuppressFinalize(this);
-                }
         }
 
         /// <summary>
