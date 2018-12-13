@@ -9,6 +9,8 @@ namespace Gear.ActiveQuery
 
         public static KeyNotFoundException KeyNotFound => new KeyNotFoundException();
 
+        public static ArgumentNullException KeyNull => new ArgumentNullException("key");
+
         public static ArgumentException SameKeyAlreadyAdded => new ArgumentException("An item with the same key has already been added.");
 
         public static InvalidOperationException SequenceContainsMoreThanOneElement => new InvalidOperationException("Sequence contains more than one element");

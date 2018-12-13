@@ -5,7 +5,7 @@ namespace Gear.ActiveQuery.MSTest
 {
     class TestPerson : PropertyChangeNotifier
     {
-        public static SynchronizedRangeObservableCollection<TestPerson> GetPeople(SynchronizationContext synchronizationContext = null) =>
+        public static SynchronizedRangeObservableCollection<TestPerson> CreatePeople(SynchronizationContext synchronizationContext = null) =>
             new SynchronizedRangeObservableCollection<TestPerson>(synchronizationContext)
             {
                 new TestPerson("John"),

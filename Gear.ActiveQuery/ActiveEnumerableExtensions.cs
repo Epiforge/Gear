@@ -2924,9 +2924,11 @@ namespace Gear.ActiveQuery
             var synchronizableSource = source as ISynchronizable;
             var rangeObservableDictionaryAccess = new object();
             IDictionary<TKey, int> duplicateKeys;
+            var isFaultedDuplicateKeys = false;
+            var isFaultedNullKey = false;
+            var nullKeys = 0;
             ISynchronizableObservableRangeDictionary<TKey, TValue> rangeObservableDictionary;
             Action<Exception> setOperationFault = null;
-            var valueComparer = EqualityComparer<TValue>.Default;
 
             switch (indexingStategy)
             {
@@ -2940,34 +2942,61 @@ namespace Gear.ActiveQuery
                     break;
             }
 
+            void checkOperationFault()
+            {
+                if (nullKeys > 0 && !isFaultedNullKey)
+                {
+                    isFaultedNullKey = true;
+                    setOperationFault(ExceptionHelper.KeyNull);
+                }
+                else if (nullKeys == 0 && isFaultedNullKey)
+                {
+                    isFaultedNullKey = false;
+                    setOperationFault(null);
+                }
+
+                if (!isFaultedNullKey)
+                {
+                    if (duplicateKeys.Count > 0 && !isFaultedDuplicateKeys)
+                    {
+                        isFaultedDuplicateKeys = true;
+                        setOperationFault(ExceptionHelper.SameKeyAlreadyAdded);
+                    }
+                    else if (duplicateKeys.Count == 0 && isFaultedDuplicateKeys)
+                    {
+                        isFaultedDuplicateKeys = false;
+                        setOperationFault(null);
+                    }
+                }
+            }
+
             void elementResultChanged(object sender, RangeActiveExpressionResultChangeEventArgs<TSource, KeyValuePair<TKey, TValue>> e)
             {
                 lock (rangeObservableDictionaryAccess)
                 {
                     var result = e.Result;
                     var key = result.Key;
-                    if (key != null)
+                    var count = e.Count;
+                    if (key == null)
+                        nullKeys += count;
+                    else
                     {
-                        var count = e.Count;
                         var value = result.Value;
-                        if (rangeObservableDictionary.TryGetValue(key, out var existingValue) && !valueComparer.Equals(value, existingValue))
+                        if (rangeObservableDictionary.TryGetValue(key, out var existingValue))
                         {
                             if (duplicateKeys.TryGetValue(key, out var duplicates))
                                 duplicateKeys[key] = duplicates + count;
                             else
                                 duplicateKeys.Add(key, count);
-                            setOperationFault(ExceptionHelper.SameKeyAlreadyAdded);
                         }
                         else
                         {
                             rangeObservableDictionary.Add(key, value);
                             if (count > 1)
-                            {
                                 duplicateKeys.Add(key, count - 1);
-                                setOperationFault(ExceptionHelper.SameKeyAlreadyAdded);
-                            }
                         }
                     }
+                    checkOperationFault();
                 }
             }
 
@@ -2977,47 +3006,50 @@ namespace Gear.ActiveQuery
                 {
                     var result = e.Result;
                     var key = result.Key;
-                    if (key != null)
+                    var count = e.Count;
+                    if (key == null)
+                        nullKeys -= count;
+                    else
                     {
-                        var count = e.Count;
                         if (duplicateKeys.TryGetValue(key, out var duplicates))
                         {
-                            if (duplicates == count)
-                            {
+                            if (duplicates <= count)
                                 duplicateKeys.Remove(key);
-                                if (duplicateKeys.Count == 0)
-                                    setOperationFault(null);
-                            }
                             else
                                 duplicateKeys[key] = duplicates - count;
                         }
                         else
                             rangeObservableDictionary.Remove(key);
                     }
+                    checkOperationFault();
                 }
             }
 
             void elementsAdded(object sender, RangeActiveExpressionMembershipEventArgs<TSource, KeyValuePair<TKey, TValue>> e)
             {
                 lock (rangeObservableDictionaryAccess)
+                {
                     foreach (var (element, result) in e.ElementResults)
                     {
                         var key = result.Key;
-                        if (key != null)
+                        if (key == null)
+                            ++nullKeys;
+                        else
                         {
                             var value = result.Value;
-                            if (rangeObservableDictionary.TryGetValue(key, out var existingValue) && !valueComparer.Equals(value, existingValue))
+                            if (rangeObservableDictionary.TryGetValue(key, out var existingValue))
                             {
                                 if (duplicateKeys.TryGetValue(key, out var duplicates))
                                     duplicateKeys[key] = duplicates + 1;
                                 else
                                     duplicateKeys.Add(key, 1);
-                                setOperationFault(ExceptionHelper.SameKeyAlreadyAdded);
                             }
                             else
                                 rangeObservableDictionary.Add(key, value);
                         }
                     }
+                    checkOperationFault();
+                }
             }
 
             void elementsRemoved(object sender, RangeActiveExpressionMembershipEventArgs<TSource, KeyValuePair<TKey, TValue>> e)
@@ -3027,16 +3059,14 @@ namespace Gear.ActiveQuery
                     foreach (var (element, result) in e.ElementResults)
                     {
                         var key = result.Key;
-                        if (key != null)
+                        if (key == null)
+                            --nullKeys;
+                        else
                         {
                             if (duplicateKeys.TryGetValue(key, out var duplicates))
                             {
                                 if (duplicates == 1)
-                                {
                                     duplicateKeys.Remove(key);
-                                    if (duplicateKeys.Count == 0)
-                                        setOperationFault(null);
-                                }
                                 else
                                     duplicateKeys[key] = duplicates - 1;
                             }
@@ -3044,6 +3074,7 @@ namespace Gear.ActiveQuery
                                 rangeObservableDictionary.Remove(key);
                         }
                     }
+                    checkOperationFault();
                 }
             }
 
@@ -3074,7 +3105,14 @@ namespace Gear.ActiveQuery
                 if (synchronizableSource != null)
                     synchronizableSource.PropertyChanged += propertyChanged;
 
-                void dispose()
+                ActiveLookup<TKey, TValue> activeLookup;
+                var resultsFaultsAndCounts = rangeActiveExpression.GetResultsFaultsAndCounts();
+                nullKeys = resultsFaultsAndCounts.Count(rfc => rfc.result.Key == null);
+                var distinctResultsFaultsAndCounts = resultsFaultsAndCounts.Where(rfc => rfc.result.Key != null).GroupBy(rfc => rfc.result.Key).ToList();
+                rangeObservableDictionary.AddRange(distinctResultsFaultsAndCounts.Select(g => g.First().result));
+                foreach (var (key, duplicateCount) in distinctResultsFaultsAndCounts.Select(g => (key: g.Key, duplicateCount: g.Sum(rfc => rfc.count) - 1)).Where(kc => kc.duplicateCount > 0))
+                    duplicateKeys.Add(key, duplicateCount);
+                activeLookup = new ActiveLookup<TKey, TValue>(rangeObservableDictionary, out setOperationFault, rangeActiveExpression, () =>
                 {
                     rangeActiveExpression.ElementResultChanged -= elementResultChanged;
                     rangeActiveExpression.ElementResultChanging -= elementResultChanging;
@@ -3083,24 +3121,8 @@ namespace Gear.ActiveQuery
                     rangeActiveExpression.Dispose();
                     if (synchronizableSource != null)
                         synchronizableSource.PropertyChanged -= propertyChanged;
-                }
-
-                ActiveLookup<TKey, TValue> activeLookup = null;
-                try
-                {
-                    var resultsFaultsAndCounts = rangeActiveExpression.GetResultsFaultsAndCounts().Where(rfc => rfc.result.Key != null).GroupBy(rfc => rfc.result.Key).ToList();
-                    rangeObservableDictionary.AddRange(resultsFaultsAndCounts.Select(g => g.First().result));
-                    foreach (var (key, duplicateCount) in resultsFaultsAndCounts.Select(g => (key: g.Key, duplicateCount: g.Sum(rfc => rfc.count) - 1)).Where(kc => kc.duplicateCount > 0))
-                        duplicateKeys.Add(key, duplicateCount);
-                    activeLookup = new ActiveLookup<TKey, TValue>(rangeObservableDictionary, out setOperationFault, rangeActiveExpression, dispose);
-                    if (duplicateKeys.Count > 0)
-                        setOperationFault(ExceptionHelper.SameKeyAlreadyAdded);
-                }
-                finally
-                {
-                    if (activeLookup == null)
-                        dispose();
-                }
+                });
+                checkOperationFault();
 
                 return activeLookup;
             }
