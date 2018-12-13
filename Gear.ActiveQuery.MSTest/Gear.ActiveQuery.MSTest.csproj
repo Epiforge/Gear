@@ -76,6 +76,7 @@
     <Compile Include="Enumerable\ActiveWhere.cs" />
     <Compile Include="Enumerable\ToActiveLookup.cs" />
     <Compile Include="Enumerable\ToActiveEnumerable.cs" />
+    <Compile Include="Enumerable\ActiveSum.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="TestPerson.cs" />
     <Compile Include="TestSimpleObservableCollection.cs" />
