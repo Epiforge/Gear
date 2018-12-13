@@ -2719,27 +2719,17 @@ namespace Gear.ActiveQuery
             void elementResultChanged(object sender, RangeActiveExpressionResultChangeEventArgs<TSource, TResult> e)
             {
                 lock (activeValueAccess)
-                    if (resultsChanging.TryGetValue(e.Element, out var resultChanging))
-                    {
-                        resultsChanging.Remove(e.Element);
-                        var (result, instances) = resultChanging;
-                        var singleElementDifference = operations.Subtract(e.Result, result);
-                        setValue(operations.Add(activeValue.Value, Enumerable.Range(0, instances).Select(i => singleElementDifference).Aggregate(operations.Add)));
-                    }
+                {
+                    var (result, instances) = resultsChanging[e.Element];
+                    resultsChanging.Remove(e.Element);
+                    setValue(operations.Add(activeValue.Value, operations.Subtract(e.Result, result).Repeat(instances).Aggregate(operations.Add)));
+                }
             }
 
             void elementResultChanging(object sender, RangeActiveExpressionResultChangeEventArgs<TSource, TResult> e)
             {
                 lock (activeValueAccess)
-                {
-                    if (resultsChanging.TryGetValue(e.Element, out var resultChanging))
-                    {
-                        var (result, instances) = resultChanging;
-                        resultsChanging[e.Element] = (result, instances + e.Count);
-                    }
-                    else
-                        resultsChanging.Add(e.Element, (e.Result, e.Count));
-                }
+                    resultsChanging.Add(e.Element, (e.Result, e.Count));
             }
 
             void elementsAdded(object sender, RangeActiveExpressionMembershipEventArgs<TSource, TResult> e)
