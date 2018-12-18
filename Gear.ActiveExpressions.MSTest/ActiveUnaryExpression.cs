@@ -10,6 +10,17 @@ namespace Gear.ActiveExpressions.MSTest
     public class ActiveUnaryExpression
     {
         [TestMethod]
+        public void Cast()
+        {
+            using (var expr = ActiveExpression.Create(p1 => (double)p1, 3))
+            {
+                Assert.IsNull(expr.Fault);
+                Assert.AreEqual(3D, expr.Value);
+                Assert.IsInstanceOfType(expr.Value, typeof(double));
+            }
+        }
+
+        [TestMethod]
         public void ConsistentHashCode()
         {
             int hashCode1, hashCode2;
