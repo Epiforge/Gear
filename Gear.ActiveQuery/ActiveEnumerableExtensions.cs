@@ -7,7 +7,6 @@ using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Linq;
 using System.Linq.Expressions;
-using System.Reflection;
 using System.Threading;
 
 namespace Gear.ActiveQuery
@@ -164,16 +163,8 @@ namespace Gear.ActiveQuery
 
         #region Cast
 
-        public static ActiveEnumerable<TResult> ActiveCast<TResult>(this IEnumerable source, ActiveExpressionOptions castOptions = null, IndexingStrategy indexingStrategy = IndexingStrategy.NoneOrInherit)
-        {
-            var resultType = typeof(TResult);
-            Expression<Func<object, TResult>> castExpression;
-            if (resultType.GetTypeInfo().IsValueType)
-                castExpression = element => (TResult)Convert.ChangeType(element, resultType);
-            else
-                castExpression = element => (TResult)element;
-            return ActiveSelect(source, castExpression, castOptions, indexingStrategy);
-        }
+        public static ActiveEnumerable<TResult> ActiveCast<TResult>(this IEnumerable source, ActiveExpressionOptions castOptions = null, IndexingStrategy indexingStrategy = IndexingStrategy.NoneOrInherit) =>
+            ActiveSelect(source, element => (TResult)element, castOptions, indexingStrategy);
 
         #endregion
 
