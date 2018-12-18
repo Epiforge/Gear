@@ -7,6 +7,7 @@ using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Reflection;
 using System.Threading;
 
 namespace Gear.ActiveQuery
@@ -132,7 +133,10 @@ namespace Gear.ActiveQuery
                     {
                         var currentCount = count();
                         if (currentCount == 0)
+                        {
+                            setValue(default);
                             setOperationFault(ExceptionHelper.SequenceContainsNoElements);
+                        }
                         else
                         {
                             setOperationFault(null);
@@ -160,11 +164,16 @@ namespace Gear.ActiveQuery
 
         #region Cast
 
-        public static ActiveEnumerable<TResult> ActiveCast<TResult>(this IEnumerable source, IndexingStrategy indexingStrategy = IndexingStrategy.NoneOrInherit) =>
-            ActiveCast<TResult>(source, (source as ISynchronizable)?.SynchronizationContext, indexingStrategy);
-
-        public static ActiveEnumerable<TResult> ActiveCast<TResult>(this IEnumerable source, SynchronizationContext synchronizationContext, IndexingStrategy indexingStrategy = IndexingStrategy.NoneOrInherit) =>
-            ActiveSelect(source, element => (TResult)element, indexingStrategy: indexingStrategy);
+        public static ActiveEnumerable<TResult> ActiveCast<TResult>(this IEnumerable source, ActiveExpressionOptions castOptions = null, IndexingStrategy indexingStrategy = IndexingStrategy.NoneOrInherit)
+        {
+            var resultType = typeof(TResult);
+            Expression<Func<object, TResult>> castExpression;
+            if (resultType.GetTypeInfo().IsValueType)
+                castExpression = element => (TResult)Convert.ChangeType(element, resultType);
+            else
+                castExpression = element => (TResult)element;
+            return ActiveSelect(source, castExpression, castOptions, indexingStrategy);
+        }
 
         #endregion
 
@@ -1643,7 +1652,7 @@ namespace Gear.ActiveQuery
             {
                 if (synchronizableSource != null)
                     synchronizableSource.PropertyChanged += propertyChanged;
-                var selections = selectors.Select(selector => (rangeActiveExpression: EnumerableRangeActiveExpression<TSource, IComparable>.Create(source, selector.expression, selector.expressionOptions), selector.isDescending)).ToList();
+                var selections = selectors.Select(selector => (rangeActiveExpression: new EnumerableRangeActiveExpression<TSource, IComparable>(source, selector.expression, selector.expressionOptions), selector.isDescending)).ToList();
                 comparer = new ActiveOrderingComparer<TSource>(selections.Select(selection => (selection.rangeActiveExpression, selection.isDescending)).ToList(), indexingStrategy);
                 var (lastRangeActiveExpression, lastIsDescending) = selections[selections.Count - 1];
                 lastRangeActiveExpression.ElementsAdded += elementsAdded;

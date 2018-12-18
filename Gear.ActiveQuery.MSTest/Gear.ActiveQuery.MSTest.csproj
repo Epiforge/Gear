@@ -78,6 +78,11 @@
     <Compile Include="Enumerable\ToActiveEnumerable.cs" />
     <Compile Include="Enumerable\ActiveSum.cs" />
     <Compile Include="Enumerable\ActiveMin.cs" />
+    <Compile Include="Enumerable\ActiveMax.cs" />
+    <Compile Include="Enumerable\ActiveAverage.cs" />
+    <Compile Include="Enumerable\ActiveAll.cs" />
+    <Compile Include="Enumerable\ActiveAny.cs" />
+    <Compile Include="Enumerable\ActiveCast.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="TestPerson.cs" />
     <Compile Include="TestSimpleObservableCollection.cs" />

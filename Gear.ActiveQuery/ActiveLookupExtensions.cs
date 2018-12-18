@@ -142,7 +142,10 @@ namespace Gear.ActiveQuery
                     {
                         var currentCount = source.Count;
                         if (currentCount == 0)
+                        {
+                            setValue(default);
                             setOperationFault(ExceptionHelper.SequenceContainsNoElements);
+                        }
                         else
                         {
                             setOperationFault(null);
