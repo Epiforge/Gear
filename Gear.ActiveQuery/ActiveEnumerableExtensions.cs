@@ -172,7 +172,11 @@ namespace Gear.ActiveQuery
 
         public static ActiveEnumerable<TSource> ActiveConcat<TSource>(this IEnumerable<TSource> first, IEnumerable<TSource> second)
         {
-            var synchronizableSource = first as ISynchronizable ?? second as ISynchronizable;
+            var synchronizableFirst = first as ISynchronizable;
+            var synchronizableSecond = second as ISynchronizable;
+
+            if (synchronizableFirst != null && synchronizableSecond != null && synchronizableFirst.SynchronizationContext != synchronizableSecond.SynchronizationContext)
+                throw new InvalidOperationException($"{nameof(first)} and {nameof(second)} are both synchronizable but using different synchronization contexts; select a different overload of {nameof(ActiveConcat)} to specify the synchronization context to use");
 
             var rangeObservableCollectionAccess = new object();
             SynchronizedRangeObservableCollection<TSource> rangeObservableCollection = null;
@@ -234,7 +238,7 @@ namespace Gear.ActiveQuery
             void propertyChanged(object sender, PropertyChangedEventArgs e)
             {
                 if (e.PropertyName == nameof(ISynchronizable.IsSynchronized))
-                    rangeObservableCollection.IsSynchronized = synchronizableSource.IsSynchronized;
+                    rangeObservableCollection.IsSynchronized = synchronizableFirst.IsSynchronized || synchronizableSecond.IsSynchronized;
             }
 
             lock (rangeObservableCollectionAccess)
@@ -244,18 +248,22 @@ namespace Gear.ActiveQuery
 
                 firstEnumerable.CollectionChanged += firstCollectionChanged;
                 secondEnumerable.CollectionChanged += secondCollectionChanged;
-                if (synchronizableSource != null)
-                    synchronizableSource.PropertyChanged += propertyChanged;
+                if (synchronizableFirst != null)
+                    synchronizableFirst.PropertyChanged += propertyChanged;
+                if (synchronizableSecond != null)
+                    synchronizableSecond.PropertyChanged += propertyChanged;
 
-                rangeObservableCollection = new SynchronizedRangeObservableCollection<TSource>(synchronizableSource?.SynchronizationContext, first.Concat(second), synchronizableSource?.IsSynchronized ?? false);
+                rangeObservableCollection = new SynchronizedRangeObservableCollection<TSource>(synchronizableFirst?.SynchronizationContext ?? synchronizableSecond?.SynchronizationContext, first.Concat(second), synchronizableFirst?.IsSynchronized ?? synchronizableSecond?.IsSynchronized ?? false);
                 var mergedElementFaultChangeNotifier = new MergedElementFaultChangeNotifier(firstEnumerable, secondEnumerable);
 
                 return new ActiveEnumerable<TSource>(rangeObservableCollection, mergedElementFaultChangeNotifier, () =>
                 {
                     firstEnumerable.CollectionChanged -= firstCollectionChanged;
                     secondEnumerable.CollectionChanged -= secondCollectionChanged;
-                    if (synchronizableSource != null)
-                        synchronizableSource.PropertyChanged -= propertyChanged;
+                    if (synchronizableFirst != null)
+                        synchronizableFirst.PropertyChanged -= propertyChanged;
+                    if (synchronizableSecond != null)
+                        synchronizableSecond.PropertyChanged -= propertyChanged;
                     mergedElementFaultChangeNotifier.Dispose();
                 });
             }
