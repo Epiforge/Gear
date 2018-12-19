@@ -911,6 +911,7 @@ namespace Gear.ActiveQuery
                     }
                 }
 
+                changingSource.CollectionChanged += collectionChanged;
                 try
                 {
                     return new ActiveValue<TSource>(source.Last(), out setValue, out setOperationFault, elementFaultChangeNotifier, () => changingSource.CollectionChanged -= collectionChanged);

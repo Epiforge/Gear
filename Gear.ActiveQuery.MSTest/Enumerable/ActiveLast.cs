@@ -4,13 +4,13 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 namespace Gear.ActiveQuery.MSTest.Enumerable
 {
     [TestClass]
-    public class ActiveFirst
+    public class ActiveLast
     {
         [TestMethod]
         public void ExpressionlessEmptyNonNotifier()
         {
             var numbers = System.Linq.Enumerable.Empty<int>();
-            using (var query = numbers.ActiveFirst())
+            using (var query = numbers.ActiveLast())
             {
                 Assert.IsNotNull(query.OperationFault);
                 Assert.AreEqual(0, query.Value);
@@ -21,7 +21,7 @@ namespace Gear.ActiveQuery.MSTest.Enumerable
         public void ExpressionlessEmptySource()
         {
             var numbers = new RangeObservableCollection<int>();
-            using (var query = numbers.ActiveFirst())
+            using (var query = numbers.ActiveLast())
             {
                 Assert.IsNotNull(query.OperationFault);
                 Assert.AreEqual(0, query.Value);
@@ -32,10 +32,10 @@ namespace Gear.ActiveQuery.MSTest.Enumerable
         public void ExpressionlessNonNotifier()
         {
             var numbers = System.Linq.Enumerable.Range(0, 10);
-            using (var query = numbers.ActiveFirst())
+            using (var query = numbers.ActiveLast())
             {
                 Assert.IsNull(query.OperationFault);
-                Assert.AreEqual(0, query.Value);
+                Assert.AreEqual(9, query.Value);
             }
         }
 
@@ -43,12 +43,12 @@ namespace Gear.ActiveQuery.MSTest.Enumerable
         public void ExpressionlessSourceManipulation()
         {
             var numbers = new RangeObservableCollection<int>(System.Linq.Enumerable.Range(0, 10));
-            using (var query = numbers.ActiveFirst())
+            using (var query = numbers.ActiveLast())
             {
                 Assert.IsNull(query.OperationFault);
-                Assert.AreEqual(0, query.Value);
-                numbers.Remove(0);
-                Assert.AreEqual(1, query.Value);
+                Assert.AreEqual(9, query.Value);
+                numbers.Remove(9);
+                Assert.AreEqual(8, query.Value);
                 numbers.Clear();
                 Assert.IsNotNull(query.OperationFault);
                 Assert.AreEqual(0, query.Value);
@@ -62,12 +62,12 @@ namespace Gear.ActiveQuery.MSTest.Enumerable
         public void SourceManipulation()
         {
             var numbers = new RangeObservableCollection<int>(System.Linq.Enumerable.Range(0, 10));
-            using (var query = numbers.ActiveFirst(i => i % 3 == 0))
+            using (var query = numbers.ActiveLast(i => i % 3 == 0))
             {
                 Assert.IsNull(query.OperationFault);
-                Assert.AreEqual(0, query.Value);
-                numbers.Remove(0);
-                Assert.AreEqual(3, query.Value);
+                Assert.AreEqual(9, query.Value);
+                numbers.Remove(9);
+                Assert.AreEqual(6, query.Value);
                 numbers.RemoveAll(i => i % 3 == 0);
                 Assert.IsNotNull(query.OperationFault);
                 Assert.AreEqual(0, query.Value);
