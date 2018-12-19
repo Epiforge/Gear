@@ -479,6 +479,7 @@ namespace Gear.ActiveQuery
                         catch (Exception ex)
                         {
                             setOperationFault(ex);
+                            setValue(default);
                         }
                     }
                 }
@@ -528,8 +529,7 @@ namespace Gear.ActiveQuery
                         setOperationFault(ExceptionHelper.IndexArgumentWasOutOfRange);
                         indexOutOfRange = true;
                     }
-                    if (index >= 0 && index < activeEnumerable.Count)
-                        setValue(activeEnumerable[index]);
+                    setValue(index >= 0 && index < activeEnumerable.Count ? activeEnumerable[index] : default);
                 }
             }
 
@@ -635,6 +635,7 @@ namespace Gear.ActiveQuery
                         catch (Exception ex)
                         {
                             setOperationFault(ex);
+                            setValue(default);
                         }
                     }
                 }
@@ -684,8 +685,7 @@ namespace Gear.ActiveQuery
                         setOperationFault(ExceptionHelper.SequenceContainsNoElements);
                         none = true;
                     }
-                    if (where.Count > 0)
-                        setValue(where[0]);
+                    setValue(where.Count > 0 ? where[0] : default);
                 }
             }
 
@@ -906,6 +906,7 @@ namespace Gear.ActiveQuery
                         catch (Exception ex)
                         {
                             setOperationFault(ex);
+                            setValue(default);
                         }
                     }
                 }
@@ -954,8 +955,7 @@ namespace Gear.ActiveQuery
                         setOperationFault(ExceptionHelper.SequenceContainsNoElements);
                         none = true;
                     }
-                    if (where.Count > 0)
-                        setValue(where[where.Count - 1]);
+                    setValue(where.Count > 0 ? where[where.Count - 1] : default);
                 }
             }
 
@@ -2179,6 +2179,7 @@ namespace Gear.ActiveQuery
                         catch (Exception ex)
                         {
                             setOperationFault(ex);
+                            setValue(default);
                         }
                     }
                 }
@@ -2243,8 +2244,7 @@ namespace Gear.ActiveQuery
                         setOperationFault(ExceptionHelper.SequenceContainsMoreThanOneElement);
                         moreThanOne = true;
                     }
-                    if (where.Count == 1)
-                        setValue(where[0]);
+                    setValue(where.Count == 1 ? where[0] : default);
                 }
             }
 
@@ -2292,6 +2292,7 @@ namespace Gear.ActiveQuery
                         catch (Exception ex)
                         {
                             setOperationFault(ex);
+                            setValue(default);
                         }
                     }
                 }
