@@ -8,9 +8,9 @@ namespace Gear.ActiveQuery.MSTest.Enumerable
     public class ActiveFirst
     {
         [TestMethod]
-        public void ExpressionlessEmptySource()
+        public void ExpressionlessEmptyNonNotifier()
         {
-            var numbers = new RangeObservableCollection<int>();
+            var numbers = System.Linq.Enumerable.Empty<int>();
             using (var query = numbers.ActiveFirst())
             {
                 Assert.IsNotNull(query.OperationFault);
@@ -19,9 +19,9 @@ namespace Gear.ActiveQuery.MSTest.Enumerable
         }
 
         [TestMethod]
-        public void ExpressionlessEmptyNonNotifier()
+        public void ExpressionlessEmptySource()
         {
-            var numbers = System.Linq.Enumerable.Empty<int>();
+            var numbers = new RangeObservableCollection<int>();
             using (var query = numbers.ActiveFirst())
             {
                 Assert.IsNotNull(query.OperationFault);
