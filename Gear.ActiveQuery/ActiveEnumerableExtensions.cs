@@ -457,55 +457,6 @@ namespace Gear.ActiveQuery
 
         #region ElementAt
 
-        public static ActiveValue<object> ActiveElementAt(this IEnumerable source, int index)
-        {
-            var elementFaultChangeNotifier = source as INotifyElementFaultChanges;
-            if (source is INotifyCollectionChanged changingSource)
-            {
-                var activeValueAccess = new object();
-                Action<object> setValue = null;
-                Action<Exception> setOperationFault = null;
-
-                void collectionChanged(object sender, NotifyCollectionChangedEventArgs e)
-                {
-                    lock (activeValueAccess)
-                    {
-                        try
-                        {
-                            var value = source.Cast<object>().ElementAt(index);
-                            setOperationFault(null);
-                            setValue(value);
-                        }
-                        catch (Exception ex)
-                        {
-                            setOperationFault(ex);
-                        }
-                    }
-                }
-
-                lock (activeValueAccess)
-                {
-                    changingSource.CollectionChanged += collectionChanged;
-                    try
-                    {
-                        return new ActiveValue<object>(source.Cast<object>().ElementAt(index), out setValue, out setOperationFault, elementFaultChangeNotifier, () => changingSource.CollectionChanged -= collectionChanged);
-                    }
-                    catch (Exception ex)
-                    {
-                        return new ActiveValue<object>(default, out setValue, ex, out setOperationFault, elementFaultChangeNotifier, () => changingSource.CollectionChanged -= collectionChanged);
-                    }
-                }
-            }
-            try
-            {
-                return new ActiveValue<object>(source.Cast<object>().ElementAt(index), elementFaultChangeNotifier: elementFaultChangeNotifier);
-            }
-            catch (Exception ex)
-            {
-                return new ActiveValue<object>(default, ex, elementFaultChangeNotifier: elementFaultChangeNotifier);
-            }
-        }
-
         public static ActiveValue<TSource> ActiveElementAt<TSource>(this IEnumerable<TSource> source, int index)
         {
             var elementFaultChangeNotifier = source as INotifyElementFaultChanges;
@@ -600,39 +551,6 @@ namespace Gear.ActiveQuery
 
         #region ElementAtOrDefault
 
-        public static ActiveValue<object> ActiveElementAtOrDefault(this IEnumerable source, int index)
-        {
-            var elementFaultChangeNotifier = source as INotifyElementFaultChanges;
-            if (source is INotifyCollectionChanged changingSource)
-            {
-                var activeValueAccess = new object();
-                Action<object> setValue = null;
-
-                void collectionChanged(object sender, NotifyCollectionChangedEventArgs e)
-                {
-                    lock (activeValueAccess)
-                        setValue(source.Cast<object>().ElementAtOrDefault(index));
-                }
-
-                lock (activeValueAccess)
-                {
-                    changingSource.CollectionChanged += collectionChanged;
-                    return new ActiveValue<object>(source.Cast<object>().ElementAtOrDefault(index), out setValue, elementFaultChangeNotifier: elementFaultChangeNotifier, onDispose: () => changingSource.CollectionChanged -= collectionChanged);
-                }
-            }
-            else
-            {
-                try
-                {
-                    return new ActiveValue<object>(source.Cast<object>().ElementAtOrDefault(index), elementFaultChangeNotifier: elementFaultChangeNotifier);
-                }
-                catch (Exception ex)
-                {
-                    return new ActiveValue<object>(default, ex, elementFaultChangeNotifier: elementFaultChangeNotifier);
-                }
-            }
-        }
-
         public static ActiveValue<TSource> ActiveElementAtOrDefault<TSource>(this IEnumerable<TSource> source, int index)
         {
             var elementFaultChangeNotifier = source as INotifyElementFaultChanges;
@@ -694,55 +612,6 @@ namespace Gear.ActiveQuery
         #endregion ElementAtOrDefault
 
         #region First
-
-        public static ActiveValue<object> ActiveFirst(this IEnumerable source)
-        {
-            var elementFaultChangeNotifier = source as INotifyElementFaultChanges;
-            if (source is INotifyCollectionChanged changingSource)
-            {
-                var activeValueAccess = new object();
-                Action<object> setValue = null;
-                Action<Exception> setOperationFault = null;
-
-                void collectionChanged(object sender, NotifyCollectionChangedEventArgs e)
-                {
-                    lock (activeValueAccess)
-                    {
-                        try
-                        {
-                            var value = source.Cast<object>().First();
-                            setOperationFault(null);
-                            setValue(value);
-                        }
-                        catch (Exception ex)
-                        {
-                            setOperationFault(ex);
-                        }
-                    }
-                }
-
-                lock (activeValueAccess)
-                {
-                    changingSource.CollectionChanged += collectionChanged;
-                    try
-                    {
-                        return new ActiveValue<object>(source.Cast<object>().First(), out setValue, out setOperationFault, elementFaultChangeNotifier, () => changingSource.CollectionChanged -= collectionChanged);
-                    }
-                    catch (Exception ex)
-                    {
-                        return new ActiveValue<object>(default, out setValue, ex, out setOperationFault, elementFaultChangeNotifier, () => changingSource.CollectionChanged -= collectionChanged);
-                    }
-                }
-            }
-            try
-            {
-                return new ActiveValue<object>(source.Cast<object>().First(), elementFaultChangeNotifier: elementFaultChangeNotifier);
-            }
-            catch (Exception ex)
-            {
-                return new ActiveValue<object>(default, ex, elementFaultChangeNotifier: elementFaultChangeNotifier);
-            }
-        }
 
         public static ActiveValue<TSource> ActiveFirst<TSource>(this IEnumerable<TSource> source)
         {
@@ -837,39 +706,6 @@ namespace Gear.ActiveQuery
         #endregion First
 
         #region FirstOrDefault
-
-        public static ActiveValue<object> ActiveFirstOrDefault(this IEnumerable source)
-        {
-            var elementFaultChangeNotifier = source as INotifyElementFaultChanges;
-            if (source is INotifyCollectionChanged changingSource)
-            {
-                var activeValueAccess = new object();
-                Action<object> setValue = null;
-
-                void collectionChanged(object sender, NotifyCollectionChangedEventArgs e)
-                {
-                    lock (activeValueAccess)
-                        setValue(source.Cast<object>().FirstOrDefault());
-                }
-
-                lock (activeValueAccess)
-                {
-                    changingSource.CollectionChanged += collectionChanged;
-                    return new ActiveValue<object>(source.Cast<object>().FirstOrDefault(), out setValue, elementFaultChangeNotifier: elementFaultChangeNotifier, onDispose: () => changingSource.CollectionChanged -= collectionChanged);
-                }
-            }
-            else
-            {
-                try
-                {
-                    return new ActiveValue<object>(source.Cast<object>().FirstOrDefault(), elementFaultChangeNotifier: elementFaultChangeNotifier);
-                }
-                catch (Exception ex)
-                {
-                    return new ActiveValue<object>(source.Cast<object>().FirstOrDefault(), ex, elementFaultChangeNotifier);
-                }
-            }
-        }
 
         public static ActiveValue<TSource> ActiveFirstOrDefault<TSource>(this IEnumerable<TSource> source)
         {
@@ -1048,59 +884,6 @@ namespace Gear.ActiveQuery
 
         #region Last
 
-        public static ActiveValue<object> ActiveLast(this IEnumerable source)
-        {
-            var elementFaultChangeNotifier = source as INotifyElementFaultChanges;
-            if (source is INotifyCollectionChanged changingSource)
-            {
-                var activeValueAccess = new object();
-                Action<object> setValue = null;
-                Action<Exception> setOperationFault = null;
-
-                void collectionChanged(object sender, NotifyCollectionChangedEventArgs e)
-                {
-                    lock (activeValueAccess)
-                    {
-                        try
-                        {
-                            var value = source.Cast<object>().Last();
-                            setOperationFault(null);
-                            setValue(value);
-                        }
-                        catch (Exception ex)
-                        {
-                            setOperationFault(ex);
-                        }
-                    }
-                }
-
-                lock (activeValueAccess)
-                {
-                    changingSource.CollectionChanged += collectionChanged;
-
-                    try
-                    {
-                        return new ActiveValue<object>(source.Cast<object>().Last(), out setValue, out setOperationFault, elementFaultChangeNotifier, () => changingSource.CollectionChanged -= collectionChanged);
-                    }
-                    catch (Exception ex)
-                    {
-                        return new ActiveValue<object>(default, out setValue, ex, out setOperationFault, elementFaultChangeNotifier, () => changingSource.CollectionChanged -= collectionChanged);
-                    }
-                }
-            }
-            else
-            {
-                try
-                {
-                    return new ActiveValue<object>(source.Cast<object>().Last(), elementFaultChangeNotifier: elementFaultChangeNotifier);
-                }
-                catch (Exception ex)
-                {
-                    return new ActiveValue<object>(default, ex, elementFaultChangeNotifier);
-                }
-            }
-        }
-
         public static ActiveValue<TSource> ActiveLast<TSource>(this IEnumerable<TSource> source)
         {
             var elementFaultChangeNotifier = source as INotifyElementFaultChanges;
@@ -1193,39 +976,6 @@ namespace Gear.ActiveQuery
         #endregion Last
 
         #region LastOrDefault
-
-        public static ActiveValue<object> ActiveLastOrDefault(this IEnumerable source)
-        {
-            var elementFaultChangeNotifier = source as INotifyElementFaultChanges;
-            if (source is INotifyCollectionChanged changingSource)
-            {
-                var activeValueAccess = new object();
-                Action<object> setValue = null;
-
-                void collectionChanged(object sender, NotifyCollectionChangedEventArgs e)
-                {
-                    lock (activeValueAccess)
-                        setValue(source.Cast<object>().LastOrDefault());
-                }
-
-                lock (activeValueAccess)
-                {
-                    changingSource.CollectionChanged += collectionChanged;
-                    return new ActiveValue<object>(source.Cast<object>().LastOrDefault(), out setValue, elementFaultChangeNotifier: elementFaultChangeNotifier, onDispose: () => changingSource.CollectionChanged -= collectionChanged);
-                }
-            }
-            else
-            {
-                try
-                {
-                    return new ActiveValue<object>(source.Cast<object>().LastOrDefault(), elementFaultChangeNotifier: elementFaultChangeNotifier);
-                }
-                catch (Exception ex)
-                {
-                    return new ActiveValue<object>(default, ex, elementFaultChangeNotifier);
-                }
-            }
-        }
 
         public static ActiveValue<TSource> ActiveLastOrDefault<TSource>(this IEnumerable<TSource> source)
         {
@@ -2407,59 +2157,6 @@ namespace Gear.ActiveQuery
 
         #region Single
 
-        public static ActiveValue<object> ActiveSingle(this IEnumerable source)
-        {
-            var elementFaultChangeNotifier = source as INotifyElementFaultChanges;
-            if (source is INotifyCollectionChanged changingSource)
-            {
-                var activeValueAccess = new object();
-                Action<object> setValue = null;
-                Action<Exception> setOperationFault = null;
-
-                void collectionChanged(object sender, NotifyCollectionChangedEventArgs e)
-                {
-                    lock (activeValueAccess)
-                    {
-                        try
-                        {
-                            var value = source.Cast<object>().Single();
-                            setOperationFault(null);
-                            setValue(value);
-                        }
-                        catch (Exception ex)
-                        {
-                            setOperationFault(ex);
-                        }
-                    }
-                }
-
-                lock (activeValueAccess)
-                {
-                    changingSource.CollectionChanged += collectionChanged;
-
-                    try
-                    {
-                        return new ActiveValue<object>(source.Cast<object>().Single(), out setValue, out setOperationFault, elementFaultChangeNotifier, () => changingSource.CollectionChanged -= collectionChanged);
-                    }
-                    catch (Exception ex)
-                    {
-                        return new ActiveValue<object>(default, out setValue, ex, out setOperationFault, elementFaultChangeNotifier, () => changingSource.CollectionChanged -= collectionChanged);
-                    }
-                }
-            }
-            else
-            {
-                try
-                {
-                    return new ActiveValue<object>(source.Cast<object>().Single(), elementFaultChangeNotifier: elementFaultChangeNotifier);
-                }
-                catch (Exception ex)
-                {
-                    return new ActiveValue<object>(null, ex, elementFaultChangeNotifier);
-                }
-            }
-        }
-
         public static ActiveValue<TSource> ActiveSingle<TSource>(this IEnumerable<TSource> source)
         {
             var elementFaultChangeNotifier = source as INotifyElementFaultChanges;
@@ -2572,59 +2269,6 @@ namespace Gear.ActiveQuery
         #endregion Single
 
         #region SingleOrDefault
-
-        public static ActiveValue<object> ActiveSingleOrDefault(this IEnumerable source)
-        {
-            var elementFaultChangeNotifier = source as INotifyElementFaultChanges;
-            if (source is INotifyCollectionChanged changingSource)
-            {
-                var activeValueAccess = new object();
-                Action<object> setValue = null;
-                Action<Exception> setOperationFault = null;
-
-                void collectionChanged(object sender, NotifyCollectionChangedEventArgs e)
-                {
-                    lock (activeValueAccess)
-                    {
-                        try
-                        {
-                            var value = source.Cast<object>().SingleOrDefault();
-                            setOperationFault(null);
-                            setValue(value);
-                        }
-                        catch (Exception ex)
-                        {
-                            setOperationFault(ex);
-                        }
-                    }
-                }
-
-                lock (activeValueAccess)
-                {
-                    changingSource.CollectionChanged += collectionChanged;
-
-                    try
-                    {
-                        return new ActiveValue<object>(source.Cast<object>().SingleOrDefault(), out setValue, null, out setOperationFault, elementFaultChangeNotifier, () => changingSource.CollectionChanged -= collectionChanged);
-                    }
-                    catch (Exception ex)
-                    {
-                        return new ActiveValue<object>(default, out setValue, ex, out setOperationFault, elementFaultChangeNotifier, () => changingSource.CollectionChanged -= collectionChanged);
-                    }
-                }
-            }
-            else
-            {
-                try
-                {
-                    return new ActiveValue<object>(source.Cast<object>().SingleOrDefault(), elementFaultChangeNotifier: elementFaultChangeNotifier);
-                }
-                catch (Exception ex)
-                {
-                    return new ActiveValue<object>(default, ex, elementFaultChangeNotifier);
-                }
-            }
-        }
 
         public static ActiveValue<TSource> ActiveSingleOrDefault<TSource>(this IEnumerable<TSource> source)
         {
