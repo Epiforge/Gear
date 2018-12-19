@@ -366,8 +366,19 @@ namespace Gear.ActiveQuery
                 {
                     if (e.Action == NotifyCollectionChangedAction.Reset)
                     {
-                        distinctCounts.Clear();
-                        rangeObservableCollection.Clear();
+                        distinctCounts = new Dictionary<TSource, int>();
+                        var distinctValues = new List<TSource>();
+                        foreach (var element in source)
+                        {
+                            if (distinctCounts.TryGetValue(element, out var distinctCount))
+                                distinctCounts[element] = ++distinctCount;
+                            else
+                            {
+                                distinctCounts.Add(element, 1);
+                                distinctValues.Add(element);
+                            }
+                        }
+                        rangeObservableCollection.ReplaceAll(distinctValues);
                     }
                     else if (e.Action != NotifyCollectionChangedAction.Move)
                     {
@@ -441,7 +452,6 @@ namespace Gear.ActiveQuery
                 });
             }
         }
-
 
         #endregion Distinct
 

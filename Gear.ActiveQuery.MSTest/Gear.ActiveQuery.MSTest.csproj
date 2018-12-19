@@ -84,6 +84,7 @@
     <Compile Include="Enumerable\ActiveAny.cs" />
     <Compile Include="Enumerable\ActiveCast.cs" />
     <Compile Include="Enumerable\ActiveConcat.cs" />
+    <Compile Include="Enumerable\ActiveDistinct.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="TestPerson.cs" />
     <Compile Include="TestSimpleObservableCollection.cs" />

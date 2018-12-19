@@ -2,8 +2,10 @@ using Gear.Components;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Collections.Specialized;
 using System.ComponentModel;
+using System.Linq;
 using System.Threading;
 
 namespace Gear.ActiveQuery
@@ -72,7 +74,7 @@ namespace Gear.ActiveQuery
 
         public IEnumerator<TElement> GetEnumerator() => readOnlyList.GetEnumerator();
 
-        public IReadOnlyList<(object element, Exception fault)> GetElementFaults() => faultNotifier?.GetElementFaults();
+        public IReadOnlyList<(object element, Exception fault)> GetElementFaults() => faultNotifier?.GetElementFaults() ?? Enumerable.Empty<(object element, Exception fault)>().ToImmutableArray();
 
         void PropertyChangedHandler(object sender, PropertyChangedEventArgs e)
         {
