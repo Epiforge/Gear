@@ -91,6 +91,8 @@
     <Compile Include="TestPerson.cs" />
     <Compile Include="TestSimpleObservableCollection.cs" />
     <Compile Include="TestSynchronizationContext.cs" />
+    <Compile Include="ExpressionEqualityComparisonVisitor.cs" />
+    <Compile Include="ExpressionHashCodeVisitor.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Gear.ActiveExpressions\Gear.ActiveExpressions.csproj">

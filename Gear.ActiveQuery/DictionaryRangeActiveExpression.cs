@@ -15,39 +15,53 @@ namespace Gear.ActiveQuery
     /// Represents the dictionary of results derived from creating an active expression for each key-value pair in a dictionary
     /// </summary>
     /// <typeparam name="TResult">The type of the result of the active expression</typeparam>
-    class DictionaryRangeActiveExpression<TResult> : SyncDisposablePropertyChangeNotifier, INotifyElementFaultChanges
+    class DictionaryRangeActiveExpression<TResult> : OverridableSyncDisposablePropertyChangeNotifier, INotifyElementFaultChanges
     {
-        public DictionaryRangeActiveExpression(IDictionary source, Expression<Func<object, object, TResult>> expression, ActiveExpressionOptions options)
+        static readonly object rangeActiveExpressionsAccess = new object();
+        static readonly Dictionary<(IDictionary source, Expression<Func<object, object, TResult>> expression, ActiveExpressionOptions options), DictionaryRangeActiveExpression<TResult>> rangeActiveExpressions = new Dictionary<(IDictionary source, Expression<Func<object, object, TResult>> expression, ActiveExpressionOptions options), DictionaryRangeActiveExpression<TResult>>(CachedRangeActiveExpressionKeyEqualityComparer<TResult>.Default);
+
+        public static DictionaryRangeActiveExpression<TResult> Create(IDictionary source, Expression<Func<object, object, TResult>> expression, ActiveExpressionOptions options = null)
+        {
+            DictionaryRangeActiveExpression<TResult> rangeActiveExpression;
+            bool monitorCreated;
+            var key = (source, expression, options);
+            lock (rangeActiveExpressionsAccess)
+            {
+                if (monitorCreated = !rangeActiveExpressions.TryGetValue(key, out rangeActiveExpression))
+                {
+                    rangeActiveExpression = new DictionaryRangeActiveExpression<TResult>(source, expression, options);
+                    rangeActiveExpressions.Add(key, rangeActiveExpression);
+                }
+                ++rangeActiveExpression.disposalCount;
+            }
+            if (monitorCreated)
+            {
+                var initialized = false;
+                try
+                {
+                    rangeActiveExpression.Initialize();
+                    initialized = true;
+                }
+                finally
+                {
+                    if (!initialized)
+                        rangeActiveExpression.Dispose();
+                }
+            }
+            return rangeActiveExpression;
+        }
+
+        DictionaryRangeActiveExpression(IDictionary source, Expression<Func<object, object, TResult>> expression, ActiveExpressionOptions options)
         {
             this.source = source;
             this.expression = expression;
             Options = options;
             activeExpressions = new Dictionary<object, ActiveExpression<object, object, TResult>>();
-            var keyValuePairs = new List<KeyValuePair<object, object>>();
-            var enumerator = source.GetEnumerator();
-            while (enumerator?.MoveNext() ?? false)
-                keyValuePairs.Add(new KeyValuePair<object, object>(enumerator.Key, enumerator.Value));
-            if (enumerator is IDisposable disposableEnumerator)
-                disposableEnumerator.Dispose();
-            if (keyValuePairs.Count > 0)
-                AddActiveExpressions(keyValuePairs);
-            if (source is INotifyDictionaryChanged dictionaryChangedNotifier)
-            {
-                dictionaryChangedNotifier.ValueAdded += SourceValueAdded;
-                dictionaryChangedNotifier.ValueRemoved += SourceValueRemoved;
-                dictionaryChangedNotifier.ValueReplaced += SourceValueReplaced;
-                dictionaryChangedNotifier.ValuesAdded += SourceValuesAdded;
-                dictionaryChangedNotifier.ValuesRemoved += SourceValuesRemoved;
-            }
-            if (source is INotifyElementFaultChanges faultNotifier)
-            {
-                faultNotifier.ElementFaultChanged += SourceFaultChanged;
-                faultNotifier.ElementFaultChanging += SourceFaultChanging;
-            }
         }
 
         readonly Dictionary<object, ActiveExpression<object, object, TResult>> activeExpressions;
         readonly ReaderWriterLockSlim activeExpressionsAccess = new ReaderWriterLockSlim();
+        int disposalCount;
         readonly Expression<Func<object, object, TResult>> expression;
         readonly IDictionary source;
 
@@ -164,8 +178,14 @@ namespace Gear.ActiveQuery
             return null;
         }
 
-        protected override void Dispose(bool disposing)
+        protected override bool Dispose(bool disposing)
         {
+            lock (rangeActiveExpressionsAccess)
+            {
+                if (--disposalCount > 0)
+                    return false;
+                rangeActiveExpressions.Remove((source, expression, Options));
+            }
             RemoveActiveExpressions(activeExpressions.Keys);
             if (source is INotifyDictionaryChanged dictionaryChangedNotifier)
             {
@@ -180,6 +200,7 @@ namespace Gear.ActiveQuery
                 faultNotifier.ElementFaultChanged -= SourceFaultChanged;
                 faultNotifier.ElementFaultChanging -= SourceFaultChanging;
             }
+            return true;
         }
 
         public IReadOnlyList<(object element, Exception fault)> GetElementFaults()
@@ -226,6 +247,31 @@ namespace Gear.ActiveQuery
         }
 
         internal IReadOnlyList<(object key, TResult result, Exception fault)> GetResultsAndFaultsUnderLock() => activeExpressions.Select(ae => (ae.Key, ae.Value.Value, ae.Value.Fault)).ToImmutableArray();
+
+        void Initialize()
+        {
+            var keyValuePairs = new List<KeyValuePair<object, object>>();
+            var enumerator = source.GetEnumerator();
+            while (enumerator?.MoveNext() ?? false)
+                keyValuePairs.Add(new KeyValuePair<object, object>(enumerator.Key, enumerator.Value));
+            if (enumerator is IDisposable disposableEnumerator)
+                disposableEnumerator.Dispose();
+            if (keyValuePairs.Count > 0)
+                AddActiveExpressions(keyValuePairs);
+            if (source is INotifyDictionaryChanged dictionaryChangedNotifier)
+            {
+                dictionaryChangedNotifier.ValueAdded += SourceValueAdded;
+                dictionaryChangedNotifier.ValueRemoved += SourceValueRemoved;
+                dictionaryChangedNotifier.ValueReplaced += SourceValueReplaced;
+                dictionaryChangedNotifier.ValuesAdded += SourceValuesAdded;
+                dictionaryChangedNotifier.ValuesRemoved += SourceValuesRemoved;
+            }
+            if (source is INotifyElementFaultChanges faultNotifier)
+            {
+                faultNotifier.ElementFaultChanged += SourceFaultChanged;
+                faultNotifier.ElementFaultChanging += SourceFaultChanging;
+            }
+        }
 
         protected virtual void OnElementFaultChanged(ElementFaultChangeEventArgs e) =>
             ElementFaultChanged?.Invoke(this, e);
@@ -400,32 +446,53 @@ namespace Gear.ActiveQuery
     /// <typeparam name="TKey">The type of the keys</typeparam>
     /// <typeparam name="TValue">The type of the values in the dictionary</typeparam>
     /// <typeparam name="TResult">The type of the result of the active expression</typeparam>
-    class DictionaryRangeActiveExpression<TKey, TValue, TResult> : SyncDisposablePropertyChangeNotifier, INotifyElementFaultChanges
+    class DictionaryRangeActiveExpression<TKey, TValue, TResult> : OverridableSyncDisposablePropertyChangeNotifier, INotifyElementFaultChanges
     {
-        public DictionaryRangeActiveExpression(IDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, TResult>> expression, ActiveExpressionOptions options)
+        static readonly object rangeActiveExpressionsAccess = new object();
+        static readonly Dictionary<(IDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, TResult>> expression, ActiveExpressionOptions options), DictionaryRangeActiveExpression<TKey, TValue, TResult>> rangeActiveExpressions = new Dictionary<(IDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, TResult>> expression, ActiveExpressionOptions options), DictionaryRangeActiveExpression<TKey, TValue, TResult>>(CachedRangeActiveExpressionKeyEqualityComparer<TKey, TValue, TResult>.Default);
+
+        public static DictionaryRangeActiveExpression<TKey, TValue, TResult> Create(IDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, TResult>> expression, ActiveExpressionOptions options = null)
+        {
+            DictionaryRangeActiveExpression<TKey, TValue, TResult> rangeActiveExpression;
+            bool monitorCreated;
+            var key = (source, expression, options);
+            lock (rangeActiveExpressionsAccess)
+            {
+                if (monitorCreated = !rangeActiveExpressions.TryGetValue(key, out rangeActiveExpression))
+                {
+                    rangeActiveExpression = new DictionaryRangeActiveExpression<TKey, TValue, TResult>(source, expression, options);
+                    rangeActiveExpressions.Add(key, rangeActiveExpression);
+                }
+                ++rangeActiveExpression.disposalCount;
+            }
+            if (monitorCreated)
+            {
+                var initialized = false;
+                try
+                {
+                    rangeActiveExpression.Initialize();
+                    initialized = true;
+                }
+                finally
+                {
+                    if (!initialized)
+                        rangeActiveExpression.Dispose();
+                }
+            }
+            return rangeActiveExpression;
+        }
+
+        DictionaryRangeActiveExpression(IDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, TResult>> expression, ActiveExpressionOptions options)
         {
             this.source = source;
             this.expression = expression;
             Options = options;
             activeExpressions = this.source.CreateSimilarDictionary<TKey, TValue, ActiveExpression<TKey, TValue, TResult>>();
-            AddActiveExpressions(source);
-            if (source is INotifyDictionaryChanged<TKey, TValue> dictionaryChangedNotifier)
-            {
-                dictionaryChangedNotifier.ValueAdded += SourceValueAdded;
-                dictionaryChangedNotifier.ValueRemoved += SourceValueRemoved;
-                dictionaryChangedNotifier.ValueReplaced += SourceValueReplaced;
-                dictionaryChangedNotifier.ValuesAdded += SourceValuesAdded;
-                dictionaryChangedNotifier.ValuesRemoved += SourceValuesRemoved;
-            }
-            if (source is INotifyElementFaultChanges faultNotifier)
-            {
-                faultNotifier.ElementFaultChanged += SourceFaultChanged;
-                faultNotifier.ElementFaultChanging += SourceFaultChanging;
-            }
         }
 
         readonly IDictionary<TKey, ActiveExpression<TKey, TValue, TResult>> activeExpressions;
         readonly ReaderWriterLockSlim activeExpressionsAccess = new ReaderWriterLockSlim();
+        int disposalCount;
         readonly Expression<Func<TKey, TValue, TResult>> expression;
         readonly IDictionary<TKey, TValue> source;
 
@@ -542,8 +609,14 @@ namespace Gear.ActiveQuery
             return null;
         }
 
-        protected override void Dispose(bool disposing)
+        protected override bool Dispose(bool disposing)
         {
+            lock (rangeActiveExpressionsAccess)
+            {
+                if (--disposalCount > 0)
+                    return false;
+                rangeActiveExpressions.Remove((source, expression, Options));
+            }
             RemoveActiveExpressions(activeExpressions.Keys);
             if (source is INotifyDictionaryChanged<TKey, TValue> dictionaryChangedNotifier)
             {
@@ -558,6 +631,7 @@ namespace Gear.ActiveQuery
                 faultNotifier.ElementFaultChanged -= SourceFaultChanged;
                 faultNotifier.ElementFaultChanging -= SourceFaultChanging;
             }
+            return true;
         }
 
         public IReadOnlyList<(object element, Exception fault)> GetElementFaults()
@@ -604,6 +678,24 @@ namespace Gear.ActiveQuery
         }
 
         internal IReadOnlyList<(TKey key, TResult result, Exception fault)> GetResultsAndFaultsUnderLock() => activeExpressions.Select(ae => (ae.Key, ae.Value.Value, ae.Value.Fault)).ToImmutableArray();
+
+        void Initialize()
+        {
+            AddActiveExpressions(source);
+            if (source is INotifyDictionaryChanged<TKey, TValue> dictionaryChangedNotifier)
+            {
+                dictionaryChangedNotifier.ValueAdded += SourceValueAdded;
+                dictionaryChangedNotifier.ValueRemoved += SourceValueRemoved;
+                dictionaryChangedNotifier.ValueReplaced += SourceValueReplaced;
+                dictionaryChangedNotifier.ValuesAdded += SourceValuesAdded;
+                dictionaryChangedNotifier.ValuesRemoved += SourceValuesRemoved;
+            }
+            if (source is INotifyElementFaultChanges faultNotifier)
+            {
+                faultNotifier.ElementFaultChanged += SourceFaultChanged;
+                faultNotifier.ElementFaultChanging += SourceFaultChanging;
+            }
+        }
 
         protected virtual void OnElementFaultChanged(ElementFaultChangeEventArgs e) =>
             ElementFaultChanged?.Invoke(this, e);
@@ -778,32 +870,53 @@ namespace Gear.ActiveQuery
     /// <typeparam name="TKey">The type of the keys</typeparam>
     /// <typeparam name="TValue">The type of the values in the dictionary</typeparam>
     /// <typeparam name="TResult">The type of the result of the active expression</typeparam>
-    class ReadOnlyDictionaryRangeActiveExpression<TKey, TValue, TResult> : SyncDisposablePropertyChangeNotifier, INotifyElementFaultChanges
+    class ReadOnlyDictionaryRangeActiveExpression<TKey, TValue, TResult> : OverridableSyncDisposablePropertyChangeNotifier, INotifyElementFaultChanges
     {
-        public ReadOnlyDictionaryRangeActiveExpression(IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, TResult>> expression, ActiveExpressionOptions options)
+        static readonly object rangeActiveExpressionsAccess = new object();
+        static readonly Dictionary<(IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, TResult>> expression, ActiveExpressionOptions options), ReadOnlyDictionaryRangeActiveExpression<TKey, TValue, TResult>> rangeActiveExpressions = new Dictionary<(IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, TResult>> expression, ActiveExpressionOptions options), ReadOnlyDictionaryRangeActiveExpression<TKey, TValue, TResult>>(CachedRangeActiveExpressionKeyEqualityComparer<TKey, TValue, TResult>.Default);
+
+        public static ReadOnlyDictionaryRangeActiveExpression<TKey, TValue, TResult> Create(IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, TResult>> expression, ActiveExpressionOptions options = null)
+        {
+            ReadOnlyDictionaryRangeActiveExpression<TKey, TValue, TResult> rangeActiveExpression;
+            bool monitorCreated;
+            var key = (source, expression, options);
+            lock (rangeActiveExpressionsAccess)
+            {
+                if (monitorCreated = !rangeActiveExpressions.TryGetValue(key, out rangeActiveExpression))
+                {
+                    rangeActiveExpression = new ReadOnlyDictionaryRangeActiveExpression<TKey, TValue, TResult>(source, expression, options);
+                    rangeActiveExpressions.Add(key, rangeActiveExpression);
+                }
+                ++rangeActiveExpression.disposalCount;
+            }
+            if (monitorCreated)
+            {
+                var initialized = false;
+                try
+                {
+                    rangeActiveExpression.Initialize();
+                    initialized = true;
+                }
+                finally
+                {
+                    if (!initialized)
+                        rangeActiveExpression.Dispose();
+                }
+            }
+            return rangeActiveExpression;
+        }
+
+        ReadOnlyDictionaryRangeActiveExpression(IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, TResult>> expression, ActiveExpressionOptions options)
         {
             this.source = source;
             this.expression = expression;
             Options = options;
             activeExpressions = this.source.CreateSimilarDictionary<TKey, TValue, ActiveExpression<TKey, TValue, TResult>>();
-            AddActiveExpressions(source);
-            if (source is INotifyDictionaryChanged<TKey, TValue> dictionaryChangedNotifier)
-            {
-                dictionaryChangedNotifier.ValueAdded += SourceValueAdded;
-                dictionaryChangedNotifier.ValueRemoved += SourceValueRemoved;
-                dictionaryChangedNotifier.ValueReplaced += SourceValueReplaced;
-                dictionaryChangedNotifier.ValuesAdded += SourceValuesAdded;
-                dictionaryChangedNotifier.ValuesRemoved += SourceValuesRemoved;
-            }
-            if (source is INotifyElementFaultChanges faultNotifier)
-            {
-                faultNotifier.ElementFaultChanged += SourceFaultChanged;
-                faultNotifier.ElementFaultChanging += SourceFaultChanging;
-            }
         }
 
         readonly IDictionary<TKey, ActiveExpression<TKey, TValue, TResult>> activeExpressions;
         readonly ReaderWriterLockSlim activeExpressionsAccess = new ReaderWriterLockSlim();
+        int disposalCount;
         readonly Expression<Func<TKey, TValue, TResult>> expression;
         readonly IReadOnlyDictionary<TKey, TValue> source;
 
@@ -920,8 +1033,14 @@ namespace Gear.ActiveQuery
             return null;
         }
 
-        protected override void Dispose(bool disposing)
+        protected override bool Dispose(bool disposing)
         {
+            lock (rangeActiveExpressionsAccess)
+            {
+                if (--disposalCount > 0)
+                    return false;
+                rangeActiveExpressions.Remove((source, expression, Options));
+            }
             RemoveActiveExpressions(activeExpressions.Keys);
             if (source is INotifyDictionaryChanged<TKey, TValue> dictionaryChangedNotifier)
             {
@@ -936,6 +1055,7 @@ namespace Gear.ActiveQuery
                 faultNotifier.ElementFaultChanged -= SourceFaultChanged;
                 faultNotifier.ElementFaultChanging -= SourceFaultChanging;
             }
+            return true;
         }
 
         public IReadOnlyList<(object element, Exception fault)> GetElementFaults()
@@ -982,6 +1102,24 @@ namespace Gear.ActiveQuery
         }
 
         internal IReadOnlyList<(TKey key, TResult result, Exception fault)> GetResultsAndFaultsUnderLock() => activeExpressions.Select(ae => (ae.Key, ae.Value.Value, ae.Value.Fault)).ToImmutableArray();
+
+        void Initialize()
+        {
+            AddActiveExpressions(source);
+            if (source is INotifyDictionaryChanged<TKey, TValue> dictionaryChangedNotifier)
+            {
+                dictionaryChangedNotifier.ValueAdded += SourceValueAdded;
+                dictionaryChangedNotifier.ValueRemoved += SourceValueRemoved;
+                dictionaryChangedNotifier.ValueReplaced += SourceValueReplaced;
+                dictionaryChangedNotifier.ValuesAdded += SourceValuesAdded;
+                dictionaryChangedNotifier.ValuesRemoved += SourceValuesRemoved;
+            }
+            if (source is INotifyElementFaultChanges faultNotifier)
+            {
+                faultNotifier.ElementFaultChanged += SourceFaultChanged;
+                faultNotifier.ElementFaultChanging += SourceFaultChanging;
+            }
+        }
 
         protected virtual void OnElementFaultChanged(ElementFaultChangeEventArgs e) =>
             ElementFaultChanged?.Invoke(this, e);

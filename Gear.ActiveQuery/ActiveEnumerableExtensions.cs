@@ -1412,7 +1412,7 @@ namespace Gear.ActiveQuery
             {
                 if (synchronizableSource != null)
                     synchronizableSource.PropertyChanged += propertyChanged;
-                var selections = selectors.Select(selector => (rangeActiveExpression: new EnumerableRangeActiveExpression<TSource, IComparable>(source, selector.expression, selector.expressionOptions), selector.isDescending)).ToList();
+                var selections = selectors.Select(selector => (rangeActiveExpression: EnumerableRangeActiveExpression<TSource, IComparable>.Create(source, selector.expression, selector.expressionOptions), selector.isDescending)).ToList();
                 comparer = new ActiveOrderingComparer<TSource>(selections.Select(selection => (selection.rangeActiveExpression, selection.isDescending)).ToList(), indexingStrategy);
                 var (lastRangeActiveExpression, lastIsDescending) = selections[selections.Count - 1];
                 lastRangeActiveExpression.ElementsAdded += elementsAdded;

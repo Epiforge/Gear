@@ -1,4 +1,5 @@
 using Gear.Components;
+using System.Linq;
 using System.Threading;
 
 namespace Gear.ActiveQuery.MSTest
@@ -23,6 +24,10 @@ namespace Gear.ActiveQuery.MSTest
                 new TestPerson("James"),
                 new TestPerson("Steve")
             };
+
+        public static TestPerson operator +(TestPerson a, TestPerson b) => new TestPerson { name = $"{a.name} {b.name}" };
+
+        public static TestPerson operator -(TestPerson testPerson) => new TestPerson { name = new string(testPerson.name.Reverse().ToArray()) };
 
         public TestPerson()
         {

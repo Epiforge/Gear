@@ -17,26 +17,53 @@ namespace Gear.ActiveQuery
     /// </summary>
     /// <typeparam name="TElement">The type of the elements in the sequence</typeparam>
     /// <typeparam name="TResult">The type of the result of the active expression</typeparam>
-    class EnumerableRangeActiveExpression<TResult> : SyncDisposablePropertyChangeNotifier, INotifyElementFaultChanges
+    class EnumerableRangeActiveExpression<TResult> : OverridableSyncDisposablePropertyChangeNotifier, INotifyElementFaultChanges
     {
-        public EnumerableRangeActiveExpression(IEnumerable source, Expression<Func<object, TResult>> expression, ActiveExpressionOptions options)
+        static readonly object rangeActiveExpressionsAccess = new object();
+        static readonly Dictionary<(IEnumerable source, Expression<Func<object, TResult>> expression, ActiveExpressionOptions options), EnumerableRangeActiveExpression<TResult>> rangeActiveExpressions = new Dictionary<(IEnumerable source, Expression<Func<object, TResult>> expression, ActiveExpressionOptions options), EnumerableRangeActiveExpression<TResult>>(CachedRangeActiveExpressionKeyEqualityComparer<TResult>.Default);
+
+        public static EnumerableRangeActiveExpression<TResult> Create(IEnumerable source, Expression<Func<object, TResult>> expression, ActiveExpressionOptions options = null)
+        {
+            EnumerableRangeActiveExpression<TResult> rangeActiveExpression;
+            bool monitorCreated;
+            var key = (source, expression, options);
+            lock (rangeActiveExpressionsAccess)
+            {
+                if (monitorCreated = !rangeActiveExpressions.TryGetValue(key, out rangeActiveExpression))
+                {
+                    rangeActiveExpression = new EnumerableRangeActiveExpression<TResult>(source, expression, options);
+                    rangeActiveExpressions.Add(key, rangeActiveExpression);
+                }
+                ++rangeActiveExpression.disposalCount;
+            }
+            if (monitorCreated)
+            {
+                var initialized = false;
+                try
+                {
+                    rangeActiveExpression.Initialize();
+                    initialized = true;
+                }
+                finally
+                {
+                    if (!initialized)
+                        rangeActiveExpression.Dispose();
+                }
+            }
+            return rangeActiveExpression;
+        }
+
+        EnumerableRangeActiveExpression(IEnumerable source, Expression<Func<object, TResult>> expression, ActiveExpressionOptions options)
         {
             this.source = source;
             this.expression = expression;
             Options = options;
-            AddActiveExpressions(0, source.Cast<object>());
-            if (source is INotifyCollectionChanged collectionChangedNotifier)
-                collectionChangedNotifier.CollectionChanged += CollectionChanged;
-            if (source is INotifyElementFaultChanges faultNotifier)
-            {
-                faultNotifier.ElementFaultChanged += SourceElementFaultChanged;
-                faultNotifier.ElementFaultChanging += SourceElementFaultChanging;
-            }
         }
 
         readonly Dictionary<ActiveExpression<object, TResult>, int> activeExpressionCounts = new Dictionary<ActiveExpression<object, TResult>, int>();
         readonly List<(object element, ActiveExpression<object, TResult> activeExpression)> activeExpressions = new List<(object element, ActiveExpression<object, TResult> activeExpression)>();
         readonly ReaderWriterLockSlim activeExpressionsAccess = new ReaderWriterLockSlim();
+        int disposalCount;
         readonly Expression<Func<object, TResult>> expression;
         readonly IEnumerable source;
 
@@ -178,8 +205,14 @@ namespace Gear.ActiveQuery
             }
         }
 
-        protected override void Dispose(bool disposing)
+        protected override bool Dispose(bool disposing)
         {
+            lock (rangeActiveExpressionsAccess)
+            {
+                if (--disposalCount > 0)
+                    return false;
+                rangeActiveExpressions.Remove((source, expression, Options));
+            }
             RemoveActiveExpressions(0, activeExpressions.Count);
             if (source is INotifyCollectionChanged collectionChangedNotifier)
                 collectionChangedNotifier.CollectionChanged -= CollectionChanged;
@@ -188,6 +221,7 @@ namespace Gear.ActiveQuery
                 faultNotifier.ElementFaultChanged -= SourceElementFaultChanged;
                 faultNotifier.ElementFaultChanging -= SourceElementFaultChanging;
             }
+            return true;
         }
 
         public IReadOnlyList<(object element, Exception fault)> GetElementFaults()
@@ -249,6 +283,18 @@ namespace Gear.ActiveQuery
         }
 
         internal IReadOnlyList<(object element, TResult result, Exception fault, int count)> GetResultsFaultsAndCountsUnderLock() => activeExpressions.Select(eae => (eae.element, eae.activeExpression.Value, eae.activeExpression.Fault, activeExpressionCounts[eae.activeExpression])).ToImmutableArray();
+
+        void Initialize()
+        {
+            AddActiveExpressions(0, source.Cast<object>());
+            if (source is INotifyCollectionChanged collectionChangedNotifier)
+                collectionChangedNotifier.CollectionChanged += CollectionChanged;
+            if (source is INotifyElementFaultChanges faultNotifier)
+            {
+                faultNotifier.ElementFaultChanged += SourceElementFaultChanged;
+                faultNotifier.ElementFaultChanging += SourceElementFaultChanging;
+            }
+        }
 
         protected virtual void OnElementFaultChanged(ElementFaultChangeEventArgs e) =>
             ElementFaultChanged?.Invoke(this, e);
@@ -359,29 +405,53 @@ namespace Gear.ActiveQuery
     /// </summary>
     /// <typeparam name="TElement">The type of the elements in the sequence</typeparam>
     /// <typeparam name="TResult">The type of the result of the active expression</typeparam>
-    class EnumerableRangeActiveExpression<TElement, TResult> : SyncDisposablePropertyChangeNotifier, INotifyElementFaultChanges
+    class EnumerableRangeActiveExpression<TElement, TResult> : OverridableSyncDisposablePropertyChangeNotifier, INotifyElementFaultChanges
     {
         static readonly object rangeActiveExpressionsAccess = new object();
-        static readonly Dictionary<(IEnumerable<TElement> source, string expressionString), EnumerableRangeActiveExpression<TElement, TResult>> rangeActiveExpressions = new Dictionary<(IEnumerable<TElement> source, string expressionString), EnumerableRangeActiveExpression<TElement, TResult>>();
+        static readonly Dictionary<(IEnumerable<TElement> source, Expression<Func<TElement, TResult>> expression, ActiveExpressionOptions options), EnumerableRangeActiveExpression<TElement, TResult>> rangeActiveExpressions = new Dictionary<(IEnumerable<TElement> source, Expression<Func<TElement, TResult>> expression, ActiveExpressionOptions options), EnumerableRangeActiveExpression<TElement, TResult>>(CachedRangeActiveExpressionKeyEqualityComparer<TElement, TResult>.Default);
 
-        public EnumerableRangeActiveExpression(IEnumerable<TElement> source, Expression<Func<TElement, TResult>> expression, ActiveExpressionOptions options)
+        public static EnumerableRangeActiveExpression<TElement, TResult> Create(IEnumerable<TElement> source, Expression<Func<TElement, TResult>> expression, ActiveExpressionOptions options = null)
+        {
+            EnumerableRangeActiveExpression<TElement, TResult> rangeActiveExpression;
+            bool monitorCreated;
+            var key = (source, expression, options);
+            lock (rangeActiveExpressionsAccess)
+            {
+                if (monitorCreated = !rangeActiveExpressions.TryGetValue(key, out rangeActiveExpression))
+                {
+                    rangeActiveExpression = new EnumerableRangeActiveExpression<TElement, TResult>(source, expression, options);
+                    rangeActiveExpressions.Add(key, rangeActiveExpression);
+                }
+                ++rangeActiveExpression.disposalCount;
+            }
+            if (monitorCreated)
+            {
+                var initialized = false;
+                try
+                {
+                    rangeActiveExpression.Initialize();
+                    initialized = true;
+                }
+                finally
+                {
+                    if (!initialized)
+                        rangeActiveExpression.Dispose();
+                }
+            }
+            return rangeActiveExpression;
+        }
+
+        EnumerableRangeActiveExpression(IEnumerable<TElement> source, Expression<Func<TElement, TResult>> expression, ActiveExpressionOptions options)
         {
             this.source = source;
             this.expression = expression;
             Options = options;
-            AddActiveExpressions(0, source);
-            if (source is INotifyCollectionChanged collectionChangedNotifier)
-                collectionChangedNotifier.CollectionChanged += CollectionChanged;
-            if (source is INotifyElementFaultChanges faultNotifier)
-            {
-                faultNotifier.ElementFaultChanged += SourceElementFaultChanged;
-                faultNotifier.ElementFaultChanging += SourceElementFaultChanging;
-            }
         }
 
         readonly Dictionary<ActiveExpression<TElement, TResult>, int> activeExpressionCounts = new Dictionary<ActiveExpression<TElement, TResult>, int>();
         readonly List<(TElement element, ActiveExpression<TElement, TResult> activeExpression)> activeExpressions = new List<(TElement element, ActiveExpression<TElement, TResult> activeExpression)>();
         readonly ReaderWriterLockSlim activeExpressionsAccess = new ReaderWriterLockSlim();
+        int disposalCount;
         readonly Expression<Func<TElement, TResult>> expression;
         readonly IEnumerable<TElement> source;
 
@@ -523,8 +593,14 @@ namespace Gear.ActiveQuery
             }
         }
 
-        protected override void Dispose(bool disposing)
+        protected override bool Dispose(bool disposing)
         {
+            lock (rangeActiveExpressionsAccess)
+            {
+                if (--disposalCount > 0)
+                    return false;
+                rangeActiveExpressions.Remove((source, expression, Options));
+            }
             RemoveActiveExpressions(0, activeExpressions.Count);
             if (source is INotifyCollectionChanged collectionChangedNotifier)
                 collectionChangedNotifier.CollectionChanged -= CollectionChanged;
@@ -533,6 +609,7 @@ namespace Gear.ActiveQuery
                 faultNotifier.ElementFaultChanged -= SourceElementFaultChanged;
                 faultNotifier.ElementFaultChanging -= SourceElementFaultChanging;
             }
+            return true;
         }
 
         public IReadOnlyList<(object element, Exception fault)> GetElementFaults()
@@ -594,6 +671,18 @@ namespace Gear.ActiveQuery
         }
 
         internal IReadOnlyList<(TElement element, TResult result, Exception fault, int count)> GetResultsFaultsAndCountsUnderLock() => activeExpressions.Select(ae => (ae.element, ae.activeExpression.Value, ae.activeExpression.Fault, activeExpressionCounts[ae.activeExpression])).ToImmutableArray();
+
+        void Initialize()
+        {
+            AddActiveExpressions(0, source);
+            if (source is INotifyCollectionChanged collectionChangedNotifier)
+                collectionChangedNotifier.CollectionChanged += CollectionChanged;
+            if (source is INotifyElementFaultChanges faultNotifier)
+            {
+                faultNotifier.ElementFaultChanged += SourceElementFaultChanged;
+                faultNotifier.ElementFaultChanging += SourceElementFaultChanging;
+            }
+        }
 
         protected virtual void OnElementFaultChanged(ElementFaultChangeEventArgs e) =>
             ElementFaultChanged?.Invoke(this, e);
