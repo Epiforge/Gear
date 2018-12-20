@@ -162,11 +162,5 @@ namespace Gear.ActiveExpressions.MSTest
             }
             Assert.IsTrue(invalidThrown);
         }
-
-        // Yes, this test can fail even if nothing is wrong.
-        // If you catch it, you win a prize!
-        // https://youtu.be/FJ97I9u1i7M
-        [TestMethod]
-        public void UnfrozenHashCodesDifferent() => Assert.AreNotEqual(new ActiveExpressionOptions().GetHashCode(), new ActiveExpressionOptions().GetHashCode());
     }
 }
