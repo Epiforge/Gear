@@ -141,7 +141,7 @@ namespace Gear.ActiveExpressions
 
         public override int GetHashCode()
         {
-            if (Default == this)
+            if (ReferenceEquals(this, Default))
                 return base.GetHashCode();
             Freeze();
             var objects = new List<object>() { disposeConstructedObjects, disposeStaticMethodReturnValues };
