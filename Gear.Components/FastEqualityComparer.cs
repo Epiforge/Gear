@@ -26,7 +26,7 @@ namespace Gear.Components
         readonly FastMethodInfo equals;
         readonly FastMethodInfo getHashCode;
 
-        public bool Equals(object x, object y) => (bool)equals.Invoke(equalityComparer, x, y);
+        public new bool Equals(object x, object y) => (bool)equals.Invoke(equalityComparer, x, y);
 
         public int GetHashCode(object obj) => (int)getHashCode.Invoke(equalityComparer, obj);
 
