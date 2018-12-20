@@ -141,8 +141,9 @@ namespace Gear.ActiveExpressions
 
         public override int GetHashCode()
         {
-            if (!isFrozen)
+            if (Default == this)
                 return base.GetHashCode();
+            Freeze();
             var objects = new List<object>() { disposeConstructedObjects, disposeStaticMethodReturnValues };
             objects.AddRange(disposeConstructedTypes.OrderBy(kv => $"{kv.Key.type}({string.Join(", ", kv.Key.constuctorParameterTypes.Select(p => p))})").Select(kv => (key: kv.Key, value: kv.Value)).Cast<object>());
             objects.AddRange(disposeMethodReturnValues.OrderBy(kv => $"{kv.Key.DeclaringType.FullName}.{kv.Key.Name}({string.Join(", ", kv.Key.GetParameters().Select(p => p.ParameterType))})").Select(kv => (key: kv.Key, value: kv.Value)).Cast<object>());
