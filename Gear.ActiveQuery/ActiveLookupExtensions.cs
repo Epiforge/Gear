@@ -769,25 +769,28 @@ namespace Gear.ActiveQuery
                     }
             }
 
-            lock (activeValueAccess)
+            rangeActiveExpression = RangeActiveExpression.Create(source, selector, selectorOptions);
+            return rangeActiveExpression.WithReadLock(() =>
             {
-                rangeActiveExpression = RangeActiveExpression.Create(source, selector, selectorOptions);
-                rangeActiveExpression.ValueAdded += valueAdded;
-                rangeActiveExpression.ValueRemoved += valueRemoved;
-                rangeActiveExpression.ValueReplaced += valueReplaced;
-                rangeActiveExpression.ValueResultChanged += valueResultChanged;
-                rangeActiveExpression.ValuesAdded += valuesAdded;
-                rangeActiveExpression.ValuesRemoved += valuesRemoved;
+                lock (activeValueAccess)
+                {
+                    rangeActiveExpression.ValueAdded += valueAdded;
+                    rangeActiveExpression.ValueRemoved += valueRemoved;
+                    rangeActiveExpression.ValueReplaced += valueReplaced;
+                    rangeActiveExpression.ValueResultChanged += valueResultChanged;
+                    rangeActiveExpression.ValuesAdded += valuesAdded;
+                    rangeActiveExpression.ValuesRemoved += valuesRemoved;
 
-                try
-                {
-                    return activeValue = new ActiveValue<TResult>(rangeActiveExpression.GetResults().Select(kr => kr.result).Max(), out setValue, null, out setOperationFault, rangeActiveExpression, dispose);
+                    try
+                    {
+                        return activeValue = new ActiveValue<TResult>(rangeActiveExpression.GetResultsUnderLock().Select(kr => kr.result).Max(), out setValue, null, out setOperationFault, rangeActiveExpression, dispose);
+                    }
+                    catch (Exception ex)
+                    {
+                        return activeValue = new ActiveValue<TResult>(default, out setValue, ex, out setOperationFault, rangeActiveExpression, dispose);
+                    }
                 }
-                catch (Exception ex)
-                {
-                    return activeValue = new ActiveValue<TResult>(default, out setValue, ex, out setOperationFault, rangeActiveExpression, dispose);
-                }
-            }
+            });
         }
 
         #endregion Max
@@ -910,25 +913,28 @@ namespace Gear.ActiveQuery
                     }
             }
 
-            lock (activeValueAccess)
+            rangeActiveExpression = RangeActiveExpression.Create(source, selector, selectorOptions);
+            return rangeActiveExpression.WithReadLock(() =>
             {
-                rangeActiveExpression = RangeActiveExpression.Create(source, selector, selectorOptions);
-                rangeActiveExpression.ValueAdded += valueAdded;
-                rangeActiveExpression.ValueRemoved += valueRemoved;
-                rangeActiveExpression.ValueReplaced += valueReplaced;
-                rangeActiveExpression.ValueResultChanged += valueResultChanged;
-                rangeActiveExpression.ValuesAdded += valuesAdded;
-                rangeActiveExpression.ValuesRemoved += valuesRemoved;
+                lock (activeValueAccess)
+                {
+                    rangeActiveExpression.ValueAdded += valueAdded;
+                    rangeActiveExpression.ValueRemoved += valueRemoved;
+                    rangeActiveExpression.ValueReplaced += valueReplaced;
+                    rangeActiveExpression.ValueResultChanged += valueResultChanged;
+                    rangeActiveExpression.ValuesAdded += valuesAdded;
+                    rangeActiveExpression.ValuesRemoved += valuesRemoved;
 
-                try
-                {
-                    return activeValue = new ActiveValue<TResult>(rangeActiveExpression.GetResults().Select(kr => kr.result).Min(), out setValue, null, out setOperationFault, rangeActiveExpression, dispose);
+                    try
+                    {
+                        return activeValue = new ActiveValue<TResult>(rangeActiveExpression.GetResultsUnderLock().Select(kr => kr.result).Min(), out setValue, null, out setOperationFault, rangeActiveExpression, dispose);
+                    }
+                    catch (Exception ex)
+                    {
+                        return activeValue = new ActiveValue<TResult>(default, out setValue, ex, out setOperationFault, rangeActiveExpression, dispose);
+                    }
                 }
-                catch (Exception ex)
-                {
-                    return activeValue = new ActiveValue<TResult>(default, out setValue, ex, out setOperationFault, rangeActiveExpression, dispose);
-                }
-            }
+            });
         }
 
         #endregion Min
@@ -1043,37 +1049,40 @@ namespace Gear.ActiveQuery
                 }
             }
 
-            lock (rangeObservableCollectionAccess)
+            var rangeActiveExpression = RangeActiveExpression.Create(source, selector, selectorOptions);
+            return rangeActiveExpression.WithReadLock(() =>
             {
-                var rangeActiveExpression = RangeActiveExpression.Create(source, selector, selectorOptions);
-                rangeActiveExpression.ValueAdded += valueAdded;
-                rangeActiveExpression.ValueRemoved += valueRemoved;
-                rangeActiveExpression.ValueReplaced += valueReplaced;
-                rangeActiveExpression.ValueResultChanged += valueResultChanged;
-                rangeActiveExpression.ValuesAdded += valuesAdded;
-                rangeActiveExpression.ValuesRemoved += valuesRemoved;
-                if (synchronizableSource != null)
-                    synchronizableSource.PropertyChanged += propertyChanged;
-
-                rangeObservableCollection = new SynchronizedRangeObservableCollection<TResult>(synchronizableSource?.SynchronizationContext, rangeActiveExpression.GetResults().Select(((TKey key, TResult result) er, int index) =>
+                lock (rangeObservableCollectionAccess)
                 {
-                    keyToIndex.Add(er.key, index);
-                    return er.result;
-                }), synchronizableSource?.IsSynchronized ?? false);
-                return new ActiveEnumerable<TResult>(rangeObservableCollection, rangeActiveExpression, () =>
-                {
-                    rangeActiveExpression.ValueAdded -= valueAdded;
-                    rangeActiveExpression.ValueRemoved -= valueRemoved;
-                    rangeActiveExpression.ValueReplaced -= valueReplaced;
-                    rangeActiveExpression.ValueResultChanged -= valueResultChanged;
-                    rangeActiveExpression.ValuesAdded -= valuesAdded;
-                    rangeActiveExpression.ValuesRemoved -= valuesRemoved;
+                    rangeActiveExpression.ValueAdded += valueAdded;
+                    rangeActiveExpression.ValueRemoved += valueRemoved;
+                    rangeActiveExpression.ValueReplaced += valueReplaced;
+                    rangeActiveExpression.ValueResultChanged += valueResultChanged;
+                    rangeActiveExpression.ValuesAdded += valuesAdded;
+                    rangeActiveExpression.ValuesRemoved += valuesRemoved;
                     if (synchronizableSource != null)
-                        synchronizableSource.PropertyChanged -= propertyChanged;
+                        synchronizableSource.PropertyChanged += propertyChanged;
 
-                    rangeActiveExpression.Dispose();
-                });
-            }
+                    rangeObservableCollection = new SynchronizedRangeObservableCollection<TResult>(synchronizableSource?.SynchronizationContext, rangeActiveExpression.GetResultsUnderLock().Select(((TKey key, TResult result) er, int index) =>
+                    {
+                        keyToIndex.Add(er.key, index);
+                        return er.result;
+                    }), synchronizableSource?.IsSynchronized ?? false);
+                    return new ActiveEnumerable<TResult>(rangeObservableCollection, rangeActiveExpression, () =>
+                    {
+                        rangeActiveExpression.ValueAdded -= valueAdded;
+                        rangeActiveExpression.ValueRemoved -= valueRemoved;
+                        rangeActiveExpression.ValueReplaced -= valueReplaced;
+                        rangeActiveExpression.ValueResultChanged -= valueResultChanged;
+                        rangeActiveExpression.ValuesAdded -= valuesAdded;
+                        rangeActiveExpression.ValuesRemoved -= valuesRemoved;
+                        if (synchronizableSource != null)
+                            synchronizableSource.PropertyChanged -= propertyChanged;
+
+                        rangeActiveExpression.Dispose();
+                    });
+                }
+            });
         }
 
         #endregion Select
@@ -1305,30 +1314,33 @@ namespace Gear.ActiveQuery
                     setValue(new TResult[] { activeValue.Value }.Concat(e.KeyValuePairs.Select(kv => kv.Value)).Aggregate(operations.Subtract));
             }
 
-            lock (activeValueAccess)
+            var rangeActiveExpression = RangeActiveExpression.Create(source, selector, selectorOptions);
+            return rangeActiveExpression.WithReadLock(() =>
             {
-                var rangeActiveExpression = RangeActiveExpression.Create(source, selector, selectorOptions);
-                rangeActiveExpression.ValueAdded += valueAdded;
-                rangeActiveExpression.ValueRemoved += valueRemoved;
-                rangeActiveExpression.ValueReplaced += valueReplaced;
-                rangeActiveExpression.ValueResultChanged += valueResultChanged;
-                rangeActiveExpression.ValueResultChanging += valueResultChanging;
-                rangeActiveExpression.ValuesAdded += valuesAdded;
-                rangeActiveExpression.ValuesRemoved += valuesRemoved;
-
-                return activeValue = new ActiveValue<TResult>(rangeActiveExpression.GetResults().Select(kr => kr.result).Aggregate((a, b) => operations.Add(a, b)), out setValue, null, rangeActiveExpression, () =>
+                lock (activeValueAccess)
                 {
-                    rangeActiveExpression.ValueAdded -= valueAdded;
-                    rangeActiveExpression.ValueRemoved -= valueRemoved;
-                    rangeActiveExpression.ValueReplaced -= valueReplaced;
-                    rangeActiveExpression.ValueResultChanged -= valueResultChanged;
-                    rangeActiveExpression.ValueResultChanging -= valueResultChanging;
-                    rangeActiveExpression.ValuesAdded -= valuesAdded;
-                    rangeActiveExpression.ValuesRemoved -= valuesRemoved;
+                    rangeActiveExpression.ValueAdded += valueAdded;
+                    rangeActiveExpression.ValueRemoved += valueRemoved;
+                    rangeActiveExpression.ValueReplaced += valueReplaced;
+                    rangeActiveExpression.ValueResultChanged += valueResultChanged;
+                    rangeActiveExpression.ValueResultChanging += valueResultChanging;
+                    rangeActiveExpression.ValuesAdded += valuesAdded;
+                    rangeActiveExpression.ValuesRemoved += valuesRemoved;
 
-                    rangeActiveExpression.Dispose();
-                });
-            }
+                    return activeValue = new ActiveValue<TResult>(rangeActiveExpression.GetResultsUnderLock().Select(kr => kr.result).Aggregate((a, b) => operations.Add(a, b)), out setValue, null, rangeActiveExpression, () =>
+                    {
+                        rangeActiveExpression.ValueAdded -= valueAdded;
+                        rangeActiveExpression.ValueRemoved -= valueRemoved;
+                        rangeActiveExpression.ValueReplaced -= valueReplaced;
+                        rangeActiveExpression.ValueResultChanged -= valueResultChanged;
+                        rangeActiveExpression.ValueResultChanging -= valueResultChanging;
+                        rangeActiveExpression.ValuesAdded -= valuesAdded;
+                        rangeActiveExpression.ValuesRemoved -= valuesRemoved;
+
+                        rangeActiveExpression.Dispose();
+                    });
+                }
+            });
         }
 
         #endregion Sum
@@ -1612,33 +1624,37 @@ namespace Gear.ActiveQuery
                     rangeObservableDictionary.RemoveRange(e.KeyValuePairs.Where(kv => kv.Value).Select(kv => kv.Key));
             }
 
-            lock (rangeObservableDictionaryAccess)
+            var rangeActiveExpression = RangeActiveExpression.Create(source, predicate, predicateOptions);
+            return rangeActiveExpression.WithReadLock(() =>
             {
-                var rangeActiveExpression = RangeActiveExpression.Create(source, predicate, predicateOptions);
-                rangeActiveExpression.ValueAdded += valueAdded;
-                rangeActiveExpression.ValueRemoved += valueRemoved;
-                rangeActiveExpression.ValueReplaced += valueReplaced;
-                rangeActiveExpression.ValueResultChanged += valueResultChanged;
-                rangeActiveExpression.ValuesAdded += valuesAdded;
-                rangeActiveExpression.ValuesRemoved += valuesRemoved;
-                if (synchronizableSource != null)
-                    synchronizableSource.PropertyChanged += propertyChanged;
-
-                rangeObservableDictionary = source.CreateSimilarSynchronizedObservableDictionary(synchronizableSource?.SynchronizationContext, synchronizableSource?.IsSynchronized ?? false);
-                return new ActiveLookup<TKey, TValue>(rangeObservableDictionary, rangeActiveExpression, () =>
+                lock (rangeObservableDictionaryAccess)
                 {
-                    rangeActiveExpression.ValueAdded -= valueAdded;
-                    rangeActiveExpression.ValueRemoved -= valueRemoved;
-                    rangeActiveExpression.ValueReplaced -= valueReplaced;
-                    rangeActiveExpression.ValueResultChanged -= valueResultChanged;
-                    rangeActiveExpression.ValuesAdded -= valuesAdded;
-                    rangeActiveExpression.ValuesRemoved -= valuesRemoved;
+                    rangeActiveExpression.ValueAdded += valueAdded;
+                    rangeActiveExpression.ValueRemoved += valueRemoved;
+                    rangeActiveExpression.ValueReplaced += valueReplaced;
+                    rangeActiveExpression.ValueResultChanged += valueResultChanged;
+                    rangeActiveExpression.ValuesAdded += valuesAdded;
+                    rangeActiveExpression.ValuesRemoved += valuesRemoved;
                     if (synchronizableSource != null)
-                        synchronizableSource.PropertyChanged -= propertyChanged;
+                        synchronizableSource.PropertyChanged += propertyChanged;
 
-                    rangeActiveExpression.Dispose();
-                });
-            }
+                    rangeObservableDictionary = source.CreateSimilarSynchronizedObservableDictionary(synchronizableSource?.SynchronizationContext, synchronizableSource?.IsSynchronized ?? false);
+                    rangeObservableDictionary.AddRange(rangeActiveExpression.GetResultsUnderLock().Where(r => r.result).Select(r => new KeyValuePair<TKey, TValue>(r.key, source[r.key])));
+                    return new ActiveLookup<TKey, TValue>(rangeObservableDictionary, rangeActiveExpression, () =>
+                    {
+                        rangeActiveExpression.ValueAdded -= valueAdded;
+                        rangeActiveExpression.ValueRemoved -= valueRemoved;
+                        rangeActiveExpression.ValueReplaced -= valueReplaced;
+                        rangeActiveExpression.ValueResultChanged -= valueResultChanged;
+                        rangeActiveExpression.ValuesAdded -= valuesAdded;
+                        rangeActiveExpression.ValuesRemoved -= valuesRemoved;
+                        if (synchronizableSource != null)
+                            synchronizableSource.PropertyChanged -= propertyChanged;
+
+                        rangeActiveExpression.Dispose();
+                    });
+                }
+            });
         }
 
         #endregion Where

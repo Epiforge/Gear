@@ -419,6 +419,19 @@ namespace Gear.ActiveQuery
 
         void SourceValuesRemoved(object sender, NotifyDictionaryValuesEventArgs e) => OnValuesRemoved(RemoveActiveExpressions(e.KeyValuePairs.Select(kv => kv.Key)));
 
+        internal T WithReadLock<T>(Func<T> func)
+        {
+            activeExpressionsAccess.EnterReadLock();
+            try
+            {
+                return func();
+            }
+            finally
+            {
+                activeExpressionsAccess.ExitReadLock();
+            }
+        }
+
         public int Count
         {
             get
@@ -843,6 +856,19 @@ namespace Gear.ActiveQuery
 
         void SourceValuesRemoved(object sender, NotifyDictionaryValuesEventArgs<TKey, TValue> e) => OnValuesRemoved(RemoveActiveExpressions(e.KeyValuePairs.Select(kv => kv.Key)));
 
+        internal T WithReadLock<T>(Func<T> func)
+        {
+            activeExpressionsAccess.EnterReadLock();
+            try
+            {
+                return func();
+            }
+            finally
+            {
+                activeExpressionsAccess.ExitReadLock();
+            }
+        }
+
         public int Count
         {
             get
@@ -1266,6 +1292,19 @@ namespace Gear.ActiveQuery
         void SourceValuesAdded(object sender, NotifyDictionaryValuesEventArgs<TKey, TValue> e) => OnValuesAdded(AddActiveExpressions(e.KeyValuePairs));
 
         void SourceValuesRemoved(object sender, NotifyDictionaryValuesEventArgs<TKey, TValue> e) => OnValuesRemoved(RemoveActiveExpressions(e.KeyValuePairs.Select(kv => kv.Key)));
+
+        internal T WithReadLock<T>(Func<T> func)
+        {
+            activeExpressionsAccess.EnterReadLock();
+            try
+            {
+                return func();
+            }
+            finally
+            {
+                activeExpressionsAccess.ExitReadLock();
+            }
+        }
 
         public int Count
         {
