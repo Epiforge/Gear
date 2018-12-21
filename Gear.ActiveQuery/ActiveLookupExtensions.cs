@@ -14,6 +14,8 @@ namespace Gear.ActiveQuery
 
         public static ActiveValue<bool> ActiveAll<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, bool>> predicate, ActiveExpressionOptions predicateOptions = null)
         {
+            ActiveQueryOptions.Optimize(ref predicate);
+
             var activeValueAccess = new object();
             ActiveLookup<TKey, TValue> where;
             Action<bool> setValue = null;
@@ -89,6 +91,8 @@ namespace Gear.ActiveQuery
 
         public static ActiveValue<bool> ActiveAny<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, bool>> predicate, ActiveExpressionOptions predicateOptions = null)
         {
+            ActiveQueryOptions.Optimize(ref predicate);
+
             var activeValueAccess = new object();
             ActiveLookup<TKey, TValue> where;
             Action<bool> setValue = null;
@@ -127,6 +131,8 @@ namespace Gear.ActiveQuery
 
         public static ActiveValue<TResult> ActiveAverage<TKey, TValue, TResult>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, TResult>> selector, ActiveExpressionOptions selectorOptions = null)
         {
+            ActiveQueryOptions.Optimize(ref selector);
+
             var convertCount = CountConversion.GetConverter(typeof(TResult));
             var operations = new GenericOperations<TResult>();
             var activeValueAccess = new object();
@@ -652,6 +658,8 @@ namespace Gear.ActiveQuery
 
         public static ActiveValue<TResult> ActiveMax<TKey, TValue, TResult>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, TResult>> selector, ActiveExpressionOptions selectorOptions = null)
         {
+            ActiveQueryOptions.Optimize(ref selector);
+
             var comparer = Comparer<TResult>.Default;
             var activeValueAccess = new object();
             ReadOnlyDictionaryRangeActiveExpression<TKey, TValue, TResult> rangeActiveExpression;
@@ -791,6 +799,8 @@ namespace Gear.ActiveQuery
 
         public static ActiveValue<TResult> ActiveMin<TKey, TValue, TResult>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, TResult>> selector, ActiveExpressionOptions selectorOptions = null)
         {
+            ActiveQueryOptions.Optimize(ref selector);
+
             var comparer = Comparer<TResult>.Default;
             var activeValueAccess = new object();
             ReadOnlyDictionaryRangeActiveExpression<TKey, TValue, TResult> rangeActiveExpression;
@@ -927,6 +937,8 @@ namespace Gear.ActiveQuery
 
         public static ActiveEnumerable<TResult> ActiveSelect<TKey, TValue, TResult>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, TResult>> selector, ActiveExpressionOptions selectorOptions = null)
         {
+            ActiveQueryOptions.Optimize(ref selector);
+
             var synchronizableSource = source as ISynchronizable;
             var rangeObservableCollectionAccess = new object();
             var keyToIndex = source.CreateSimilarDictionary<TKey, TValue, int>();
@@ -1239,6 +1251,8 @@ namespace Gear.ActiveQuery
 
         public static ActiveValue<TResult> ActiveSum<TKey, TValue, TResult>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, TResult>> selector, ActiveExpressionOptions selectorOptions = null)
         {
+            ActiveQueryOptions.Optimize(ref selector);
+
             var operations = new GenericOperations<TResult>();
             var activeValueAccess = new object();
             ActiveValue<TResult> activeValue = null;
@@ -1522,6 +1536,8 @@ namespace Gear.ActiveQuery
 
         public static ActiveLookup<TKey, TValue> ActiveWhere<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, bool>> predicate, ActiveExpressionOptions predicateOptions = null)
         {
+            ActiveQueryOptions.Optimize(ref predicate);
+
             var synchronizableSource = source as ISynchronizable;
             var rangeObservableDictionaryAccess = new object();
             ISynchronizableObservableRangeDictionary<TKey, TValue> rangeObservableDictionary = null;

@@ -1,4 +1,3 @@
-using Gear.ActiveExpressions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace Gear.ActiveQuery.MSTest
@@ -7,6 +6,6 @@ namespace Gear.ActiveQuery.MSTest
     public class AssemblyInitializer
     {
         [AssemblyInitialize]
-        public static void AssemblyInit(TestContext context) => ActiveExpression.Optimizer = ExpressionOptimizer.tryVisit;
+        public static void AssemblyInit(TestContext context) => ActiveQueryOptions.Optimizer = ExpressionOptimizer.tryVisit;
     }
 }
