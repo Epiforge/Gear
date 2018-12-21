@@ -12,14 +12,14 @@ Supports `netstandard1.3`.
 [![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2FEpiforge%2FGear.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2FEpiforge%2FGear?ref=badge_shield)
 
 - [Libraries](#libraries)
-    - [Nifty Stuff](#nifty-stuff)
-        - [Components](#components)
-        - [Active Expressions](#active-expressions)
-        - [Parallel](#parallel)
-    - [Under Construction](#under-construction)
-        - [Active Query](#active-query)
-    - [Retired](#retired)
-        - [Caching](#caching)
+  - [Nifty Stuff](#nifty-stuff)
+    - [Components](#components)
+    - [Active Expressions](#active-expressions)
+    - [Parallel](#parallel)
+  - [Under Construction](#under-construction)
+    - [Active Query](#active-query)
+  - [Retired](#retired)
+    - [Caching](#caching)
 - [License](#license)
 - [Contributing](#contributing)
 - [Acknowledgements](#acknowledgements)
@@ -52,7 +52,7 @@ This library accepts expressions (including lambdas), dissects them, and hooks i
 
 ```csharp
 var elizabeth = Employee.GetByName("Elizabeth"); // Employee implements INotifyPropertyChanged
-var expr = ActiveExpression.Create(e => e.Name.Length, elizabeth); // expr has subscribed to PropertyChanged on elizabeth
+var expr = ActiveExpression.Create(e => e.Name.Length, elizabeth); // expr subscribed to PropertyChanged on elizabeth
 ```
 
 Then, as changes involving any elements of the expression occur, a chain of automatic re-evaluation will get kicked off, possibly causing the active expression's `Value` property to change.
@@ -95,9 +95,9 @@ When you dispose of your active expression, it will disconnect from all the even
 var elizabeth = Employee.GetByName("Elizabeth");
 using (var expr = ActiveExpression.Create(e => e.Name.Length, elizabeth))
 {
-    // expr has subscribed to PropertyChanged on elizabeth
+    // expr subscribed to PropertyChanged on elizabeth
 }
-// expr has unsubcribed from PropertyChanged on elizabeth
+// expr unsubcribed from PropertyChanged on elizabeth
 ```
 
 Active expressions will also try to automatically dispose of disposable objects they create in the course of their evaluation when and where it makes sense.
@@ -112,12 +112,20 @@ ActiveExpression.Optimizer = ExpressionOptimizer.tryVisit;
 var a = Expression.Parameter(typeof(bool));
 var b = Expression.Parameter(typeof(bool));
 
-// lambda explicitly defined as (a, b) => !a && !b
-var lambda = Expression.Lambda<Func<bool, bool, bool>>(Expression.AndAlso(Expression.Not(a), Expression.Not(b)), a, b);
+var lambda = Expression.Lambda<Func<bool, bool, bool>>
+(
+    Expression.AndAlso
+    (
+        Expression.Not(a),
+        Expression.Not(b)
+    ),
+    a,
+    b
+); // lambda explicitly defined as (a, b) => !a && !b
 
-// optimizer has made expr actually (a, b) => !(a || b)
-// (because Augustus De Morgan said they're essentially the same thing, but this one involves less steps)
 var expr = ActiveExpression.Create<bool>(lambda, false, false);
+// optimizer has intervened and defined expr as (a, b) => !(a || b)
+// (because Augustus De Morgan said they're essentially the same thing, but this revision involves less steps)
 ```
 
 ### Parallel
