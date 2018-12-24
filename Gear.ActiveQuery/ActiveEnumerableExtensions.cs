@@ -2375,7 +2375,7 @@ namespace Gear.ActiveQuery
                         setOperationFault(ExceptionHelper.SequenceContainsMoreThanOneElement);
                         moreThanOne = true;
                     }
-                    setValue(where.Count > 0 ? where[0] : default);
+                    setValue(where.Count == 1 ? where[0] : default);
                 }
             }
 
