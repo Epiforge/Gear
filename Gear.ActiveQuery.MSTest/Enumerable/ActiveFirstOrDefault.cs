@@ -1,4 +1,3 @@
-using System;
 using Gear.Components;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
