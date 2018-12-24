@@ -736,16 +736,7 @@ namespace Gear.ActiveQuery
                 }
             }
             else
-            {
-                try
-                {
-                    return new ActiveValue<TSource>(source.FirstOrDefault(), elementFaultChangeNotifier: elementFaultChangeNotifier);
-                }
-                catch (Exception ex)
-                {
-                    return new ActiveValue<TSource>(default, ex, elementFaultChangeNotifier);
-                }
-            }
+                return new ActiveValue<TSource>(source.FirstOrDefault(), elementFaultChangeNotifier: elementFaultChangeNotifier);
         }
 
         public static ActiveValue<TSource> ActiveFirstOrDefault<TSource>(this IReadOnlyList<TSource> source, Expression<Func<TSource, bool>> predicate, ActiveExpressionOptions predicateOptions = null)
