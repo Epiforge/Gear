@@ -87,6 +87,7 @@
     <Compile Include="Enumerable\ActiveDistinct.cs" />
     <Compile Include="Enumerable\ActiveFirst.cs" />
     <Compile Include="Enumerable\ActiveLast.cs" />
+    <Compile Include="Enumerable\ActiveSingle.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="TestPerson.cs" />
     <Compile Include="TestSimpleObservableCollection.cs" />
