@@ -525,12 +525,12 @@ namespace Gear.ActiveQuery
             {
                 lock (activeValueAccess)
                 {
-                    if (indexOutOfRange && (index < 0 || index >= activeEnumerable.Count))
+                    if (indexOutOfRange && index >= 0 && index < activeEnumerable.Count)
                     {
                         setOperationFault(null);
                         indexOutOfRange = false;
                     }
-                    else if (!indexOutOfRange && index >= 0 && index < activeEnumerable.Count)
+                    else if (!indexOutOfRange && (index < 0 || index >= activeEnumerable.Count))
                     {
                         setOperationFault(ExceptionHelper.IndexArgumentWasOutOfRange);
                         indexOutOfRange = true;
