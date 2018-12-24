@@ -92,6 +92,7 @@
     <Compile Include="Enumerable\ActiveFirstOrDefault.cs" />
     <Compile Include="Enumerable\ActiveLastOrDefault.cs" />
     <Compile Include="Enumerable\ActiveSingleOrDefault.cs" />
+    <Compile Include="Enumerable\ActiveElementAtOrDefault.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="TestPerson.cs" />
     <Compile Include="TestSimpleObservableCollection.cs" />

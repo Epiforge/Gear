@@ -578,16 +578,7 @@ namespace Gear.ActiveQuery
                 }
             }
             else
-            {
-                try
-                {
-                    return new ActiveValue<TSource>(source.ElementAtOrDefault(index), elementFaultChangeNotifier: elementFaultChangeNotifier);
-                }
-                catch (Exception ex)
-                {
-                    return new ActiveValue<TSource>(default, ex, elementFaultChangeNotifier: elementFaultChangeNotifier);
-                }
-            }
+                return new ActiveValue<TSource>(source.ElementAtOrDefault(index), elementFaultChangeNotifier: elementFaultChangeNotifier);
         }
 
         public static ActiveValue<TSource> ActiveElementAtOrDefault<TSource>(this IReadOnlyList<TSource> source, int index)
