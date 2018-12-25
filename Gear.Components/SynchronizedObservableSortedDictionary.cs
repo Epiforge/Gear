@@ -8,19 +8,19 @@ namespace Gear.Components
 {
     public class SynchronizedObservableSortedDictionary<TKey, TValue> : ObservableSortedDictionary<TKey, TValue>, ISynchronizedObservableRangeDictionary<TKey, TValue>
     {
-        public SynchronizedObservableSortedDictionary() : this(Synchronization.DefaultSynchronizationContext)
+        public SynchronizedObservableSortedDictionary() : this(SynchronizationContext.Current ?? Synchronization.DefaultSynchronizationContext)
         {
         }
 
-        public SynchronizedObservableSortedDictionary(IComparer<TKey> comparer) : this(Synchronization.DefaultSynchronizationContext, comparer)
+        public SynchronizedObservableSortedDictionary(IComparer<TKey> comparer) : this(SynchronizationContext.Current ?? Synchronization.DefaultSynchronizationContext, comparer)
         {
         }
 
-        public SynchronizedObservableSortedDictionary(IDictionary<TKey, TValue> dictionary) : this(Synchronization.DefaultSynchronizationContext, dictionary)
+        public SynchronizedObservableSortedDictionary(IDictionary<TKey, TValue> dictionary) : this(SynchronizationContext.Current ?? Synchronization.DefaultSynchronizationContext, dictionary)
         {
         }
 
-        public SynchronizedObservableSortedDictionary(IDictionary<TKey, TValue> dictionary, IComparer<TKey> comparer) : this(Synchronization.DefaultSynchronizationContext, dictionary, comparer)
+        public SynchronizedObservableSortedDictionary(IDictionary<TKey, TValue> dictionary, IComparer<TKey> comparer) : this(SynchronizationContext.Current ?? Synchronization.DefaultSynchronizationContext, dictionary, comparer)
         {
         }
 

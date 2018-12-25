@@ -8,27 +8,27 @@ namespace Gear.Components
 {
     public class SynchronizedObservableDictionary<TKey, TValue> : ObservableDictionary<TKey, TValue>, ISynchronizedObservableRangeDictionary<TKey, TValue>
     {
-        public SynchronizedObservableDictionary() : this(Synchronization.DefaultSynchronizationContext)
+        public SynchronizedObservableDictionary() : this(SynchronizationContext.Current ?? Synchronization.DefaultSynchronizationContext)
         {
         }
 
-        public SynchronizedObservableDictionary(IDictionary<TKey, TValue> dictionary) : this(Synchronization.DefaultSynchronizationContext, dictionary)
+        public SynchronizedObservableDictionary(IDictionary<TKey, TValue> dictionary) : this(SynchronizationContext.Current ?? Synchronization.DefaultSynchronizationContext, dictionary)
         {
         }
 
-        public SynchronizedObservableDictionary(IEqualityComparer<TKey> comparer) : this(Synchronization.DefaultSynchronizationContext, comparer)
+        public SynchronizedObservableDictionary(IEqualityComparer<TKey> comparer) : this(SynchronizationContext.Current ?? Synchronization.DefaultSynchronizationContext, comparer)
         {
         }
 
-        public SynchronizedObservableDictionary(int capacity) : this(Synchronization.DefaultSynchronizationContext, capacity)
+        public SynchronizedObservableDictionary(int capacity) : this(SynchronizationContext.Current ?? Synchronization.DefaultSynchronizationContext, capacity)
         {
         }
 
-        public SynchronizedObservableDictionary(IDictionary<TKey, TValue> dictionary, IEqualityComparer<TKey> comparer) : this(Synchronization.DefaultSynchronizationContext, dictionary, comparer)
+        public SynchronizedObservableDictionary(IDictionary<TKey, TValue> dictionary, IEqualityComparer<TKey> comparer) : this(SynchronizationContext.Current ?? Synchronization.DefaultSynchronizationContext, dictionary, comparer)
         {
         }
 
-        public SynchronizedObservableDictionary(int capacity, IEqualityComparer<TKey> comparer) : this(Synchronization.DefaultSynchronizationContext, capacity, comparer)
+        public SynchronizedObservableDictionary(int capacity, IEqualityComparer<TKey> comparer) : this(SynchronizationContext.Current ?? Synchronization.DefaultSynchronizationContext, capacity, comparer)
         {
         }
 

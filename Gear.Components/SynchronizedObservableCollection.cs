@@ -8,11 +8,11 @@ namespace Gear.Components
 {
     public class SynchronizedObservableCollection<T> : ObservableCollection<T>, ISynchronized
     {
-        public SynchronizedObservableCollection() : this(Synchronization.DefaultSynchronizationContext)
+        public SynchronizedObservableCollection() : this(SynchronizationContext.Current ?? Synchronization.DefaultSynchronizationContext)
         {
         }
 
-        public SynchronizedObservableCollection(IEnumerable<T> collection) : this(Synchronization.DefaultSynchronizationContext, collection)
+        public SynchronizedObservableCollection(IEnumerable<T> collection) : this(SynchronizationContext.Current ?? Synchronization.DefaultSynchronizationContext, collection)
         {
         }
 
