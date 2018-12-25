@@ -1853,20 +1853,18 @@ namespace Gear.ActiveQuery
             ActiveQueryOptions.Optimize(ref selector);
 
             var sourceEqualityComparer = EqualityComparer<TSource>.Default;
-            IDictionary<INotifyCollectionChanged, TSource> changingResultToSource;
+            var changingResultToSource = new Dictionary<INotifyCollectionChanged, TSource>();
             IDictionary<TSource, INotifyCollectionChanged> sourceToChangingResult;
             IDictionary<TSource, int> sourceToCount;
             IDictionary<TSource, List<int>> sourceToStartingIndicies;
             switch (indexingStrategy)
             {
                 case IndexingStrategy.HashTable:
-                    changingResultToSource = new Dictionary<INotifyCollectionChanged, TSource>();
                     sourceToChangingResult = new Dictionary<TSource, INotifyCollectionChanged>();
                     sourceToCount = new Dictionary<TSource, int>();
                     sourceToStartingIndicies = new Dictionary<TSource, List<int>>();
                     break;
                 case IndexingStrategy.SelfBalancingBinarySearchTree:
-                    changingResultToSource = new SortedDictionary<INotifyCollectionChanged, TSource>();
                     sourceToChangingResult = new SortedDictionary<TSource, INotifyCollectionChanged>();
                     sourceToCount = new SortedDictionary<TSource, int>();
                     sourceToStartingIndicies = new SortedDictionary<TSource, List<int>>();

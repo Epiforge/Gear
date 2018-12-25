@@ -93,12 +93,14 @@
     <Compile Include="Enumerable\ActiveLastOrDefault.cs" />
     <Compile Include="Enumerable\ActiveSingleOrDefault.cs" />
     <Compile Include="Enumerable\ActiveElementAtOrDefault.cs" />
+    <Compile Include="Enumerable\ActiveSelectMany.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="TestPerson.cs" />
     <Compile Include="TestSimpleObservableCollection.cs" />
     <Compile Include="TestSynchronizationContext.cs" />
     <Compile Include="ExpressionEqualityComparisonVisitor.cs" />
     <Compile Include="ExpressionHashCodeVisitor.cs" />
+    <Compile Include="TestTeam.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Gear.ActiveExpressions\Gear.ActiveExpressions.csproj">
