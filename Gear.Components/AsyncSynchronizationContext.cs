@@ -20,6 +20,8 @@ namespace Gear.Components
                 if (!queuedCallbacks.IsEmpty)
                 {
                     var postedCallbackExceptions = new List<Exception>();
+                    var currentContext = Current;
+                    SetSynchronizationContext(this);
                     while (queuedCallbacks.TryDequeue(out var csse))
                     {
                         var (callback, state, signal, _) = csse;
@@ -36,6 +38,7 @@ namespace Gear.Components
                         else if (csse.exception != null)
                             postedCallbackExceptions.Add(csse.exception);
                     }
+                    SetSynchronizationContext(currentContext);
                     if (postedCallbackExceptions.Count > 0)
                         throw new AggregateException("Unhandled exceptions encountered by posted callbacks", postedCallbackExceptions);
                 }
