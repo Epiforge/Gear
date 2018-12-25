@@ -1674,7 +1674,7 @@ namespace Gear.ActiveQuery
                 {
                     var sourceElement = e.Element;
                     var newResultElement = e.Result;
-                    var indicies = indexingStrategy != IndexingStrategy.NoneOrInherit ? sourceToIndicies[sourceElement] : source.IndiciesOf(sourceElement).ToList();
+                    var indicies = indexingStrategy != IndexingStrategy.NoneOrInherit ? (IReadOnlyList<int>)sourceToIndicies[sourceElement] : source.IndiciesOf(sourceElement).ToImmutableArray();
                     rangeObservableCollection.Replace(indicies[0], newResultElement);
                     foreach (var remainingIndex in indicies.Skip(1))
                         rangeObservableCollection[remainingIndex] = newResultElement;
