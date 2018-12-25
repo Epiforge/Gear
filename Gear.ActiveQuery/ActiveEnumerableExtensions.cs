@@ -3,6 +3,7 @@ using Gear.Components;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Linq;
@@ -1847,7 +1848,7 @@ namespace Gear.ActiveQuery
 
         #region SelectMany
 
-        public static ActiveEnumerable<TResult> ActiveSelectMany<TSource, TResult>(this IEnumerable<TSource> source, Expression<Func<TSource, IEnumerable<TResult>>> selector, ActiveExpressionOptions selectorOptions = null, IndexingStrategy indexingStrategy = IndexingStrategy.NoneOrInherit)
+        public static ActiveEnumerable<TResult> ActiveSelectMany<TSource, TResult>(this IEnumerable<TSource> source, Expression<Func<TSource, IEnumerable<TResult>>> selector, ActiveExpressionOptions selectorOptions = null, IndexingStrategy indexingStrategy = IndexingStrategy.HashTable)
         {
             ActiveQueryOptions.Optimize(ref selector);
 
@@ -1996,11 +1997,39 @@ namespace Gear.ActiveQuery
             {
                 lock (rangeObservableCollectionAccess)
                 {
+                    int resultsIndex;
+                    if (e.Index == 0)
+                        resultsIndex = 0;
+                    else if (e.Index == sourceToStartingIndicies.Count)
+                        resultsIndex = rangeObservableCollection.Count;
+                    else
+                        resultsIndex = sourceToStartingIndicies.SelectMany(kv => kv.Value).OrderBy(resultIndex => resultIndex).ElementAt(e.Index);
+
+                    var iterativeResultsIndex = resultsIndex;
+                    IDictionary<TSource, List<int>> newSourceToStartingIndicies;
+                    switch (indexingStrategy)
+                    {
+                        case IndexingStrategy.SelfBalancingBinarySearchTree:
+                            newSourceToStartingIndicies = new SortedDictionary<TSource, List<int>>();
+                            break;
+                        default:
+                            newSourceToStartingIndicies = new Dictionary<TSource, List<int>>();
+                            break;
+                    }
+
                     IEnumerable<TResult> indexingSelector((TSource element, IEnumerable<TResult> result) er)
                     {
                         var (element, result) = er;
+                        if (!newSourceToStartingIndicies.TryGetValue(element, out var newStartingIndicies))
+                        {
+                            newStartingIndicies = new List<int>();
+                            newSourceToStartingIndicies.Add(element, newStartingIndicies);
+                        }
+                        newStartingIndicies.Add(iterativeResultsIndex);
+                        var resultCount = result.Count();
+                        iterativeResultsIndex += resultCount;
                         if (!sourceToCount.ContainsKey(element))
-                            sourceToCount.Add(element, result.Count());
+                            sourceToCount.Add(element, resultCount);
                         if (result is INotifyCollectionChanged changingResult && !changingResultToSource.ContainsKey(changingResult))
                         {
                             changingResult.CollectionChanged += collectionChanged;
@@ -2014,15 +2043,25 @@ namespace Gear.ActiveQuery
                     var count = results.Count;
                     if (count > 0)
                     {
-                        var index = e.Index;
                         foreach (var startingIndiciesList in sourceToStartingIndicies.Values)
                             for (int i = 0, ii = startingIndiciesList.Count; i < ii; ++i)
                             {
                                 var startingIndex = startingIndiciesList[i];
-                                if (startingIndex >= index)
+                                if (startingIndex >= resultsIndex)
                                     startingIndiciesList[i] = startingIndex + count;
                             }
-                        rangeObservableCollection.InsertRange(index, results);
+                        rangeObservableCollection.InsertRange(resultsIndex, results);
+                    }
+                    foreach (var kv in newSourceToStartingIndicies)
+                    {
+                        var key = kv.Key;
+                        if (sourceToStartingIndicies.TryGetValue(key, out var startingIndicies))
+                        {
+                            startingIndicies.AddRange(kv.Value);
+                            startingIndicies.Sort();
+                        }
+                        else
+                            sourceToStartingIndicies.Add(key, kv.Value);
                     }
                 }
             }
@@ -2033,7 +2072,7 @@ namespace Gear.ActiveQuery
                 {
                     var elementResults = e.ElementResults;
                     var count = elementResults.SelectMany(er => er.result).Count();
-                    var indexTranslation = sourceToStartingIndicies.SelectMany(kv => kv.Value).OrderBy(resultIndex => resultIndex).ToList();
+                    var indexTranslation = sourceToStartingIndicies.SelectMany(kv => kv.Value).OrderBy(resultIndex => resultIndex).ToImmutableArray();
                     var fromIndex = indexTranslation[e.FromIndex];
                     var toIndex = indexTranslation[e.ToIndex];
                     if (count > 0 && fromIndex != toIndex)
@@ -2075,7 +2114,7 @@ namespace Gear.ActiveQuery
                     var count = e.ElementResults.SelectMany(er => er.result).Count();
                     if (count > 0)
                     {
-                        var startIndex = e.Index;
+                        var startIndex = e.Index == 0 ? 0 : sourceToStartingIndicies.SelectMany(kv => kv.Value).OrderBy(resultIndex => resultIndex).ElementAt(e.Index);
                         rangeObservableCollection.RemoveRange(startIndex, count);
                         var endIndex = startIndex + count;
                         foreach (var element in sourceToStartingIndicies.Keys.ToList())
@@ -2152,14 +2191,16 @@ namespace Gear.ActiveQuery
                     rangeActiveExpression.ElementsAdded += elementsAdded;
                     rangeActiveExpression.ElementsMoved += elementsMoved;
                     rangeActiveExpression.ElementsRemoved += elementsRemoved;
-                    synchronizableSource.PropertyChanged += propertyChanged;
+                    if (synchronizableSource != null)
+                        synchronizableSource.PropertyChanged += propertyChanged;
 
                     rangeObservableCollection = new SynchronizedRangeObservableCollection<TResult>(synchronizableSource?.SynchronizationContext, rangeActiveExpression.GetResultsUnderLock().SelectMany(initializer), synchronizableSource?.IsSynchronized ?? false);
                     return new ActiveEnumerable<TResult>(rangeObservableCollection, onDispose: () =>
                     {
                         foreach (var changingResult in changingResultToSource.Keys)
                             changingResult.CollectionChanged -= collectionChanged;
-                        synchronizableSource.PropertyChanged -= propertyChanged;
+                        if (synchronizableSource != null)
+                            synchronizableSource.PropertyChanged -= propertyChanged;
                         rangeActiveExpression.ElementResultChanged -= elementResultChanged;
                         rangeActiveExpression.ElementsAdded -= elementsAdded;
                         rangeActiveExpression.ElementsMoved -= elementsMoved;
