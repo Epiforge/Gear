@@ -104,16 +104,16 @@ namespace Gear.Components
             return await completion.Task.ConfigureAwait(false);
         }
 
-        public static void SequentialExecute(this ISynchronized synchronizable, Action action) => ExecuteOn(action, synchronizable.SynchronizationContext ?? Synchronization.DefaultSynchronizationContext);
+        public static void SequentialExecute(this ISynchronized synchronizable, Action action) => ExecuteOn(action, synchronizable?.SynchronizationContext ?? Synchronization.DefaultSynchronizationContext);
 
-        public static TReturn SequentialExecute<TReturn>(this ISynchronized synchronizable, Func<TReturn> func) => ExecuteOn(func, synchronizable.SynchronizationContext ?? Synchronization.DefaultSynchronizationContext);
+        public static TReturn SequentialExecute<TReturn>(this ISynchronized synchronizable, Func<TReturn> func) => ExecuteOn(func, synchronizable?.SynchronizationContext ?? Synchronization.DefaultSynchronizationContext);
 
-        public static Task SequentialExecuteAsync(this ISynchronized synchronizable, Action action) => ExecuteOnAsync(action, synchronizable.SynchronizationContext ?? Synchronization.DefaultSynchronizationContext);
+        public static Task SequentialExecuteAsync(this ISynchronized synchronizable, Action action) => ExecuteOnAsync(action, synchronizable?.SynchronizationContext ?? Synchronization.DefaultSynchronizationContext);
 
-        public static Task<TResult> SequentialExecuteAsync<TResult>(this ISynchronized synchronizable, Func<TResult> func) => ExecuteOnAsync(func, synchronizable.SynchronizationContext ?? Synchronization.DefaultSynchronizationContext);
+        public static Task<TResult> SequentialExecuteAsync<TResult>(this ISynchronized synchronizable, Func<TResult> func) => ExecuteOnAsync(func, synchronizable?.SynchronizationContext ?? Synchronization.DefaultSynchronizationContext);
 
-        public static Task SequentialExecuteAsync(this ISynchronized synchronizable, Func<Task> asyncAction) => ExecuteOnAsync(asyncAction, synchronizable.SynchronizationContext ?? Synchronization.DefaultSynchronizationContext);
+        public static Task SequentialExecuteAsync(this ISynchronized synchronizable, Func<Task> asyncAction) => ExecuteOnAsync(asyncAction, synchronizable?.SynchronizationContext ?? Synchronization.DefaultSynchronizationContext);
 
-        public static Task<TResult> SequentialExecuteAsync<TResult>(this ISynchronized synchronizable, Func<Task<TResult>> asyncFunc) => ExecuteOnAsync(asyncFunc, synchronizable.SynchronizationContext ?? Synchronization.DefaultSynchronizationContext);
+        public static Task<TResult> SequentialExecuteAsync<TResult>(this ISynchronized synchronizable, Func<Task<TResult>> asyncFunc) => ExecuteOnAsync(asyncFunc, synchronizable?.SynchronizationContext ?? Synchronization.DefaultSynchronizationContext);
     }
 }
