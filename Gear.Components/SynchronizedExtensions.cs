@@ -7,19 +7,7 @@ namespace Gear.Components
 {
     public static class SynchronizedExtensions
     {
-        public static void Execute(this ISynchronized synchronizable, Action action) => ExecuteOn(action, synchronizable.SynchronizationContext);
-
-        public static TReturn Execute<TReturn>(this ISynchronized synchronizable, Func<TReturn> func) => ExecuteOn(func, synchronizable.SynchronizationContext);
-
-        public static Task ExecuteAsync(this ISynchronized synchronizable, Action action) => ExecuteOnAsync(action, synchronizable.SynchronizationContext);
-
-        public static Task<TResult> ExecuteAsync<TResult>(this ISynchronized synchronizable, Func<TResult> func) => ExecuteOnAsync(func, synchronizable.SynchronizationContext);
-
-        public static Task ExecuteAsync(this ISynchronized synchronizable, Func<Task> asyncAction) => ExecuteOnAsync(asyncAction, synchronizable.SynchronizationContext);
-
-        public static Task<TResult> ExecuteAsync<TResult>(this ISynchronized synchronizable, Func<Task<TResult>> asyncFunc) => ExecuteOnAsync(asyncFunc, synchronizable.SynchronizationContext);
-
-        static void ExecuteOn(Action action, SynchronizationContext synchronizationContext)
+        public static void Execute(this SynchronizationContext synchronizationContext, Action action)
         {
             if (synchronizationContext == null || SynchronizationContext.Current == synchronizationContext)
             {
@@ -41,7 +29,9 @@ namespace Gear.Components
             edi?.Throw();
         }
 
-        static TReturn ExecuteOn<TReturn>(Func<TReturn> func, SynchronizationContext synchronizationContext)
+        public static void Execute(this ISynchronized synchronizable, Action action) => Execute(synchronizable.SynchronizationContext, action);
+
+        public static TReturn Execute<TReturn>(this SynchronizationContext synchronizationContext, Func<TReturn> func)
         {
             if (synchronizationContext == null || SynchronizationContext.Current == synchronizationContext)
                 return func();
@@ -62,7 +52,9 @@ namespace Gear.Components
             return result;
         }
 
-        static Task ExecuteOnAsync(Action action, SynchronizationContext synchronizationContext)
+        public static TReturn Execute<TReturn>(this ISynchronized synchronizable, Func<TReturn> func) => Execute(synchronizable.SynchronizationContext, func);
+
+        public static Task ExecuteAsync(this SynchronizationContext synchronizationContext, Action action)
         {
             if (synchronizationContext == null || SynchronizationContext.Current == synchronizationContext)
             {
@@ -74,7 +66,9 @@ namespace Gear.Components
             return completion.Task;
         }
 
-        static Task<TResult> ExecuteOnAsync<TResult>(Func<TResult> func, SynchronizationContext synchronizationContext)
+        public static Task ExecuteAsync(this ISynchronized synchronizable, Action action) => ExecuteAsync(synchronizable.SynchronizationContext, action);
+
+        public static Task<TResult> ExecuteAsync<TResult>(this SynchronizationContext synchronizationContext, Func<TResult> func)
         {
             if (synchronizationContext == null || SynchronizationContext.Current == synchronizationContext)
                 return Task.FromResult(func());
@@ -83,7 +77,9 @@ namespace Gear.Components
             return completion.Task;
         }
 
-        static async Task ExecuteOnAsync(Func<Task> asyncAction, SynchronizationContext synchronizationContext)
+        public static Task<TResult> ExecuteAsync<TResult>(this ISynchronized synchronizable, Func<TResult> func) => ExecuteAsync(synchronizable.SynchronizationContext, func);
+
+        public static async Task ExecuteAsync(this SynchronizationContext synchronizationContext, Func<Task> asyncAction)
         {
             if (synchronizationContext == null || SynchronizationContext.Current == synchronizationContext)
             {
@@ -95,7 +91,9 @@ namespace Gear.Components
             await completion.Task.ConfigureAwait(false);
         }
 
-        static async Task<TResult> ExecuteOnAsync<TResult>(Func<Task<TResult>> asyncFunc, SynchronizationContext synchronizationContext)
+        public static Task ExecuteAsync(this ISynchronized synchronizable, Func<Task> asyncAction) => ExecuteAsync(synchronizable.SynchronizationContext, asyncAction);
+
+        public static async Task<TResult> ExecuteAsync<TResult>(this SynchronizationContext synchronizationContext, Func<Task<TResult>> asyncFunc)
         {
             if (synchronizationContext == null || SynchronizationContext.Current == synchronizationContext)
                 return await asyncFunc().ConfigureAwait(false);
@@ -104,16 +102,18 @@ namespace Gear.Components
             return await completion.Task.ConfigureAwait(false);
         }
 
-        public static void SequentialExecute(this ISynchronized synchronizable, Action action) => ExecuteOn(action, synchronizable?.SynchronizationContext ?? Synchronization.DefaultSynchronizationContext);
+        public static Task<TResult> ExecuteAsync<TResult>(this ISynchronized synchronizable, Func<Task<TResult>> asyncFunc) => ExecuteAsync(synchronizable.SynchronizationContext, asyncFunc);
 
-        public static TReturn SequentialExecute<TReturn>(this ISynchronized synchronizable, Func<TReturn> func) => ExecuteOn(func, synchronizable?.SynchronizationContext ?? Synchronization.DefaultSynchronizationContext);
+        public static void SequentialExecute(this ISynchronized synchronizable, Action action) => Execute(synchronizable?.SynchronizationContext ?? Synchronization.DefaultSynchronizationContext, action);
 
-        public static Task SequentialExecuteAsync(this ISynchronized synchronizable, Action action) => ExecuteOnAsync(action, synchronizable?.SynchronizationContext ?? Synchronization.DefaultSynchronizationContext);
+        public static TReturn SequentialExecute<TReturn>(this ISynchronized synchronizable, Func<TReturn> func) => Execute(synchronizable?.SynchronizationContext ?? Synchronization.DefaultSynchronizationContext, func);
 
-        public static Task<TResult> SequentialExecuteAsync<TResult>(this ISynchronized synchronizable, Func<TResult> func) => ExecuteOnAsync(func, synchronizable?.SynchronizationContext ?? Synchronization.DefaultSynchronizationContext);
+        public static Task SequentialExecuteAsync(this ISynchronized synchronizable, Action action) => ExecuteAsync(synchronizable?.SynchronizationContext ?? Synchronization.DefaultSynchronizationContext, action);
 
-        public static Task SequentialExecuteAsync(this ISynchronized synchronizable, Func<Task> asyncAction) => ExecuteOnAsync(asyncAction, synchronizable?.SynchronizationContext ?? Synchronization.DefaultSynchronizationContext);
+        public static Task<TResult> SequentialExecuteAsync<TResult>(this ISynchronized synchronizable, Func<TResult> func) => ExecuteAsync(synchronizable?.SynchronizationContext ?? Synchronization.DefaultSynchronizationContext, func);
 
-        public static Task<TResult> SequentialExecuteAsync<TResult>(this ISynchronized synchronizable, Func<Task<TResult>> asyncFunc) => ExecuteOnAsync(asyncFunc, synchronizable?.SynchronizationContext ?? Synchronization.DefaultSynchronizationContext);
+        public static Task SequentialExecuteAsync(this ISynchronized synchronizable, Func<Task> asyncAction) => ExecuteAsync(synchronizable?.SynchronizationContext ?? Synchronization.DefaultSynchronizationContext, asyncAction);
+
+        public static Task<TResult> SequentialExecuteAsync<TResult>(this ISynchronized synchronizable, Func<Task<TResult>> asyncFunc) => ExecuteAsync(synchronizable?.SynchronizationContext ?? Synchronization.DefaultSynchronizationContext, asyncFunc);
     }
 }
