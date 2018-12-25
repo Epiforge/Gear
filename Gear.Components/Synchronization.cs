@@ -1,15 +1,11 @@
-using Nito.AsyncEx;
-using System;
 using System.Threading;
 
 namespace Gear.Components
 {
     public static class Synchronization
     {
-        static readonly Lazy<AsyncContext> asyncContext = new Lazy<AsyncContext>(CreateAsyncContext, LazyThreadSafetyMode.ExecutionAndPublication);
+        static readonly AsyncSynchronizationContext asyncSynchronizationContext = new AsyncSynchronizationContext();
 
-        static AsyncContext CreateAsyncContext() => new AsyncContext();
-
-        public static SynchronizationContext DefaultSynchronizationContext => asyncContext.Value.SynchronizationContext;
+        public static SynchronizationContext DefaultSynchronizationContext => asyncSynchronizationContext;
     }
 }
