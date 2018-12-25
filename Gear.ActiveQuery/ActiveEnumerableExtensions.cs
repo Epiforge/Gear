@@ -170,7 +170,7 @@ namespace Gear.ActiveQuery
 
         #region Cast
 
-        public static ActiveEnumerable<TResult> ActiveCast<TResult>(this IEnumerable source, ActiveExpressionOptions castOptions = null, IndexingStrategy indexingStrategy = IndexingStrategy.NoneOrInherit) =>
+        public static ActiveEnumerable<TResult> ActiveCast<TResult>(this IEnumerable source, ActiveExpressionOptions castOptions = null, IndexingStrategy indexingStrategy = IndexingStrategy.HashTable) =>
             ActiveSelect(source, element => (TResult)element, castOptions, indexingStrategy);
 
         #endregion
@@ -1448,21 +1448,21 @@ namespace Gear.ActiveQuery
 
         #region Select
 
-        public static ActiveEnumerable<TResult> ActiveSelect<TResult>(this IEnumerable source, Expression<Func<object, TResult>> selector, ActiveExpressionOptions selectorOptions = null, IndexingStrategy indexingStrategy = IndexingStrategy.NoneOrInherit)
+        public static ActiveEnumerable<TResult> ActiveSelect<TResult>(this IEnumerable source, Expression<Func<object, TResult>> selector, ActiveExpressionOptions selectorOptions = null, IndexingStrategy indexingStrategy = IndexingStrategy.HashTable)
         {
             ActiveQueryOptions.Optimize(ref selector);
 
             IDictionary<object, List<int>> sourceToIndicies;
             switch (indexingStrategy)
             {
-                case IndexingStrategy.HashTable:
-                    sourceToIndicies = new Dictionary<object, List<int>>();
+                case IndexingStrategy.NoneOrInherit:
+                    sourceToIndicies = null;
                     break;
                 case IndexingStrategy.SelfBalancingBinarySearchTree:
                     sourceToIndicies = new SortedDictionary<object, List<int>>();
                     break;
                 default:
-                    sourceToIndicies = null;
+                    sourceToIndicies = new Dictionary<object, List<int>>();
                     break;
             }
 
@@ -1646,21 +1646,21 @@ namespace Gear.ActiveQuery
             });
         }
 
-        public static ActiveEnumerable<TResult> ActiveSelect<TSource, TResult>(this IEnumerable<TSource> source, Expression<Func<TSource, TResult>> selector, ActiveExpressionOptions predicateOptions = null, IndexingStrategy indexingStrategy = IndexingStrategy.NoneOrInherit)
+        public static ActiveEnumerable<TResult> ActiveSelect<TSource, TResult>(this IEnumerable<TSource> source, Expression<Func<TSource, TResult>> selector, ActiveExpressionOptions predicateOptions = null, IndexingStrategy indexingStrategy = IndexingStrategy.HashTable)
         {
             ActiveQueryOptions.Optimize(ref selector);
 
             IDictionary<TSource, List<int>> sourceToIndicies;
             switch (indexingStrategy)
             {
-                case IndexingStrategy.HashTable:
-                    sourceToIndicies = new Dictionary<TSource, List<int>>();
+                case IndexingStrategy.NoneOrInherit:
+                    sourceToIndicies = null;
                     break;
                 case IndexingStrategy.SelfBalancingBinarySearchTree:
                     sourceToIndicies = new SortedDictionary<TSource, List<int>>();
                     break;
                 default:
-                    sourceToIndicies = null;
+                    sourceToIndicies = new Dictionary<TSource, List<int>>();
                     break;
             }
 
