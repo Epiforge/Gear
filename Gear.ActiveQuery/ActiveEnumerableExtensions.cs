@@ -2000,10 +2000,11 @@ namespace Gear.ActiveQuery
                     int resultsIndex;
                     if (e.Index == 0)
                         resultsIndex = 0;
-                    else if (e.Index == sourceToStartingIndicies.Count)
-                        resultsIndex = rangeObservableCollection.Count;
                     else
-                        resultsIndex = sourceToStartingIndicies.SelectMany(kv => kv.Value).OrderBy(resultIndex => resultIndex).ElementAt(e.Index);
+                    {
+                        var indexTranslation = sourceToStartingIndicies.SelectMany(kv => kv.Value).OrderBy(resultIndex => resultIndex).ToImmutableArray();
+                        resultsIndex = e.Index < indexTranslation.Length ? indexTranslation[e.Index] : rangeObservableCollection.Count;
+                    }
 
                     var iterativeResultsIndex = resultsIndex;
                     IDictionary<TSource, List<int>> newSourceToStartingIndicies;
@@ -2072,11 +2073,11 @@ namespace Gear.ActiveQuery
                 {
                     var elementResults = e.ElementResults;
                     var count = elementResults.SelectMany(er => er.result).Count();
-                    var indexTranslation = sourceToStartingIndicies.SelectMany(kv => kv.Value).OrderBy(resultIndex => resultIndex).ToImmutableArray();
-                    var fromIndex = indexTranslation[e.FromIndex];
-                    var toIndex = indexTranslation[e.ToIndex];
-                    if (count > 0 && fromIndex != toIndex)
+                    if (count > 0 && e.FromIndex != e.ToIndex)
                     {
+                        var indexTranslation = sourceToStartingIndicies.SelectMany(kv => kv.Value).OrderBy(resultIndex => resultIndex).ToImmutableArray();
+                        var fromIndex = indexTranslation[e.FromIndex];
+                        var toIndex = e.FromIndex > e.ToIndex ? indexTranslation[e.ToIndex] : (e.ToIndex == indexTranslation.Length - 1 ? rangeObservableCollection.Count : indexTranslation[e.ToIndex + 1]) - count;
                         int movementEnd = fromIndex + count, move = toIndex - fromIndex, displacementStart, displacementEnd, displace;
                         if (fromIndex < toIndex)
                         {
