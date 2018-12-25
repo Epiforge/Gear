@@ -1,27 +1,24 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
-using System.ComponentModel;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace Gear.Components
 {
-    public class SynchronizedObservableCollection<T> : ObservableCollection<T>, ISynchronizable
+    public class SynchronizedObservableCollection<T> : ObservableCollection<T>, ISynchronized
     {
-        public SynchronizedObservableCollection(SynchronizationContext synchronizationContext, bool isSynchronized = true) : base()
+        public SynchronizedObservableCollection() : this(Synchronization.DefaultSynchronizationContext)
         {
-            SynchronizationContext = synchronizationContext;
-            this.isSynchronized = isSynchronized;
         }
 
-        public SynchronizedObservableCollection(SynchronizationContext synchronizationContext, IEnumerable<T> collection, bool isSynchronized = true) : base(collection)
+        public SynchronizedObservableCollection(IEnumerable<T> collection) : this(Synchronization.DefaultSynchronizationContext, collection)
         {
-            SynchronizationContext = synchronizationContext;
-            this.isSynchronized = isSynchronized;
         }
 
-        bool isSynchronized;
+        public SynchronizedObservableCollection(SynchronizationContext synchronizationContext) : base() => SynchronizationContext = synchronizationContext;
+
+        public SynchronizedObservableCollection(SynchronizationContext synchronizationContext, IEnumerable<T> collection) : base(collection) => SynchronizationContext = synchronizationContext;
 
         public Task AddAsync(T item) => this.ExecuteAsync(() => Add(item));
 
@@ -75,19 +72,6 @@ namespace Gear.Components
         public Task SetItemAsync(int index, T item) => this.ExecuteAsync(() => this[index] = item);
 
         public Task<int> CountAsync => this.ExecuteAsync(() => Count);
-
-        public bool IsSynchronized
-        {
-            get => isSynchronized;
-            set
-            {
-                if (isSynchronized != value)
-                {
-                    isSynchronized = value;
-                    OnPropertyChanged(new PropertyChangedEventArgs(nameof(IsSynchronized)));
-                }
-            }
-        }
 
         public SynchronizationContext SynchronizationContext { get; }
     }

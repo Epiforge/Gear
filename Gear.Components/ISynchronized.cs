@@ -1,11 +1,9 @@
-using System.ComponentModel;
 using System.Threading;
 
 namespace Gear.Components
 {
-    public interface ISynchronizable : INotifyPropertyChanged
+    public interface ISynchronized
     {
-        bool IsSynchronized { get; }
         SynchronizationContext SynchronizationContext { get; }
     }
 }

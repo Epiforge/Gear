@@ -10,11 +10,19 @@ namespace Gear.Components
 {
     public class SynchronizedRangeObservableCollection<T> : SynchronizedObservableCollection<T>
     {
-        public SynchronizedRangeObservableCollection(SynchronizationContext owner, bool isSynchronized = true) : base(owner, isSynchronized)
+        public SynchronizedRangeObservableCollection() : base()
         {
         }
 
-        public SynchronizedRangeObservableCollection(SynchronizationContext owner, IEnumerable<T> collection, bool isSynchronized = true) : base(owner, collection, isSynchronized)
+        public SynchronizedRangeObservableCollection(IEnumerable<T> collection) : base(collection)
+        {
+        }
+
+        public SynchronizedRangeObservableCollection(SynchronizationContext owner) : base(owner)
+        {
+        }
+
+        public SynchronizedRangeObservableCollection(SynchronizationContext owner, IEnumerable<T> collection) : base(owner, collection)
         {
         }
 

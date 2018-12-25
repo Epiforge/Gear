@@ -6,33 +6,31 @@ using System.Threading.Tasks;
 
 namespace Gear.Components
 {
-    public class SynchronizedObservableSortedDictionary<TKey, TValue> : ObservableSortedDictionary<TKey, TValue>, ISynchronizableObservableRangeDictionary<TKey, TValue>
+    public class SynchronizedObservableSortedDictionary<TKey, TValue> : ObservableSortedDictionary<TKey, TValue>, ISynchronizedObservableRangeDictionary<TKey, TValue>
     {
-        public SynchronizedObservableSortedDictionary(SynchronizationContext synchronizationContext, bool isSynchronized = true) : base()
+        public SynchronizedObservableSortedDictionary() : this(Synchronization.DefaultSynchronizationContext)
         {
-            SynchronizationContext = synchronizationContext;
-            this.isSynchronized = isSynchronized;
         }
 
-        public SynchronizedObservableSortedDictionary(SynchronizationContext synchronizationContext, IComparer<TKey> comparer, bool isSynchronized = true) : base(comparer)
+        public SynchronizedObservableSortedDictionary(IComparer<TKey> comparer) : this(Synchronization.DefaultSynchronizationContext, comparer)
         {
-            SynchronizationContext = synchronizationContext;
-            this.isSynchronized = isSynchronized;
         }
 
-        public SynchronizedObservableSortedDictionary(SynchronizationContext synchronizationContext, IDictionary<TKey, TValue> dictionary, bool isSynchronized = true) : base(dictionary)
+        public SynchronizedObservableSortedDictionary(IDictionary<TKey, TValue> dictionary) : this(Synchronization.DefaultSynchronizationContext, dictionary)
         {
-            SynchronizationContext = synchronizationContext;
-            this.isSynchronized = isSynchronized;
         }
 
-        public SynchronizedObservableSortedDictionary(SynchronizationContext synchronizationContext, IDictionary<TKey, TValue> dictionary, IComparer<TKey> comparer, bool isSynchronized = true) : base(dictionary, comparer)
+        public SynchronizedObservableSortedDictionary(IDictionary<TKey, TValue> dictionary, IComparer<TKey> comparer) : this(Synchronization.DefaultSynchronizationContext, dictionary, comparer)
         {
-            SynchronizationContext = synchronizationContext;
-            this.isSynchronized = isSynchronized;
         }
 
-        bool isSynchronized;
+        public SynchronizedObservableSortedDictionary(SynchronizationContext synchronizationContext) : base() => SynchronizationContext = synchronizationContext;
+
+        public SynchronizedObservableSortedDictionary(SynchronizationContext synchronizationContext, IComparer<TKey> comparer) : base(comparer) => SynchronizationContext = synchronizationContext;
+
+        public SynchronizedObservableSortedDictionary(SynchronizationContext synchronizationContext, IDictionary<TKey, TValue> dictionary) : base(dictionary) => SynchronizationContext = synchronizationContext;
+
+        public SynchronizedObservableSortedDictionary(SynchronizationContext synchronizationContext, IDictionary<TKey, TValue> dictionary, IComparer<TKey> comparer) : base(dictionary, comparer) => SynchronizationContext = synchronizationContext;
 
         public override void Add(TKey key, TValue value) => this.Execute(() => base.Add(key, value));
 
@@ -127,12 +125,6 @@ namespace Gear.Components
         protected override bool IsCollectionSynchronized => this.Execute(() => base.IsCollectionSynchronized);
 
         protected override bool IsFixedSize => this.Execute(() => base.IsFixedSize);
-
-        public bool IsSynchronized
-        {
-            get => isSynchronized;
-            set => SetBackedProperty(ref isSynchronized, in value);
-        }
 
         public override SortedDictionary<TKey, TValue>.KeyCollection Keys => this.Execute(() => base.Keys);
 

@@ -3,7 +3,7 @@ using System.Threading.Tasks;
 
 namespace Gear.Components
 {
-    public interface ISynchronizableRangeDictionary<TKey, TValue> : IRangeDictionary<TKey, TValue>, ISynchronizable
+    public interface ISynchronizedRangeDictionary<TKey, TValue> : IRangeDictionary<TKey, TValue>, ISynchronized
     {
         Task AddAsync(TKey key, TValue value);
         Task AddRangeAsync(IEnumerable<KeyValuePair<TKey, TValue>> keyValuePairs);
