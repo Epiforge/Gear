@@ -1,10 +1,11 @@
 using Gear.Components;
+using System;
 using System.Linq;
 using System.Threading;
 
 namespace Gear.ActiveQuery.MSTest
 {
-    class TestPerson : PropertyChangeNotifier
+    class TestPerson : PropertyChangeNotifier, IComparable<TestPerson>
     {
         public static SynchronizedRangeObservableCollection<TestPerson> CreatePeople(SynchronizationContext synchronizationContext = null) =>
             new SynchronizedRangeObservableCollection<TestPerson>(synchronizationContext ?? new TestSynchronizationContext())
@@ -36,6 +37,8 @@ namespace Gear.ActiveQuery.MSTest
         public TestPerson(string name) => this.name = name;
 
         string name;
+
+        public int CompareTo(TestPerson other) => GetHashCode().CompareTo(other?.GetHashCode() ?? 0);
 
         public string Name
         {

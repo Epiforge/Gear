@@ -1459,8 +1459,7 @@ namespace Gear.ActiveQuery
                     sourceToIndicies = null;
                     break;
                 case IndexingStrategy.SelfBalancingBinarySearchTree:
-                    sourceToIndicies = new SortedDictionary<object, List<int>>();
-                    break;
+                    throw new ArgumentOutOfRangeException(nameof(indexingStrategy), $"{nameof(indexingStrategy)} must be {IndexingStrategy.HashTable} or {IndexingStrategy.NoneOrInherit}");
                 default:
                     sourceToIndicies = new Dictionary<object, List<int>>();
                     break;
