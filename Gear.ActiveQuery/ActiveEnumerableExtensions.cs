@@ -1090,15 +1090,32 @@ namespace Gear.ActiveQuery
 
         #region OrderBy
 
-        /*
-        public static ActiveEnumerable<TSource> ActiveOrderBy<TSource>(this IEnumerable<TSource> source, Expression<Func<TSource, IComparable>> selector, ActiveExpressionOptions selectorOptions = null, bool isDescending = false) =>
-            ActiveOrderBy(source, (selector, selectorOptions, isDescending));
+        public static ActiveEnumerable<TSource> ActiveOrderBy<TSource>(this IEnumerable<TSource> source, Expression<Func<TSource, IComparable>> expression, ActiveExpressionOptions expressionOptions = null, bool isDescending = false) =>
+            ActiveOrderBy(source, (expression, expressionOptions, isDescending));
 
-        public static ActiveEnumerable<TSource> ActiveOrderBy<TSource>(this IEnumerable<TSource> source, IndexingStrategy indexingStrategy, Expression<Func<TSource, IComparable>> selector, ActiveExpressionOptions selectorOptions = null, bool isDescending = false) =>
-            ActiveOrderBy(source, indexingStrategy, (selector, selectorOptions, isDescending));
+        public static ActiveEnumerable<TSource> ActiveOrderBy<TSource>(this IEnumerable<TSource> source, params Expression<Func<TSource, IComparable>>[] expressions) =>
+            ActiveOrderBy(source, expressions.Select(expression => (expression, (ActiveExpressionOptions)null, false)).ToArray());
+
+        public static ActiveEnumerable<TSource> ActiveOrderBy<TSource>(this IEnumerable<TSource> source, params (Expression<Func<TSource, IComparable>> expression, ActiveExpressionOptions expressionOptions)[] selectors) =>
+            ActiveOrderBy(source, selectors.Select(selector => (selector.expression, selector.expressionOptions, false)).ToArray());
+
+        public static ActiveEnumerable<TSource> ActiveOrderBy<TSource>(this IEnumerable<TSource> source, params (Expression<Func<TSource, IComparable>> expression, bool isDescending)[] selectors) =>
+            ActiveOrderBy(source, selectors.Select(selector => (selector.expression, (ActiveExpressionOptions)null, selector.isDescending)).ToArray());
 
         public static ActiveEnumerable<TSource> ActiveOrderBy<TSource>(this IEnumerable<TSource> source, params (Expression<Func<TSource, IComparable>> expression, ActiveExpressionOptions expressionOptions, bool isDescending)[] selectors) =>
             ActiveOrderBy(source, IndexingStrategy.HashTable, selectors);
+
+        public static ActiveEnumerable<TSource> ActiveOrderBy<TSource>(this IEnumerable<TSource> source, IndexingStrategy indexingStrategy, Expression<Func<TSource, IComparable>> expression, ActiveExpressionOptions expressionOptions = null, bool isDescending = false) =>
+            ActiveOrderBy(source, indexingStrategy, (expression, expressionOptions, isDescending));
+
+        public static ActiveEnumerable<TSource> ActiveOrderBy<TSource>(this IEnumerable<TSource> source, IndexingStrategy indexingStrategy, params Expression<Func<TSource, IComparable>>[] expressions) =>
+            ActiveOrderBy(source, indexingStrategy, expressions.Select(expression => (expression, (ActiveExpressionOptions)null, false)).ToArray());
+
+        public static ActiveEnumerable<TSource> ActiveOrderBy<TSource>(this IEnumerable<TSource> source, IndexingStrategy indexingStrategy, params (Expression<Func<TSource, IComparable>> expression, ActiveExpressionOptions expressionOptions)[] selectors) =>
+            ActiveOrderBy(source, indexingStrategy, selectors.Select(selector => (selector.expression, selector.expressionOptions, false)).ToArray());
+
+        public static ActiveEnumerable<TSource> ActiveOrderBy<TSource>(this IEnumerable<TSource> source, IndexingStrategy indexingStrategy, params (Expression<Func<TSource, IComparable>> expression, bool isDescending)[] selectors) =>
+            ActiveOrderBy(source, indexingStrategy, selectors.Select(selector => (selector.expression, (ActiveExpressionOptions)null, selector.isDescending)).ToArray());
 
         public static ActiveEnumerable<TSource> ActiveOrderBy<TSource>(this IEnumerable<TSource> source, IndexingStrategy indexingStrategy, params (Expression<Func<TSource, IComparable>> expression, ActiveExpressionOptions expressionOptions, bool isDescending)[] selectors)
         {
@@ -1107,12 +1124,11 @@ namespace Gear.ActiveQuery
 
             selectors = selectors.Select(s => (expression: ActiveQueryOptions.Optimize(s.expression), s.expressionOptions, s.isDescending)).ToArray();
 
-            var rangeObservableCollectionAccess = new object();
             ActiveOrderingComparer<TSource> comparer = null;
             var equalityComparer = EqualityComparer<TSource>.Default;
             SynchronizedRangeObservableCollection<TSource> rangeObservableCollection = null;
             IDictionary<TSource, (int startingIndex, int count)> startingIndiciesAndCounts = null;
-            var synchronizableSource = source as ISynchronizable;
+            var synchronizedSource = source as ISynchronized;
 
             void rebuildStartingIndiciesAndCounts(IReadOnlyList<TSource> fromSort)
             {
@@ -1164,7 +1180,7 @@ namespace Gear.ActiveQuery
                 {
                     while (index > 0 && comparer.Compare(element, rangeObservableCollection[index - 1]) < 0)
                         --index;
-                    while (index < rangeObservableCollection.Count - 1 && comparer.Compare(element, rangeObservableCollection[index + 1]) > 0)
+                    while (index < rangeObservableCollection.Count - count && comparer.Compare(element, rangeObservableCollection[index + count]) > 0)
                         ++index;
                     performMove();
                 }
@@ -1195,15 +1211,10 @@ namespace Gear.ActiveQuery
                 }
             }
 
-            void elementResultChanged(object sender, RangeActiveExpressionResultChangeEventArgs<TSource, IComparable> e)
-            {
-                lock (rangeObservableCollectionAccess)
-                    repositionElement(e.Element);
-            }
+            void elementResultChanged(object sender, RangeActiveExpressionResultChangeEventArgs<TSource, IComparable> e) => synchronizedSource.SequentialExecute(() => repositionElement(e.Element));
 
-            void elementsAdded(object sender, RangeActiveExpressionMembershipEventArgs<TSource, IComparable> e)
-            {
-                lock (rangeObservableCollectionAccess)
+            void elementsAdded(object sender, RangeActiveExpressionMembershipEventArgs<TSource, IComparable> e) =>
+                synchronizedSource.SequentialExecute(() =>
                 {
                     if (rangeObservableCollection.Count == 0)
                     {
@@ -1233,17 +1244,18 @@ namespace Gear.ActiveQuery
                                     }
                                 }
                             rangeObservableCollection.InsertRange(index, Enumerable.Range(0, count).Select(i => element));
-                            if (startingIndiciesAndCounts.TryGetValue(element, out var startingIndexAndCount))
-                                startingIndiciesAndCounts[element] = (startingIndexAndCount.startingIndex, startingIndexAndCount.count + count);
-                            else
-                                startingIndiciesAndCounts.Add(element, (index, count));
+                            if (indexingStrategy != IndexingStrategy.NoneOrInherit)
+                            {
+                                if (startingIndiciesAndCounts.TryGetValue(element, out var startingIndexAndCount))
+                                    startingIndiciesAndCounts[element] = (startingIndexAndCount.startingIndex, startingIndexAndCount.count + count);
+                                else
+                                    startingIndiciesAndCounts.Add(element, (index, count));
+                            }
                         }
-                }
-            }
+                });
 
-            void elementsRemoved(object sender, RangeActiveExpressionMembershipEventArgs<TSource, IComparable> e)
-            {
-                lock (rangeObservableCollectionAccess)
+            void elementsRemoved(object sender, RangeActiveExpressionMembershipEventArgs<TSource, IComparable> e) =>
+                synchronizedSource.SequentialExecute(() =>
                 {
                     var elementResults = e.ElementResults;
                     if (elementResults.Count == rangeObservableCollection.Count)
@@ -1271,20 +1283,13 @@ namespace Gear.ActiveQuery
                             rangeObservableCollection.RemoveRange(startingIndex, removedCount);
                             if (removedCount == currentCount)
                                 startingIndiciesAndCounts.Remove(element);
+                            else
+                                startingIndiciesAndCounts[element] = (startingIndex, currentCount - removedCount);
                         }
-                }
-            }
+                });
 
-            void propertyChanged(object sender, PropertyChangedEventArgs e)
+            return synchronizedSource.SequentialExecute(() =>
             {
-                if (e.PropertyName == nameof(ISynchronizable.IsSynchronized))
-                    rangeObservableCollection.IsSynchronized = synchronizableSource.IsSynchronized;
-            }
-
-            lock (rangeObservableCollectionAccess)
-            {
-                if (synchronizableSource != null)
-                    synchronizableSource.PropertyChanged += propertyChanged;
                 var selections = selectors.Select(selector => (rangeActiveExpression: EnumerableRangeActiveExpression<TSource, IComparable>.Create(source, selector.expression, selector.expressionOptions), selector.isDescending)).ToList();
                 comparer = new ActiveOrderingComparer<TSource>(selections.Select(selection => (selection.rangeActiveExpression, selection.isDescending)).ToList(), indexingStrategy);
                 var (lastRangeActiveExpression, lastIsDescending) = selections[selections.Count - 1];
@@ -1298,7 +1303,7 @@ namespace Gear.ActiveQuery
                 if (indexingStrategy != IndexingStrategy.NoneOrInherit)
                     rebuildStartingIndiciesAndCounts(sortedSource);
 
-                rangeObservableCollection = new SynchronizedRangeObservableCollection<TSource>(synchronizableSource?.SynchronizationContext, sortedSource, synchronizableSource?.IsSynchronized ?? false);
+                rangeObservableCollection = new SynchronizedRangeObservableCollection<TSource>(sortedSource);
                 var mergedElementFaultChangeNotifier = new MergedElementFaultChangeNotifier(selections.Select(selection => selection.rangeActiveExpression));
                 return new ActiveEnumerable<TSource>(rangeObservableCollection, mergedElementFaultChangeNotifier, () =>
                 {
@@ -1309,40 +1314,8 @@ namespace Gear.ActiveQuery
                         rangeActiveExpression.ElementResultChanged -= elementResultChanged;
                         rangeActiveExpression.Dispose();
                     }
-                    if (synchronizableSource != null)
-                        synchronizableSource.PropertyChanged -= propertyChanged;
                     mergedElementFaultChangeNotifier.Dispose();
                 });
-            }
-        }
-        */
-
-        public static ActiveEnumerable<TSource> ActiveOrderBy<TSource>(this IEnumerable<TSource> source, IComparer<TSource> comparer = null, IndexingStrategy indexingStrategy = IndexingStrategy.HashTable) =>
-            ActiveOrderBy(source, comparer: comparer, indexingStrategy: indexingStrategy);
-
-        public static ActiveEnumerable<TSource> ActiveOrderBy<TSource, TKey>(this IEnumerable<TSource> source, Expression<Func<TSource, TKey>> keySelector, ActiveExpressionOptions keySelectorOptions = null, IComparer<TKey> comparer = null, IndexingStrategy indexingStrategy = IndexingStrategy.HashTable)
-        {
-            ActiveQueryOptions.Optimize(ref keySelector);
-            
-            comparer = comparer ?? Comparer<TKey>.Default;
-
-            ActiveEnumerable<TKey> keys;
-            var rangeObservableCollectionAccess = new object();
-            SynchronizedRangeObservableCollection<TSource> rangeObservableCollection = null;
-
-            void collectionChanged(object sender, NotifyCollectionChangedEventArgs e) =>
-                keys.SequentialExecute(() =>
-                {
-                });
-
-            return (source as ISynchronized).SequentialExecute(() =>
-            {
-                keys = ActiveSelect(source, keySelector, keySelectorOptions, indexingStrategy);
-                keys.CollectionChanged += collectionChanged;
-
-                rangeObservableCollection = new SynchronizedRangeObservableCollection<TSource>(source.Select((element, index) => (element, index)).OrderBy(ei => keys[ei.index], comparer).Select(ei => ei.element));
-
-                return new ActiveEnumerable<TSource>(rangeObservableCollection, keys, () => rangeObservableCollection.CollectionChanged -= collectionChanged);
             });
         }
 
