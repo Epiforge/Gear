@@ -85,9 +85,9 @@ namespace Gear.ActiveQuery
                 var isDescending = selectors[i].isDescending;
                 var xComparable = xList[i];
                 var yComparable = yList[i];
-                if (xComparable == null && yComparable != null)
-                    return isDescending ? 1 : -1;
-                if (xComparable != null && yComparable == null)
+                if (xComparable == null)
+                    return yComparable == null ? 0 : isDescending ? 1 : -1;
+                else if (yComparable == null)
                     return isDescending ? -1 : 1;
                 var comparison = xComparable.CompareTo(yComparable);
                 if (comparison != 0)
@@ -110,7 +110,7 @@ namespace Gear.ActiveQuery
         }
 
         IReadOnlyList<IComparable> GetComparables(TElement element) =>
-            selectors.Select(expressionAndOrder => expressionAndOrder.rangeActiveExpression.GetResults().First(er => equalityComparer.Equals(er.element, element)).result).ToImmutableArray();
+            selectors.Select(expressionAndOrder => expressionAndOrder.rangeActiveExpression.GetResultsUnderLock().First(er => equalityComparer.Equals(er.element, element)).result).ToImmutableArray();
 
         void RangeActiveExpressionElementResultChanged(object sender, RangeActiveExpressionResultChangeEventArgs<TElement, IComparable> e)
         {
@@ -162,7 +162,7 @@ namespace Gear.ActiveQuery
                         comparables.Remove(element);
                     }
                     else
-                        counts[element] = currentCount = removedCount;
+                        counts[element] = currentCount - removedCount;
                 }
         }
     }
