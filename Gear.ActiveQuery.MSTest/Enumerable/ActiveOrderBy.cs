@@ -21,18 +21,6 @@ namespace Gear.ActiveQuery.MSTest.Enumerable
         }
 
         [TestMethod]
-        public void SelectorsOptions()
-        {
-            var people = TestPerson.CreatePeople();
-            var options = new ActiveExpressionOptions();
-            using (var expr = people.ActiveOrderBy((person => person.Name.Length, options), (person => person.Name, options)))
-            {
-                void checkMergedNames(string against) => Assert.AreEqual(against, string.Join(string.Empty, expr.Select(person => person.Name)));
-                checkMergedNames("BenErinJohnBryanCliffCraigEmilyJamesSteveGeorgeHunterBridgetCharlesNanette");
-            }
-        }
-
-        [TestMethod]
         public void SelectorsDirections()
         {
             var people = TestPerson.CreatePeople();
@@ -44,37 +32,14 @@ namespace Gear.ActiveQuery.MSTest.Enumerable
         }
 
         [TestMethod]
-        public void UnindexedSelectors()
+        public void SelectorsOptions()
         {
             var people = TestPerson.CreatePeople();
             var options = new ActiveExpressionOptions();
-            using (var expr = people.ActiveOrderBy(IndexingStrategy.NoneOrInherit, person => person.Name.Length, person => person.Name))
+            using (var expr = people.ActiveOrderBy((person => person.Name.Length, options), (person => person.Name, options)))
             {
                 void checkMergedNames(string against) => Assert.AreEqual(against, string.Join(string.Empty, expr.Select(person => person.Name)));
                 checkMergedNames("BenErinJohnBryanCliffCraigEmilyJamesSteveGeorgeHunterBridgetCharlesNanette");
-            }
-        }
-
-        [TestMethod]
-        public void UnindexedSelectorsOptions()
-        {
-            var people = TestPerson.CreatePeople();
-            var options = new ActiveExpressionOptions();
-            using (var expr = people.ActiveOrderBy(IndexingStrategy.NoneOrInherit, (person => person.Name.Length, options), (person => person.Name, options)))
-            {
-                void checkMergedNames(string against) => Assert.AreEqual(against, string.Join(string.Empty, expr.Select(person => person.Name)));
-                checkMergedNames("BenErinJohnBryanCliffCraigEmilyJamesSteveGeorgeHunterBridgetCharlesNanette");
-            }
-        }
-
-        [TestMethod]
-        public void UnindexedSelectorsDirections()
-        {
-            var people = TestPerson.CreatePeople();
-            using (var expr = people.ActiveOrderBy(IndexingStrategy.NoneOrInherit, (person => person.Name.Length, true), (person => person.Name, false)))
-            {
-                void checkMergedNames(string against) => Assert.AreEqual(against, string.Join(string.Empty, expr.Select(person => person.Name)));
-                checkMergedNames("BridgetCharlesNanetteGeorgeHunterBryanCliffCraigEmilyJamesSteveErinJohnBen");
             }
         }
 
@@ -200,6 +165,41 @@ namespace Gear.ActiveQuery.MSTest.Enumerable
                 checkMergedNames("BenBridgetBryanCharlesCliffCraigEmilyErinGeorgeHunterJamesJavonNanetteSteve");
                 people.Add(new TestPerson("Daniel"));
                 checkMergedNames("BenBridgetBryanCharlesCliffCraigDanielEmilyErinGeorgeHunterJamesJavonNanetteSteve");
+            }
+        }
+
+        [TestMethod]
+        public void UnindexedSelectors()
+        {
+            var people = TestPerson.CreatePeople();
+            var options = new ActiveExpressionOptions();
+            using (var expr = people.ActiveOrderBy(IndexingStrategy.NoneOrInherit, person => person.Name.Length, person => person.Name))
+            {
+                void checkMergedNames(string against) => Assert.AreEqual(against, string.Join(string.Empty, expr.Select(person => person.Name)));
+                checkMergedNames("BenErinJohnBryanCliffCraigEmilyJamesSteveGeorgeHunterBridgetCharlesNanette");
+            }
+        }
+
+        [TestMethod]
+        public void UnindexedSelectorsDirections()
+        {
+            var people = TestPerson.CreatePeople();
+            using (var expr = people.ActiveOrderBy(IndexingStrategy.NoneOrInherit, (person => person.Name.Length, true), (person => person.Name, false)))
+            {
+                void checkMergedNames(string against) => Assert.AreEqual(against, string.Join(string.Empty, expr.Select(person => person.Name)));
+                checkMergedNames("BridgetCharlesNanetteGeorgeHunterBryanCliffCraigEmilyJamesSteveErinJohnBen");
+            }
+        }
+
+        [TestMethod]
+        public void UnindexedSelectorsOptions()
+        {
+            var people = TestPerson.CreatePeople();
+            var options = new ActiveExpressionOptions();
+            using (var expr = people.ActiveOrderBy(IndexingStrategy.NoneOrInherit, (person => person.Name.Length, options), (person => person.Name, options)))
+            {
+                void checkMergedNames(string against) => Assert.AreEqual(against, string.Join(string.Empty, expr.Select(person => person.Name)));
+                checkMergedNames("BenErinJohnBryanCliffCraigEmilyJamesSteveGeorgeHunterBridgetCharlesNanette");
             }
         }
     }
