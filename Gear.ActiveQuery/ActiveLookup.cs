@@ -3,13 +3,15 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Threading;
 
 namespace Gear.ActiveQuery
 {
-    public class ActiveLookup<TKey, TValue> : SyncDisposablePropertyChangeNotifier, INotifyDictionaryChanged<TKey, TValue>, INotifyElementFaultChanges, IReadOnlyDictionary<TKey, TValue>
+    public class ActiveLookup<TKey, TValue> : SyncDisposablePropertyChangeNotifier, INotifyDictionaryChanged<TKey, TValue>, INotifyElementFaultChanges, IReadOnlyDictionary<TKey, TValue>, ISynchronized
     {
         internal ActiveLookup(IReadOnlyDictionary<TKey, TValue> readOnlyDictionary, Action onDispose = null)
         {
+            synchronized = readOnlyDictionary as ISynchronized ?? throw new ArgumentException($"{nameof(readOnlyDictionary)} must implement {nameof(ISynchronized)}", nameof(readOnlyDictionary));
             if (readOnlyDictionary is ActiveLookup<TKey, TValue> activeLookup)
                 this.readOnlyDictionary = activeLookup.readOnlyDictionary;
             else
@@ -50,6 +52,7 @@ namespace Gear.ActiveQuery
         readonly Action onDispose;
         Exception operationFault;
         readonly IReadOnlyDictionary<TKey, TValue> readOnlyDictionary;
+        readonly ISynchronized synchronized;
 
         public event EventHandler<ElementFaultChangeEventArgs> ElementFaultChanged;
         public event EventHandler<ElementFaultChangeEventArgs> ElementFaultChanging;
@@ -128,6 +131,8 @@ namespace Gear.ActiveQuery
             get => operationFault;
             private set => SetBackedProperty(ref operationFault, in value);
         }
+
+        public SynchronizationContext SynchronizationContext => synchronized.SynchronizationContext;
 
         public IEnumerable<TValue> Values => readOnlyDictionary.Values;
     }

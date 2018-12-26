@@ -4,16 +4,16 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Collections.Specialized;
-using System.ComponentModel;
 using System.Linq;
 using System.Threading;
 
 namespace Gear.ActiveQuery
 {
-    public class ActiveEnumerable<TElement> : SyncDisposablePropertyChangeNotifier, INotifyCollectionChanged, INotifyElementFaultChanges, IReadOnlyList<TElement>, ISynchronizable
+    public class ActiveEnumerable<TElement> : SyncDisposablePropertyChangeNotifier, INotifyCollectionChanged, INotifyElementFaultChanges, IReadOnlyList<TElement>, ISynchronized
     {
         internal ActiveEnumerable(IReadOnlyList<TElement> readOnlyList, INotifyElementFaultChanges faultNotifier = null, Action onDispose = null)
         {
+            synchronized = readOnlyList as ISynchronized ?? throw new ArgumentException($"{nameof(readOnlyList)} must implement {nameof(ISynchronized)}", nameof(readOnlyList));
             this.faultNotifier = faultNotifier ?? (readOnlyList as INotifyElementFaultChanges);
             if (this.faultNotifier != null)
             {
@@ -26,10 +26,6 @@ namespace Gear.ActiveQuery
                 this.readOnlyList = readOnlyList;
             if (this.readOnlyList is INotifyCollectionChanged collectionNotifier)
                 collectionNotifier.CollectionChanged += CollectionChangedHandler;
-            if (this.readOnlyList is INotifyPropertyChanged propertyChangedNotifier)
-                propertyChangedNotifier.PropertyChanged += PropertyChangedHandler;
-            if (this.readOnlyList is INotifyPropertyChanging propertyChangingNotifier)
-                propertyChangingNotifier.PropertyChanging += PropertyChangingHandler;
             this.onDispose = onDispose;
         }
 
@@ -40,6 +36,7 @@ namespace Gear.ActiveQuery
         readonly INotifyElementFaultChanges faultNotifier;
         readonly Action onDispose;
         readonly IReadOnlyList<TElement> readOnlyList;
+        readonly ISynchronized synchronized;
 
         public event NotifyCollectionChangedEventHandler CollectionChanged;
         public event EventHandler<ElementFaultChangeEventArgs> ElementFaultChanged;
@@ -59,10 +56,6 @@ namespace Gear.ActiveQuery
                 }
                 if (readOnlyList is INotifyCollectionChanged collectionNotifier)
                     collectionNotifier.CollectionChanged -= CollectionChangedHandler;
-                if (readOnlyList is INotifyPropertyChanged propertyChangedNotifier)
-                    propertyChangedNotifier.PropertyChanged -= PropertyChangedHandler;
-                if (readOnlyList is INotifyPropertyChanging propertyChangingNotifier)
-                    propertyChangingNotifier.PropertyChanging -= PropertyChangingHandler;
             }
         }
 
@@ -76,24 +69,10 @@ namespace Gear.ActiveQuery
 
         public IReadOnlyList<(object element, Exception fault)> GetElementFaults() => faultNotifier?.GetElementFaults() ?? Enumerable.Empty<(object element, Exception fault)>().ToImmutableArray();
 
-        void PropertyChangedHandler(object sender, PropertyChangedEventArgs e)
-        {
-            if (e.PropertyName == nameof(Count) || e.PropertyName == nameof(ISynchronizable.IsSynchronized))
-                OnPropertyChanged(e);
-        }
-
-        void PropertyChangingHandler(object sender, PropertyChangingEventArgs e)
-        {
-            if (e.PropertyName == nameof(Count) || e.PropertyName == nameof(ISynchronizable.IsSynchronized))
-                OnPropertyChanging(e);
-        }
-
         public TElement this[int index] => readOnlyList[index];
 
         public int Count => readOnlyList.Count;
 
-        public bool IsSynchronized => (readOnlyList as ISynchronizable)?.IsSynchronized ?? false;
-
-        public SynchronizationContext SynchronizationContext => (readOnlyList as ISynchronizable)?.SynchronizationContext;
+        public SynchronizationContext SynchronizationContext => synchronized.SynchronizationContext;
     }
 }

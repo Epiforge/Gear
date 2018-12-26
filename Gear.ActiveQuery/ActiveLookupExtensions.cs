@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Threading;
 
 namespace Gear.ActiveQuery
 {
@@ -16,17 +17,12 @@ namespace Gear.ActiveQuery
         {
             ActiveQueryOptions.Optimize(ref predicate);
 
-            var activeValueAccess = new object();
             ActiveLookup<TKey, TValue> where;
             Action<bool> setValue = null;
 
-            void whereChanged(object sender, EventArgs e)
-            {
-                lock (activeValueAccess)
-                    setValue(where.Count == source.Count);
-            }
+            void whereChanged(object sender, EventArgs e) => setValue(where.Count == source.Count);
 
-            lock (activeValueAccess)
+            return (source as ISynchronized).SequentialExecute(() =>
             {
                 where = ActiveWhere(source, predicate, predicateOptions);
                 where.ValueAdded += whereChanged;
@@ -42,7 +38,7 @@ namespace Gear.ActiveQuery
                     where.ValuesRemoved -= whereChanged;
                     where.Dispose();
                 });
-            }
+            });
         }
 
         #endregion All
@@ -54,16 +50,12 @@ namespace Gear.ActiveQuery
             var elementFaultChangeNotifier = source as INotifyElementFaultChanges;
             if (source is INotifyDictionaryChanged<TKey, TValue> changeNotifyingSource)
             {
-                var activeValueAccess = new object();
+                var synchronizedSource = source as ISynchronized;
                 Action<bool> setValue = null;
 
-                void sourceChanged(object sender, EventArgs e)
-                {
-                    lock (activeValueAccess)
-                        setValue(source.Any());
-                }
+                void sourceChanged(object sender, EventArgs e) => synchronizedSource.SequentialExecute(() => setValue(source.Any()));
 
-                lock (activeValueAccess)
+                return synchronizedSource.SequentialExecute(() =>
                 {
                     changeNotifyingSource.ValueAdded += sourceChanged;
                     changeNotifyingSource.ValueRemoved += sourceChanged;
@@ -77,7 +69,7 @@ namespace Gear.ActiveQuery
                         changeNotifyingSource.ValuesAdded -= sourceChanged;
                         changeNotifyingSource.ValuesRemoved -= sourceChanged;
                     });
-                }
+                });
             }
             try
             {
@@ -93,17 +85,12 @@ namespace Gear.ActiveQuery
         {
             ActiveQueryOptions.Optimize(ref predicate);
 
-            var activeValueAccess = new object();
             ActiveLookup<TKey, TValue> where;
             Action<bool> setValue = null;
 
-            void whereChanged(object sender, EventArgs e)
-            {
-                lock (activeValueAccess)
-                    setValue(where.Count > 0);
-            }
+            void whereChanged(object sender, EventArgs e) => setValue(where.Count > 0);
 
-            lock (activeValueAccess)
+            return (source as ISynchronized).SequentialExecute(() =>
             {
                 where = ActiveWhere(source, predicate, predicateOptions);
                 where.ValueAdded += whereChanged;
@@ -119,7 +106,7 @@ namespace Gear.ActiveQuery
                     where.ValuesRemoved -= whereChanged;
                     where.Dispose();
                 });
-            }
+            });
         }
 
         #endregion Any
@@ -135,14 +122,13 @@ namespace Gear.ActiveQuery
 
             var convertCount = CountConversion.GetConverter(typeof(TResult));
             var operations = new GenericOperations<TResult>();
-            var activeValueAccess = new object();
+            var synchronizedSource = source as ISynchronized;
             ActiveValue<TResult> sum;
             Action<TResult> setValue = null;
             Action<Exception> setOperationFault = null;
 
-            void propertyChanged(object sender, PropertyChangedEventArgs e)
-            {
-                lock (activeValueAccess)
+            void propertyChanged(object sender, PropertyChangedEventArgs e) =>
+                synchronizedSource.SequentialExecute(() =>
                 {
                     if (e.PropertyName == nameof(ActiveValue<TResult>.Value))
                     {
@@ -158,10 +144,9 @@ namespace Gear.ActiveQuery
                             setValue(operations.Divide(sum.Value, (TResult)convertCount(currentCount)));
                         }
                     }
-                }
-            }
+                });
 
-            lock (activeValueAccess)
+            return synchronizedSource.SequentialExecute(() =>
             {
                 sum = ActiveSum(source, selector, selectorOptions);
                 sum.PropertyChanged += propertyChanged;
@@ -172,7 +157,7 @@ namespace Gear.ActiveQuery
                     sum.PropertyChanged -= propertyChanged;
                     sum.Dispose();
                 });
-            }
+            });
         }
 
         #endregion Average
@@ -185,7 +170,7 @@ namespace Gear.ActiveQuery
             var elementFaultChangeNotifier = source as INotifyElementFaultChanges;
             if (source is INotifyDictionaryChanged<TKey, TValue> changingSource)
             {
-                var activeValueAccess = new object();
+                var synchronizedSource = source as ISynchronized;
                 ActiveValue<KeyValuePair<TKey, TValue>> activeValue = null;
                 Action<KeyValuePair<TKey, TValue>> setValue = null;
                 Action<Exception> setOperationFault = null;
@@ -199,19 +184,19 @@ namespace Gear.ActiveQuery
                     changingSource.ValuesRemoved += valuesRemoved;
                 }
 
-                void valueAdded(object sender, NotifyDictionaryValueEventArgs<TKey, TValue> e)
-                {
-                    lock (activeValueAccess)
+                void valueAdded(object sender, NotifyDictionaryValueEventArgs<TKey, TValue> e) =>
+                    synchronizedSource.SequentialExecute(() =>
+                    {
                         if (activeValue.OperationFault != null || keyComparer.Compare(e.Key, activeValue.Value.Key) < 0)
                         {
                             setOperationFault(null);
                             setValue(new KeyValuePair<TKey, TValue>(e.Key, e.Value));
                         }
-                }
+                    });
 
-                void valueRemoved(object sender, NotifyDictionaryValueEventArgs<TKey, TValue> e)
-                {
-                    lock (activeValueAccess)
+                void valueRemoved(object sender, NotifyDictionaryValueEventArgs<TKey, TValue> e) =>
+                    synchronizedSource.SequentialExecute(() =>
+                    {
                         if (keyComparer.Compare(e.Key, activeValue.Value.Key) == 0)
                         {
                             try
@@ -224,18 +209,17 @@ namespace Gear.ActiveQuery
                                 setValue(default);
                             }
                         }
-                }
+                    });
 
-                void valueReplaced(object sender, NotifyDictionaryValueReplacedEventArgs<TKey, TValue> e)
-                {
-                    lock (activeValueAccess)
+                void valueReplaced(object sender, NotifyDictionaryValueReplacedEventArgs<TKey, TValue> e) =>
+                    synchronizedSource.SequentialExecute(() =>
+                    {
                         if (keyComparer.Compare(e.Key, activeValue.Value.Key) == 0)
                             setValue(new KeyValuePair<TKey, TValue>(e.Key, e.NewValue));
-                }
+                    });
 
-                void valuesAdded(object sender, NotifyDictionaryValuesEventArgs<TKey, TValue> e)
-                {
-                    lock (activeValueAccess)
+                void valuesAdded(object sender, NotifyDictionaryValuesEventArgs<TKey, TValue> e) =>
+                    synchronizedSource.SequentialExecute(() =>
                     {
                         var keyValuePairs = e.KeyValuePairs;
                         if (keyValuePairs.Count > 0)
@@ -247,12 +231,11 @@ namespace Gear.ActiveQuery
                                 setValue(firstKv);
                             }
                         }
-                    }
-                }
+                    });
 
-                void valuesRemoved(object sender, NotifyDictionaryValuesEventArgs<TKey, TValue> e)
-                {
-                    lock (activeValueAccess)
+                void valuesRemoved(object sender, NotifyDictionaryValuesEventArgs<TKey, TValue> e) =>
+                    synchronizedSource.SequentialExecute(() =>
+                    {
                         if (e.KeyValuePairs.Any(kv => keyComparer.Compare(kv.Key, activeValue.Value.Key) == 0))
                         {
                             try
@@ -265,9 +248,9 @@ namespace Gear.ActiveQuery
                                 setValue(default);
                             }
                         }
-                }
+                    });
 
-                lock (activeValueAccess)
+                return synchronizedSource.SequentialExecute(() =>
                 {
                     changingSource.ValueAdded += valueAdded;
                     changingSource.ValueRemoved += valueRemoved;
@@ -282,7 +265,7 @@ namespace Gear.ActiveQuery
                     {
                         return new ActiveValue<KeyValuePair<TKey, TValue>>(default, out setValue, ex, out setOperationFault, elementFaultChangeNotifier, dispose);
                     }
-                }
+                });
             }
             try
             {
@@ -304,7 +287,7 @@ namespace Gear.ActiveQuery
             var elementFaultChangeNotifier = source as INotifyElementFaultChanges;
             if (source is INotifyDictionaryChanged<TKey, TValue> changingSource)
             {
-                var activeValueAccess = new object();
+                var synchronizedSource = source as ISynchronized;
                 ActiveValue<KeyValuePair<TKey, TValue>> activeValue = null;
                 Action<KeyValuePair<TKey, TValue>> setValue = null;
                 var defaulted = false;
@@ -318,19 +301,19 @@ namespace Gear.ActiveQuery
                     changingSource.ValuesRemoved += valuesRemoved;
                 }
 
-                void valueAdded(object sender, NotifyDictionaryValueEventArgs<TKey, TValue> e)
-                {
-                    lock (activeValueAccess)
+                void valueAdded(object sender, NotifyDictionaryValueEventArgs<TKey, TValue> e) =>
+                    synchronizedSource.SequentialExecute(() =>
+                    {
                         if (defaulted || keyComparer.Compare(e.Key, activeValue.Value.Key) < 0)
                         {
                             defaulted = false;
                             setValue(new KeyValuePair<TKey, TValue>(e.Key, e.Value));
                         }
-                }
+                    });
 
-                void valueRemoved(object sender, NotifyDictionaryValueEventArgs<TKey, TValue> e)
-                {
-                    lock (activeValueAccess)
+                void valueRemoved(object sender, NotifyDictionaryValueEventArgs<TKey, TValue> e) =>
+                    synchronizedSource.SequentialExecute(() =>
+                    {
                         if (keyComparer.Compare(e.Key, activeValue.Value.Key) == 0)
                         {
                             try
@@ -343,18 +326,17 @@ namespace Gear.ActiveQuery
                                 setValue(default);
                             }
                         }
-                }
+                    });
 
-                void valueReplaced(object sender, NotifyDictionaryValueReplacedEventArgs<TKey, TValue> e)
-                {
-                    lock (activeValueAccess)
+                void valueReplaced(object sender, NotifyDictionaryValueReplacedEventArgs<TKey, TValue> e) =>
+                    synchronizedSource.SequentialExecute(() =>
+                    {
                         if (keyComparer.Compare(e.Key, activeValue.Value.Key) == 0)
                             setValue(new KeyValuePair<TKey, TValue>(e.Key, e.NewValue));
-                }
+                    });
 
-                void valuesAdded(object sender, NotifyDictionaryValuesEventArgs<TKey, TValue> e)
-                {
-                    lock (activeValueAccess)
+                void valuesAdded(object sender, NotifyDictionaryValuesEventArgs<TKey, TValue> e) =>
+                    synchronizedSource.SequentialExecute(() =>
                     {
                         var keyValuePairs = e.KeyValuePairs;
                         if (keyValuePairs.Count > 0)
@@ -366,12 +348,11 @@ namespace Gear.ActiveQuery
                                 setValue(firstKv);
                             }
                         }
-                    }
-                }
+                    });
 
-                void valuesRemoved(object sender, NotifyDictionaryValuesEventArgs<TKey, TValue> e)
-                {
-                    lock (activeValueAccess)
+                void valuesRemoved(object sender, NotifyDictionaryValuesEventArgs<TKey, TValue> e) =>
+                    synchronizedSource.SequentialExecute(() =>
+                    {
                         if (e.KeyValuePairs.Any(kv => keyComparer.Compare(kv.Key, activeValue.Value.Key) == 0))
                         {
                             try
@@ -384,9 +365,9 @@ namespace Gear.ActiveQuery
                                 setValue(default);
                             }
                         }
-                }
+                    });
 
-                lock (activeValueAccess)
+                return synchronizedSource.SequentialExecute(() =>
                 {
                     changingSource.ValueAdded += valueAdded;
                     changingSource.ValueRemoved += valueRemoved;
@@ -401,7 +382,7 @@ namespace Gear.ActiveQuery
                     {
                         return new ActiveValue<KeyValuePair<TKey, TValue>>(default, out setValue, elementFaultChangeNotifier: elementFaultChangeNotifier, onDispose: dispose);
                     }
-                }
+                });
             }
             try
             {
@@ -423,7 +404,7 @@ namespace Gear.ActiveQuery
             var elementFaultChangeNotifier = source as INotifyElementFaultChanges;
             if (source is INotifyDictionaryChanged<TKey, TValue> changingSource)
             {
-                var activeValueAccess = new object();
+                var synchronizedSource = source as ISynchronized;
                 ActiveValue<KeyValuePair<TKey, TValue>> activeValue = null;
                 Action<KeyValuePair<TKey, TValue>> setValue = null;
                 Action<Exception> setOperationFault = null;
@@ -437,19 +418,19 @@ namespace Gear.ActiveQuery
                     changingSource.ValuesRemoved += valuesRemoved;
                 }
 
-                void valueAdded(object sender, NotifyDictionaryValueEventArgs<TKey, TValue> e)
-                {
-                    lock (activeValueAccess)
+                void valueAdded(object sender, NotifyDictionaryValueEventArgs<TKey, TValue> e) =>
+                    synchronizedSource.SequentialExecute(() =>
+                    {
                         if (activeValue.OperationFault != null || keyComparer.Compare(e.Key, activeValue.Value.Key) > 0)
                         {
                             setOperationFault(null);
                             setValue(new KeyValuePair<TKey, TValue>(e.Key, e.Value));
                         }
-                }
+                    });
 
-                void valueRemoved(object sender, NotifyDictionaryValueEventArgs<TKey, TValue> e)
-                {
-                    lock (activeValueAccess)
+                void valueRemoved(object sender, NotifyDictionaryValueEventArgs<TKey, TValue> e) =>
+                    synchronizedSource.SequentialExecute(() =>
+                    {
                         if (keyComparer.Compare(e.Key, activeValue.Value.Key) == 0)
                         {
                             try
@@ -461,18 +442,17 @@ namespace Gear.ActiveQuery
                                 setOperationFault(ex);
                             }
                         }
-                }
+                    });
 
-                void valueReplaced(object sender, NotifyDictionaryValueReplacedEventArgs<TKey, TValue> e)
-                {
-                    lock (activeValueAccess)
+                void valueReplaced(object sender, NotifyDictionaryValueReplacedEventArgs<TKey, TValue> e) =>
+                    synchronizedSource.SequentialExecute(() =>
+                    {
                         if (keyComparer.Compare(e.Key, activeValue.Value.Key) == 0)
                             setValue(new KeyValuePair<TKey, TValue>(e.Key, e.NewValue));
-                }
+                    });
 
-                void valuesAdded(object sender, NotifyDictionaryValuesEventArgs<TKey, TValue> e)
-                {
-                    lock (activeValueAccess)
+                void valuesAdded(object sender, NotifyDictionaryValuesEventArgs<TKey, TValue> e) =>
+                    synchronizedSource.SequentialExecute(() =>
                     {
                         var keyValuePairs = e.KeyValuePairs;
                         if (keyValuePairs.Count > 0)
@@ -484,12 +464,11 @@ namespace Gear.ActiveQuery
                                 setValue(lastKv);
                             }
                         }
-                    }
-                }
+                    });
 
-                void valuesRemoved(object sender, NotifyDictionaryValuesEventArgs<TKey, TValue> e)
-                {
-                    lock (activeValueAccess)
+                void valuesRemoved(object sender, NotifyDictionaryValuesEventArgs<TKey, TValue> e) =>
+                    synchronizedSource.SequentialExecute(() =>
+                    {
                         if (e.KeyValuePairs.Any(kv => keyComparer.Compare(kv.Key, activeValue.Value.Key) == 0))
                         {
                             try
@@ -501,9 +480,9 @@ namespace Gear.ActiveQuery
                                 setOperationFault(ex);
                             }
                         }
-                }
+                    });
 
-                lock (activeValueAccess)
+                return synchronizedSource.SequentialExecute(() =>
                 {
                     changingSource.ValueAdded += valueAdded;
                     changingSource.ValueRemoved += valueRemoved;
@@ -518,7 +497,7 @@ namespace Gear.ActiveQuery
                     {
                         return new ActiveValue<KeyValuePair<TKey, TValue>>(default, out setValue, ex, out setOperationFault, elementFaultChangeNotifier, dispose);
                     }
-                }
+                });
             }
             try
             {
@@ -540,7 +519,7 @@ namespace Gear.ActiveQuery
             var elementFaultChangeNotifier = source as INotifyElementFaultChanges;
             if (source is INotifyDictionaryChanged<TKey, TValue> changingSource)
             {
-                var activeValueAccess = new object();
+                var synchronizedSource = source as ISynchronized;
                 ActiveValue<KeyValuePair<TKey, TValue>> activeValue = null;
                 Action<KeyValuePair<TKey, TValue>> setValue = null;
                 var defaulted = false;
@@ -554,19 +533,19 @@ namespace Gear.ActiveQuery
                     changingSource.ValuesRemoved += valuesRemoved;
                 }
 
-                void valueAdded(object sender, NotifyDictionaryValueEventArgs<TKey, TValue> e)
-                {
-                    lock (activeValueAccess)
+                void valueAdded(object sender, NotifyDictionaryValueEventArgs<TKey, TValue> e) =>
+                    synchronizedSource.SequentialExecute(() =>
+                    {
                         if (defaulted || keyComparer.Compare(e.Key, activeValue.Value.Key) > 0)
                         {
                             defaulted = false;
                             setValue(new KeyValuePair<TKey, TValue>(e.Key, e.Value));
                         }
-                }
+                    });
 
-                void valueRemoved(object sender, NotifyDictionaryValueEventArgs<TKey, TValue> e)
-                {
-                    lock (activeValueAccess)
+                void valueRemoved(object sender, NotifyDictionaryValueEventArgs<TKey, TValue> e) =>
+                    synchronizedSource.SequentialExecute(() =>
+                    {
                         if (keyComparer.Compare(e.Key, activeValue.Value.Key) == 0)
                         {
                             try
@@ -579,18 +558,17 @@ namespace Gear.ActiveQuery
                                 setValue(default);
                             }
                         }
-                }
+                    });
 
-                void valueReplaced(object sender, NotifyDictionaryValueReplacedEventArgs<TKey, TValue> e)
-                {
-                    lock (activeValueAccess)
+                void valueReplaced(object sender, NotifyDictionaryValueReplacedEventArgs<TKey, TValue> e) =>
+                    synchronizedSource.SequentialExecute(() =>
+                    {
                         if (keyComparer.Compare(e.Key, activeValue.Value.Key) == 0)
                             setValue(new KeyValuePair<TKey, TValue>(e.Key, e.NewValue));
-                }
+                    });
 
-                void valuesAdded(object sender, NotifyDictionaryValuesEventArgs<TKey, TValue> e)
-                {
-                    lock (activeValueAccess)
+                void valuesAdded(object sender, NotifyDictionaryValuesEventArgs<TKey, TValue> e) =>
+                    synchronizedSource.SequentialExecute(() =>
                     {
                         var keyValuePairs = e.KeyValuePairs;
                         if (keyValuePairs.Count > 0)
@@ -602,12 +580,11 @@ namespace Gear.ActiveQuery
                                 setValue(firstKv);
                             }
                         }
-                    }
-                }
+                    });
 
-                void valuesRemoved(object sender, NotifyDictionaryValuesEventArgs<TKey, TValue> e)
-                {
-                    lock (activeValueAccess)
+                void valuesRemoved(object sender, NotifyDictionaryValuesEventArgs<TKey, TValue> e) =>
+                    synchronizedSource.SequentialExecute(() =>
+                    {
                         if (e.KeyValuePairs.Any(kv => keyComparer.Compare(kv.Key, activeValue.Value.Key) == 0))
                         {
                             try
@@ -620,9 +597,9 @@ namespace Gear.ActiveQuery
                                 setValue(default);
                             }
                         }
-                }
+                    });
 
-                lock (activeValueAccess)
+                return synchronizedSource.SequentialExecute(() =>
                 {
                     changingSource.ValueAdded += valueAdded;
                     changingSource.ValueRemoved += valueRemoved;
@@ -637,7 +614,7 @@ namespace Gear.ActiveQuery
                     {
                         return new ActiveValue<KeyValuePair<TKey, TValue>>(default, out setValue, elementFaultChangeNotifier: elementFaultChangeNotifier, onDispose: dispose);
                     }
-                }
+                });
             }
             try
             {
@@ -661,7 +638,7 @@ namespace Gear.ActiveQuery
             ActiveQueryOptions.Optimize(ref selector);
 
             var comparer = Comparer<TResult>.Default;
-            var activeValueAccess = new object();
+            var synchronizedSource = source as ISynchronized;
             ReadOnlyDictionaryRangeActiveExpression<TKey, TValue, TResult> rangeActiveExpression;
             ActiveValue<TResult> activeValue = null;
             Action<TResult> setValue = null;
@@ -678,9 +655,8 @@ namespace Gear.ActiveQuery
                 rangeActiveExpression.Dispose();
             }
 
-            void valueAdded(object sender, NotifyDictionaryValueEventArgs<TKey, TResult> e)
-            {
-                lock (activeValueAccess)
+            void valueAdded(object sender, NotifyDictionaryValueEventArgs<TKey, TResult> e) =>
+                synchronizedSource.SequentialExecute(() =>
                 {
                     var added = e.Value;
                     if (activeValue.OperationFault != null || comparer.Compare(activeValue.Value, added) < 0)
@@ -688,12 +664,11 @@ namespace Gear.ActiveQuery
                         setOperationFault(null);
                         setValue(added);
                     }
-                }
-            }
+                });
 
-            void valueRemoved(object sender, NotifyDictionaryValueEventArgs<TKey, TResult> e)
-            {
-                lock (activeValueAccess)
+            void valueRemoved(object sender, NotifyDictionaryValueEventArgs<TKey, TResult> e) =>
+                synchronizedSource.SequentialExecute(() =>
+                {
                     if (comparer.Compare(activeValue.Value, e.Value) == 0)
                     {
                         try
@@ -707,35 +682,31 @@ namespace Gear.ActiveQuery
                             setOperationFault(ex);
                         }
                     }
-            }
+                });
 
-            void valueReplaced(object sender, NotifyDictionaryValueReplacedEventArgs<TKey, TResult> e)
-            {
-                lock (activeValueAccess)
+            void valueReplaced(object sender, NotifyDictionaryValueReplacedEventArgs<TKey, TResult> e) =>
+                synchronizedSource.SequentialExecute(() =>
                 {
                     var added = e.NewValue;
                     if (comparer.Compare(activeValue.Value, added) < 0)
                         setValue(added);
                     else if (comparer.Compare(activeValue.Value, e.OldValue) == 0)
                         setValue(rangeActiveExpression.GetResultsUnderLock().Select(kr => kr.result).Max());
-                }
-            }
+                });
 
-            void valueResultChanged(object sender, RangeActiveExpressionResultChangeEventArgs<TKey, TResult> e)
-            {
-                lock (activeValueAccess)
+            void valueResultChanged(object sender, RangeActiveExpressionResultChangeEventArgs<TKey, TResult> e) =>
+                synchronizedSource.SequentialExecute(() =>
                 {
                     var comparison = comparer.Compare(activeValue.Value, e.Result);
                     if (comparison < 0)
                         setValue(e.Result);
                     else if (comparison > 0)
                         setValue(rangeActiveExpression.GetResultsUnderLock().Select(er => er.result).Max());
-                }
-            }
+                });
 
-            void valuesAdded(object sender, NotifyDictionaryValuesEventArgs<TKey, TResult> e)
-            {
-                lock (activeValueAccess)
+            void valuesAdded(object sender, NotifyDictionaryValuesEventArgs<TKey, TResult> e) =>
+                synchronizedSource.SequentialExecute(() =>
+                {
                     if (e.KeyValuePairs.Count > 0)
                     {
                         var addedMax = e.KeyValuePairs.Select(kv => kv.Value).Max();
@@ -745,11 +716,11 @@ namespace Gear.ActiveQuery
                             setValue(addedMax);
                         }
                     }
-            }
+                });
 
-            void valuesRemoved(object sender, NotifyDictionaryValuesEventArgs<TKey, TResult> e)
-            {
-                lock (activeValueAccess)
+            void valuesRemoved(object sender, NotifyDictionaryValuesEventArgs<TKey, TResult> e) =>
+                synchronizedSource.SequentialExecute(() =>
+                {
                     if (e.KeyValuePairs.Count > 0)
                     {
                         var removedMax = e.KeyValuePairs.Select(kv => kv.Value).Max();
@@ -767,28 +738,25 @@ namespace Gear.ActiveQuery
                             }
                         }
                     }
-            }
+                });
 
-            rangeActiveExpression = RangeActiveExpression.Create(source, selector, selectorOptions);
-            return rangeActiveExpression.WithReadLock(() =>
+            return synchronizedSource.SequentialExecute(() =>
             {
-                lock (activeValueAccess)
-                {
-                    rangeActiveExpression.ValueAdded += valueAdded;
-                    rangeActiveExpression.ValueRemoved += valueRemoved;
-                    rangeActiveExpression.ValueReplaced += valueReplaced;
-                    rangeActiveExpression.ValueResultChanged += valueResultChanged;
-                    rangeActiveExpression.ValuesAdded += valuesAdded;
-                    rangeActiveExpression.ValuesRemoved += valuesRemoved;
+                rangeActiveExpression = RangeActiveExpression.Create(source, selector, selectorOptions);
+                rangeActiveExpression.ValueAdded += valueAdded;
+                rangeActiveExpression.ValueRemoved += valueRemoved;
+                rangeActiveExpression.ValueReplaced += valueReplaced;
+                rangeActiveExpression.ValueResultChanged += valueResultChanged;
+                rangeActiveExpression.ValuesAdded += valuesAdded;
+                rangeActiveExpression.ValuesRemoved += valuesRemoved;
 
-                    try
-                    {
-                        return activeValue = new ActiveValue<TResult>(rangeActiveExpression.GetResultsUnderLock().Select(kr => kr.result).Max(), out setValue, null, out setOperationFault, rangeActiveExpression, dispose);
-                    }
-                    catch (Exception ex)
-                    {
-                        return activeValue = new ActiveValue<TResult>(default, out setValue, ex, out setOperationFault, rangeActiveExpression, dispose);
-                    }
+                try
+                {
+                    return activeValue = new ActiveValue<TResult>(rangeActiveExpression.GetResults().Select(kr => kr.result).Max(), out setValue, null, out setOperationFault, rangeActiveExpression, dispose);
+                }
+                catch (Exception ex)
+                {
+                    return activeValue = new ActiveValue<TResult>(default, out setValue, ex, out setOperationFault, rangeActiveExpression, dispose);
                 }
             });
         }
@@ -805,7 +773,7 @@ namespace Gear.ActiveQuery
             ActiveQueryOptions.Optimize(ref selector);
 
             var comparer = Comparer<TResult>.Default;
-            var activeValueAccess = new object();
+            var synchronizedSource = source as ISynchronized;
             ReadOnlyDictionaryRangeActiveExpression<TKey, TValue, TResult> rangeActiveExpression;
             ActiveValue<TResult> activeValue = null;
             Action<TResult> setValue = null;
@@ -822,9 +790,8 @@ namespace Gear.ActiveQuery
                 rangeActiveExpression.Dispose();
             }
 
-            void valueAdded(object sender, NotifyDictionaryValueEventArgs<TKey, TResult> e)
-            {
-                lock (activeValueAccess)
+            void valueAdded(object sender, NotifyDictionaryValueEventArgs<TKey, TResult> e) =>
+                synchronizedSource.SequentialExecute(() =>
                 {
                     var added = e.Value;
                     if (activeValue.OperationFault != null || comparer.Compare(activeValue.Value, added) > 0)
@@ -832,12 +799,11 @@ namespace Gear.ActiveQuery
                         setOperationFault(null);
                         setValue(added);
                     }
-                }
-            }
+                });
 
-            void valueRemoved(object sender, NotifyDictionaryValueEventArgs<TKey, TResult> e)
-            {
-                lock (activeValueAccess)
+            void valueRemoved(object sender, NotifyDictionaryValueEventArgs<TKey, TResult> e) =>
+                synchronizedSource.SequentialExecute(() =>
+                {
                     if (comparer.Compare(activeValue.Value, e.Value) == 0)
                     {
                         try
@@ -851,35 +817,31 @@ namespace Gear.ActiveQuery
                             setOperationFault(ex);
                         }
                     }
-            }
+                });
 
-            void valueReplaced(object sender, NotifyDictionaryValueReplacedEventArgs<TKey, TResult> e)
-            {
-                lock (activeValueAccess)
+            void valueReplaced(object sender, NotifyDictionaryValueReplacedEventArgs<TKey, TResult> e) =>
+                synchronizedSource.SequentialExecute(() =>
                 {
                     var added = e.NewValue;
                     if (comparer.Compare(activeValue.Value, added) > 0)
                         setValue(added);
                     else if (comparer.Compare(activeValue.Value, e.OldValue) == 0)
                         setValue(rangeActiveExpression.GetResultsUnderLock().Select(kr => kr.result).Min());
-                }
-            }
+                });
 
-            void valueResultChanged(object sender, RangeActiveExpressionResultChangeEventArgs<TKey, TResult> e)
-            {
-                lock (activeValueAccess)
+            void valueResultChanged(object sender, RangeActiveExpressionResultChangeEventArgs<TKey, TResult> e) =>
+                synchronizedSource.SequentialExecute(() =>
                 {
                     var comparison = comparer.Compare(activeValue.Value, e.Result);
                     if (comparison > 0)
                         setValue(e.Result);
                     else if (comparison < 0)
                         setValue(rangeActiveExpression.GetResultsUnderLock().Select(er => er.result).Min());
-                }
-            }
+                });
 
-            void valuesAdded(object sender, NotifyDictionaryValuesEventArgs<TKey, TResult> e)
-            {
-                lock (activeValueAccess)
+            void valuesAdded(object sender, NotifyDictionaryValuesEventArgs<TKey, TResult> e) =>
+                synchronizedSource.SequentialExecute(() =>
+                {
                     if (e.KeyValuePairs.Count > 0)
                     {
                         var addedMin = e.KeyValuePairs.Select(kv => kv.Value).Min();
@@ -889,11 +851,11 @@ namespace Gear.ActiveQuery
                             setValue(addedMin);
                         }
                     }
-            }
+                });
 
-            void valuesRemoved(object sender, NotifyDictionaryValuesEventArgs<TKey, TResult> e)
-            {
-                lock (activeValueAccess)
+            void valuesRemoved(object sender, NotifyDictionaryValuesEventArgs<TKey, TResult> e) =>
+                synchronizedSource.SequentialExecute(() =>
+                {
                     if (e.KeyValuePairs.Count > 0)
                     {
                         var removedMin = e.KeyValuePairs.Select(kv => kv.Value).Min();
@@ -911,28 +873,25 @@ namespace Gear.ActiveQuery
                             }
                         }
                     }
-            }
+                });
 
-            rangeActiveExpression = RangeActiveExpression.Create(source, selector, selectorOptions);
-            return rangeActiveExpression.WithReadLock(() =>
+            return synchronizedSource.SequentialExecute(() =>
             {
-                lock (activeValueAccess)
-                {
-                    rangeActiveExpression.ValueAdded += valueAdded;
-                    rangeActiveExpression.ValueRemoved += valueRemoved;
-                    rangeActiveExpression.ValueReplaced += valueReplaced;
-                    rangeActiveExpression.ValueResultChanged += valueResultChanged;
-                    rangeActiveExpression.ValuesAdded += valuesAdded;
-                    rangeActiveExpression.ValuesRemoved += valuesRemoved;
+                rangeActiveExpression = RangeActiveExpression.Create(source, selector, selectorOptions);
+                rangeActiveExpression.ValueAdded += valueAdded;
+                rangeActiveExpression.ValueRemoved += valueRemoved;
+                rangeActiveExpression.ValueReplaced += valueReplaced;
+                rangeActiveExpression.ValueResultChanged += valueResultChanged;
+                rangeActiveExpression.ValuesAdded += valuesAdded;
+                rangeActiveExpression.ValuesRemoved += valuesRemoved;
 
-                    try
-                    {
-                        return activeValue = new ActiveValue<TResult>(rangeActiveExpression.GetResultsUnderLock().Select(kr => kr.result).Min(), out setValue, null, out setOperationFault, rangeActiveExpression, dispose);
-                    }
-                    catch (Exception ex)
-                    {
-                        return activeValue = new ActiveValue<TResult>(default, out setValue, ex, out setOperationFault, rangeActiveExpression, dispose);
-                    }
+                try
+                {
+                    return activeValue = new ActiveValue<TResult>(rangeActiveExpression.GetResults().Select(kr => kr.result).Min(), out setValue, null, out setOperationFault, rangeActiveExpression, dispose);
+                }
+                catch (Exception ex)
+                {
+                    return activeValue = new ActiveValue<TResult>(default, out setValue, ex, out setOperationFault, rangeActiveExpression, dispose);
                 }
             });
         }
@@ -945,29 +904,19 @@ namespace Gear.ActiveQuery
         {
             ActiveQueryOptions.Optimize(ref selector);
 
-            var synchronizableSource = source as ISynchronizable;
-            var rangeObservableCollectionAccess = new object();
+            var synchronizedSource = source as ISynchronized;
             var keyToIndex = source.CreateSimilarDictionary<TKey, TValue, int>();
             SynchronizedRangeObservableCollection<TResult> rangeObservableCollection = null;
 
-            void propertyChanged(object sender, PropertyChangedEventArgs e)
-            {
-                if (e.PropertyName == nameof(ISynchronizable.IsSynchronized))
-                    rangeObservableCollection.IsSynchronized = synchronizableSource.IsSynchronized;
-            }
-
-            void valueAdded(object sender, NotifyDictionaryValueEventArgs<TKey, TResult> e)
-            {
-                lock (rangeObservableCollectionAccess)
+            void valueAdded(object sender, NotifyDictionaryValueEventArgs<TKey, TResult> e) =>
+                synchronizedSource.SequentialExecute(() =>
                 {
                     keyToIndex.Add(e.Key, keyToIndex.Count);
                     rangeObservableCollection.Add(e.Value);
-                }
-            }
+                });
 
-            void valueRemoved(object sender, NotifyDictionaryValueEventArgs<TKey, TResult> e)
-            {
-                lock (rangeObservableCollectionAccess)
+            void valueRemoved(object sender, NotifyDictionaryValueEventArgs<TKey, TResult> e) =>
+                synchronizedSource.SequentialExecute(() =>
                 {
                     var key = e.Key;
                     var removingIndex = keyToIndex[key];
@@ -978,24 +927,14 @@ namespace Gear.ActiveQuery
                         if (index > removingIndex)
                             keyToIndex[key] = index - 1;
                     }
-                }
-            }
+                });
 
-            void valueReplaced(object sender, NotifyDictionaryValueReplacedEventArgs<TKey, TResult> e)
-            {
-                lock (rangeObservableCollectionAccess)
-                    rangeObservableCollection.Replace(keyToIndex[e.Key], e.NewValue);
-            }
+            void valueReplaced(object sender, NotifyDictionaryValueReplacedEventArgs<TKey, TResult> e) => synchronizedSource.SequentialExecute(() => rangeObservableCollection.Replace(keyToIndex[e.Key], e.NewValue));
 
-            void valueResultChanged(object sender, RangeActiveExpressionResultChangeEventArgs<TKey, TResult> e)
-            {
-                lock (rangeObservableCollectionAccess)
-                    rangeObservableCollection.Replace(keyToIndex[e.Element], e.Result);
-            }
+            void valueResultChanged(object sender, RangeActiveExpressionResultChangeEventArgs<TKey, TResult> e) => synchronizedSource.SequentialExecute(() => rangeObservableCollection.Replace(keyToIndex[e.Element], e.Result));
 
-            void valuesAdded(object sender, NotifyDictionaryValuesEventArgs<TKey, TResult> e)
-            {
-                lock (rangeObservableCollectionAccess)
+            void valuesAdded(object sender, NotifyDictionaryValuesEventArgs<TKey, TResult> e) =>
+                synchronizedSource.SequentialExecute(() =>
                 {
                     var lastIndex = keyToIndex.Count - 1;
                     rangeObservableCollection.AddRange(e.KeyValuePairs.Select((KeyValuePair<TKey, TResult> kv, int index) =>
@@ -1003,12 +942,10 @@ namespace Gear.ActiveQuery
                         keyToIndex.Add(kv.Key, lastIndex + index);
                         return kv.Value;
                     }));
-                }
-            }
+                });
 
-            void valuesRemoved(object sender, NotifyDictionaryValuesEventArgs<TKey, TResult> e)
-            {
-                lock (rangeObservableCollectionAccess)
+            void valuesRemoved(object sender, NotifyDictionaryValuesEventArgs<TKey, TResult> e) =>
+                synchronizedSource.SequentialExecute(() =>
                 {
                     var removingIndicies = new List<int>();
                     foreach (var kv in e.KeyValuePairs)
@@ -1046,42 +983,33 @@ namespace Gear.ActiveQuery
                     keyToIndex = source.CreateSimilarDictionary<TKey, TValue, int>();
                     foreach (var (key, index) in revisedKeyedIndicies.Select((kv, index) => (kv.Key, index)))
                         keyToIndex.Add(key, index);
-                }
-            }
+                });
 
-            var rangeActiveExpression = RangeActiveExpression.Create(source, selector, selectorOptions);
-            return rangeActiveExpression.WithReadLock(() =>
+            return synchronizedSource.SequentialExecute(() =>
             {
-                lock (rangeObservableCollectionAccess)
+                var rangeActiveExpression = RangeActiveExpression.Create(source, selector, selectorOptions);
+                rangeActiveExpression.ValueAdded += valueAdded;
+                rangeActiveExpression.ValueRemoved += valueRemoved;
+                rangeActiveExpression.ValueReplaced += valueReplaced;
+                rangeActiveExpression.ValueResultChanged += valueResultChanged;
+                rangeActiveExpression.ValuesAdded += valuesAdded;
+                rangeActiveExpression.ValuesRemoved += valuesRemoved;
+
+                rangeObservableCollection = new SynchronizedRangeObservableCollection<TResult>(rangeActiveExpression.GetResults().Select(((TKey key, TResult result) er, int index) =>
                 {
-                    rangeActiveExpression.ValueAdded += valueAdded;
-                    rangeActiveExpression.ValueRemoved += valueRemoved;
-                    rangeActiveExpression.ValueReplaced += valueReplaced;
-                    rangeActiveExpression.ValueResultChanged += valueResultChanged;
-                    rangeActiveExpression.ValuesAdded += valuesAdded;
-                    rangeActiveExpression.ValuesRemoved += valuesRemoved;
-                    if (synchronizableSource != null)
-                        synchronizableSource.PropertyChanged += propertyChanged;
-
-                    rangeObservableCollection = new SynchronizedRangeObservableCollection<TResult>(synchronizableSource?.SynchronizationContext, rangeActiveExpression.GetResultsUnderLock().Select(((TKey key, TResult result) er, int index) =>
-                    {
-                        keyToIndex.Add(er.key, index);
-                        return er.result;
-                    }), synchronizableSource?.IsSynchronized ?? false);
-                    return new ActiveEnumerable<TResult>(rangeObservableCollection, rangeActiveExpression, () =>
-                    {
-                        rangeActiveExpression.ValueAdded -= valueAdded;
-                        rangeActiveExpression.ValueRemoved -= valueRemoved;
-                        rangeActiveExpression.ValueReplaced -= valueReplaced;
-                        rangeActiveExpression.ValueResultChanged -= valueResultChanged;
-                        rangeActiveExpression.ValuesAdded -= valuesAdded;
-                        rangeActiveExpression.ValuesRemoved -= valuesRemoved;
-                        if (synchronizableSource != null)
-                            synchronizableSource.PropertyChanged -= propertyChanged;
-
-                        rangeActiveExpression.Dispose();
-                    });
-                }
+                    keyToIndex.Add(er.key, index);
+                    return er.result;
+                }));
+                return new ActiveEnumerable<TResult>(rangeObservableCollection, rangeActiveExpression, () =>
+                {
+                    rangeActiveExpression.ValueAdded -= valueAdded;
+                    rangeActiveExpression.ValueRemoved -= valueRemoved;
+                    rangeActiveExpression.ValueReplaced -= valueReplaced;
+                    rangeActiveExpression.ValueResultChanged -= valueResultChanged;
+                    rangeActiveExpression.ValuesAdded -= valuesAdded;
+                    rangeActiveExpression.ValuesRemoved -= valuesRemoved;
+                    rangeActiveExpression.Dispose();
+                });
             });
         }
 
@@ -1095,7 +1023,7 @@ namespace Gear.ActiveQuery
             var elementFaultChangeNotifier = source as INotifyElementFaultChanges;
             if (source is INotifyDictionaryChanged<TKey, TValue> changingSource)
             {
-                var activeValueAccess = new object();
+                var synchronizedSource = source as ISynchronized;
                 ActiveValue<KeyValuePair<TKey, TValue>> activeValue = null;
                 Action<KeyValuePair<TKey, TValue>> setValue = null;
                 Action<Exception> setOperationFault = null;
@@ -1110,9 +1038,8 @@ namespace Gear.ActiveQuery
                     changingSource.ValuesRemoved += valuesChanged;
                 }
 
-                void valuesChanged(object sender, EventArgs e)
-                {
-                    lock (activeValueAccess)
+                void valuesChanged(object sender, EventArgs e) =>
+                    synchronizedSource.SequentialExecute(() =>
                     {
                         if (source.Count == 1)
                         {
@@ -1130,16 +1057,11 @@ namespace Gear.ActiveQuery
                                 setOperationFault(ExceptionHelper.SequenceContainsMoreThanOneElement);
                             setValue(default);
                         }
-                    }
-                }
+                    });
 
-                void valueReplaced(object sender, NotifyDictionaryValueReplacedEventArgs<TKey, TValue> e)
-                {
-                    lock (activeValueAccess)
-                        setValue(new KeyValuePair<TKey, TValue>(e.Key, e.NewValue));
-                }
+                void valueReplaced(object sender, NotifyDictionaryValueReplacedEventArgs<TKey, TValue> e) => synchronizedSource.SequentialExecute(() => setValue(new KeyValuePair<TKey, TValue>(e.Key, e.NewValue)));
 
-                lock (activeValueAccess)
+                return synchronizedSource.SequentialExecute(() =>
                 {
                     changingSource.ValueAdded += valuesChanged;
                     changingSource.ValueRemoved += valuesChanged;
@@ -1155,7 +1077,7 @@ namespace Gear.ActiveQuery
                     {
                         return activeValue = new ActiveValue<KeyValuePair<TKey, TValue>>(default, out setValue, ex, out setOperationFault, elementFaultChangeNotifier, dispose);
                     }
-                }
+                });
             }
             try
             {
@@ -1177,7 +1099,7 @@ namespace Gear.ActiveQuery
             var elementFaultChangeNotifier = source as INotifyElementFaultChanges;
             if (source is INotifyDictionaryChanged<TKey, TValue> changingSource)
             {
-                var activeValueAccess = new object();
+                var synchronizedSource = source as ISynchronized;
                 ActiveValue<KeyValuePair<TKey, TValue>> activeValue = null;
                 Action<KeyValuePair<TKey, TValue>> setValue = null;
                 Action<Exception> setOperationFault = null;
@@ -1192,9 +1114,8 @@ namespace Gear.ActiveQuery
                     changingSource.ValuesRemoved += valuesChanged;
                 }
 
-                void valuesChanged(object sender, EventArgs e)
-                {
-                    lock (activeValueAccess)
+                void valuesChanged(object sender, EventArgs e) =>
+                    synchronizedSource.SequentialExecute(() =>
                     {
                         switch (source.Count)
                         {
@@ -1216,16 +1137,11 @@ namespace Gear.ActiveQuery
                                 setValue(default);
                                 break;
                         }
-                    }
-                }
+                    });
 
-                void valueReplaced(object sender, NotifyDictionaryValueReplacedEventArgs<TKey, TValue> e)
-                {
-                    lock (activeValueAccess)
-                        setValue(new KeyValuePair<TKey, TValue>(e.Key, e.NewValue));
-                }
+                void valueReplaced(object sender, NotifyDictionaryValueReplacedEventArgs<TKey, TValue> e) => synchronizedSource.SequentialExecute(() => setValue(new KeyValuePair<TKey, TValue>(e.Key, e.NewValue)));
 
-                lock (activeValueAccess)
+                return synchronizedSource.SequentialExecute(() =>
                 {
                     changingSource.ValueAdded += valuesChanged;
                     changingSource.ValueRemoved += valuesChanged;
@@ -1242,7 +1158,7 @@ namespace Gear.ActiveQuery
                     {
                         return activeValue = new ActiveValue<KeyValuePair<TKey, TValue>>(default, out setValue, ex, out setOperationFault, elementFaultChangeNotifier, dispose);
                     }
-                }
+                });
             }
             try
             {
@@ -1254,7 +1170,7 @@ namespace Gear.ActiveQuery
             }
         }
 
-        #endregion Single
+        #endregion SingleOrDefault
 
         #region Sum
 
@@ -1263,83 +1179,53 @@ namespace Gear.ActiveQuery
             ActiveQueryOptions.Optimize(ref selector);
 
             var operations = new GenericOperations<TResult>();
-            var activeValueAccess = new object();
+            var synchronizedSource = source as ISynchronized;
             ActiveValue<TResult> activeValue = null;
             Action<TResult> setValue = null;
             var valuesChanging = new Dictionary<TKey, TResult>();
 
-            void valueAdded(object sender, NotifyDictionaryValueEventArgs<TKey, TResult> e)
-            {
-                lock (activeValueAccess)
-                    setValue(operations.Add(activeValue.Value, e.Value));
-            }
+            void valueAdded(object sender, NotifyDictionaryValueEventArgs<TKey, TResult> e) => synchronizedSource.SequentialExecute(() => setValue(operations.Add(activeValue.Value, e.Value)));
 
-            void valueRemoved(object sender, NotifyDictionaryValueEventArgs<TKey, TResult> e)
-            {
-                lock (activeValueAccess)
-                    setValue(operations.Subtract(activeValue.Value, e.Value));
-            }
+            void valueRemoved(object sender, NotifyDictionaryValueEventArgs<TKey, TResult> e) => synchronizedSource.SequentialExecute(() => setValue(operations.Subtract(activeValue.Value, e.Value)));
 
-            void valueReplaced(object sender, NotifyDictionaryValueReplacedEventArgs<TKey, TResult> e)
-            {
-                lock (activeValueAccess)
-                    setValue(operations.Add(activeValue.Value, operations.Subtract(e.NewValue, e.OldValue)));
-            }
+            void valueReplaced(object sender, NotifyDictionaryValueReplacedEventArgs<TKey, TResult> e) => synchronizedSource.SequentialExecute(() => setValue(operations.Add(activeValue.Value, operations.Subtract(e.NewValue, e.OldValue))));
 
-            void valueResultChanged(object sender, RangeActiveExpressionResultChangeEventArgs<TKey, TResult> e)
-            {
-                lock (activeValueAccess)
+            void valueResultChanged(object sender, RangeActiveExpressionResultChangeEventArgs<TKey, TResult> e) =>
+                synchronizedSource.SequentialExecute(() =>
                 {
                     var key = e.Element;
                     setValue(operations.Add(activeValue.Value, operations.Subtract(e.Result, valuesChanging[key])));
                     valuesChanging.Remove(key);
-                }
-            }
+                });
 
-            void valueResultChanging(object sender, RangeActiveExpressionResultChangeEventArgs<TKey, TResult> e)
-            {
-                lock (activeValueAccess)
-                    valuesChanging.Add(e.Element, e.Result);
-            }
+            void valueResultChanging(object sender, RangeActiveExpressionResultChangeEventArgs<TKey, TResult> e) => synchronizedSource.SequentialExecute(() => valuesChanging.Add(e.Element, e.Result));
 
-            void valuesAdded(object sender, NotifyDictionaryValuesEventArgs<TKey, TResult> e)
-            {
-                lock (activeValueAccess)
-                    setValue(new TResult[] { activeValue.Value }.Concat(e.KeyValuePairs.Select(kv => kv.Value)).Aggregate(operations.Add));
-            }
+            void valuesAdded(object sender, NotifyDictionaryValuesEventArgs<TKey, TResult> e) => synchronizedSource.SequentialExecute(() => setValue(new TResult[] { activeValue.Value }.Concat(e.KeyValuePairs.Select(kv => kv.Value)).Aggregate(operations.Add)));
 
-            void valuesRemoved(object sender, NotifyDictionaryValuesEventArgs<TKey, TResult> e)
-            {
-                lock (activeValueAccess)
-                    setValue(new TResult[] { activeValue.Value }.Concat(e.KeyValuePairs.Select(kv => kv.Value)).Aggregate(operations.Subtract));
-            }
+            void valuesRemoved(object sender, NotifyDictionaryValuesEventArgs<TKey, TResult> e) => synchronizedSource.SequentialExecute(() => setValue(new TResult[] { activeValue.Value }.Concat(e.KeyValuePairs.Select(kv => kv.Value)).Aggregate(operations.Subtract)));
 
-            var rangeActiveExpression = RangeActiveExpression.Create(source, selector, selectorOptions);
-            return rangeActiveExpression.WithReadLock(() =>
+            return synchronizedSource.SequentialExecute(() =>
             {
-                lock (activeValueAccess)
+                var rangeActiveExpression = RangeActiveExpression.Create(source, selector, selectorOptions);
+                rangeActiveExpression.ValueAdded += valueAdded;
+                rangeActiveExpression.ValueRemoved += valueRemoved;
+                rangeActiveExpression.ValueReplaced += valueReplaced;
+                rangeActiveExpression.ValueResultChanged += valueResultChanged;
+                rangeActiveExpression.ValueResultChanging += valueResultChanging;
+                rangeActiveExpression.ValuesAdded += valuesAdded;
+                rangeActiveExpression.ValuesRemoved += valuesRemoved;
+
+                return activeValue = new ActiveValue<TResult>(rangeActiveExpression.GetResults().Select(kr => kr.result).Aggregate((a, b) => operations.Add(a, b)), out setValue, null, rangeActiveExpression, () =>
                 {
-                    rangeActiveExpression.ValueAdded += valueAdded;
-                    rangeActiveExpression.ValueRemoved += valueRemoved;
-                    rangeActiveExpression.ValueReplaced += valueReplaced;
-                    rangeActiveExpression.ValueResultChanged += valueResultChanged;
-                    rangeActiveExpression.ValueResultChanging += valueResultChanging;
-                    rangeActiveExpression.ValuesAdded += valuesAdded;
-                    rangeActiveExpression.ValuesRemoved += valuesRemoved;
-
-                    return activeValue = new ActiveValue<TResult>(rangeActiveExpression.GetResultsUnderLock().Select(kr => kr.result).Aggregate((a, b) => operations.Add(a, b)), out setValue, null, rangeActiveExpression, () =>
-                    {
-                        rangeActiveExpression.ValueAdded -= valueAdded;
-                        rangeActiveExpression.ValueRemoved -= valueRemoved;
-                        rangeActiveExpression.ValueReplaced -= valueReplaced;
-                        rangeActiveExpression.ValueResultChanged -= valueResultChanged;
-                        rangeActiveExpression.ValueResultChanging -= valueResultChanging;
-                        rangeActiveExpression.ValuesAdded -= valuesAdded;
-                        rangeActiveExpression.ValuesRemoved -= valuesRemoved;
-
-                        rangeActiveExpression.Dispose();
-                    });
-                }
+                    rangeActiveExpression.ValueAdded -= valueAdded;
+                    rangeActiveExpression.ValueRemoved -= valueRemoved;
+                    rangeActiveExpression.ValueReplaced -= valueReplaced;
+                    rangeActiveExpression.ValueResultChanged -= valueResultChanged;
+                    rangeActiveExpression.ValueResultChanging -= valueResultChanging;
+                    rangeActiveExpression.ValuesAdded -= valuesAdded;
+                    rangeActiveExpression.ValuesRemoved -= valuesRemoved;
+                    rangeActiveExpression.Dispose();
+                });
             });
         }
 
@@ -1359,7 +1245,7 @@ namespace Gear.ActiveQuery
             var elementFaultChangeNotifier = source as INotifyElementFaultChanges;
             if (source is INotifyDictionaryChanged<TKey, TValue> changingSource)
             {
-                var activeValueAccess = new object();
+                var synchronizedSource = source as ISynchronized;
                 Action<TValue> setValue = null;
                 Action<Exception> setOperationFault = null;
 
@@ -1382,36 +1268,35 @@ namespace Gear.ActiveQuery
                     changingSource.ValuesRemoved -= valuesRemoved;
                 }
 
-                void valueAdded(object sender, NotifyDictionaryValueEventArgs<TKey, TValue> e)
-                {
-                    lock (activeValueAccess)
+                void valueAdded(object sender, NotifyDictionaryValueEventArgs<TKey, TValue> e) =>
+                    synchronizedSource.SequentialExecute(() =>
+                    {
                         if (equalsKey(e.Key))
                         {
                             setOperationFault(null);
                             setValue(e.Value);
                         }
-                }
+                    });
 
-                void valueRemoved(object sender, NotifyDictionaryValueEventArgs<TKey, TValue> e)
-                {
-                    lock (activeValueAccess)
+                void valueRemoved(object sender, NotifyDictionaryValueEventArgs<TKey, TValue> e) =>
+                    synchronizedSource.SequentialExecute(() =>
+                    {
                         if (equalsKey(e.Key))
                         {
                             setOperationFault(ExceptionHelper.KeyNotFound);
                             setValue(default);
                         }
-                }
+                    });
 
-                void valueReplaced(object sender, NotifyDictionaryValueReplacedEventArgs<TKey, TValue> e)
-                {
-                    lock (activeValueAccess)
+                void valueReplaced(object sender, NotifyDictionaryValueReplacedEventArgs<TKey, TValue> e) =>
+                    synchronizedSource.SequentialExecute(() =>
+                    {
                         if (equalsKey(e.Key))
                             setValue(e.NewValue);
-                }
+                    });
 
-                void valuesAdded(object sender, NotifyDictionaryValuesEventArgs<TKey, TValue> e)
-                {
-                    lock (activeValueAccess)
+                void valuesAdded(object sender, NotifyDictionaryValuesEventArgs<TKey, TValue> e) =>
+                    synchronizedSource.SequentialExecute(() =>
                     {
                         var matchingValues = e.KeyValuePairs.Where(kv => equalsKey(kv.Key)).Select(kv => kv.Value).ToList();
                         if (matchingValues.Count > 0)
@@ -1419,20 +1304,19 @@ namespace Gear.ActiveQuery
                             setOperationFault(null);
                             setValue(matchingValues[0]);
                         }
-                    }
-                }
+                    });
 
-                void valuesRemoved(object sender, NotifyDictionaryValuesEventArgs<TKey, TValue> e)
-                {
-                    lock (activeValueAccess)
+                void valuesRemoved(object sender, NotifyDictionaryValuesEventArgs<TKey, TValue> e) =>
+                    synchronizedSource.SequentialExecute(() =>
+                    {
                         if (e.KeyValuePairs.Any(kv => equalsKey(kv.Key)))
                         {
                             setOperationFault(ExceptionHelper.KeyNotFound);
                             setValue(default);
                         }
-                }
+                    });
 
-                lock (activeValueAccess)
+                return synchronizedSource.SequentialExecute(() =>
                 {
                     changingSource.ValueAdded += valueAdded;
                     changingSource.ValueRemoved += valueRemoved;
@@ -1447,7 +1331,7 @@ namespace Gear.ActiveQuery
                     {
                         return new ActiveValue<TValue>(default, out setValue, ex, out setOperationFault, elementFaultChangeNotifier, dispose);
                     }
-                }
+                });
             }
             try
             {
@@ -1468,7 +1352,7 @@ namespace Gear.ActiveQuery
             var elementFaultChangeNotifier = source as INotifyElementFaultChanges;
             if (source is INotifyDictionaryChanged<TKey, TValue> changingSource)
             {
-                var activeValueAccess = new object();
+                var synchronizedSource = source as ISynchronized;
                 Action<TValue> setValue = null;
 
                 Func<TKey, bool> equalsKey;
@@ -1490,45 +1374,43 @@ namespace Gear.ActiveQuery
                     changingSource.ValuesRemoved -= valuesRemoved;
                 }
 
-                void valueAdded(object sender, NotifyDictionaryValueEventArgs<TKey, TValue> e)
-                {
-                    lock (activeValueAccess)
+                void valueAdded(object sender, NotifyDictionaryValueEventArgs<TKey, TValue> e) =>
+                    synchronizedSource.SequentialExecute(() =>
+                    {
                         if (equalsKey(e.Key))
                             setValue(e.Value);
-                }
+                    });
 
-                void valueRemoved(object sender, NotifyDictionaryValueEventArgs<TKey, TValue> e)
-                {
-                    lock (activeValueAccess)
+                void valueRemoved(object sender, NotifyDictionaryValueEventArgs<TKey, TValue> e) =>
+                    synchronizedSource.SequentialExecute(() =>
+                    {
                         if (equalsKey(e.Key))
                             setValue(default);
-                }
+                    });
 
-                void valueReplaced(object sender, NotifyDictionaryValueReplacedEventArgs<TKey, TValue> e)
-                {
-                    lock (activeValueAccess)
+                void valueReplaced(object sender, NotifyDictionaryValueReplacedEventArgs<TKey, TValue> e) =>
+                    synchronizedSource.SequentialExecute(() =>
+                    {
                         if (equalsKey(e.Key))
                             setValue(e.NewValue);
-                }
+                    });
 
-                void valuesAdded(object sender, NotifyDictionaryValuesEventArgs<TKey, TValue> e)
-                {
-                    lock (activeValueAccess)
+                void valuesAdded(object sender, NotifyDictionaryValuesEventArgs<TKey, TValue> e) =>
+                    synchronizedSource.SequentialExecute(() =>
                     {
                         var matchingValues = e.KeyValuePairs.Where(kv => equalsKey(kv.Key)).Select(kv => kv.Value).ToList();
                         if (matchingValues.Count > 0)
                             setValue(matchingValues[0]);
-                    }
-                }
+                    });
 
-                void valuesRemoved(object sender, NotifyDictionaryValuesEventArgs<TKey, TValue> e)
-                {
-                    lock (activeValueAccess)
+                void valuesRemoved(object sender, NotifyDictionaryValuesEventArgs<TKey, TValue> e) =>
+                    synchronizedSource.SequentialExecute(() =>
+                    {
                         if (e.KeyValuePairs.Any(kv => equalsKey(kv.Key)))
                             setValue(default);
-                }
+                    });
 
-                lock (activeValueAccess)
+                return synchronizedSource.SequentialExecute(() =>
                 {
                     changingSource.ValueAdded += valueAdded;
                     changingSource.ValueRemoved += valueRemoved;
@@ -1536,13 +1418,13 @@ namespace Gear.ActiveQuery
                     changingSource.ValuesAdded += valuesAdded;
                     changingSource.ValuesRemoved += valuesRemoved;
                     return new ActiveValue<TValue>(source.TryGetValue(key, out var value) ? value : default, out setValue, elementFaultChangeNotifier: elementFaultChangeNotifier, onDispose: dispose);
-                }
+                });
             }
             else
                 return new ActiveValue<TValue>(source.TryGetValue(key, out var value) ? value : default, elementFaultChangeNotifier: elementFaultChangeNotifier);
         }
 
-        #endregion ValueFor
+        #endregion ValueForOrDefault
 
         #region Where
 
@@ -1550,41 +1432,29 @@ namespace Gear.ActiveQuery
         {
             ActiveQueryOptions.Optimize(ref predicate);
 
-            var synchronizableSource = source as ISynchronizable;
-            var rangeObservableDictionaryAccess = new object();
-            ISynchronizableObservableRangeDictionary<TKey, TValue> rangeObservableDictionary = null;
+            var synchronizedSource = source as ISynchronized;
+            ISynchronizedObservableRangeDictionary<TKey, TValue> rangeObservableDictionary = null;
 
-            void propertyChanged(object sender, PropertyChangedEventArgs e)
-            {
-                if (e.PropertyName == nameof(ISynchronizable.IsSynchronized))
+            void valueAdded(object sender, NotifyDictionaryValueEventArgs<TKey, bool> e) =>
+                synchronizedSource.SequentialExecute(() =>
                 {
-                    if (rangeObservableDictionary is SynchronizedObservableSortedDictionary<TKey, TValue> sorted)
-                        sorted.IsSynchronized = synchronizableSource.IsSynchronized;
-                    else
-                        ((SynchronizedObservableDictionary<TKey, TValue>)rangeObservableDictionary).IsSynchronized = synchronizableSource.IsSynchronized;
-                }
-            }
-
-            void valueAdded(object sender, NotifyDictionaryValueEventArgs<TKey, bool> e)
-            {
-                lock (rangeObservableDictionaryAccess)
                     if (e.Value)
                     {
                         var key = e.Key;
                         rangeObservableDictionary.Add(key, source[key]);
                     }
-            }
+                });
 
-            void valueRemoved(object sender, NotifyDictionaryValueEventArgs<TKey, bool> e)
-            {
-                lock (rangeObservableDictionaryAccess)
+            void valueRemoved(object sender, NotifyDictionaryValueEventArgs<TKey, bool> e) =>
+                synchronizedSource.SequentialExecute(() =>
+                {
                     if (e.Value)
                         rangeObservableDictionary.Remove(e.Key);
-            }
+                });
 
-            void valueReplaced(object sender, NotifyDictionaryValueReplacedEventArgs<TKey, bool> e)
-            {
-                lock (rangeObservableDictionaryAccess)
+            void valueReplaced(object sender, NotifyDictionaryValueReplacedEventArgs<TKey, bool> e) =>
+                synchronizedSource.SequentialExecute(() =>
+                {
                     if (e.OldValue)
                     {
                         var key = e.Key;
@@ -1594,66 +1464,49 @@ namespace Gear.ActiveQuery
                         else
                             rangeObservableDictionary.Remove(key);
                     }
-            }
+                });
 
-            void valueResultChanged(object sender, RangeActiveExpressionResultChangeEventArgs<TKey, bool> e)
-            {
-                lock (rangeObservableDictionaryAccess)
+            void valueResultChanged(object sender, RangeActiveExpressionResultChangeEventArgs<TKey, bool> e) =>
+                synchronizedSource.SequentialExecute(() =>
                 {
                     var key = e.Element;
                     if (e.Result)
                         rangeObservableDictionary.Add(key, source[key]);
                     else
                         rangeObservableDictionary.Remove(key);
-                }
-            }
+                });
 
-            void valuesAdded(object sender, NotifyDictionaryValuesEventArgs<TKey, bool> e)
-            {
-                lock (rangeObservableDictionaryAccess)
-                    rangeObservableDictionary.AddRange(e.KeyValuePairs.Where(kv => kv.Value).Select(kv =>
-                    {
-                        var key = kv.Key;
-                        return new KeyValuePair<TKey, TValue>(key, source[key]);
-                    }));
-            }
-
-            void valuesRemoved(object sender, NotifyDictionaryValuesEventArgs<TKey, bool> e)
-            {
-                lock (rangeObservableDictionaryAccess)
-                    rangeObservableDictionary.RemoveRange(e.KeyValuePairs.Where(kv => kv.Value).Select(kv => kv.Key));
-            }
-
-            var rangeActiveExpression = RangeActiveExpression.Create(source, predicate, predicateOptions);
-            return rangeActiveExpression.WithReadLock(() =>
-            {
-                lock (rangeObservableDictionaryAccess)
+            void valuesAdded(object sender, NotifyDictionaryValuesEventArgs<TKey, bool> e) =>
+                synchronizedSource.SequentialExecute(() => rangeObservableDictionary.AddRange(e.KeyValuePairs.Where(kv => kv.Value).Select(kv =>
                 {
-                    rangeActiveExpression.ValueAdded += valueAdded;
-                    rangeActiveExpression.ValueRemoved += valueRemoved;
-                    rangeActiveExpression.ValueReplaced += valueReplaced;
-                    rangeActiveExpression.ValueResultChanged += valueResultChanged;
-                    rangeActiveExpression.ValuesAdded += valuesAdded;
-                    rangeActiveExpression.ValuesRemoved += valuesRemoved;
-                    if (synchronizableSource != null)
-                        synchronizableSource.PropertyChanged += propertyChanged;
+                    var key = kv.Key;
+                    return new KeyValuePair<TKey, TValue>(key, source[key]);
+                })));
 
-                    rangeObservableDictionary = source.CreateSimilarSynchronizedObservableDictionary(synchronizableSource?.SynchronizationContext, synchronizableSource?.IsSynchronized ?? false);
-                    rangeObservableDictionary.AddRange(rangeActiveExpression.GetResultsUnderLock().Where(r => r.result).Select(r => new KeyValuePair<TKey, TValue>(r.key, source[r.key])));
-                    return new ActiveLookup<TKey, TValue>(rangeObservableDictionary, rangeActiveExpression, () =>
-                    {
-                        rangeActiveExpression.ValueAdded -= valueAdded;
-                        rangeActiveExpression.ValueRemoved -= valueRemoved;
-                        rangeActiveExpression.ValueReplaced -= valueReplaced;
-                        rangeActiveExpression.ValueResultChanged -= valueResultChanged;
-                        rangeActiveExpression.ValuesAdded -= valuesAdded;
-                        rangeActiveExpression.ValuesRemoved -= valuesRemoved;
-                        if (synchronizableSource != null)
-                            synchronizableSource.PropertyChanged -= propertyChanged;
+            void valuesRemoved(object sender, NotifyDictionaryValuesEventArgs<TKey, bool> e) => synchronizedSource.SequentialExecute(() => rangeObservableDictionary.RemoveRange(e.KeyValuePairs.Where(kv => kv.Value).Select(kv => kv.Key)));
 
-                        rangeActiveExpression.Dispose();
-                    });
-                }
+            return synchronizedSource.SequentialExecute(() =>
+            {
+                var rangeActiveExpression = RangeActiveExpression.Create(source, predicate, predicateOptions);
+                rangeActiveExpression.ValueAdded += valueAdded;
+                rangeActiveExpression.ValueRemoved += valueRemoved;
+                rangeActiveExpression.ValueReplaced += valueReplaced;
+                rangeActiveExpression.ValueResultChanged += valueResultChanged;
+                rangeActiveExpression.ValuesAdded += valuesAdded;
+                rangeActiveExpression.ValuesRemoved += valuesRemoved;
+
+                rangeObservableDictionary = source.CreateSimilarSynchronizedObservableDictionary(SynchronizationContext.Current);
+                rangeObservableDictionary.AddRange(rangeActiveExpression.GetResults().Where(r => r.result).Select(r => new KeyValuePair<TKey, TValue>(r.key, source[r.key])));
+                return new ActiveLookup<TKey, TValue>(rangeObservableDictionary, rangeActiveExpression, () =>
+                {
+                    rangeActiveExpression.ValueAdded -= valueAdded;
+                    rangeActiveExpression.ValueRemoved -= valueRemoved;
+                    rangeActiveExpression.ValueReplaced -= valueReplaced;
+                    rangeActiveExpression.ValueResultChanged -= valueResultChanged;
+                    rangeActiveExpression.ValuesAdded -= valuesAdded;
+                    rangeActiveExpression.ValuesRemoved -= valuesRemoved;
+                    rangeActiveExpression.Dispose();
+                });
             });
         }
 

@@ -25,12 +25,6 @@ namespace Gear.ActiveQuery.MSTest.Enumerable
                 Assert.AreEqual(10, query.Count);
                 numbers.Reset(System.Linq.Enumerable.Range(0, 5).SelectMany(i => i.Repeat(2)));
                 Assert.AreEqual(5, query.Count);
-                Assert.IsTrue(numbers.IsSynchronized);
-                Assert.IsTrue(query.IsSynchronized);
-                numbers.IsSynchronized = false;
-                Assert.IsFalse(query.IsSynchronized);
-                numbers.IsSynchronized = true;
-                Assert.IsTrue(query.IsSynchronized);
             }
         }
     }

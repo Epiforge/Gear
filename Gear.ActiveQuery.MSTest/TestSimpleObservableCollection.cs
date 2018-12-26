@@ -7,7 +7,7 @@ using System.Threading;
 
 namespace Gear.ActiveQuery.MSTest
 {
-    public class TestSimpleObservableCollection<T> : PropertyChangeNotifier, IEnumerable<T>, INotifyCollectionChanged, ISynchronizable
+    public class TestSimpleObservableCollection<T> : PropertyChangeNotifier, IEnumerable<T>, INotifyCollectionChanged, ISynchronized
     {
         public TestSimpleObservableCollection(SynchronizationContext synchronizationContext, ObservableCollection<T> collection)
         {

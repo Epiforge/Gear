@@ -379,19 +379,6 @@ namespace Gear.ActiveQuery
 
         void SourceElementFaultChanging(object sender, ElementFaultChangeEventArgs e) => ElementFaultChanging?.Invoke(sender, e);
 
-        internal T WithReadLock<T>(Func<T> func)
-        {
-            activeExpressionsAccess.EnterReadLock();
-            try
-            {
-                return func();
-            }
-            finally
-            {
-                activeExpressionsAccess.ExitReadLock();
-            }
-        }
-
         public int Count
         {
             get
@@ -778,19 +765,6 @@ namespace Gear.ActiveQuery
         void SourceElementFaultChanged(object sender, ElementFaultChangeEventArgs e) => ElementFaultChanged?.Invoke(sender, e);
 
         void SourceElementFaultChanging(object sender, ElementFaultChangeEventArgs e) => ElementFaultChanging?.Invoke(sender, e);
-
-        internal T WithReadLock<T>(Func<T> func)
-        {
-            activeExpressionsAccess.EnterReadLock();
-            try
-            {
-                return func();
-            }
-            finally
-            {
-                activeExpressionsAccess.ExitReadLock();
-            }
-        }
 
         public int Count
         {

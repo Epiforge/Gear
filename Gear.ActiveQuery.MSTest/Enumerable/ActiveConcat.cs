@@ -107,15 +107,6 @@ namespace Gear.ActiveQuery.MSTest.Enumerable
                 Assert.AreEqual(13, query.Count);
                 right.Reset(System.Linq.Enumerable.Empty<TestPerson>());
                 Assert.AreEqual(0, query.Count);
-                Assert.IsTrue(left.IsSynchronized);
-                Assert.IsTrue(right.IsSynchronized);
-                Assert.IsTrue(query.IsSynchronized);
-                left.IsSynchronized = false;
-                Assert.IsTrue(query.IsSynchronized);
-                right.IsSynchronized = false;
-                Assert.IsFalse(query.IsSynchronized);
-                left.IsSynchronized = true;
-                Assert.IsTrue(query.IsSynchronized);
             }
         }
     }

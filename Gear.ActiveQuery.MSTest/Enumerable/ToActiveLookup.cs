@@ -18,7 +18,7 @@ namespace Gear.ActiveQuery.MSTest.Enumerable
         public void NullKeys()
         {
             var john = new TestPerson(null);
-            var people = new SynchronizedRangeObservableCollection<TestPerson>(null);
+            var people = new SynchronizedRangeObservableCollection<TestPerson>();
             using (var query = people.ToActiveLookup(p => new KeyValuePair<string, TestPerson>(p.Name, p)))
             {
                 Assert.IsNull(query.OperationFault);
@@ -41,7 +41,6 @@ namespace Gear.ActiveQuery.MSTest.Enumerable
                 var people = TestPerson.CreatePeople();
                 using (var query = people.ToActiveLookup(p => new KeyValuePair<string, string>(p.Name.Substring(0, 3), p.Name.Substring(3)), indexingStategy: indexingStrategy))
                 {
-                    people.IsSynchronized = false;
                     Assert.IsNull(query.OperationFault);
                     Assert.AreEqual(string.Empty, query["Ben"]);
                     people[6].Name = "Benjamin";

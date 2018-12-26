@@ -68,17 +68,5 @@ namespace Gear.ActiveQuery.MSTest.Enumerable
             }
             Assert.IsTrue(new int[] { 6, 5, 5, 3, 2 }.SequenceEqual(counts));
         }
-
-        [TestMethod]
-        public void IsSynchronizedToggled()
-        {
-            var people = TestPerson.CreatePeople();
-            using (var query = people.ActiveWhere(p => p.Name.Length == 5))
-            {
-                Assert.IsTrue(query.IsSynchronized);
-                people.IsSynchronized = false;
-                Assert.IsFalse(query.IsSynchronized);
-            }
-        }
     }
 }

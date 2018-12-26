@@ -22,17 +22,12 @@ namespace Gear.ActiveQuery
 
             var readOnlySource = source as IReadOnlyCollection<TSource>;
             var changeNotifyingSource = source as INotifyCollectionChanged;
-            var activeValueAccess = new object();
             ActiveEnumerable<TSource> where;
             Action<bool> setValue = null;
 
-            void collectionChanged(object sender, NotifyCollectionChangedEventArgs e)
-            {
-                lock (activeValueAccess)
-                    setValue(where.Count == (readOnlySource?.Count ?? source.Count()));
-            }
+            void collectionChanged(object sender, NotifyCollectionChangedEventArgs e) => setValue(where.Count == (readOnlySource?.Count ?? source.Count()));
 
-            lock (activeValueAccess)
+            return (source as ISynchronized).SequentialExecute(() =>
             {
                 where = ActiveWhere(source, predicate, predicateOptions);
                 where.CollectionChanged += collectionChanged;
@@ -46,7 +41,7 @@ namespace Gear.ActiveQuery
                         changeNotifyingSource.CollectionChanged -= collectionChanged;
                     where.Dispose();
                 });
-            }
+            });
         }
 
         #endregion All
@@ -58,20 +53,16 @@ namespace Gear.ActiveQuery
             var elementFaultChangeNotifier = source as INotifyElementFaultChanges;
             if (source is INotifyCollectionChanged changeNotifyingSource)
             {
-                var activeValueAccess = new object();
+                var synchronizedSource = source as ISynchronized;
                 Action<bool> setValue = null;
 
-                void sourceCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
-                {
-                    lock (activeValueAccess)
-                        setValue(source.Cast<object>().Any());
-                }
+                void sourceCollectionChanged(object sender, NotifyCollectionChangedEventArgs e) => synchronizedSource.SequentialExecute(() => setValue(source.Cast<object>().Any()));
 
-                lock (activeValueAccess)
+                return synchronizedSource.SequentialExecute(() =>
                 {
                     changeNotifyingSource.CollectionChanged += sourceCollectionChanged;
                     return new ActiveValue<bool>(source.Cast<object>().Any(), out setValue, elementFaultChangeNotifier: elementFaultChangeNotifier, onDispose: () => changeNotifyingSource.CollectionChanged -= sourceCollectionChanged);
-                }
+                });
             }
             try
             {
@@ -87,17 +78,12 @@ namespace Gear.ActiveQuery
         {
             ActiveQueryOptions.Optimize(ref predicate);
 
-            var activeValueAccess = new object();
             ActiveEnumerable<TSource> where;
             Action<bool> setValue = null;
 
-            void collectionChanged(object sender, NotifyCollectionChangedEventArgs e)
-            {
-                lock (activeValueAccess)
-                    setValue(where.Count > 0);
-            }
+            void collectionChanged(object sender, NotifyCollectionChangedEventArgs e) => setValue(where.Count > 0);
 
-            lock (activeValueAccess)
+            return (source as ISynchronized).SequentialExecute(() =>
             {
                 where = ActiveWhere(source, predicate, predicateOptions);
                 where.CollectionChanged += collectionChanged;
@@ -107,7 +93,7 @@ namespace Gear.ActiveQuery
                     where.CollectionChanged -= collectionChanged;
                     where.Dispose();
                 });
-            }
+            });
         }
 
         #endregion Any
@@ -122,18 +108,17 @@ namespace Gear.ActiveQuery
             ActiveQueryOptions.Optimize(ref selector);
 
             var readOnlyCollection = source as IReadOnlyCollection<TSource>;
+            var synchronizedSource = source as ISynchronized;
             var convertCount = CountConversion.GetConverter(typeof(TResult));
             var operations = new GenericOperations<TResult>();
-            var activeValueAccess = new object();
             ActiveValue<TResult> sum;
             Action<TResult> setValue = null;
             Action<Exception> setOperationFault = null;
 
             int count() => readOnlyCollection?.Count ?? source.Count();
 
-            void propertyChanged(object sender, PropertyChangedEventArgs e)
-            {
-                lock (activeValueAccess)
+            void propertyChanged(object sender, PropertyChangedEventArgs e) =>
+                synchronizedSource.SequentialExecute(() =>
                 {
                     if (e.PropertyName == nameof(ActiveValue<TResult>.Value))
                     {
@@ -149,10 +134,9 @@ namespace Gear.ActiveQuery
                             setValue(operations.Divide(sum.Value, (TResult)convertCount(currentCount)));
                         }
                     }
-                }
-            }
+                });
 
-            lock (activeValueAccess)
+            return synchronizedSource.SequentialExecute(() =>
             {
                 sum = ActiveSum(source, selector, selectorOptions);
                 sum.PropertyChanged += propertyChanged;
@@ -163,7 +147,7 @@ namespace Gear.ActiveQuery
                     sum.PropertyChanged -= propertyChanged;
                     sum.Dispose();
                 });
-            }
+            });
         }
 
         #endregion Average
@@ -179,20 +163,20 @@ namespace Gear.ActiveQuery
 
         public static ActiveEnumerable<TSource> ActiveConcat<TSource>(this IEnumerable<TSource> first, IEnumerable<TSource> second)
         {
-            var synchronizableFirst = first as ISynchronizable;
-            var synchronizableSecond = second as ISynchronizable;
+            var synchronizedFirst = first as ISynchronized;
+            var synchronizedSecond = second as ISynchronized;
 
-            if (synchronizableFirst != null && synchronizableSecond != null && synchronizableFirst.SynchronizationContext != synchronizableSecond.SynchronizationContext)
+            if (synchronizedFirst != null && synchronizedSecond != null && synchronizedFirst.SynchronizationContext != synchronizedSecond.SynchronizationContext)
                 throw new InvalidOperationException($"{nameof(first)} and {nameof(second)} are both synchronizable but using different synchronization contexts; select a different overload of {nameof(ActiveConcat)} to specify the synchronization context to use");
 
-            var rangeObservableCollectionAccess = new object();
+            var synchronizationContext = synchronizedFirst?.SynchronizationContext ?? synchronizedSecond?.SynchronizationContext ?? Synchronization.DefaultSynchronizationContext;
+
             SynchronizedRangeObservableCollection<TSource> rangeObservableCollection = null;
             ActiveEnumerable<TSource> firstEnumerable;
             ActiveEnumerable<TSource> secondEnumerable;
 
-            void firstCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
-            {
-                lock (rangeObservableCollectionAccess)
+            void firstCollectionChanged(object sender, NotifyCollectionChangedEventArgs e) =>
+                synchronizationContext.Execute(() =>
                 {
                     if (e.Action == NotifyCollectionChangedAction.Reset)
                         rangeObservableCollection.ReplaceRange(0, rangeObservableCollection.Count - secondEnumerable.Count, first);
@@ -213,12 +197,10 @@ namespace Gear.ActiveQuery
                                 rangeObservableCollection.InsertRange(e.NewStartingIndex, e.NewItems.Cast<TSource>());
                         }
                     }
-                }
-            }
+                });
 
-            void secondCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
-            {
-                lock (rangeObservableCollectionAccess)
+            void secondCollectionChanged(object sender, NotifyCollectionChangedEventArgs e) =>
+                synchronizationContext.Execute(() =>
                 {
                     if (e.Action == NotifyCollectionChangedAction.Reset)
                         rangeObservableCollection.ReplaceRange(firstEnumerable.Count, rangeObservableCollection.Count - firstEnumerable.Count, second);
@@ -239,53 +221,39 @@ namespace Gear.ActiveQuery
                                 rangeObservableCollection.InsertRange(firstEnumerable.Count + e.NewStartingIndex, e.NewItems.Cast<TSource>());
                         }
                     }
-                }
-            }
+                });
 
-            void propertyChanged(object sender, PropertyChangedEventArgs e)
-            {
-                if (e.PropertyName == nameof(ISynchronizable.IsSynchronized))
-                    rangeObservableCollection.IsSynchronized = synchronizableFirst.IsSynchronized || synchronizableSecond.IsSynchronized;
-            }
-
-            lock (rangeObservableCollectionAccess)
+            return synchronizationContext.Execute(() =>
             {
                 firstEnumerable = ToActiveEnumerable(first);
                 secondEnumerable = ToActiveEnumerable(second);
 
                 firstEnumerable.CollectionChanged += firstCollectionChanged;
                 secondEnumerable.CollectionChanged += secondCollectionChanged;
-                if (synchronizableFirst != null)
-                    synchronizableFirst.PropertyChanged += propertyChanged;
-                if (synchronizableSecond != null)
-                    synchronizableSecond.PropertyChanged += propertyChanged;
 
-                rangeObservableCollection = new SynchronizedRangeObservableCollection<TSource>(synchronizableFirst?.SynchronizationContext ?? synchronizableSecond?.SynchronizationContext, first.Concat(second), synchronizableFirst?.IsSynchronized ?? synchronizableSecond?.IsSynchronized ?? false);
+                rangeObservableCollection = new SynchronizedRangeObservableCollection<TSource>(synchronizationContext, first.Concat(second));
                 var mergedElementFaultChangeNotifier = new MergedElementFaultChangeNotifier(firstEnumerable, secondEnumerable);
 
                 return new ActiveEnumerable<TSource>(rangeObservableCollection, mergedElementFaultChangeNotifier, () =>
                 {
                     firstEnumerable.CollectionChanged -= firstCollectionChanged;
                     secondEnumerable.CollectionChanged -= secondCollectionChanged;
-                    if (synchronizableFirst != null)
-                        synchronizableFirst.PropertyChanged -= propertyChanged;
-                    if (synchronizableSecond != null)
-                        synchronizableSecond.PropertyChanged -= propertyChanged;
                     mergedElementFaultChangeNotifier.Dispose();
                 });
-            }
+            });
         }
 
         public static ActiveEnumerable<TSource> ActiveConcat<TSource>(this IEnumerable<TSource> first, IEnumerable<TSource> second, SynchronizationContext synchronizationContext)
         {
-            var rangeObservableCollectionAccess = new object();
+            if (synchronizationContext == null)
+                throw new ArgumentNullException(nameof(synchronizationContext));
+
             SynchronizedRangeObservableCollection<TSource> rangeObservableCollection = null;
             ActiveEnumerable<TSource> firstEnumerable;
             ActiveEnumerable<TSource> secondEnumerable;
 
-            void firstCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
-            {
-                lock (rangeObservableCollectionAccess)
+            void firstCollectionChanged(object sender, NotifyCollectionChangedEventArgs e) =>
+                synchronizationContext.Execute(() =>
                 {
                     if (e.Action == NotifyCollectionChangedAction.Reset)
                         rangeObservableCollection.ReplaceRange(0, rangeObservableCollection.Count - secondEnumerable.Count, first);
@@ -306,12 +274,10 @@ namespace Gear.ActiveQuery
                                 rangeObservableCollection.InsertRange(e.NewStartingIndex, e.NewItems.Cast<TSource>());
                         }
                     }
-                }
-            }
+                });
 
-            void secondCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
-            {
-                lock (rangeObservableCollectionAccess)
+            void secondCollectionChanged(object sender, NotifyCollectionChangedEventArgs e) =>
+                synchronizationContext.Execute(() =>
                 {
                     if (e.Action == NotifyCollectionChangedAction.Reset)
                         rangeObservableCollection.ReplaceRange(firstEnumerable.Count, rangeObservableCollection.Count - firstEnumerable.Count, second);
@@ -332,10 +298,9 @@ namespace Gear.ActiveQuery
                                 rangeObservableCollection.InsertRange(firstEnumerable.Count + e.NewStartingIndex, e.NewItems.Cast<TSource>());
                         }
                     }
-                }
-            }
+                });
 
-            lock (rangeObservableCollectionAccess)
+            return synchronizationContext.Execute(() =>
             {
                 firstEnumerable = ToActiveEnumerable(first);
                 secondEnumerable = ToActiveEnumerable(second);
@@ -343,7 +308,7 @@ namespace Gear.ActiveQuery
                 firstEnumerable.CollectionChanged += firstCollectionChanged;
                 secondEnumerable.CollectionChanged += secondCollectionChanged;
 
-                rangeObservableCollection = new SynchronizedRangeObservableCollection<TSource>(synchronizationContext, first.Concat(second), true);
+                rangeObservableCollection = new SynchronizedRangeObservableCollection<TSource>(synchronizationContext, first.Concat(second));
                 var mergedElementFaultChangeNotifier = new MergedElementFaultChangeNotifier(firstEnumerable, secondEnumerable);
 
                 return new ActiveEnumerable<TSource>(rangeObservableCollection, mergedElementFaultChangeNotifier, () =>
@@ -352,7 +317,7 @@ namespace Gear.ActiveQuery
                     secondEnumerable.CollectionChanged -= secondCollectionChanged;
                     mergedElementFaultChangeNotifier.Dispose();
                 });
-            }
+            });
         }
 
         #endregion Concat
@@ -362,14 +327,12 @@ namespace Gear.ActiveQuery
         public static ActiveEnumerable<TSource> ActiveDistinct<TSource>(this IReadOnlyList<TSource> source)
         {
             var changingSource = source as INotifyCollectionChanged;
-            var synchronizableSource = source as ISynchronizable;
-            var rangeObservableCollectionAccess = new object();
+            var synchronizedSource = source as ISynchronized;
             SynchronizedRangeObservableCollection<TSource> rangeObservableCollection;
             Dictionary<TSource, int> distinctCounts = null;
 
-            void collectionChanged(object sender, NotifyCollectionChangedEventArgs e)
-            {
-                lock (rangeObservableCollectionAccess)
+            void collectionChanged(object sender, NotifyCollectionChangedEventArgs e) =>
+                synchronizedSource.SequentialExecute(() =>
                 {
                     if (e.Action == NotifyCollectionChangedAction.Reset)
                     {
@@ -420,23 +383,14 @@ namespace Gear.ActiveQuery
                                 rangeObservableCollection.AddRange(addingResults);
                         }
                     }
-                }
-            }
+                });
 
-            void propertyChanged(object sender, PropertyChangedEventArgs e)
+            return synchronizedSource.SequentialExecute(() =>
             {
-                if (e.PropertyName == nameof(ISynchronizable.IsSynchronized))
-                    rangeObservableCollection.IsSynchronized = synchronizableSource.IsSynchronized;
-            }
+                rangeObservableCollection = new SynchronizedRangeObservableCollection<TSource>();
 
-            rangeObservableCollection = new SynchronizedRangeObservableCollection<TSource>(synchronizableSource?.SynchronizationContext, synchronizableSource?.IsSynchronized ?? false);
-
-            lock (rangeObservableCollectionAccess)
-            {
                 if (changingSource != null)
                     changingSource.CollectionChanged += collectionChanged;
-                if (synchronizableSource != null)
-                    synchronizableSource.PropertyChanged += propertyChanged;
 
                 distinctCounts = new Dictionary<TSource, int>();
                 foreach (var element in source)
@@ -454,10 +408,8 @@ namespace Gear.ActiveQuery
                 {
                     if (changingSource != null)
                         changingSource.CollectionChanged -= collectionChanged;
-                    if (synchronizableSource != null)
-                        synchronizableSource.PropertyChanged -= propertyChanged;
                 });
-            }
+            });
         }
 
         #endregion Distinct
@@ -469,13 +421,12 @@ namespace Gear.ActiveQuery
             var elementFaultChangeNotifier = source as INotifyElementFaultChanges;
             if (source is INotifyCollectionChanged changingSource)
             {
-                var activeValueAccess = new object();
+                var synchronizedSource = source as ISynchronized;
                 Action<TSource> setValue = null;
                 Action<Exception> setOperationFault = null;
 
-                void collectionChanged(object sender, NotifyCollectionChangedEventArgs e)
-                {
-                    lock (activeValueAccess)
+                void collectionChanged(object sender, NotifyCollectionChangedEventArgs e) =>
+                    synchronizedSource.SequentialExecute(() =>
                     {
                         try
                         {
@@ -488,10 +439,9 @@ namespace Gear.ActiveQuery
                             setOperationFault(ex);
                             setValue(default);
                         }
-                    }
-                }
+                    });
 
-                lock (activeValueAccess)
+                return synchronizedSource.SequentialExecute(() =>
                 {
                     changingSource.CollectionChanged += collectionChanged;
                     try
@@ -502,7 +452,7 @@ namespace Gear.ActiveQuery
                     {
                         return new ActiveValue<TSource>(default, out setValue, ex, out setOperationFault, elementFaultChangeNotifier, () => changingSource.CollectionChanged -= collectionChanged);
                     }
-                }
+                });
             }
             try
             {
@@ -517,30 +467,26 @@ namespace Gear.ActiveQuery
         public static ActiveValue<TSource> ActiveElementAt<TSource>(this IReadOnlyList<TSource> source, int index)
         {
             ActiveEnumerable<TSource> activeEnumerable;
-            var activeValueAccess = new object();
             Action<TSource> setValue = null;
             Action<Exception> setOperationFault = null;
             var indexOutOfRange = false;
 
             void collectionChanged(object sender, NotifyCollectionChangedEventArgs e)
             {
-                lock (activeValueAccess)
+                if (indexOutOfRange && index >= 0 && index < activeEnumerable.Count)
                 {
-                    if (indexOutOfRange && index >= 0 && index < activeEnumerable.Count)
-                    {
-                        setOperationFault(null);
-                        indexOutOfRange = false;
-                    }
-                    else if (!indexOutOfRange && (index < 0 || index >= activeEnumerable.Count))
-                    {
-                        setOperationFault(ExceptionHelper.IndexArgumentWasOutOfRange);
-                        indexOutOfRange = true;
-                    }
-                    setValue(index >= 0 && index < activeEnumerable.Count ? activeEnumerable[index] : default);
+                    setOperationFault(null);
+                    indexOutOfRange = false;
                 }
+                else if (!indexOutOfRange && (index < 0 || index >= activeEnumerable.Count))
+                {
+                    setOperationFault(ExceptionHelper.IndexArgumentWasOutOfRange);
+                    indexOutOfRange = true;
+                }
+                setValue(index >= 0 && index < activeEnumerable.Count ? activeEnumerable[index] : default);
             }
 
-            lock (activeValueAccess)
+            return (source as ISynchronized).SequentialExecute(() =>
             {
                 activeEnumerable = ToActiveEnumerable(source);
                 activeEnumerable.CollectionChanged += collectionChanged;
@@ -551,7 +497,7 @@ namespace Gear.ActiveQuery
                     activeEnumerable.CollectionChanged -= collectionChanged;
                     activeEnumerable.Dispose();
                 });
-            }
+            });
         }
 
         #endregion ElementAt
@@ -563,20 +509,16 @@ namespace Gear.ActiveQuery
             var elementFaultChangeNotifier = source as INotifyElementFaultChanges;
             if (source is INotifyCollectionChanged changingSource)
             {
-                var activeValueAccess = new object();
+                var synchronizedSource = source as ISynchronized;
                 Action<TSource> setValue = null;
 
-                void collectionChanged(object sender, NotifyCollectionChangedEventArgs e)
-                {
-                    lock (activeValueAccess)
-                        setValue(source.ElementAtOrDefault(index));
-                }
+                void collectionChanged(object sender, NotifyCollectionChangedEventArgs e) => synchronizedSource.SequentialExecute(() => setValue(source.ElementAtOrDefault(index)));
 
-                lock (activeValueAccess)
+                return synchronizedSource.SequentialExecute(() =>
                 {
                     changingSource.CollectionChanged += collectionChanged;
                     return new ActiveValue<TSource>(source.ElementAtOrDefault(index), out setValue, elementFaultChangeNotifier: elementFaultChangeNotifier, onDispose: () => changingSource.CollectionChanged -= collectionChanged);
-                }
+                });
             }
             else
                 return new ActiveValue<TSource>(source.ElementAtOrDefault(index), elementFaultChangeNotifier: elementFaultChangeNotifier);
@@ -585,16 +527,11 @@ namespace Gear.ActiveQuery
         public static ActiveValue<TSource> ActiveElementAtOrDefault<TSource>(this IReadOnlyList<TSource> source, int index)
         {
             ActiveEnumerable<TSource> activeEnumerable;
-            var activeValueAccess = new object();
             Action<TSource> setValue = null;
 
-            void collectionChanged(object sender, NotifyCollectionChangedEventArgs e)
-            {
-                lock (activeValueAccess)
-                    setValue(index >= 0 && index < activeEnumerable.Count ? activeEnumerable[index] : default);
-            }
+            void collectionChanged(object sender, NotifyCollectionChangedEventArgs e) => setValue(index >= 0 && index < activeEnumerable.Count ? activeEnumerable[index] : default);
 
-            lock (activeValueAccess)
+            return (source as ISynchronized).SequentialExecute(() =>
             {
                 activeEnumerable = ToActiveEnumerable(source);
                 activeEnumerable.CollectionChanged += collectionChanged;
@@ -604,7 +541,7 @@ namespace Gear.ActiveQuery
                     activeEnumerable.CollectionChanged -= collectionChanged;
                     activeEnumerable.Dispose();
                 });
-            }
+            });
         }
 
         #endregion ElementAtOrDefault
@@ -616,13 +553,12 @@ namespace Gear.ActiveQuery
             var elementFaultChangeNotifier = source as INotifyElementFaultChanges;
             if (source is INotifyCollectionChanged changingSource)
             {
-                var activeValueAccess = new object();
+                var synchronizedSource = source as ISynchronized;
                 Action<TSource> setValue = null;
                 Action<Exception> setOperationFault = null;
 
-                void collectionChanged(object sender, NotifyCollectionChangedEventArgs e)
-                {
-                    lock (activeValueAccess)
+                void collectionChanged(object sender, NotifyCollectionChangedEventArgs e) =>
+                    synchronizedSource.SequentialExecute(() =>
                     {
                         try
                         {
@@ -635,10 +571,9 @@ namespace Gear.ActiveQuery
                             setOperationFault(ex);
                             setValue(default);
                         }
-                    }
-                }
+                    });
 
-                lock (activeValueAccess)
+                return synchronizedSource.SequentialExecute(() =>
                 {
                     changingSource.CollectionChanged += collectionChanged;
                     try
@@ -649,7 +584,7 @@ namespace Gear.ActiveQuery
                     {
                         return new ActiveValue<TSource>(default, out setValue, ex, out setOperationFault, elementFaultChangeNotifier, () => changingSource.CollectionChanged -= collectionChanged);
                     }
-                }
+                });
             }
             try
             {
@@ -666,30 +601,26 @@ namespace Gear.ActiveQuery
             ActiveQueryOptions.Optimize(ref predicate);
 
             ActiveEnumerable<TSource> where;
-            var activeValueAccess = new object();
             Action<TSource> setValue = null;
             Action<Exception> setOperationFault = null;
             var none = false;
 
             void collectionChanged(object sender, NotifyCollectionChangedEventArgs e)
             {
-                lock (activeValueAccess)
+                if (none && where.Count > 0)
                 {
-                    if (none && where.Count > 0)
-                    {
-                        setOperationFault(null);
-                        none = false;
-                    }
-                    else if (!none && where.Count == 0)
-                    {
-                        setOperationFault(ExceptionHelper.SequenceContainsNoElements);
-                        none = true;
-                    }
-                    setValue(where.Count > 0 ? where[0] : default);
+                    setOperationFault(null);
+                    none = false;
                 }
+                else if (!none && where.Count == 0)
+                {
+                    setOperationFault(ExceptionHelper.SequenceContainsNoElements);
+                    none = true;
+                }
+                setValue(where.Count > 0 ? where[0] : default);
             }
 
-            lock (activeValueAccess)
+            return (source as ISynchronized).SequentialExecute(() =>
             {
                 where = ActiveWhere(source, predicate, predicateOptions);
                 where.CollectionChanged += collectionChanged;
@@ -700,7 +631,7 @@ namespace Gear.ActiveQuery
                     where.CollectionChanged -= collectionChanged;
                     where.Dispose();
                 });
-            }
+            });
         }
 
         #endregion First
@@ -712,20 +643,16 @@ namespace Gear.ActiveQuery
             var elementFaultChangeNotifier = source as INotifyElementFaultChanges;
             if (source is INotifyCollectionChanged changingSource)
             {
-                var activeValueAccess = new object();
+                var synchronizedSource = source as ISynchronized;
                 Action<TSource> setValue = null;
 
-                void collectionChanged(object sender, NotifyCollectionChangedEventArgs e)
-                {
-                    lock (activeValueAccess)
-                        setValue(source.FirstOrDefault());
-                }
+                void collectionChanged(object sender, NotifyCollectionChangedEventArgs e) => synchronizedSource.SequentialExecute(() => setValue(source.FirstOrDefault()));
 
-                lock (activeValueAccess)
+                return synchronizedSource.SequentialExecute(() =>
                 {
                     changingSource.CollectionChanged += collectionChanged;
                     return new ActiveValue<TSource>(source.FirstOrDefault(), out setValue, elementFaultChangeNotifier: elementFaultChangeNotifier, onDispose: () => changingSource.CollectionChanged -= collectionChanged);
-                }
+                });
             }
             else
                 return new ActiveValue<TSource>(source.FirstOrDefault(), elementFaultChangeNotifier: elementFaultChangeNotifier);
@@ -734,16 +661,11 @@ namespace Gear.ActiveQuery
         public static ActiveValue<TSource> ActiveFirstOrDefault<TSource>(this IReadOnlyList<TSource> source, Expression<Func<TSource, bool>> predicate, ActiveExpressionOptions predicateOptions = null)
         {
             ActiveEnumerable<TSource> where;
-            var activeValueAccess = new object();
             Action<TSource> setValue = null;
 
-            void collectionChanged(object sender, NotifyCollectionChangedEventArgs e)
-            {
-                lock (activeValueAccess)
-                    setValue(where.Count > 0 ? where[0] : default);
-            }
+            void collectionChanged(object sender, NotifyCollectionChangedEventArgs e) => setValue(where.Count > 0 ? where[0] : default);
 
-            lock (activeValueAccess)
+            return (source as ISynchronized).SequentialExecute(() =>
             {
                 where = ActiveWhere(source, predicate, predicateOptions);
                 where.CollectionChanged += collectionChanged;
@@ -753,7 +675,7 @@ namespace Gear.ActiveQuery
                     where.CollectionChanged -= collectionChanged;
                     where.Dispose();
                 });
-            }
+            });
         }
 
         #endregion FirstOrDefault
@@ -764,8 +686,7 @@ namespace Gear.ActiveQuery
         {
             ActiveQueryOptions.Optimize(ref keySelector);
 
-            var synchronizableSource = source as ISynchronizable;
-            var rangeObservableCollectionAccess = new object();
+            var synchronizedSource = source as ISynchronized;
             IDictionary<TKey, (SynchronizedRangeObservableCollection<TSource> groupingObservableCollection, ActiveGrouping<TKey, TSource> grouping)> collectionAndGroupingDictionary;
             SynchronizedRangeObservableCollection<ActiveGrouping<TKey, TSource>> rangeObservableCollection = null;
 
@@ -786,7 +707,7 @@ namespace Gear.ActiveQuery
                 SynchronizedRangeObservableCollection<TSource> groupingObservableCollection;
                 if (!collectionAndGroupingDictionary.TryGetValue(key, out var collectionAndGrouping))
                 {
-                    groupingObservableCollection = new SynchronizedRangeObservableCollection<TSource>(synchronizableSource?.SynchronizationContext, synchronizableSource?.IsSynchronized ?? false);
+                    groupingObservableCollection = new SynchronizedRangeObservableCollection<TSource>();
                     var grouping = new ActiveGrouping<TKey, TSource>(key, groupingObservableCollection);
                     collectionAndGroupingDictionary.Add(key, (groupingObservableCollection, grouping));
                     rangeObservableCollection.Add(grouping);
@@ -796,43 +717,23 @@ namespace Gear.ActiveQuery
                 groupingObservableCollection.AddRange(element.Repeat(count));
             }
 
-            void elementResultChanged(object sender, RangeActiveExpressionResultChangeEventArgs<TSource, TKey> e)
-            {
-                lock (rangeObservableCollectionAccess)
-                    addElement(e.Element, e.Result, e.Count);
-            }
+            void elementResultChanged(object sender, RangeActiveExpressionResultChangeEventArgs<TSource, TKey> e) => synchronizedSource.SequentialExecute(() => addElement(e.Element, e.Result, e.Count));
 
-            void elementResultChanging(object sender, RangeActiveExpressionResultChangeEventArgs<TSource, TKey> e)
-            {
-                lock (rangeObservableCollectionAccess)
-                    removeElement(e.Element, e.Result, e.Count);
-            }
+            void elementResultChanging(object sender, RangeActiveExpressionResultChangeEventArgs<TSource, TKey> e) => synchronizedSource.SequentialExecute(() => removeElement(e.Element, e.Result, e.Count));
 
-            void elementsAdded(object sender, RangeActiveExpressionMembershipEventArgs<TSource, TKey> e)
-            {
-                lock (rangeObservableCollectionAccess)
+            void elementsAdded(object sender, RangeActiveExpressionMembershipEventArgs<TSource, TKey> e) =>
+                synchronizedSource.SequentialExecute(() =>
+                {
                     foreach (var (element, result) in e.ElementResults)
                         addElement(element, result);
-            }
+                });
 
-            void elementsRemoved(object sender, RangeActiveExpressionMembershipEventArgs<TSource, TKey> e)
-            {
-                lock (rangeObservableCollectionAccess)
+            void elementsRemoved(object sender, RangeActiveExpressionMembershipEventArgs<TSource, TKey> e) =>
+                synchronizedSource.SequentialExecute(() =>
+                {
                     foreach (var (element, result) in e.ElementResults)
                         removeElement(element, result);
-            }
-
-            void propertyChanged(object sender, PropertyChangedEventArgs e)
-            {
-                if (e.PropertyName == nameof(ISynchronizable.SynchronizationContext))
-                    lock (rangeObservableCollectionAccess)
-                    {
-                        var isSynchronized = synchronizableSource.IsSynchronized;
-                        rangeObservableCollection.IsSynchronized = isSynchronized;
-                        foreach (var (groupingObservableCollection, grouping) in collectionAndGroupingDictionary.Values)
-                            groupingObservableCollection.IsSynchronized = isSynchronized;
-                    }
-            }
+                });
 
             void removeElement(TSource element, TKey key, int count = 1)
             {
@@ -846,33 +747,25 @@ namespace Gear.ActiveQuery
                 }
             }
 
-            var rangeActiveExpression = RangeActiveExpression.Create(source, keySelector, keySelectorOptions);
-            return rangeActiveExpression.WithReadLock(() =>
+            return synchronizedSource.SequentialExecute(() =>
             {
-                lock (rangeObservableCollectionAccess)
+                var rangeActiveExpression = RangeActiveExpression.Create(source, keySelector, keySelectorOptions);
+                rangeActiveExpression.ElementResultChanged += elementResultChanged;
+                rangeActiveExpression.ElementResultChanging += elementResultChanging;
+                rangeActiveExpression.ElementsAdded += elementsAdded;
+                rangeActiveExpression.ElementsRemoved += elementsRemoved;
+
+                rangeObservableCollection = new SynchronizedRangeObservableCollection<ActiveGrouping<TKey, TSource>>();
+                foreach (var (element, result) in rangeActiveExpression.GetResults())
+                    addElement(element, result);
+
+                return new ActiveEnumerable<ActiveGrouping<TKey, TSource>>(rangeObservableCollection, rangeActiveExpression, () =>
                 {
-                    rangeActiveExpression.ElementResultChanged += elementResultChanged;
-                    rangeActiveExpression.ElementResultChanging += elementResultChanging;
-                    rangeActiveExpression.ElementsAdded += elementsAdded;
-                    rangeActiveExpression.ElementsRemoved += elementsRemoved;
-
-                    rangeObservableCollection = new SynchronizedRangeObservableCollection<ActiveGrouping<TKey, TSource>>(synchronizableSource?.SynchronizationContext, synchronizableSource?.IsSynchronized ?? false);
-                    foreach (var (element, result) in rangeActiveExpression.GetResultsUnderLock())
-                        addElement(element, result);
-
-                    if (synchronizableSource != null)
-                        synchronizableSource.PropertyChanged += propertyChanged;
-
-                    return new ActiveEnumerable<ActiveGrouping<TKey, TSource>>(rangeObservableCollection, rangeActiveExpression, () =>
-                    {
-                        rangeActiveExpression.ElementResultChanged -= elementResultChanged;
-                        rangeActiveExpression.ElementResultChanging -= elementResultChanging;
-                        rangeActiveExpression.ElementsAdded -= elementsAdded;
-                        rangeActiveExpression.ElementsRemoved -= elementsRemoved;
-                        if (synchronizableSource != null)
-                            synchronizableSource.PropertyChanged -= propertyChanged;
-                    });
-                }
+                    rangeActiveExpression.ElementResultChanged -= elementResultChanged;
+                    rangeActiveExpression.ElementResultChanging -= elementResultChanging;
+                    rangeActiveExpression.ElementsAdded -= elementsAdded;
+                    rangeActiveExpression.ElementsRemoved -= elementsRemoved;
+                });
             });
         }
 
@@ -885,13 +778,12 @@ namespace Gear.ActiveQuery
             var elementFaultChangeNotifier = source as INotifyElementFaultChanges;
             if (source is INotifyCollectionChanged changingSource)
             {
-                var activeValueAccess = new object();
+                var synchronizedSource = source as ISynchronized;
                 Action<TSource> setValue = null;
                 Action<Exception> setOperationFault = null;
 
-                void collectionChanged(object sender, NotifyCollectionChangedEventArgs e)
-                {
-                    lock (activeValueAccess)
+                void collectionChanged(object sender, NotifyCollectionChangedEventArgs e) =>
+                    synchronizedSource.SequentialExecute(() =>
                     {
                         try
                         {
@@ -904,18 +796,20 @@ namespace Gear.ActiveQuery
                             setOperationFault(ex);
                             setValue(default);
                         }
-                    }
-                }
+                    });
 
-                changingSource.CollectionChanged += collectionChanged;
-                try
+                return synchronizedSource.SequentialExecute(() =>
                 {
-                    return new ActiveValue<TSource>(source.Last(), out setValue, out setOperationFault, elementFaultChangeNotifier, () => changingSource.CollectionChanged -= collectionChanged);
-                }
-                catch (Exception ex)
-                {
-                    return new ActiveValue<TSource>(default, out setValue, ex, out setOperationFault, elementFaultChangeNotifier, () => changingSource.CollectionChanged -= collectionChanged);
-                }
+                    changingSource.CollectionChanged += collectionChanged;
+                    try
+                    {
+                        return new ActiveValue<TSource>(source.Last(), out setValue, out setOperationFault, elementFaultChangeNotifier, () => changingSource.CollectionChanged -= collectionChanged);
+                    }
+                    catch (Exception ex)
+                    {
+                        return new ActiveValue<TSource>(default, out setValue, ex, out setOperationFault, elementFaultChangeNotifier, () => changingSource.CollectionChanged -= collectionChanged);
+                    }
+                });
             }
             else
             {
@@ -935,30 +829,26 @@ namespace Gear.ActiveQuery
             ActiveQueryOptions.Optimize(ref predicate);
 
             ActiveEnumerable<TSource> where;
-            var activeValueAccess = new object();
             Action<TSource> setValue = null;
             Action<Exception> setOperationFault = null;
             var none = false;
 
             void collectionChanged(object sender, NotifyCollectionChangedEventArgs e)
             {
-                lock (activeValueAccess)
+                if (none && where.Count > 0)
                 {
-                    if (none && where.Count > 0)
-                    {
-                        setOperationFault(null);
-                        none = false;
-                    }
-                    else if (!none && where.Count == 0)
-                    {
-                        setOperationFault(ExceptionHelper.SequenceContainsNoElements);
-                        none = true;
-                    }
-                    setValue(where.Count > 0 ? where[where.Count - 1] : default);
+                    setOperationFault(null);
+                    none = false;
                 }
+                else if (!none && where.Count == 0)
+                {
+                    setOperationFault(ExceptionHelper.SequenceContainsNoElements);
+                    none = true;
+                }
+                setValue(where.Count > 0 ? where[where.Count - 1] : default);
             }
 
-            lock (activeValueAccess)
+            return (source as ISynchronized).SequentialExecute(() =>
             {
                 where = ActiveWhere(source, predicate, predicateOptions);
                 where.CollectionChanged += collectionChanged;
@@ -969,7 +859,7 @@ namespace Gear.ActiveQuery
                     where.CollectionChanged -= collectionChanged;
                     where.Dispose();
                 });
-            }
+            });
         }
 
         #endregion Last
@@ -981,20 +871,16 @@ namespace Gear.ActiveQuery
             var elementFaultChangeNotifier = source as INotifyElementFaultChanges;
             if (source is INotifyCollectionChanged changingSource)
             {
-                var activeValueAccess = new object();
+                var synchronizedSource = source as ISynchronized;
                 Action<TSource> setValue = null;
 
-                void collectionChanged(object sender, NotifyCollectionChangedEventArgs e)
-                {
-                    lock (activeValueAccess)
-                        setValue(source.LastOrDefault());
-                }
+                void collectionChanged(object sender, NotifyCollectionChangedEventArgs e) => synchronizedSource.SequentialExecute(() => setValue(source.LastOrDefault()));
 
-                lock (activeValueAccess)
+                return synchronizedSource.SequentialExecute(() =>
                 {
                     changingSource.CollectionChanged += collectionChanged;
                     return new ActiveValue<TSource>(source.LastOrDefault(), out setValue, elementFaultChangeNotifier: elementFaultChangeNotifier, onDispose: () => changingSource.CollectionChanged -= collectionChanged);
-                }
+                });
             }
             else
                 return new ActiveValue<TSource>(source.LastOrDefault(), elementFaultChangeNotifier: elementFaultChangeNotifier);
@@ -1003,16 +889,11 @@ namespace Gear.ActiveQuery
         public static ActiveValue<TSource> ActiveLastOrDefault<TSource>(this IReadOnlyList<TSource> source, Expression<Func<TSource, bool>> predicate, ActiveExpressionOptions predicateOptions = null)
         {
             ActiveEnumerable<TSource> where;
-            var activeValueAccess = new object();
             Action<TSource> setValue = null;
 
-            void collectionChanged(object sender, NotifyCollectionChangedEventArgs e)
-            {
-                lock (activeValueAccess)
-                    setValue(where.Count > 0 ? where[where.Count - 1] : default);
-            }
+            void collectionChanged(object sender, NotifyCollectionChangedEventArgs e) => setValue(where.Count > 0 ? where[where.Count - 1] : default);
 
-            lock (activeValueAccess)
+            return (source as ISynchronized).SequentialExecute(() =>
             {
                 where = ActiveWhere(source, predicate, predicateOptions);
                 where.CollectionChanged += collectionChanged;
@@ -1022,7 +903,7 @@ namespace Gear.ActiveQuery
                     where.CollectionChanged -= collectionChanged;
                     where.Dispose();
                 });
-            }
+            });
         }
 
         #endregion LastOrDefault
@@ -1037,7 +918,7 @@ namespace Gear.ActiveQuery
             ActiveQueryOptions.Optimize(ref selector);
 
             var comparer = Comparer<TResult>.Default;
-            var activeValueAccess = new object();
+            var synchronizedSource = source as ISynchronized;
             EnumerableRangeActiveExpression<TSource, TResult> rangeActiveExpression;
             ActiveValue<TResult> activeValue = null;
             Action<TResult> setValue = null;
@@ -1051,21 +932,19 @@ namespace Gear.ActiveQuery
                 rangeActiveExpression.Dispose();
             }
 
-            void elementResultChanged(object sender, RangeActiveExpressionResultChangeEventArgs<TSource, TResult> e)
-            {
-                lock (activeValueAccess)
+            void elementResultChanged(object sender, RangeActiveExpressionResultChangeEventArgs<TSource, TResult> e) =>
+                synchronizedSource.SequentialExecute(() =>
                 {
                     var comparison = comparer.Compare(activeValue.Value, e.Result);
                     if (comparison < 0)
                         setValue(e.Result);
                     else if (comparison > 0)
                         setValue(rangeActiveExpression.GetResultsUnderLock().Select(er => er.result).Max());
-                }
-            }
+                });
 
-            void elementsAdded(object sender, RangeActiveExpressionMembershipEventArgs<TSource, TResult> e)
-            {
-                lock (activeValueAccess)
+            void elementsAdded(object sender, RangeActiveExpressionMembershipEventArgs<TSource, TResult> e) =>
+                synchronizedSource.SequentialExecute(() =>
+                {
                     if (e.ElementResults.Count > 0)
                     {
                         var addedMax = e.ElementResults.Select(er => er.result).Max();
@@ -1075,11 +954,11 @@ namespace Gear.ActiveQuery
                             setValue(addedMax);
                         }
                     }
-            }
+                });
 
-            void elementsRemoved(object sender, RangeActiveExpressionMembershipEventArgs<TSource, TResult> e)
-            {
-                lock (activeValueAccess)
+            void elementsRemoved(object sender, RangeActiveExpressionMembershipEventArgs<TSource, TResult> e) =>
+                synchronizedSource.SequentialExecute(() =>
+                {
                     if (e.ElementResults.Count > 0)
                     {
                         var removedMax = e.ElementResults.Select(er => er.result).Max();
@@ -1097,25 +976,22 @@ namespace Gear.ActiveQuery
                             }
                         }
                     }
-            }
+                });
 
-            rangeActiveExpression = RangeActiveExpression.Create(source, selector, selectorOptions);
-            return rangeActiveExpression.WithReadLock(() =>
+            return synchronizedSource.SequentialExecute(() =>
             {
-                lock (activeValueAccess)
-                {
-                    rangeActiveExpression.ElementResultChanged += elementResultChanged;
-                    rangeActiveExpression.ElementsAdded += elementsAdded;
-                    rangeActiveExpression.ElementsRemoved += elementsRemoved;
+                rangeActiveExpression = RangeActiveExpression.Create(source, selector, selectorOptions);
+                rangeActiveExpression.ElementResultChanged += elementResultChanged;
+                rangeActiveExpression.ElementsAdded += elementsAdded;
+                rangeActiveExpression.ElementsRemoved += elementsRemoved;
 
-                    try
-                    {
-                        return activeValue = new ActiveValue<TResult>(rangeActiveExpression.GetResultsUnderLock().Select(er => er.result).Max(), out setValue, null, out setOperationFault, rangeActiveExpression, dispose);
-                    }
-                    catch (Exception ex)
-                    {
-                        return activeValue = new ActiveValue<TResult>(default, out setValue, ex, out setOperationFault, rangeActiveExpression, dispose);
-                    }
+                try
+                {
+                    return activeValue = new ActiveValue<TResult>(rangeActiveExpression.GetResults().Select(er => er.result).Max(), out setValue, null, out setOperationFault, rangeActiveExpression, dispose);
+                }
+                catch (Exception ex)
+                {
+                    return activeValue = new ActiveValue<TResult>(default, out setValue, ex, out setOperationFault, rangeActiveExpression, dispose);
                 }
             });
         }
@@ -1132,7 +1008,7 @@ namespace Gear.ActiveQuery
             ActiveQueryOptions.Optimize(ref selector);
 
             var comparer = Comparer<TResult>.Default;
-            var activeValueAccess = new object();
+            var synchronizedSource = source as ISynchronized;
             EnumerableRangeActiveExpression<TSource, TResult> rangeActiveExpression;
             ActiveValue<TResult> activeValue = null;
             Action<TResult> setValue = null;
@@ -1146,21 +1022,19 @@ namespace Gear.ActiveQuery
                 rangeActiveExpression.Dispose();
             }
 
-            void elementResultChanged(object sender, RangeActiveExpressionResultChangeEventArgs<TSource, TResult> e)
-            {
-                lock (activeValueAccess)
+            void elementResultChanged(object sender, RangeActiveExpressionResultChangeEventArgs<TSource, TResult> e) =>
+                synchronizedSource.SequentialExecute(() =>
                 {
                     var comparison = comparer.Compare(activeValue.Value, e.Result);
                     if (comparison > 0)
                         setValue(e.Result);
                     else if (comparison < 0)
                         setValue(rangeActiveExpression.GetResultsUnderLock().Select(er => er.result).Min());
-                }
-            }
+                });
 
-            void elementsAdded(object sender, RangeActiveExpressionMembershipEventArgs<TSource, TResult> e)
-            {
-                lock (activeValueAccess)
+            void elementsAdded(object sender, RangeActiveExpressionMembershipEventArgs<TSource, TResult> e) =>
+                synchronizedSource.SequentialExecute(() =>
+                {
                     if (e.ElementResults.Count > 0)
                     {
                         var addedMin = e.ElementResults.Select(er => er.result).Min();
@@ -1170,11 +1044,11 @@ namespace Gear.ActiveQuery
                             setValue(addedMin);
                         }
                     }
-            }
+                });
 
-            void elementsRemoved(object sender, RangeActiveExpressionMembershipEventArgs<TSource, TResult> e)
-            {
-                lock (activeValueAccess)
+            void elementsRemoved(object sender, RangeActiveExpressionMembershipEventArgs<TSource, TResult> e) =>
+                synchronizedSource.SequentialExecute(() =>
+                {
                     if (e.ElementResults.Count > 0)
                     {
                         var removedMin = e.ElementResults.Select(er => er.result).Min();
@@ -1192,25 +1066,22 @@ namespace Gear.ActiveQuery
                             }
                         }
                     }
-            }
+                });
 
-            rangeActiveExpression = RangeActiveExpression.Create(source, selector, selectorOptions);
-            return rangeActiveExpression.WithReadLock(() =>
+            return synchronizedSource.SequentialExecute(() =>
             {
-                lock (activeValueAccess)
-                {
-                    rangeActiveExpression.ElementResultChanged += elementResultChanged;
-                    rangeActiveExpression.ElementsAdded += elementsAdded;
-                    rangeActiveExpression.ElementsRemoved += elementsRemoved;
+                rangeActiveExpression = RangeActiveExpression.Create(source, selector, selectorOptions);
+                rangeActiveExpression.ElementResultChanged += elementResultChanged;
+                rangeActiveExpression.ElementsAdded += elementsAdded;
+                rangeActiveExpression.ElementsRemoved += elementsRemoved;
 
-                    try
-                    {
-                        return activeValue = new ActiveValue<TResult>(rangeActiveExpression.GetResultsUnderLock().Select(er => er.result).Min(), out setValue, null, out setOperationFault, rangeActiveExpression, dispose);
-                    }
-                    catch (Exception ex)
-                    {
-                        return activeValue = new ActiveValue<TResult>(default, out setValue, ex, out setOperationFault, rangeActiveExpression, dispose);
-                    }
+                try
+                {
+                    return activeValue = new ActiveValue<TResult>(rangeActiveExpression.GetResults().Select(er => er.result).Min(), out setValue, null, out setOperationFault, rangeActiveExpression, dispose);
+                }
+                catch (Exception ex)
+                {
+                    return activeValue = new ActiveValue<TResult>(default, out setValue, ex, out setOperationFault, rangeActiveExpression, dispose);
                 }
             });
         }
@@ -1219,6 +1090,7 @@ namespace Gear.ActiveQuery
 
         #region OrderBy
 
+        /*
         public static ActiveEnumerable<TSource> ActiveOrderBy<TSource>(this IEnumerable<TSource> source, Expression<Func<TSource, IComparable>> selector, ActiveExpressionOptions selectorOptions = null, bool isDescending = false) =>
             ActiveOrderBy(source, (selector, selectorOptions, isDescending));
 
@@ -1443,6 +1315,36 @@ namespace Gear.ActiveQuery
                 });
             }
         }
+        */
+
+        public static ActiveEnumerable<TSource> ActiveOrderBy<TSource>(this IEnumerable<TSource> source, IComparer<TSource> comparer = null, IndexingStrategy indexingStrategy = IndexingStrategy.HashTable) =>
+            ActiveOrderBy(source, comparer: comparer, indexingStrategy: indexingStrategy);
+
+        public static ActiveEnumerable<TSource> ActiveOrderBy<TSource, TKey>(this IEnumerable<TSource> source, Expression<Func<TSource, TKey>> keySelector, ActiveExpressionOptions keySelectorOptions = null, IComparer<TKey> comparer = null, IndexingStrategy indexingStrategy = IndexingStrategy.HashTable)
+        {
+            ActiveQueryOptions.Optimize(ref keySelector);
+            
+            comparer = comparer ?? Comparer<TKey>.Default;
+
+            ActiveEnumerable<TKey> keys;
+            var rangeObservableCollectionAccess = new object();
+            SynchronizedRangeObservableCollection<TSource> rangeObservableCollection = null;
+
+            void collectionChanged(object sender, NotifyCollectionChangedEventArgs e) =>
+                keys.SequentialExecute(() =>
+                {
+                });
+
+            return (source as ISynchronized).SequentialExecute(() =>
+            {
+                keys = ActiveSelect(source, keySelector, keySelectorOptions, indexingStrategy);
+                keys.CollectionChanged += collectionChanged;
+
+                rangeObservableCollection = new SynchronizedRangeObservableCollection<TSource>(source.Select((element, index) => (element, index)).OrderBy(ei => keys[ei.index], comparer).Select(ei => ei.element));
+
+                return new ActiveEnumerable<TSource>(rangeObservableCollection, keys, () => rangeObservableCollection.CollectionChanged -= collectionChanged);
+            });
+        }
 
         #endregion OrderBy
 
@@ -1465,13 +1367,11 @@ namespace Gear.ActiveQuery
                     break;
             }
 
-            var rangeObservableCollectionAccess = new object();
-            var synchronizableSource = source as ISynchronizable;
+            var synchronizedSource = source as ISynchronized;
             SynchronizedRangeObservableCollection<TResult> rangeObservableCollection = null;
 
-            void elementResultChanged(object sender, RangeActiveExpressionResultChangeEventArgs<object, TResult> e)
-            {
-                lock (rangeObservableCollectionAccess)
+            void elementResultChanged(object sender, RangeActiveExpressionResultChangeEventArgs<object, TResult> e) =>
+                synchronizedSource.SequentialExecute(() =>
                 {
                     var sourceElement = e.Element;
                     var newResultElement = e.Result;
@@ -1479,12 +1379,10 @@ namespace Gear.ActiveQuery
                     rangeObservableCollection.Replace(indicies[0], newResultElement);
                     foreach (var remainingIndex in indicies.Skip(1))
                         rangeObservableCollection[remainingIndex] = newResultElement;
-                }
-            }
+                });
 
-            void elementsAdded(object sender, RangeActiveExpressionMembershipEventArgs<object, TResult> e)
-            {
-                lock (rangeObservableCollectionAccess)
+            void elementsAdded(object sender, RangeActiveExpressionMembershipEventArgs<object, TResult> e) =>
+                synchronizedSource.SequentialExecute(() =>
                 {
                     var elementResults = e.ElementResults;
                     var count = elementResults.Count;
@@ -1515,12 +1413,10 @@ namespace Gear.ActiveQuery
                             }));
                         }
                     }
-                }
-            }
+                });
 
-            void elementsMoved(object sender, RangeActiveExpressionMovedEventArgs<object, TResult> e)
-            {
-                lock (rangeObservableCollectionAccess)
+            void elementsMoved(object sender, RangeActiveExpressionMovedEventArgs<object, TResult> e) =>
+                synchronizedSource.SequentialExecute(() =>
                 {
                     var count = e.ElementResults.Count;
                     var fromIndex = e.FromIndex;
@@ -1557,12 +1453,10 @@ namespace Gear.ActiveQuery
                         }
                         rangeObservableCollection.MoveRange(fromIndex, toIndex, count);
                     }
-                }
-            }
+                });
 
-            void elementsRemoved(object sender, RangeActiveExpressionMembershipEventArgs<object, TResult> e)
-            {
-                lock (rangeObservableCollectionAccess)
+            void elementsRemoved(object sender, RangeActiveExpressionMembershipEventArgs<object, TResult> e) =>
+                synchronizedSource.SequentialExecute(() =>
                 {
                     var count = e.ElementResults.Count;
                     if (count > 0)
@@ -1596,14 +1490,7 @@ namespace Gear.ActiveQuery
                             }
                         }
                     }
-                }
-            }
-
-            void propertyChanged(object sender, PropertyChangedEventArgs e)
-            {
-                if (e.PropertyName == nameof(ISynchronizable.IsSynchronized))
-                    rangeObservableCollection.IsSynchronized = synchronizableSource.IsSynchronized;
-            }
+                });
 
             TResult indexedInitializer((object element, TResult result) er, int index)
             {
@@ -1617,31 +1504,24 @@ namespace Gear.ActiveQuery
                 return result;
             }
 
-            var rangeActiveExpression = RangeActiveExpression.Create(source, selector, selectorOptions);
-            return rangeActiveExpression.WithReadLock(() =>
+            return synchronizedSource.SequentialExecute(() =>
             {
-                lock (rangeObservableCollectionAccess)
+                var rangeActiveExpression = RangeActiveExpression.Create(source, selector, selectorOptions);
+                rangeActiveExpression.ElementResultChanged += elementResultChanged;
+                rangeActiveExpression.ElementsAdded += elementsAdded;
+                rangeActiveExpression.ElementsMoved += elementsMoved;
+                rangeActiveExpression.ElementsRemoved += elementsRemoved;
+
+                rangeObservableCollection = new SynchronizedRangeObservableCollection<TResult>(indexingStrategy != IndexingStrategy.NoneOrInherit ? rangeActiveExpression.GetResults().Select(indexedInitializer) : rangeActiveExpression.GetResults().Select(er => er.result));
+                return new ActiveEnumerable<TResult>(rangeObservableCollection, rangeActiveExpression, () =>
                 {
-                    rangeActiveExpression.ElementResultChanged += elementResultChanged;
-                    rangeActiveExpression.ElementsAdded += elementsAdded;
-                    rangeActiveExpression.ElementsMoved += elementsMoved;
-                    rangeActiveExpression.ElementsRemoved += elementsRemoved;
-                    if (synchronizableSource != null)
-                        synchronizableSource.PropertyChanged += propertyChanged;
+                    rangeActiveExpression.ElementResultChanged -= elementResultChanged;
+                    rangeActiveExpression.ElementsAdded -= elementsAdded;
+                    rangeActiveExpression.ElementsMoved -= elementsMoved;
+                    rangeActiveExpression.ElementsRemoved -= elementsRemoved;
 
-                    rangeObservableCollection = new SynchronizedRangeObservableCollection<TResult>(synchronizableSource?.SynchronizationContext, indexingStrategy != IndexingStrategy.NoneOrInherit ? rangeActiveExpression.GetResultsUnderLock().Select(indexedInitializer) : rangeActiveExpression.GetResultsUnderLock().Select(er => er.result), synchronizableSource?.IsSynchronized ?? false);
-                    return new ActiveEnumerable<TResult>(rangeObservableCollection, rangeActiveExpression, () =>
-                    {
-                        rangeActiveExpression.ElementResultChanged -= elementResultChanged;
-                        rangeActiveExpression.ElementsAdded -= elementsAdded;
-                        rangeActiveExpression.ElementsMoved -= elementsMoved;
-                        rangeActiveExpression.ElementsRemoved -= elementsRemoved;
-                        if (synchronizableSource != null)
-                            synchronizableSource.PropertyChanged -= propertyChanged;
-
-                        rangeActiveExpression.Dispose();
-                    });
-                }
+                    rangeActiveExpression.Dispose();
+                });
             });
         }
 
@@ -1663,13 +1543,11 @@ namespace Gear.ActiveQuery
                     break;
             }
 
-            var rangeObservableCollectionAccess = new object();
-            var synchronizableSource = source as ISynchronizable;
+            var synchronizedSource = source as ISynchronized;
             SynchronizedRangeObservableCollection<TResult> rangeObservableCollection = null;
 
-            void elementResultChanged(object sender, RangeActiveExpressionResultChangeEventArgs<TSource, TResult> e)
-            {
-                lock (rangeObservableCollectionAccess)
+            void elementResultChanged(object sender, RangeActiveExpressionResultChangeEventArgs<TSource, TResult> e) =>
+                synchronizedSource.SequentialExecute(() =>
                 {
                     var sourceElement = e.Element;
                     var newResultElement = e.Result;
@@ -1677,12 +1555,10 @@ namespace Gear.ActiveQuery
                     rangeObservableCollection.Replace(indicies[0], newResultElement);
                     foreach (var remainingIndex in indicies.Skip(1))
                         rangeObservableCollection[remainingIndex] = newResultElement;
-                }
-            }
+                });
 
-            void elementsAdded(object sender, RangeActiveExpressionMembershipEventArgs<TSource, TResult> e)
-            {
-                lock (rangeObservableCollectionAccess)
+            void elementsAdded(object sender, RangeActiveExpressionMembershipEventArgs<TSource, TResult> e) =>
+                synchronizedSource.SequentialExecute(() =>
                 {
                     var elementResults = e.ElementResults;
                     var count = elementResults.Count;
@@ -1713,12 +1589,10 @@ namespace Gear.ActiveQuery
                             }));
                         }
                     }
-                }
-            }
+                });
 
-            void elementsMoved(object sender, RangeActiveExpressionMovedEventArgs<TSource, TResult> e)
-            {
-                lock (rangeObservableCollectionAccess)
+            void elementsMoved(object sender, RangeActiveExpressionMovedEventArgs<TSource, TResult> e) =>
+                synchronizedSource.SequentialExecute(() =>
                 {
                     var count = e.ElementResults.Count;
                     var fromIndex = e.FromIndex;
@@ -1755,12 +1629,10 @@ namespace Gear.ActiveQuery
                         }
                         rangeObservableCollection.MoveRange(fromIndex, toIndex, count);
                     }
-                }
-            }
+                });
 
-            void elementsRemoved(object sender, RangeActiveExpressionMembershipEventArgs<TSource, TResult> e)
-            {
-                lock (rangeObservableCollectionAccess)
+            void elementsRemoved(object sender, RangeActiveExpressionMembershipEventArgs<TSource, TResult> e) =>
+                synchronizedSource.SequentialExecute(() =>
                 {
                     var count = e.ElementResults.Count;
                     if (count > 0)
@@ -1794,14 +1666,7 @@ namespace Gear.ActiveQuery
                             }
                         }
                     }
-                }
-            }
-
-            void propertyChanged(object sender, PropertyChangedEventArgs e)
-            {
-                if (e.PropertyName == nameof(ISynchronizable.IsSynchronized))
-                    rangeObservableCollection.IsSynchronized = synchronizableSource.IsSynchronized;
-            }
+                });
 
             TResult indexedInitializer((TSource element, TResult result) er, int index)
             {
@@ -1815,31 +1680,24 @@ namespace Gear.ActiveQuery
                 return result;
             }
 
-            var rangeActiveExpression = RangeActiveExpression.Create(source, selector, predicateOptions);
-            return rangeActiveExpression.WithReadLock(() =>
+            return synchronizedSource.SequentialExecute(() =>
             {
-                lock (rangeObservableCollectionAccess)
+                var rangeActiveExpression = RangeActiveExpression.Create(source, selector, predicateOptions);
+                rangeActiveExpression.ElementResultChanged += elementResultChanged;
+                rangeActiveExpression.ElementsAdded += elementsAdded;
+                rangeActiveExpression.ElementsMoved += elementsMoved;
+                rangeActiveExpression.ElementsRemoved += elementsRemoved;
+
+                rangeObservableCollection = new SynchronizedRangeObservableCollection<TResult>(indexingStrategy != IndexingStrategy.NoneOrInherit ? rangeActiveExpression.GetResults().Select(indexedInitializer) : rangeActiveExpression.GetResults().Select(er => er.result));
+                return new ActiveEnumerable<TResult>(rangeObservableCollection, rangeActiveExpression, () =>
                 {
-                    rangeActiveExpression.ElementResultChanged += elementResultChanged;
-                    rangeActiveExpression.ElementsAdded += elementsAdded;
-                    rangeActiveExpression.ElementsMoved += elementsMoved;
-                    rangeActiveExpression.ElementsRemoved += elementsRemoved;
-                    if (synchronizableSource != null)
-                        synchronizableSource.PropertyChanged += propertyChanged;
+                    rangeActiveExpression.ElementResultChanged -= elementResultChanged;
+                    rangeActiveExpression.ElementsAdded -= elementsAdded;
+                    rangeActiveExpression.ElementsMoved -= elementsMoved;
+                    rangeActiveExpression.ElementsRemoved -= elementsRemoved;
 
-                    rangeObservableCollection = new SynchronizedRangeObservableCollection<TResult>(synchronizableSource?.SynchronizationContext, indexingStrategy != IndexingStrategy.NoneOrInherit ? rangeActiveExpression.GetResultsUnderLock().Select(indexedInitializer) : rangeActiveExpression.GetResultsUnderLock().Select(er => er.result), synchronizableSource?.IsSynchronized ?? false);
-                    return new ActiveEnumerable<TResult>(rangeObservableCollection, rangeActiveExpression, () =>
-                    {
-                        rangeActiveExpression.ElementResultChanged -= elementResultChanged;
-                        rangeActiveExpression.ElementsAdded -= elementsAdded;
-                        rangeActiveExpression.ElementsMoved -= elementsMoved;
-                        rangeActiveExpression.ElementsRemoved -= elementsRemoved;
-                        if (synchronizableSource != null)
-                            synchronizableSource.PropertyChanged -= propertyChanged;
-
-                        rangeActiveExpression.Dispose();
-                    });
-                }
+                    rangeActiveExpression.Dispose();
+                });
             });
         }
 
@@ -1872,13 +1730,11 @@ namespace Gear.ActiveQuery
                     throw new ArgumentOutOfRangeException(nameof(indexingStrategy), $"{nameof(indexingStrategy)} must be {IndexingStrategy.HashTable} or {IndexingStrategy.SelfBalancingBinarySearchTree}");
             }
 
-            var rangeObservableCollectionAccess = new object();
-            var synchronizableSource = source as ISynchronizable;
+            var synchronizableSource = source as ISynchronized;
             SynchronizedRangeObservableCollection<TResult> rangeObservableCollection = null;
 
-            void collectionChanged(object sender, NotifyCollectionChangedEventArgs e)
-            {
-                lock (rangeObservableCollectionAccess)
+            void collectionChanged(object sender, NotifyCollectionChangedEventArgs e) =>
+                synchronizableSource.SequentialExecute(() =>
                 {
                     var oldItems = e.OldItems != null ? e.OldItems.Cast<TResult>() : Enumerable.Empty<TResult>();
                     var oldItemsCount = e.OldItems != null ? e.OldItems.Count : 0;
@@ -1937,12 +1793,10 @@ namespace Gear.ActiveQuery
                                     }
                             }
                     }
-                }
-            }
+                });
 
-            void elementResultChanged(object sender, RangeActiveExpressionResultChangeEventArgs<TSource, IEnumerable<TResult>> e)
-            {
-                lock (rangeObservableCollectionAccess)
+            void elementResultChanged(object sender, RangeActiveExpressionResultChangeEventArgs<TSource, IEnumerable<TResult>> e) =>
+                synchronizableSource.SequentialExecute(() =>
                 {
                     var element = e.Element;
                     if (sourceToChangingResult.TryGetValue(element, out var previousChangingResult))
@@ -1987,12 +1841,10 @@ namespace Gear.ActiveQuery
                         changingResultToSource.Add(newChangingResult, element);
                         sourceToChangingResult.Add(element, newChangingResult);
                     }
-                }
-            }
+                });
 
-            void elementsAdded(object sender, RangeActiveExpressionMembershipEventArgs<TSource, IEnumerable<TResult>> e)
-            {
-                lock (rangeObservableCollectionAccess)
+            void elementsAdded(object sender, RangeActiveExpressionMembershipEventArgs<TSource, IEnumerable<TResult>> e) =>
+                synchronizableSource.SequentialExecute(() =>
                 {
                     int resultsIndex;
                     if (e.Index == 0)
@@ -2061,12 +1913,10 @@ namespace Gear.ActiveQuery
                         else
                             sourceToStartingIndicies.Add(key, kv.Value);
                     }
-                }
-            }
+                });
 
-            void elementsMoved(object sender, RangeActiveExpressionMovedEventArgs<TSource, IEnumerable<TResult>> e)
-            {
-                lock (rangeObservableCollectionAccess)
+            void elementsMoved(object sender, RangeActiveExpressionMovedEventArgs<TSource, IEnumerable<TResult>> e) =>
+                synchronizableSource.SequentialExecute(() =>
                 {
                     var elementResults = e.ElementResults;
                     var count = elementResults.SelectMany(er => er.result).Count();
@@ -2102,12 +1952,10 @@ namespace Gear.ActiveQuery
                         }
                         rangeObservableCollection.MoveRange(fromIndex, toIndex, count);
                     }
-                }
-            }
+                });
 
-            void elementsRemoved(object sender, RangeActiveExpressionMembershipEventArgs<TSource, IEnumerable<TResult>> e)
-            {
-                lock (rangeObservableCollectionAccess)
+            void elementsRemoved(object sender, RangeActiveExpressionMembershipEventArgs<TSource, IEnumerable<TResult>> e) =>
+                synchronizableSource.SequentialExecute(() =>
                 {
                     var count = e.ElementResults.SelectMany(er => er.result).Count();
                     if (count > 0)
@@ -2147,14 +1995,7 @@ namespace Gear.ActiveQuery
                             }
                         }
                     }
-                }
-            }
-
-            void propertyChanged(object sender, PropertyChangedEventArgs e)
-            {
-                if (e.PropertyName == nameof(ISynchronizable.IsSynchronized))
-                    rangeObservableCollection.IsSynchronized = synchronizableSource.IsSynchronized;
-            }
+                });
 
             var initializationCount = 0;
 
@@ -2180,31 +2021,24 @@ namespace Gear.ActiveQuery
                 return result;
             }
 
-            var rangeActiveExpression = RangeActiveExpression.Create(source, selector, selectorOptions);
-            return rangeActiveExpression.WithReadLock(() =>
+            return synchronizableSource.SequentialExecute(() =>
             {
-                lock (rangeObservableCollectionAccess)
-                {
-                    rangeActiveExpression.ElementResultChanged += elementResultChanged;
-                    rangeActiveExpression.ElementsAdded += elementsAdded;
-                    rangeActiveExpression.ElementsMoved += elementsMoved;
-                    rangeActiveExpression.ElementsRemoved += elementsRemoved;
-                    if (synchronizableSource != null)
-                        synchronizableSource.PropertyChanged += propertyChanged;
+                var rangeActiveExpression = RangeActiveExpression.Create(source, selector, selectorOptions);
+                rangeActiveExpression.ElementResultChanged += elementResultChanged;
+                rangeActiveExpression.ElementsAdded += elementsAdded;
+                rangeActiveExpression.ElementsMoved += elementsMoved;
+                rangeActiveExpression.ElementsRemoved += elementsRemoved;
 
-                    rangeObservableCollection = new SynchronizedRangeObservableCollection<TResult>(synchronizableSource?.SynchronizationContext, rangeActiveExpression.GetResultsUnderLock().SelectMany(initializer), synchronizableSource?.IsSynchronized ?? false);
-                    return new ActiveEnumerable<TResult>(rangeObservableCollection, onDispose: () =>
-                    {
-                        foreach (var changingResult in changingResultToSource.Keys)
-                            changingResult.CollectionChanged -= collectionChanged;
-                        if (synchronizableSource != null)
-                            synchronizableSource.PropertyChanged -= propertyChanged;
-                        rangeActiveExpression.ElementResultChanged -= elementResultChanged;
-                        rangeActiveExpression.ElementsAdded -= elementsAdded;
-                        rangeActiveExpression.ElementsMoved -= elementsMoved;
-                        rangeActiveExpression.ElementsRemoved -= elementsRemoved;
-                    });
-                }
+                rangeObservableCollection = new SynchronizedRangeObservableCollection<TResult>(rangeActiveExpression.GetResults().SelectMany(initializer));
+                return new ActiveEnumerable<TResult>(rangeObservableCollection, onDispose: () =>
+                {
+                    foreach (var changingResult in changingResultToSource.Keys)
+                        changingResult.CollectionChanged -= collectionChanged;
+                    rangeActiveExpression.ElementResultChanged -= elementResultChanged;
+                    rangeActiveExpression.ElementsAdded -= elementsAdded;
+                    rangeActiveExpression.ElementsMoved -= elementsMoved;
+                    rangeActiveExpression.ElementsRemoved -= elementsRemoved;
+                });
             });
         }
 
@@ -2217,13 +2051,12 @@ namespace Gear.ActiveQuery
             var elementFaultChangeNotifier = source as INotifyElementFaultChanges;
             if (source is INotifyCollectionChanged changingSource)
             {
-                var activeValueAccess = new object();
+                var synchronizedSource = source as ISynchronized;
                 Action<TSource> setValue = null;
                 Action<Exception> setOperationFault = null;
 
-                void collectionChanged(object sender, NotifyCollectionChangedEventArgs e)
-                {
-                    lock (activeValueAccess)
+                void collectionChanged(object sender, NotifyCollectionChangedEventArgs e) =>
+                    synchronizedSource.SequentialExecute(() =>
                     {
                         try
                         {
@@ -2236,13 +2069,11 @@ namespace Gear.ActiveQuery
                             setOperationFault(ex);
                             setValue(default);
                         }
-                    }
-                }
+                    });
 
-                lock (activeValueAccess)
+                return synchronizedSource.SequentialExecute(() =>
                 {
                     changingSource.CollectionChanged += collectionChanged;
-
                     try
                     {
                         return new ActiveValue<TSource>(source.Single(), out setValue, out setOperationFault, elementFaultChangeNotifier, () => changingSource.CollectionChanged -= collectionChanged);
@@ -2251,7 +2082,7 @@ namespace Gear.ActiveQuery
                     {
                         return new ActiveValue<TSource>(default, out setValue, ex, out setOperationFault, elementFaultChangeNotifier, () => changingSource.CollectionChanged -= collectionChanged);
                     }
-                }
+                });
             }
             else
             {
@@ -2271,7 +2102,6 @@ namespace Gear.ActiveQuery
             ActiveQueryOptions.Optimize(ref predicate);
 
             ActiveEnumerable<TSource> where;
-            var activeValueAccess = new object();
             Action<TSource> setValue = null;
             Action<Exception> setOperationFault = null;
             var none = false;
@@ -2279,33 +2109,30 @@ namespace Gear.ActiveQuery
 
             void collectionChanged(object sender, NotifyCollectionChangedEventArgs e)
             {
-                lock (activeValueAccess)
+                if (none && where.Count > 0)
                 {
-                    if (none && where.Count > 0)
-                    {
-                        setOperationFault(null);
-                        none = false;
-                    }
-                    else if (!none && where.Count == 0)
-                    {
-                        setOperationFault(ExceptionHelper.SequenceContainsNoElements);
-                        none = true;
-                    }
-                    if (moreThanOne && where.Count <= 1)
-                    {
-                        setOperationFault(null);
-                        moreThanOne = false;
-                    }
-                    else if (!moreThanOne && where.Count > 1)
-                    {
-                        setOperationFault(ExceptionHelper.SequenceContainsMoreThanOneElement);
-                        moreThanOne = true;
-                    }
-                    setValue(where.Count == 1 ? where[0] : default);
+                    setOperationFault(null);
+                    none = false;
                 }
+                else if (!none && where.Count == 0)
+                {
+                    setOperationFault(ExceptionHelper.SequenceContainsNoElements);
+                    none = true;
+                }
+                if (moreThanOne && where.Count <= 1)
+                {
+                    setOperationFault(null);
+                    moreThanOne = false;
+                }
+                else if (!moreThanOne && where.Count > 1)
+                {
+                    setOperationFault(ExceptionHelper.SequenceContainsMoreThanOneElement);
+                    moreThanOne = true;
+                }
+                setValue(where.Count == 1 ? where[0] : default);
             }
 
-            lock (activeValueAccess)
+            return (source as ISynchronized).SequentialExecute(() =>
             {
                 where = ActiveWhere(source, predicate, predicateOptions);
                 where.CollectionChanged += collectionChanged;
@@ -2320,7 +2147,7 @@ namespace Gear.ActiveQuery
                     where.CollectionChanged -= collectionChanged;
                     where.Dispose();
                 });
-            }
+            });
         }
 
         #endregion Single
@@ -2332,13 +2159,12 @@ namespace Gear.ActiveQuery
             var elementFaultChangeNotifier = source as INotifyElementFaultChanges;
             if (source is INotifyCollectionChanged changingSource)
             {
-                var activeValueAccess = new object();
+                var synchronizedSource = source as ISynchronized;
                 Action<TSource> setValue = null;
                 Action<Exception> setOperationFault = null;
 
-                void collectionChanged(object sender, NotifyCollectionChangedEventArgs e)
-                {
-                    lock (activeValueAccess)
+                void collectionChanged(object sender, NotifyCollectionChangedEventArgs e) =>
+                    synchronizedSource.SequentialExecute(() =>
                     {
                         try
                         {
@@ -2351,13 +2177,11 @@ namespace Gear.ActiveQuery
                             setOperationFault(ex);
                             setValue(default);
                         }
-                    }
-                }
+                    });
 
-                lock (activeValueAccess)
+                return synchronizedSource.SequentialExecute(() =>
                 {
                     changingSource.CollectionChanged += collectionChanged;
-
                     try
                     {
                         return new ActiveValue<TSource>(source.SingleOrDefault(), out setValue, null, out setOperationFault, elementFaultChangeNotifier, () => changingSource.CollectionChanged -= collectionChanged);
@@ -2366,7 +2190,7 @@ namespace Gear.ActiveQuery
                     {
                         return new ActiveValue<TSource>(default, out setValue, ex, out setOperationFault, elementFaultChangeNotifier, () => changingSource.CollectionChanged -= collectionChanged);
                     }
-                }
+                });
             }
             else
             {
@@ -2386,30 +2210,26 @@ namespace Gear.ActiveQuery
             ActiveQueryOptions.Optimize(ref predicate);
 
             ActiveEnumerable<TSource> where;
-            var activeValueAccess = new object();
             Action<TSource> setValue = null;
             Action<Exception> setOperationFault = null;
             var moreThanOne = false;
 
             void collectionChanged(object sender, NotifyCollectionChangedEventArgs e)
             {
-                lock (activeValueAccess)
+                if (moreThanOne && where.Count <= 1)
                 {
-                    if (moreThanOne && where.Count <= 1)
-                    {
-                        setOperationFault(null);
-                        moreThanOne = false;
-                    }
-                    else if (!moreThanOne && where.Count > 1)
-                    {
-                        setOperationFault(ExceptionHelper.SequenceContainsMoreThanOneElement);
-                        moreThanOne = true;
-                    }
-                    setValue(where.Count == 1 ? where[0] : default);
+                    setOperationFault(null);
+                    moreThanOne = false;
                 }
+                else if (!moreThanOne && where.Count > 1)
+                {
+                    setOperationFault(ExceptionHelper.SequenceContainsMoreThanOneElement);
+                    moreThanOne = true;
+                }
+                setValue(where.Count == 1 ? where[0] : default);
             }
 
-            lock (activeValueAccess)
+            return (source as ISynchronized).SequentialExecute(() =>
             {
                 where = ActiveWhere(source, predicate, predicateOptions);
                 where.CollectionChanged += collectionChanged;
@@ -2420,7 +2240,7 @@ namespace Gear.ActiveQuery
                     where.CollectionChanged -= collectionChanged;
                     where.Dispose();
                 });
-            }
+            });
         }
 
         #endregion SingleOrDefault
@@ -2435,67 +2255,50 @@ namespace Gear.ActiveQuery
             ActiveQueryOptions.Optimize(ref selector);
 
             var operations = new GenericOperations<TResult>();
-            var activeValueAccess = new object();
+            var synchronizedSource = source as ISynchronized;
             ActiveValue<TResult> activeValue = null;
             Action<TResult> setValue = null;
             var resultsChanging = new Dictionary<TSource, (TResult result, int instances)>();
 
-            void elementResultChanged(object sender, RangeActiveExpressionResultChangeEventArgs<TSource, TResult> e)
-            {
-                lock (activeValueAccess)
+            void elementResultChanged(object sender, RangeActiveExpressionResultChangeEventArgs<TSource, TResult> e) =>
+                synchronizedSource.SequentialExecute(() =>
                 {
                     var (result, instances) = resultsChanging[e.Element];
                     resultsChanging.Remove(e.Element);
                     setValue(operations.Add(activeValue.Value, operations.Subtract(e.Result, result).Repeat(instances).Aggregate(operations.Add)));
-                }
-            }
+                });
 
-            void elementResultChanging(object sender, RangeActiveExpressionResultChangeEventArgs<TSource, TResult> e)
-            {
-                lock (activeValueAccess)
-                    resultsChanging.Add(e.Element, (e.Result, e.Count));
-            }
+            void elementResultChanging(object sender, RangeActiveExpressionResultChangeEventArgs<TSource, TResult> e) => synchronizedSource.SequentialExecute(() => resultsChanging.Add(e.Element, (e.Result, e.Count)));
 
-            void elementsAdded(object sender, RangeActiveExpressionMembershipEventArgs<TSource, TResult> e)
-            {
-                lock (activeValueAccess)
-                    setValue(new TResult[] { activeValue.Value }.Concat(e.ElementResults.Select(er => er.result)).Aggregate(operations.Add));
-            }
+            void elementsAdded(object sender, RangeActiveExpressionMembershipEventArgs<TSource, TResult> e) => synchronizedSource.SequentialExecute(() => setValue(new TResult[] { activeValue.Value }.Concat(e.ElementResults.Select(er => er.result)).Aggregate(operations.Add)));
 
-            void elementsRemoved(object sender, RangeActiveExpressionMembershipEventArgs<TSource, TResult> e)
-            {
-                lock (activeValueAccess)
-                    setValue(new TResult[] { activeValue.Value }.Concat(e.ElementResults.Select(er => er.result)).Aggregate(operations.Subtract));
-            }
+            void elementsRemoved(object sender, RangeActiveExpressionMembershipEventArgs<TSource, TResult> e) => synchronizedSource.SequentialExecute(() => setValue(new TResult[] { activeValue.Value }.Concat(e.ElementResults.Select(er => er.result)).Aggregate(operations.Subtract)));
 
-            var rangeActiveExpression = RangeActiveExpression.Create(source, selector, selectorOptions);
-            return rangeActiveExpression.WithReadLock(() =>
+            return synchronizedSource.SequentialExecute(() =>
             {
-                lock (activeValueAccess)
+                var rangeActiveExpression = RangeActiveExpression.Create(source, selector, selectorOptions);
+                rangeActiveExpression.ElementResultChanged += elementResultChanged;
+                rangeActiveExpression.ElementResultChanging += elementResultChanging;
+                rangeActiveExpression.ElementsAdded += elementsAdded;
+                rangeActiveExpression.ElementsRemoved += elementsRemoved;
+
+                void dispose()
                 {
-                    rangeActiveExpression.ElementResultChanged += elementResultChanged;
-                    rangeActiveExpression.ElementResultChanging += elementResultChanging;
-                    rangeActiveExpression.ElementsAdded += elementsAdded;
-                    rangeActiveExpression.ElementsRemoved += elementsRemoved;
+                    rangeActiveExpression.ElementResultChanged -= elementResultChanged;
+                    rangeActiveExpression.ElementResultChanging -= elementResultChanging;
+                    rangeActiveExpression.ElementsAdded -= elementsAdded;
+                    rangeActiveExpression.ElementsRemoved -= elementsRemoved;
 
-                    void dispose()
-                    {
-                        rangeActiveExpression.ElementResultChanged -= elementResultChanged;
-                        rangeActiveExpression.ElementResultChanging -= elementResultChanging;
-                        rangeActiveExpression.ElementsAdded -= elementsAdded;
-                        rangeActiveExpression.ElementsRemoved -= elementsRemoved;
+                    rangeActiveExpression.Dispose();
+                }
 
-                        rangeActiveExpression.Dispose();
-                    }
-
-                    try
-                    {
-                        return activeValue = new ActiveValue<TResult>(rangeActiveExpression.GetResultsUnderLock().Select(er => er.result).Aggregate(operations.Add), out setValue, null, rangeActiveExpression, dispose);
-                    }
-                    catch (InvalidOperationException)
-                    {
-                        return activeValue = new ActiveValue<TResult>(default, out setValue, null, rangeActiveExpression, dispose);
-                    }
+                try
+                {
+                    return activeValue = new ActiveValue<TResult>(rangeActiveExpression.GetResults().Select(er => er.result).Aggregate(operations.Add), out setValue, null, rangeActiveExpression, dispose);
+                }
+                catch (InvalidOperationException)
+                {
+                    return activeValue = new ActiveValue<TResult>(default, out setValue, null, rangeActiveExpression, dispose);
                 }
             });
         }
@@ -2506,17 +2309,15 @@ namespace Gear.ActiveQuery
 
         public static ActiveEnumerable<TSource> ToActiveEnumerable<TSource>(this IEnumerable<TSource> source)
         {
-            if (source is IReadOnlyList<TSource> readOnlyList)
+            if (source is IReadOnlyList<TSource> readOnlyList && source is ISynchronized)
                 return new ActiveEnumerable<TSource>(readOnlyList);
 
             var changingSource = source as INotifyCollectionChanged;
-            var synchronizableSource = source as ISynchronizable;
-            var rangeObservableCollectionAccess = new object();
+            var synchronizedSource = source as ISynchronized;
             SynchronizedRangeObservableCollection<TSource> rangeObservableCollection = null;
 
-            void collectionChanged(object sender, NotifyCollectionChangedEventArgs e)
-            {
-                lock (rangeObservableCollectionAccess)
+            void collectionChanged(object sender, NotifyCollectionChangedEventArgs e) =>
+                synchronizedSource.SequentialExecute(() =>
                 {
                     var oldItems = e.OldItems != null ? e.OldItems.Cast<TSource>() : Enumerable.Empty<TSource>();
                     var oldItemsCount = e.OldItems != null ? e.OldItems.Count : 0;
@@ -2537,31 +2338,20 @@ namespace Gear.ActiveQuery
                                 rangeObservableCollection.InsertRange(e.NewStartingIndex, newItems);
                             break;
                     }
-                }
-            }
+                });
 
-            void propertyChanged(object sender, PropertyChangedEventArgs e)
-            {
-                if (e.PropertyName == nameof(ISynchronizable.IsSynchronized))
-                    rangeObservableCollection.IsSynchronized = synchronizableSource.IsSynchronized;
-            }
-
-            lock (rangeObservableCollectionAccess)
+            return synchronizedSource.SequentialExecute(() =>
             {
                 if (changingSource != null)
                     changingSource.CollectionChanged += collectionChanged;
-                if (synchronizableSource != null)
-                    synchronizableSource.PropertyChanged += propertyChanged;
 
-                rangeObservableCollection = new SynchronizedRangeObservableCollection<TSource>(synchronizableSource?.SynchronizationContext, source, synchronizableSource?.IsSynchronized ?? false);
+                rangeObservableCollection = new SynchronizedRangeObservableCollection<TSource>(source);
                 return new ActiveEnumerable<TSource>(rangeObservableCollection, source as INotifyElementFaultChanges, () =>
                 {
                     if (changingSource != null)
                         changingSource.CollectionChanged -= collectionChanged;
-                    if (synchronizableSource != null)
-                        synchronizableSource.PropertyChanged -= propertyChanged;
                 });
-            }
+            });
         }
 
         #endregion ToActiveEnumerable
@@ -2572,26 +2362,13 @@ namespace Gear.ActiveQuery
         {
             ActiveQueryOptions.Optimize(ref selector);
 
-            var synchronizableSource = source as ISynchronizable;
-            var rangeObservableDictionaryAccess = new object();
+            var synchronizedSource = source as ISynchronized;
             IDictionary<TKey, int> duplicateKeys;
             var isFaultedDuplicateKeys = false;
             var isFaultedNullKey = false;
             var nullKeys = 0;
-            ISynchronizableObservableRangeDictionary<TKey, TValue> rangeObservableDictionary;
+            ISynchronizedObservableRangeDictionary<TKey, TValue> rangeObservableDictionary;
             Action<Exception> setOperationFault = null;
-
-            switch (indexingStategy)
-            {
-                case IndexingStrategy.SelfBalancingBinarySearchTree:
-                    duplicateKeys = keyComparer == null ? new SortedDictionary<TKey, int>() : new SortedDictionary<TKey, int>(keyComparer);
-                    rangeObservableDictionary = keyComparer == null ? new SynchronizedObservableSortedDictionary<TKey, TValue>(synchronizableSource?.SynchronizationContext, synchronizableSource?.IsSynchronized ?? false) : new SynchronizedObservableSortedDictionary<TKey, TValue>(synchronizableSource?.SynchronizationContext, keyComparer, synchronizableSource?.IsSynchronized ?? false);
-                    break;
-                default:
-                    duplicateKeys = keyEqualityComparer == null ? new Dictionary<TKey, int>() : new Dictionary<TKey, int>(keyEqualityComparer);
-                    rangeObservableDictionary = keyEqualityComparer == null ? new SynchronizedObservableDictionary<TKey, TValue>(synchronizableSource?.SynchronizationContext, synchronizableSource?.IsSynchronized ?? false) : new SynchronizedObservableDictionary<TKey, TValue>(synchronizableSource?.SynchronizationContext, keyEqualityComparer, synchronizableSource?.IsSynchronized ?? false);
-                    break;
-            }
 
             void checkOperationFault()
             {
@@ -2621,9 +2398,8 @@ namespace Gear.ActiveQuery
                 }
             }
 
-            void elementResultChanged(object sender, RangeActiveExpressionResultChangeEventArgs<TSource, KeyValuePair<TKey, TValue>> e)
-            {
-                lock (rangeObservableDictionaryAccess)
+            void elementResultChanged(object sender, RangeActiveExpressionResultChangeEventArgs<TSource, KeyValuePair<TKey, TValue>> e) =>
+                synchronizedSource.SequentialExecute(() =>
                 {
                     var result = e.Result;
                     var key = result.Key;
@@ -2648,12 +2424,10 @@ namespace Gear.ActiveQuery
                         }
                     }
                     checkOperationFault();
-                }
-            }
+                });
 
-            void elementResultChanging(object sender, RangeActiveExpressionResultChangeEventArgs<TSource, KeyValuePair<TKey, TValue>> e)
-            {
-                lock (rangeObservableDictionaryAccess)
+            void elementResultChanging(object sender, RangeActiveExpressionResultChangeEventArgs<TSource, KeyValuePair<TKey, TValue>> e) =>
+                synchronizedSource.SequentialExecute(() =>
                 {
                     var result = e.Result;
                     var key = result.Key;
@@ -2673,12 +2447,10 @@ namespace Gear.ActiveQuery
                             rangeObservableDictionary.Remove(key);
                     }
                     checkOperationFault();
-                }
-            }
+                });
 
-            void elementsAdded(object sender, RangeActiveExpressionMembershipEventArgs<TSource, KeyValuePair<TKey, TValue>> e)
-            {
-                lock (rangeObservableDictionaryAccess)
+            void elementsAdded(object sender, RangeActiveExpressionMembershipEventArgs<TSource, KeyValuePair<TKey, TValue>> e) =>
+                synchronizedSource.SequentialExecute(() =>
                 {
                     foreach (var (element, result) in e.ElementResults)
                     {
@@ -2700,12 +2472,10 @@ namespace Gear.ActiveQuery
                         }
                     }
                     checkOperationFault();
-                }
-            }
+                });
 
-            void elementsRemoved(object sender, RangeActiveExpressionMembershipEventArgs<TSource, KeyValuePair<TKey, TValue>> e)
-            {
-                lock (rangeObservableDictionaryAccess)
+            void elementsRemoved(object sender, RangeActiveExpressionMembershipEventArgs<TSource, KeyValuePair<TKey, TValue>> e) =>
+                synchronizedSource.SequentialExecute(() =>
                 {
                     foreach (var (element, result) in e.ElementResults)
                     {
@@ -2726,59 +2496,46 @@ namespace Gear.ActiveQuery
                         }
                     }
                     checkOperationFault();
-                }
-            }
+                });
 
-            void propertyChanged(object sender, PropertyChangedEventArgs e)
+            return synchronizedSource.SequentialExecute(() =>
             {
-                if (e.PropertyName == nameof(ISynchronizable.IsSynchronized))
+                switch (indexingStategy)
                 {
-                    switch (indexingStategy)
-                    {
-                        case IndexingStrategy.SelfBalancingBinarySearchTree:
-                            ((SynchronizedObservableSortedDictionary<TKey, TValue>)rangeObservableDictionary).IsSynchronized = synchronizableSource.IsSynchronized;
-                            break;
-                        default:
-                            ((SynchronizedObservableDictionary<TKey, TValue>)rangeObservableDictionary).IsSynchronized = synchronizableSource.IsSynchronized;
-                            break;
-                    }
+                    case IndexingStrategy.SelfBalancingBinarySearchTree:
+                        duplicateKeys = keyComparer == null ? new SortedDictionary<TKey, int>() : new SortedDictionary<TKey, int>(keyComparer);
+                        rangeObservableDictionary = keyComparer == null ? new SynchronizedObservableSortedDictionary<TKey, TValue>() : new SynchronizedObservableSortedDictionary<TKey, TValue>(keyComparer);
+                        break;
+                    default:
+                        duplicateKeys = keyEqualityComparer == null ? new Dictionary<TKey, int>() : new Dictionary<TKey, int>(keyEqualityComparer);
+                        rangeObservableDictionary = keyEqualityComparer == null ? new SynchronizedObservableDictionary<TKey, TValue>() : new SynchronizedObservableDictionary<TKey, TValue>(keyEqualityComparer);
+                        break;
                 }
-            }
 
-            var rangeActiveExpression = RangeActiveExpression.Create(source, selector, selectorOptions);
-            return rangeActiveExpression.WithReadLock(() =>
-            {
-                lock (rangeObservableDictionaryAccess)
+                var rangeActiveExpression = RangeActiveExpression.Create(source, selector, selectorOptions);
+                rangeActiveExpression.ElementResultChanged += elementResultChanged;
+                rangeActiveExpression.ElementResultChanging += elementResultChanging;
+                rangeActiveExpression.ElementsAdded += elementsAdded;
+                rangeActiveExpression.ElementsRemoved += elementsRemoved;
+
+                ActiveLookup<TKey, TValue> activeLookup;
+                var resultsFaultsAndCounts = rangeActiveExpression.GetResultsFaultsAndCounts();
+                nullKeys = resultsFaultsAndCounts.Count(rfc => rfc.result.Key == null);
+                var distinctResultsFaultsAndCounts = resultsFaultsAndCounts.Where(rfc => rfc.result.Key != null).GroupBy(rfc => rfc.result.Key).ToList();
+                rangeObservableDictionary.AddRange(distinctResultsFaultsAndCounts.Select(g => g.First().result));
+                foreach (var (key, duplicateCount) in distinctResultsFaultsAndCounts.Select(g => (key: g.Key, duplicateCount: g.Sum(rfc => rfc.count) - 1)).Where(kc => kc.duplicateCount > 0))
+                    duplicateKeys.Add(key, duplicateCount);
+                activeLookup = new ActiveLookup<TKey, TValue>(rangeObservableDictionary, out setOperationFault, rangeActiveExpression, () =>
                 {
-                    rangeActiveExpression.ElementResultChanged += elementResultChanged;
-                    rangeActiveExpression.ElementResultChanging += elementResultChanging;
-                    rangeActiveExpression.ElementsAdded += elementsAdded;
-                    rangeActiveExpression.ElementsRemoved += elementsRemoved;
+                    rangeActiveExpression.ElementResultChanged -= elementResultChanged;
+                    rangeActiveExpression.ElementResultChanging -= elementResultChanging;
+                    rangeActiveExpression.ElementsAdded -= elementsAdded;
+                    rangeActiveExpression.ElementsRemoved -= elementsRemoved;
+                    rangeActiveExpression.Dispose();
+                });
+                checkOperationFault();
 
-                    if (synchronizableSource != null)
-                        synchronizableSource.PropertyChanged += propertyChanged;
-
-                    ActiveLookup<TKey, TValue> activeLookup;
-                    var resultsFaultsAndCounts = rangeActiveExpression.GetResultsFaultsAndCountsUnderLock();
-                    nullKeys = resultsFaultsAndCounts.Count(rfc => rfc.result.Key == null);
-                    var distinctResultsFaultsAndCounts = resultsFaultsAndCounts.Where(rfc => rfc.result.Key != null).GroupBy(rfc => rfc.result.Key).ToList();
-                    rangeObservableDictionary.AddRange(distinctResultsFaultsAndCounts.Select(g => g.First().result));
-                    foreach (var (key, duplicateCount) in distinctResultsFaultsAndCounts.Select(g => (key: g.Key, duplicateCount: g.Sum(rfc => rfc.count) - 1)).Where(kc => kc.duplicateCount > 0))
-                        duplicateKeys.Add(key, duplicateCount);
-                    activeLookup = new ActiveLookup<TKey, TValue>(rangeObservableDictionary, out setOperationFault, rangeActiveExpression, () =>
-                    {
-                        rangeActiveExpression.ElementResultChanged -= elementResultChanged;
-                        rangeActiveExpression.ElementResultChanging -= elementResultChanging;
-                        rangeActiveExpression.ElementsAdded -= elementsAdded;
-                        rangeActiveExpression.ElementsRemoved -= elementsRemoved;
-                        rangeActiveExpression.Dispose();
-                        if (synchronizableSource != null)
-                            synchronizableSource.PropertyChanged -= propertyChanged;
-                    });
-                    checkOperationFault();
-
-                    return activeLookup;
-                }
+                return activeLookup;
             });
         }
 
@@ -2790,13 +2547,12 @@ namespace Gear.ActiveQuery
         {
             ActiveQueryOptions.Optimize(ref predicate);
 
-            var synchronizableSource = source as ISynchronizable;
+            var synchronizedSource = source as ISynchronized;
             var rangeObservableCollectionAccess = new object();
             SynchronizedRangeObservableCollection<TSource> rangeObservableCollection = null;
 
-            void elementResultChanged(object sender, RangeActiveExpressionResultChangeEventArgs<TSource, bool> e)
-            {
-                lock (rangeObservableCollectionAccess)
+            void elementResultChanged(object sender, RangeActiveExpressionResultChangeEventArgs<TSource, bool> e) =>
+                synchronizedSource.SequentialExecute(() =>
                 {
                     if (e.Result)
                         rangeObservableCollection.AddRange(Enumerable.Range(0, e.Count).Select(i => e.Element));
@@ -2805,50 +2561,28 @@ namespace Gear.ActiveQuery
                         var equalityComparer = EqualityComparer<TSource>.Default;
                         rangeObservableCollection.RemoveAll(element => equalityComparer.Equals(element, e.Element));
                     }
-                }
-            }
+                });
 
-            void elementsAdded(object sender, RangeActiveExpressionMembershipEventArgs<TSource, bool> e)
-            {
-                lock (rangeObservableCollectionAccess)
-                    rangeObservableCollection.AddRange(e.ElementResults.Where(er => er.result).Select(er => er.element));
-            }
+            void elementsAdded(object sender, RangeActiveExpressionMembershipEventArgs<TSource, bool> e) => synchronizedSource.SequentialExecute(() => rangeObservableCollection.AddRange(e.ElementResults.Where(er => er.result).Select(er => er.element)));
 
-            void elementsRemoved(object sender, RangeActiveExpressionMembershipEventArgs<TSource, bool> e)
-            {
-                lock (rangeObservableCollectionAccess)
-                    rangeObservableCollection.RemoveRange(e.ElementResults.Where(er => er.result).Select(er => er.element));
-            }
+            void elementsRemoved(object sender, RangeActiveExpressionMembershipEventArgs<TSource, bool> e) => synchronizedSource.SequentialExecute(() => rangeObservableCollection.RemoveRange(e.ElementResults.Where(er => er.result).Select(er => er.element)));
 
-            void propertyChanged(object sender, PropertyChangedEventArgs e)
+            return synchronizedSource.SequentialExecute(() =>
             {
-                if (e.PropertyName == nameof(ISynchronizable.IsSynchronized))
-                    rangeObservableCollection.IsSynchronized = synchronizableSource.IsSynchronized;
-            }
+                var rangeActiveExpression = RangeActiveExpression.Create(source, predicate, predicateOptions);
+                rangeActiveExpression.ElementResultChanged += elementResultChanged;
+                rangeActiveExpression.ElementsAdded += elementsAdded;
+                rangeActiveExpression.ElementsRemoved += elementsRemoved;
 
-            var rangeActiveExpression = RangeActiveExpression.Create(source, predicate, predicateOptions);
-            return rangeActiveExpression.WithReadLock(() =>
-            {
-                lock (rangeObservableCollectionAccess)
+                rangeObservableCollection = new SynchronizedRangeObservableCollection<TSource>(rangeActiveExpression.GetResults().Where(er => er.result).Select(er => er.element));
+                return new ActiveEnumerable<TSource>(rangeObservableCollection, rangeActiveExpression, () =>
                 {
-                    rangeActiveExpression.ElementResultChanged += elementResultChanged;
-                    rangeActiveExpression.ElementsAdded += elementsAdded;
-                    rangeActiveExpression.ElementsRemoved += elementsRemoved;
-                    if (synchronizableSource != null)
-                        synchronizableSource.PropertyChanged += propertyChanged;
+                    rangeActiveExpression.ElementResultChanged -= elementResultChanged;
+                    rangeActiveExpression.ElementsAdded -= elementsAdded;
+                    rangeActiveExpression.ElementsRemoved -= elementsRemoved;
 
-                    rangeObservableCollection = new SynchronizedRangeObservableCollection<TSource>(synchronizableSource?.SynchronizationContext, rangeActiveExpression.GetResultsUnderLock().Where(er => er.result).Select(er => er.element), synchronizableSource?.IsSynchronized ?? false);
-                    return new ActiveEnumerable<TSource>(rangeObservableCollection, rangeActiveExpression, () =>
-                    {
-                        rangeActiveExpression.ElementResultChanged -= elementResultChanged;
-                        rangeActiveExpression.ElementsAdded -= elementsAdded;
-                        rangeActiveExpression.ElementsRemoved -= elementsRemoved;
-                        if (synchronizableSource != null)
-                            synchronizableSource.PropertyChanged -= propertyChanged;
-
-                        rangeActiveExpression.Dispose();
-                    });
-                }
+                    rangeActiveExpression.Dispose();
+                });
             });
         }
 

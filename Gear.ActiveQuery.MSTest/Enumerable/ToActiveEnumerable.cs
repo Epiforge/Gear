@@ -38,11 +38,6 @@ namespace Gear.ActiveQuery.MSTest.Enumerable
                 Assert.IsTrue(query.SequenceEqual(people));
                 people.Clear();
                 Assert.IsTrue(query.SequenceEqual(people));
-                Assert.IsTrue(query.IsSynchronized);
-                wrappedPeople.IsSynchronized = false;
-                Assert.IsFalse(query.IsSynchronized);
-                wrappedPeople.IsSynchronized = true;
-                Assert.IsTrue(query.IsSynchronized);
             }
         }
     }

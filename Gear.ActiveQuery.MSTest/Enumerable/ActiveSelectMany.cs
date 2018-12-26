@@ -55,7 +55,6 @@ namespace Gear.ActiveQuery.MSTest.Enumerable
             using (var expr = teams.ActiveSelectMany(team => team.People))
             {
                 void checkMergedNames(string against) => Assert.AreEqual(against, string.Join(string.Empty, expr.Select(person => person.Name)));
-                Assert.IsTrue(expr.IsSynchronized);
                 checkMergedNames(string.Empty);
                 var management = new TestTeam(synchronizationContext);
                 management.People.Add(new TestPerson("Charles"));
@@ -138,10 +137,6 @@ namespace Gear.ActiveQuery.MSTest.Enumerable
                 checkMergedNames("GeorgeCharlesEmilyErinCliffDaniel");
                 teams.RemoveAt(0);
                 checkMergedNames("EmilyErinCliffDaniel");
-                teams.IsSynchronized = false;
-                Assert.IsFalse(expr.IsSynchronized);
-                teams.IsSynchronized = true;
-                Assert.IsTrue(expr.IsSynchronized);
             }
         }
 
