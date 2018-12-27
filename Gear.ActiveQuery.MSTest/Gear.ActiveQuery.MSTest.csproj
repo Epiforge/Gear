@@ -100,7 +100,6 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="TestPerson.cs" />
     <Compile Include="TestSimpleObservableCollection.cs" />
-    <Compile Include="TestSynchronizationContext.cs" />
     <Compile Include="TestTeam.cs" />
   </ItemGroup>
   <ItemGroup>

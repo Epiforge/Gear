@@ -8,7 +8,7 @@ namespace Gear.ActiveQuery.MSTest
     class TestPerson : PropertyChangeNotifier, IComparable<TestPerson>
     {
         public static SynchronizedRangeObservableCollection<TestPerson> CreatePeople(SynchronizationContext synchronizationContext = null) =>
-            new SynchronizedRangeObservableCollection<TestPerson>(synchronizationContext ?? new TestSynchronizationContext())
+            new SynchronizedRangeObservableCollection<TestPerson>(synchronizationContext)
             {
                 new TestPerson("John"),
                 new TestPerson("Emily"),

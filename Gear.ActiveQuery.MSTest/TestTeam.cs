@@ -1,12 +1,11 @@
 using Gear.Components;
 using System;
-using System.Threading;
 
 namespace Gear.ActiveQuery.MSTest
 {
     class TestTeam : PropertyChangeNotifier, IComparable<TestTeam>
     {
-        public TestTeam(SynchronizationContext synchronizationContext) : this(new SynchronizedRangeObservableCollection<TestPerson>(synchronizationContext))
+        public TestTeam() : this(new SynchronizedRangeObservableCollection<TestPerson>())
         {
         }
 

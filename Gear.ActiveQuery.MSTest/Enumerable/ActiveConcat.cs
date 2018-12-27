@@ -1,4 +1,5 @@
 using System;
+using Gear.Components;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace Gear.ActiveQuery.MSTest.Enumerable
@@ -10,8 +11,8 @@ namespace Gear.ActiveQuery.MSTest.Enumerable
         public void DifferentSynchronizationContexts()
         {
             var invalidThrown = false;
-            var left = TestPerson.CreatePeople();
-            var right = TestPerson.CreatePeople();
+            var left = TestPerson.CreatePeople(new AsyncSynchronizationContext());
+            var right = TestPerson.CreatePeople(new AsyncSynchronizationContext());
             try
             {
                 using (var query = left.ActiveConcat(right))
@@ -28,8 +29,8 @@ namespace Gear.ActiveQuery.MSTest.Enumerable
         [TestMethod]
         public void SourceManipulationLeftContext()
         {
-            var left = TestPerson.CreatePeople();
-            var right = TestPerson.CreatePeople();
+            var left = TestPerson.CreatePeople(new AsyncSynchronizationContext());
+            var right = TestPerson.CreatePeople(new AsyncSynchronizationContext());
             using (var query = left.ActiveConcat(right, left.SynchronizationContext))
             {
                 Assert.AreEqual(0, query.GetElementFaults().Count);
@@ -56,8 +57,8 @@ namespace Gear.ActiveQuery.MSTest.Enumerable
         [TestMethod]
         public void SourceManipulationRightContext()
         {
-            var left = TestPerson.CreatePeople();
-            var right = TestPerson.CreatePeople();
+            var left = TestPerson.CreatePeople(new AsyncSynchronizationContext());
+            var right = TestPerson.CreatePeople(new AsyncSynchronizationContext());
             using (var query = left.ActiveConcat(right, right.SynchronizationContext))
             {
                 Assert.AreEqual(0, query.GetElementFaults().Count);
@@ -84,7 +85,7 @@ namespace Gear.ActiveQuery.MSTest.Enumerable
         [TestMethod]
         public void SourceManipulationSameContext()
         {
-            var synchronizationContext = new TestSynchronizationContext();
+            var synchronizationContext = new AsyncSynchronizationContext();
             var left = TestPerson.CreatePeople(synchronizationContext);
             var right = TestPerson.CreatePeople(synchronizationContext);
             using (var query = left.ActiveConcat(right))

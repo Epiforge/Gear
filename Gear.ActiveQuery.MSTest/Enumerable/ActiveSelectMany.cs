@@ -27,18 +27,17 @@ namespace Gear.ActiveQuery.MSTest.Enumerable
         [TestMethod]
         public void Initializer()
         {
-            var synchronizationContext = new TestSynchronizationContext();
-            var teams = new SynchronizedRangeObservableCollection<TestTeam>(synchronizationContext)
+            var teams = new SynchronizedRangeObservableCollection<TestTeam>()
             {
-                new TestTeam(new SynchronizedRangeObservableCollection<TestPerson>(synchronizationContext)
+                new TestTeam(new SynchronizedRangeObservableCollection<TestPerson>()
                 {
                     new TestPerson("Emily")
                 }),
-                new TestTeam(new SynchronizedRangeObservableCollection<TestPerson>(synchronizationContext)
+                new TestTeam(new SynchronizedRangeObservableCollection<TestPerson>()
                 {
                     new TestPerson("Charles")
                 }),
-                new TestTeam(new SynchronizedRangeObservableCollection<TestPerson>(synchronizationContext)
+                new TestTeam(new SynchronizedRangeObservableCollection<TestPerson>()
                 {
                     new TestPerson("Erin")
                 })
@@ -50,13 +49,12 @@ namespace Gear.ActiveQuery.MSTest.Enumerable
         [TestMethod]
         public void SourceManipulation()
         {
-            var synchronizationContext = new TestSynchronizationContext();
-            var teams = new SynchronizedRangeObservableCollection<TestTeam>(synchronizationContext);
+            var teams = new SynchronizedRangeObservableCollection<TestTeam>();
             using (var expr = teams.ActiveSelectMany(team => team.People))
             {
                 void checkMergedNames(string against) => Assert.AreEqual(against, string.Join(string.Empty, expr.Select(person => person.Name)));
                 checkMergedNames(string.Empty);
-                var management = new TestTeam(synchronizationContext);
+                var management = new TestTeam();
                 management.People.Add(new TestPerson("Charles"));
                 teams.Add(management);
                 checkMergedNames("Charles");
@@ -64,7 +62,7 @@ namespace Gear.ActiveQuery.MSTest.Enumerable
                 checkMergedNames("CharlesMichael");
                 management.People.RemoveAt(1);
                 checkMergedNames("Charles");
-                var development = new TestTeam(synchronizationContext);
+                var development = new TestTeam();
                 teams.Add(development);
                 checkMergedNames("Charles");
                 development.People.AddRange(new TestPerson[]
@@ -77,7 +75,7 @@ namespace Gear.ActiveQuery.MSTest.Enumerable
                 checkMergedNames("CharlesJohnEmilyEdwardAndrew");
                 development.People.RemoveRange(2, 2);
                 checkMergedNames("CharlesJohnEmily");
-                var qa = new TestTeam(synchronizationContext);
+                var qa = new TestTeam();
                 qa.People.AddRange(new TestPerson[]
                 {
                     new TestPerson("Aaron"),
@@ -88,7 +86,7 @@ namespace Gear.ActiveQuery.MSTest.Enumerable
                 qa.People[0].Name = "Erin";
                 checkMergedNames("CharlesJohnEmilyErinCliff");
                 var bryan = new TestPerson("Brian");
-                var it = new TestTeam(synchronizationContext);
+                var it = new TestTeam();
                 it.People.AddRange(new TestPerson[] { bryan, bryan });
                 teams.Add(it);
                 checkMergedNames("CharlesJohnEmilyErinCliffBrianBrian");
@@ -98,7 +96,7 @@ namespace Gear.ActiveQuery.MSTest.Enumerable
                 checkMergedNames("CharlesJohnEmilyErinCliff");
                 it.People = null;
                 checkMergedNames("CharlesJohnEmilyErinCliff");
-                it.People = new SynchronizedRangeObservableCollection<TestPerson>(synchronizationContext)
+                it.People = new SynchronizedRangeObservableCollection<TestPerson>()
                 {
                     new TestPerson("Paul")
                 };
@@ -117,7 +115,7 @@ namespace Gear.ActiveQuery.MSTest.Enumerable
                 management.People.Insert(0, new TestPerson("George"));
                 checkMergedNames("GeorgeCharlesEmilyErinCliffDanielGeorgeCharles");
                 var currentManagers = management.People;
-                var otherManagers = new SynchronizedRangeObservableCollection<TestPerson>(synchronizationContext)
+                var otherManagers = new SynchronizedRangeObservableCollection<TestPerson>()
                 {
                     new TestPerson("Josh"),
                     new TestPerson("Jessica")
@@ -143,13 +141,12 @@ namespace Gear.ActiveQuery.MSTest.Enumerable
         [TestMethod]
         public void SourceManipulationSorted()
         {
-            var synchronizationContext = new TestSynchronizationContext();
-            var teams = new SynchronizedRangeObservableCollection<TestTeam>(synchronizationContext);
+            var teams = new SynchronizedRangeObservableCollection<TestTeam>();
             using (var expr = teams.ActiveSelectMany(team => team.People, indexingStrategy: IndexingStrategy.SelfBalancingBinarySearchTree))
             {
                 void checkMergedNames(string against) => Assert.AreEqual(against, string.Join(string.Empty, expr.Select(person => person.Name)));
                 checkMergedNames(string.Empty);
-                var management = new TestTeam(synchronizationContext);
+                var management = new TestTeam();
                 management.People.Add(new TestPerson("Charles"));
                 teams.Add(management);
                 checkMergedNames("Charles");
@@ -157,7 +154,7 @@ namespace Gear.ActiveQuery.MSTest.Enumerable
                 checkMergedNames("CharlesMichael");
                 management.People.RemoveAt(1);
                 checkMergedNames("Charles");
-                var development = new TestTeam(synchronizationContext);
+                var development = new TestTeam();
                 teams.Add(development);
                 checkMergedNames("Charles");
                 development.People.AddRange(new TestPerson[]
@@ -170,7 +167,7 @@ namespace Gear.ActiveQuery.MSTest.Enumerable
                 checkMergedNames("CharlesJohnEmilyEdwardAndrew");
                 development.People.RemoveRange(2, 2);
                 checkMergedNames("CharlesJohnEmily");
-                var qa = new TestTeam(synchronizationContext);
+                var qa = new TestTeam();
                 qa.People.AddRange(new TestPerson[]
                 {
                     new TestPerson("Aaron"),
@@ -181,7 +178,7 @@ namespace Gear.ActiveQuery.MSTest.Enumerable
                 qa.People[0].Name = "Erin";
                 checkMergedNames("CharlesJohnEmilyErinCliff");
                 var bryan = new TestPerson("Brian");
-                var it = new TestTeam(synchronizationContext);
+                var it = new TestTeam();
                 it.People.AddRange(new TestPerson[] { bryan, bryan });
                 teams.Add(it);
                 checkMergedNames("CharlesJohnEmilyErinCliffBrianBrian");
@@ -191,7 +188,7 @@ namespace Gear.ActiveQuery.MSTest.Enumerable
                 checkMergedNames("CharlesJohnEmilyErinCliff");
                 it.People = null;
                 checkMergedNames("CharlesJohnEmilyErinCliff");
-                it.People = new SynchronizedRangeObservableCollection<TestPerson>(synchronizationContext)
+                it.People = new SynchronizedRangeObservableCollection<TestPerson>()
                 {
                     new TestPerson("Paul")
                 };
@@ -210,7 +207,7 @@ namespace Gear.ActiveQuery.MSTest.Enumerable
                 management.People.Insert(0, new TestPerson("George"));
                 checkMergedNames("GeorgeCharlesEmilyErinCliffDanielGeorgeCharles");
                 var currentManagers = management.People;
-                var otherManagers = new SynchronizedRangeObservableCollection<TestPerson>(synchronizationContext)
+                var otherManagers = new SynchronizedRangeObservableCollection<TestPerson>()
                 {
                     new TestPerson("Josh"),
                     new TestPerson("Jessica")
