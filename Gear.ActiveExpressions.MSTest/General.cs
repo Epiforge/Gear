@@ -148,6 +148,13 @@ namespace Gear.ActiveExpressions.MSTest
         }
 
         [TestMethod]
+        public void QuotedExpressions()
+        {
+            using (var expr = ActiveExpression.Create(p1 => p1 ? (Expression<Func<int>>)(() => 1) : () => 2, true))
+                Assert.AreEqual(1, expr.Value.Compile()());
+        }
+
+        [TestMethod]
         public void ThreeArgumentConsistentHashCode()
         {
             int hashCode1, hashCode2;
