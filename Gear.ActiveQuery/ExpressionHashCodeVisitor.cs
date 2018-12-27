@@ -23,7 +23,7 @@ namespace Gear.ActiveQuery
             var atRoot = hashElements == null;
             if (atRoot)
                 hashElements = new List<object>();
-            AddHashElements(node.NodeType, node.Type);
+            AddHashElements(node?.NodeType, node?.Type);
             var result = base.Visit(node);
             if (atRoot)
             {
