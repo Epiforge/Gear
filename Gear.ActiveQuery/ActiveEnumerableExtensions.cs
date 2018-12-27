@@ -682,7 +682,7 @@ namespace Gear.ActiveQuery
 
         #region GroupBy
 
-        public static ActiveEnumerable<ActiveGrouping<TKey, TSource>> ActiveGroupBy<TKey, TSource>(this IReadOnlyList<TSource> source, Expression<Func<TSource, TKey>> keySelector, ActiveExpressionOptions keySelectorOptions, IndexingStrategy indexingStrategy = IndexingStrategy.HashTable)
+        public static ActiveEnumerable<ActiveGrouping<TKey, TSource>> ActiveGroupBy<TKey, TSource>(this IReadOnlyList<TSource> source, Expression<Func<TSource, TKey>> keySelector, ActiveExpressionOptions keySelectorOptions = null, IndexingStrategy indexingStrategy = IndexingStrategy.HashTable)
         {
             ActiveQueryOptions.Optimize(ref keySelector);
 
@@ -742,6 +742,7 @@ namespace Gear.ActiveQuery
                     groupingObservableCollection.Remove(element);
                 if (groupingObservableCollection.Count == 0)
                 {
+                    rangeObservableCollection.Remove(grouping);
                     grouping.Dispose();
                     collectionAndGroupingDictionary.Remove(key);
                 }
@@ -1157,11 +1158,15 @@ namespace Gear.ActiveQuery
                 if (indexingStrategy == IndexingStrategy.NoneOrInherit)
                 {
                     var indicies = rangeObservableCollection.IndiciesOf(element);
-                    startingIndex = indicies.First();
                     count = indicies.Count();
+                    if (count == 0)
+                        return;
+                    startingIndex = indicies.First();
                 }
+                else if (startingIndiciesAndCounts.TryGetValue(element, out var startingIndexAndCount))
+                    (startingIndex, count) = startingIndexAndCount;
                 else
-                    (startingIndex, count) = startingIndiciesAndCounts[element];
+                    return;
                 var index = startingIndex;
 
                 bool performMove()

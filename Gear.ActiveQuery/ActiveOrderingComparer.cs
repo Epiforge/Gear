@@ -115,7 +115,8 @@ namespace Gear.ActiveQuery
         void RangeActiveExpressionElementResultChanged(object sender, RangeActiveExpressionResultChangeEventArgs<TElement, IComparable> e)
         {
             lock (comparablesAccess)
-                comparables[e.Element][rangeActiveExpressionIndicies[(EnumerableRangeActiveExpression<TElement, IComparable>)sender]] = e.Result;
+                if (comparables.ContainsKey(e.Element))
+                    comparables[e.Element][rangeActiveExpressionIndicies[(EnumerableRangeActiveExpression<TElement, IComparable>)sender]] = e.Result;
         }
 
         void RangeActiveExpressionElementsAdded(object sender, RangeActiveExpressionMembershipEventArgs<TElement, IComparable> e)
