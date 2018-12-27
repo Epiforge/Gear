@@ -23,7 +23,7 @@ steps:
     configuration: '$(buildConfiguration)'
 
 - task: VSTest@2
-  displayName: 'Run unit tests'
+  displayName: 'Execute and collect code coverage of unit tests'
   inputs:
     platform: '$(buildPlatform)'
     configuration: '$(buildConfiguration)'
