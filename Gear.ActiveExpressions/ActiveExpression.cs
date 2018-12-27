@@ -55,6 +55,9 @@ namespace Gear.ActiveExpressions
                 case NewExpression newExpression:
                     activeExpression = ActiveNewExpression.Create(newExpression, options, deferEvaluation);
                     break;
+                case UnaryExpression unaryExpression when unaryExpression.NodeType == ExpressionType.Quote:
+                    activeExpression = ActiveConstantExpression.Create(Expression.Constant(unaryExpression.Operand), options);
+                    break;
                 case UnaryExpression unaryExpression:
                     activeExpression = ActiveUnaryExpression.Create(unaryExpression, options, deferEvaluation);
                     break;
@@ -316,6 +319,8 @@ namespace Gear.ActiveExpressions
                     return constantExpression;
                 case IndexExpression indexExpression:
                     return Expression.MakeIndex(ReplaceParameters(parameterTranslation, indexExpression.Object), indexExpression.Indexer, indexExpression.Arguments.Select(argument => ReplaceParameters(parameterTranslation, argument)));
+                case LambdaExpression lambdaExpression:
+                    return lambdaExpression;
                 case MemberExpression memberExpression:
                     return Expression.MakeMemberAccess(ReplaceParameters(parameterTranslation, memberExpression.Expression), memberExpression.Member);
                 case MethodCallExpression methodCallExpression:
