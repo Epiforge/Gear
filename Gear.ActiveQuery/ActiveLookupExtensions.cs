@@ -5,7 +5,6 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Linq.Expressions;
-using System.Threading;
 
 namespace Gear.ActiveQuery
 {
@@ -17,26 +16,41 @@ namespace Gear.ActiveQuery
         {
             ActiveQueryOptions.Optimize(ref predicate);
 
+            var changeNotifyingSource = source as INotifyDictionaryChanged<TKey, TValue>;
             ActiveLookup<TKey, TValue> where;
             Action<bool> setValue = null;
 
-            void whereChanged(object sender, EventArgs e) => setValue(where.Count == source.Count);
+            void dictionaryChange(object sender, EventArgs e) => setValue(where.Count == source.Count);
 
             return (source as ISynchronized).SequentialExecute(() =>
             {
                 where = ActiveWhere(source, predicate, predicateOptions);
-                where.ValueAdded += whereChanged;
-                where.ValueRemoved += whereChanged;
-                where.ValuesAdded += whereChanged;
-                where.ValuesRemoved += whereChanged;
+                where.ValueAdded += dictionaryChange;
+                where.ValueRemoved += dictionaryChange;
+                where.ValuesAdded += dictionaryChange;
+                where.ValuesRemoved += dictionaryChange;
+                if (changeNotifyingSource != null)
+                {
+                    changeNotifyingSource.ValueAdded += dictionaryChange;
+                    changeNotifyingSource.ValueRemoved += dictionaryChange;
+                    changeNotifyingSource.ValuesAdded += dictionaryChange;
+                    changeNotifyingSource.ValuesRemoved += dictionaryChange;
+                }
 
                 return new ActiveValue<bool>(where.Count == source.Count, out setValue, elementFaultChangeNotifier: where, onDispose: () =>
                 {
-                    where.ValueAdded -= whereChanged;
-                    where.ValueRemoved -= whereChanged;
-                    where.ValuesAdded -= whereChanged;
-                    where.ValuesRemoved -= whereChanged;
+                    where.ValueAdded -= dictionaryChange;
+                    where.ValueRemoved -= dictionaryChange;
+                    where.ValuesAdded -= dictionaryChange;
+                    where.ValuesRemoved -= dictionaryChange;
                     where.Dispose();
+                    if (changeNotifyingSource != null)
+                    {
+                        changeNotifyingSource.ValueAdded -= dictionaryChange;
+                        changeNotifyingSource.ValueRemoved -= dictionaryChange;
+                        changeNotifyingSource.ValuesAdded -= dictionaryChange;
+                        changeNotifyingSource.ValuesRemoved -= dictionaryChange;
+                    }
                 });
             });
         }
@@ -1495,7 +1509,7 @@ namespace Gear.ActiveQuery
                 rangeActiveExpression.ValuesAdded += valuesAdded;
                 rangeActiveExpression.ValuesRemoved += valuesRemoved;
 
-                rangeObservableDictionary = source.CreateSimilarSynchronizedObservableDictionary(SynchronizationContext.Current);
+                rangeObservableDictionary = source.CreateSimilarSynchronizedObservableDictionary();
                 rangeObservableDictionary.AddRange(rangeActiveExpression.GetResults().Where(r => r.result).Select(r => new KeyValuePair<TKey, TValue>(r.key, source[r.key])));
                 return new ActiveLookup<TKey, TValue>(rangeObservableDictionary, rangeActiveExpression, () =>
                 {
