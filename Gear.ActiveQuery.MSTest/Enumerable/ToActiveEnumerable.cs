@@ -9,7 +9,7 @@ namespace Gear.ActiveQuery.MSTest.Enumerable
         [TestMethod]
         public void ActiveEnumerablesAreNotDisposed()
         {
-            var people = TestPerson.CreatePeople();
+            var people = TestPerson.CreatePeopleCollection();
             using (var query1 = people.ActiveWhere(p => p != null))
             {
                 using (var query2 = query1.ToActiveEnumerable())
@@ -21,7 +21,7 @@ namespace Gear.ActiveQuery.MSTest.Enumerable
         [TestMethod]
         public void WrappedObservableCollectionManipulation()
         {
-            var people = TestPerson.CreatePeople();
+            var people = TestPerson.CreatePeopleCollection();
             var wrappedPeople = new TestSimpleObservableCollection<TestPerson>(people.SynchronizationContext, people);
             using (var query = wrappedPeople.ToActiveEnumerable())
             {

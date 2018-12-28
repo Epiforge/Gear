@@ -38,7 +38,7 @@ namespace Gear.ActiveQuery.MSTest.Enumerable
         {
             foreach (var indexingStrategy in new IndexingStrategy[] { IndexingStrategy.HashTable, IndexingStrategy.SelfBalancingBinarySearchTree })
             {
-                var people = TestPerson.CreatePeople();
+                var people = TestPerson.CreatePeopleCollection();
                 using (var query = people.ToActiveLookup(p => new KeyValuePair<string, string>(p.Name.Substring(0, 3), p.Name.Substring(3)), indexingStategy: indexingStrategy))
                 {
                     Assert.IsNull(query.OperationFault);

@@ -31,7 +31,7 @@ namespace Gear.ActiveQuery.MSTest.Enumerable
         [TestMethod]
         public void SourceManipulation()
         {
-            var people = TestPerson.CreatePeople();
+            var people = TestPerson.CreatePeopleCollection();
             using (var aggregate = people.ActiveMin(p => p.Name.Length))
             {
                 Assert.IsNull(aggregate.OperationFault);

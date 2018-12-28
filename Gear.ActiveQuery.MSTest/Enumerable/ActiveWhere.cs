@@ -10,7 +10,7 @@ namespace Gear.ActiveQuery.MSTest.Enumerable
         [TestMethod]
         public void ElementResultChanges()
         {
-            var people = TestPerson.CreatePeople();
+            var people = TestPerson.CreatePeopleCollection();
             var counts = new BlockingCollection<int>();
             using (var query = people.ActiveWhere(p => p.Name.Length == 4))
             {
@@ -28,7 +28,7 @@ namespace Gear.ActiveQuery.MSTest.Enumerable
         [TestMethod]
         public void ElementsAdded()
         {
-            var people = TestPerson.CreatePeople();
+            var people = TestPerson.CreatePeopleCollection();
             var counts = new BlockingCollection<int>();
             using (var query = people.ActiveWhere(p => p.Name.Length == 4))
             {
@@ -52,7 +52,7 @@ namespace Gear.ActiveQuery.MSTest.Enumerable
         [TestMethod]
         public void ElementsRemoved()
         {
-            var people = TestPerson.CreatePeople();
+            var people = TestPerson.CreatePeopleCollection();
             var counts = new BlockingCollection<int>();
             using (var query = people.ActiveWhere(p => p.Name.Length == 5))
             {

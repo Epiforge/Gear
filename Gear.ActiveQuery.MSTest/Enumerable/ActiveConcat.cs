@@ -11,8 +11,8 @@ namespace Gear.ActiveQuery.MSTest.Enumerable
         public void DifferentSynchronizationContexts()
         {
             var invalidThrown = false;
-            var left = TestPerson.CreatePeople(new AsyncSynchronizationContext());
-            var right = TestPerson.CreatePeople(new AsyncSynchronizationContext());
+            var left = TestPerson.CreatePeopleCollection(new AsyncSynchronizationContext());
+            var right = TestPerson.CreatePeopleCollection(new AsyncSynchronizationContext());
             try
             {
                 using (var query = left.ActiveConcat(right))
@@ -29,8 +29,8 @@ namespace Gear.ActiveQuery.MSTest.Enumerable
         [TestMethod]
         public void SourceManipulationLeftContext()
         {
-            var left = TestPerson.CreatePeople(new AsyncSynchronizationContext());
-            var right = TestPerson.CreatePeople(new AsyncSynchronizationContext());
+            var left = TestPerson.CreatePeopleCollection(new AsyncSynchronizationContext());
+            var right = TestPerson.CreatePeopleCollection(new AsyncSynchronizationContext());
             using (var query = left.ActiveConcat(right, left.SynchronizationContext))
             {
                 Assert.AreEqual(0, query.GetElementFaults().Count);
@@ -57,8 +57,8 @@ namespace Gear.ActiveQuery.MSTest.Enumerable
         [TestMethod]
         public void SourceManipulationRightContext()
         {
-            var left = TestPerson.CreatePeople(new AsyncSynchronizationContext());
-            var right = TestPerson.CreatePeople(new AsyncSynchronizationContext());
+            var left = TestPerson.CreatePeopleCollection(new AsyncSynchronizationContext());
+            var right = TestPerson.CreatePeopleCollection(new AsyncSynchronizationContext());
             using (var query = left.ActiveConcat(right, right.SynchronizationContext))
             {
                 Assert.AreEqual(0, query.GetElementFaults().Count);
@@ -86,8 +86,8 @@ namespace Gear.ActiveQuery.MSTest.Enumerable
         public void SourceManipulationSameContext()
         {
             var synchronizationContext = new AsyncSynchronizationContext();
-            var left = TestPerson.CreatePeople(synchronizationContext);
-            var right = TestPerson.CreatePeople(synchronizationContext);
+            var left = TestPerson.CreatePeopleCollection(synchronizationContext);
+            var right = TestPerson.CreatePeopleCollection(synchronizationContext);
             using (var query = left.ActiveConcat(right))
             {
                 Assert.AreEqual(0, query.GetElementFaults().Count);

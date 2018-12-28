@@ -10,7 +10,7 @@ namespace Gear.ActiveQuery.MSTest.Enumerable
         [TestMethod]
         public void SourceManipulation()
         {
-            var people = TestPerson.CreatePeople();
+            var people = TestPerson.CreatePeopleCollection();
             using (var groupsExpr = people.ActiveGroupBy(person => person.Name.Length))
             using (var orderedGroupMembersExpr = groupsExpr.ActiveSelect(group => Tuple.Create(group.Key, group.ActiveOrderBy(person => person.Name, null, false))))
             using (var orderedGroupsExpr = orderedGroupMembersExpr.ActiveOrderBy(group => group.Item1))
@@ -33,7 +33,7 @@ namespace Gear.ActiveQuery.MSTest.Enumerable
         [TestMethod]
         public void SourceManipulationSorted()
         {
-            var people = TestPerson.CreatePeople();
+            var people = TestPerson.CreatePeopleCollection();
             using (var groupsExpr = people.ActiveGroupBy(person => person.Name.Length, indexingStrategy: IndexingStrategy.SelfBalancingBinarySearchTree))
             using (var orderedGroupMembersExpr = groupsExpr.ActiveSelect(group => Tuple.Create(group.Key, group.ActiveOrderBy(person => person.Name, null, false))))
             using (var orderedGroupsExpr = orderedGroupMembersExpr.ActiveOrderBy(group => group.Item1))
@@ -57,7 +57,7 @@ namespace Gear.ActiveQuery.MSTest.Enumerable
         public void SourceManipulationUnindexed()
         {
             var argumentOutOfRangeThrown = false;
-            var people = TestPerson.CreatePeople();
+            var people = TestPerson.CreatePeopleCollection();
             try
             {
                 using (var groupsExpr = people.ActiveGroupBy(person => person.Name.Length, indexingStrategy: IndexingStrategy.NoneOrInherit))

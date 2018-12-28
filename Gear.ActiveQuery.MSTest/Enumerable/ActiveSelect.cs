@@ -26,7 +26,7 @@ namespace Gear.ActiveQuery.MSTest.Enumerable
         [TestMethod]
         public void EnumerableSourceManipulation()
         {
-            var people = TestPerson.CreatePeople();
+            var people = TestPerson.CreatePeopleCollection();
             using (var expr = ((IEnumerable)people).ActiveSelect(person => (person as TestPerson).Name.Length))
             {
                 void checkValues(params int[] values) => Assert.IsTrue(values.SequenceEqual(expr));
@@ -53,7 +53,7 @@ namespace Gear.ActiveQuery.MSTest.Enumerable
         [TestMethod]
         public void EnumerableSourceManipulationUnindexed()
         {
-            var people = TestPerson.CreatePeople();
+            var people = TestPerson.CreatePeopleCollection();
             using (var expr = ((IEnumerable)people).ActiveSelect(person => (person as TestPerson).Name.Length, indexingStrategy: IndexingStrategy.NoneOrInherit))
             {
                 void checkValues(params int[] values) => Assert.IsTrue(values.SequenceEqual(expr));
@@ -72,7 +72,7 @@ namespace Gear.ActiveQuery.MSTest.Enumerable
         [TestMethod]
         public void SourceManipulation()
         {
-            var people = TestPerson.CreatePeople();
+            var people = TestPerson.CreatePeopleCollection();
             using (var expr = people.ActiveSelect(person => person.Name.Length))
             {
                 void checkValues(params int[] values) => Assert.IsTrue(values.SequenceEqual(expr));
@@ -99,7 +99,7 @@ namespace Gear.ActiveQuery.MSTest.Enumerable
         [TestMethod]
         public void SourceManipulationSorted()
         {
-            var people = TestPerson.CreatePeople();
+            var people = TestPerson.CreatePeopleCollection();
             using (var expr = people.ActiveSelect(person => person.Name.Length, indexingStrategy: IndexingStrategy.SelfBalancingBinarySearchTree))
             {
                 void checkValues(params int[] values) => Assert.IsTrue(values.SequenceEqual(expr));
@@ -126,7 +126,7 @@ namespace Gear.ActiveQuery.MSTest.Enumerable
         [TestMethod]
         public void SourceManipulationUnindexed()
         {
-            var people = TestPerson.CreatePeople();
+            var people = TestPerson.CreatePeopleCollection();
             using (var expr = people.ActiveSelect(person => person.Name.Length, indexingStrategy: IndexingStrategy.NoneOrInherit))
             {
                 void checkValues(params int[] values) => Assert.IsTrue(values.SequenceEqual(expr));
