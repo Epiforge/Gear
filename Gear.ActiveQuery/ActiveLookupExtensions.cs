@@ -20,36 +20,36 @@ namespace Gear.ActiveQuery
             ActiveLookup<TKey, TValue> where;
             Action<bool> setValue = null;
 
-            void dictionaryChange(object sender, EventArgs e) => setValue(where.Count == source.Count);
+            void dictionaryChanged(object sender, EventArgs e) => setValue(where.Count == source.Count);
 
             return (source as ISynchronized).SequentialExecute(() =>
             {
                 where = ActiveWhere(source, predicate, predicateOptions);
-                where.ValueAdded += dictionaryChange;
-                where.ValueRemoved += dictionaryChange;
-                where.ValuesAdded += dictionaryChange;
-                where.ValuesRemoved += dictionaryChange;
+                where.ValueAdded += dictionaryChanged;
+                where.ValueRemoved += dictionaryChanged;
+                where.ValuesAdded += dictionaryChanged;
+                where.ValuesRemoved += dictionaryChanged;
                 if (changeNotifyingSource != null)
                 {
-                    changeNotifyingSource.ValueAdded += dictionaryChange;
-                    changeNotifyingSource.ValueRemoved += dictionaryChange;
-                    changeNotifyingSource.ValuesAdded += dictionaryChange;
-                    changeNotifyingSource.ValuesRemoved += dictionaryChange;
+                    changeNotifyingSource.ValueAdded += dictionaryChanged;
+                    changeNotifyingSource.ValueRemoved += dictionaryChanged;
+                    changeNotifyingSource.ValuesAdded += dictionaryChanged;
+                    changeNotifyingSource.ValuesRemoved += dictionaryChanged;
                 }
 
                 return new ActiveValue<bool>(where.Count == source.Count, out setValue, elementFaultChangeNotifier: where, onDispose: () =>
                 {
-                    where.ValueAdded -= dictionaryChange;
-                    where.ValueRemoved -= dictionaryChange;
-                    where.ValuesAdded -= dictionaryChange;
-                    where.ValuesRemoved -= dictionaryChange;
+                    where.ValueAdded -= dictionaryChanged;
+                    where.ValueRemoved -= dictionaryChanged;
+                    where.ValuesAdded -= dictionaryChanged;
+                    where.ValuesRemoved -= dictionaryChanged;
                     where.Dispose();
                     if (changeNotifyingSource != null)
                     {
-                        changeNotifyingSource.ValueAdded -= dictionaryChange;
-                        changeNotifyingSource.ValueRemoved -= dictionaryChange;
-                        changeNotifyingSource.ValuesAdded -= dictionaryChange;
-                        changeNotifyingSource.ValuesRemoved -= dictionaryChange;
+                        changeNotifyingSource.ValueAdded -= dictionaryChanged;
+                        changeNotifyingSource.ValueRemoved -= dictionaryChanged;
+                        changeNotifyingSource.ValuesAdded -= dictionaryChanged;
+                        changeNotifyingSource.ValuesRemoved -= dictionaryChanged;
                     }
                 });
             });
