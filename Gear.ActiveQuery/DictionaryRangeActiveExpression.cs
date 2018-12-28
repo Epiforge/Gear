@@ -142,6 +142,7 @@ namespace Gear.ActiveQuery
                 var activeExpression = ActiveExpression.Create(expression, key, value, Options);
                 activeExpression.PropertyChanging += ActiveExpressionPropertyChanging;
                 activeExpression.PropertyChanged += ActiveExpressionPropertyChanged;
+                activeExpressions.Add(key, activeExpression);
                 return activeExpression.Value;
             }
             finally
@@ -165,6 +166,7 @@ namespace Gear.ActiveQuery
                         var activeExpression = ActiveExpression.Create(expression, keyValuePair.Key, keyValuePair.Value, Options);
                         activeExpression.PropertyChanging += ActiveExpressionPropertyChanging;
                         activeExpression.PropertyChanged += ActiveExpressionPropertyChanged;
+                        activeExpressions.Add(keyValuePair.Key, activeExpression);
                         addedActiveExpressions.Add(activeExpression);
                     }
                 }
@@ -186,7 +188,7 @@ namespace Gear.ActiveQuery
                     return false;
                 rangeActiveExpressions.Remove((source, expression, Options));
             }
-            RemoveActiveExpressions(activeExpressions.Keys);
+            RemoveActiveExpressions(activeExpressions.Keys.ToImmutableArray());
             if (source is INotifyDictionaryChanged dictionaryChangedNotifier)
             {
                 dictionaryChangedNotifier.ValueAdded -= SourceValueAdded;
@@ -348,7 +350,7 @@ namespace Gear.ActiveQuery
             }
         }
 
-        IReadOnlyList<KeyValuePair<object, TResult>> RemoveActiveExpressions(IEnumerable<object> keys)
+        IReadOnlyList<KeyValuePair<object, TResult>> RemoveActiveExpressions(IReadOnlyList<object> keys)
         {
             List<KeyValuePair<object, TResult>> result = null;
             activeExpressionsAccess.EnterWriteLock();
@@ -417,7 +419,7 @@ namespace Gear.ActiveQuery
 
         void SourceValuesAdded(object sender, NotifyDictionaryValuesEventArgs e) => OnValuesAdded(AddActiveExpressions(e.KeyValuePairs));
 
-        void SourceValuesRemoved(object sender, NotifyDictionaryValuesEventArgs e) => OnValuesRemoved(RemoveActiveExpressions(e.KeyValuePairs.Select(kv => kv.Key)));
+        void SourceValuesRemoved(object sender, NotifyDictionaryValuesEventArgs e) => OnValuesRemoved(RemoveActiveExpressions(e.KeyValuePairs.Select(kv => kv.Key).ToImmutableArray()));
 
         public int Count
         {
@@ -573,6 +575,7 @@ namespace Gear.ActiveQuery
                 var activeExpression = ActiveExpression.Create(expression, key, value, Options);
                 activeExpression.PropertyChanging += ActiveExpressionPropertyChanging;
                 activeExpression.PropertyChanged += ActiveExpressionPropertyChanged;
+                activeExpressions.Add(key, activeExpression);
                 return activeExpression.Value;
             }
             finally
@@ -596,6 +599,7 @@ namespace Gear.ActiveQuery
                         var activeExpression = ActiveExpression.Create(expression, keyValuePair.Key, keyValuePair.Value, Options);
                         activeExpression.PropertyChanging += ActiveExpressionPropertyChanging;
                         activeExpression.PropertyChanged += ActiveExpressionPropertyChanged;
+                        activeExpressions.Add(keyValuePair.Key, activeExpression);
                         addedActiveExpressions.Add(activeExpression);
                     }
                 }
@@ -617,7 +621,7 @@ namespace Gear.ActiveQuery
                     return false;
                 rangeActiveExpressions.Remove((source, expression, Options));
             }
-            RemoveActiveExpressions(activeExpressions.Keys);
+            RemoveActiveExpressions(activeExpressions.Keys.ToImmutableArray());
             if (source is INotifyDictionaryChanged<TKey, TValue> dictionaryChangedNotifier)
             {
                 dictionaryChangedNotifier.ValueAdded -= SourceValueAdded;
@@ -772,7 +776,7 @@ namespace Gear.ActiveQuery
             }
         }
 
-        IReadOnlyList<KeyValuePair<TKey, TResult>> RemoveActiveExpressions(IEnumerable<TKey> keys)
+        IReadOnlyList<KeyValuePair<TKey, TResult>> RemoveActiveExpressions(IReadOnlyList<TKey> keys)
         {
             List<KeyValuePair<TKey, TResult>> result = null;
             activeExpressionsAccess.EnterWriteLock();
@@ -841,7 +845,7 @@ namespace Gear.ActiveQuery
 
         void SourceValuesAdded(object sender, NotifyDictionaryValuesEventArgs<TKey, TValue> e) => OnValuesAdded(AddActiveExpressions(e.KeyValuePairs));
 
-        void SourceValuesRemoved(object sender, NotifyDictionaryValuesEventArgs<TKey, TValue> e) => OnValuesRemoved(RemoveActiveExpressions(e.KeyValuePairs.Select(kv => kv.Key)));
+        void SourceValuesRemoved(object sender, NotifyDictionaryValuesEventArgs<TKey, TValue> e) => OnValuesRemoved(RemoveActiveExpressions(e.KeyValuePairs.Select(kv => kv.Key).ToImmutableArray()));
 
         public int Count
         {
@@ -997,6 +1001,7 @@ namespace Gear.ActiveQuery
                 var activeExpression = ActiveExpression.Create(expression, key, value, Options);
                 activeExpression.PropertyChanging += ActiveExpressionPropertyChanging;
                 activeExpression.PropertyChanged += ActiveExpressionPropertyChanged;
+                activeExpressions.Add(key, activeExpression);
                 return activeExpression.Value;
             }
             finally
@@ -1021,6 +1026,7 @@ namespace Gear.ActiveQuery
                         activeExpression.PropertyChanging += ActiveExpressionPropertyChanging;
                         activeExpression.PropertyChanged += ActiveExpressionPropertyChanged;
                         addedActiveExpressions.Add(activeExpression);
+                        activeExpressions.Add(keyValuePair.Key, activeExpression);
                     }
                 }
                 finally
@@ -1041,7 +1047,7 @@ namespace Gear.ActiveQuery
                     return false;
                 rangeActiveExpressions.Remove((source, expression, Options));
             }
-            RemoveActiveExpressions(activeExpressions.Keys);
+            RemoveActiveExpressions(activeExpressions.Keys.ToImmutableArray());
             if (source is INotifyDictionaryChanged<TKey, TValue> dictionaryChangedNotifier)
             {
                 dictionaryChangedNotifier.ValueAdded -= SourceValueAdded;
@@ -1196,7 +1202,7 @@ namespace Gear.ActiveQuery
             }
         }
 
-        IReadOnlyList<KeyValuePair<TKey, TResult>> RemoveActiveExpressions(IEnumerable<TKey> keys)
+        IReadOnlyList<KeyValuePair<TKey, TResult>> RemoveActiveExpressions(IReadOnlyList<TKey> keys)
         {
             List<KeyValuePair<TKey, TResult>> result = null;
             activeExpressionsAccess.EnterWriteLock();
@@ -1265,7 +1271,7 @@ namespace Gear.ActiveQuery
 
         void SourceValuesAdded(object sender, NotifyDictionaryValuesEventArgs<TKey, TValue> e) => OnValuesAdded(AddActiveExpressions(e.KeyValuePairs));
 
-        void SourceValuesRemoved(object sender, NotifyDictionaryValuesEventArgs<TKey, TValue> e) => OnValuesRemoved(RemoveActiveExpressions(e.KeyValuePairs.Select(kv => kv.Key)));
+        void SourceValuesRemoved(object sender, NotifyDictionaryValuesEventArgs<TKey, TValue> e) => OnValuesRemoved(RemoveActiveExpressions(e.KeyValuePairs.Select(kv => kv.Key).ToImmutableArray()));
 
         public int Count
         {
