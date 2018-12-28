@@ -6,7 +6,7 @@ namespace Gear.ActiveQuery
 {
     static class DictionaryExtensions
     {
-        public static IDictionary<TKey, TResultValue> CreateDictionary<TKey, TSourceValue, TResultValue>(IndexingStrategy? indexingStrategy = null, IEqualityComparer<TKey> keyEqualityComparer = null, IComparer<TKey> keyComparer = null)
+        static IDictionary<TKey, TResultValue> CreateDictionary<TKey, TSourceValue, TResultValue>(IndexingStrategy? indexingStrategy = null, IEqualityComparer<TKey> keyEqualityComparer = null, IComparer<TKey> keyComparer = null)
         {
             switch (indexingStrategy)
             {
@@ -22,7 +22,7 @@ namespace Gear.ActiveQuery
             }
         }
 
-        public static IObservableRangeDictionary<TKey, TResultValue> CreateObservableDictionary<TKey, TSourceValue, TResultValue>(IndexingStrategy? indexingStrategy = null, IEqualityComparer<TKey> keyEqualityComparer = null, IComparer<TKey> keyComparer = null)
+        static IObservableRangeDictionary<TKey, TResultValue> CreateObservableDictionary<TKey, TSourceValue, TResultValue>(IndexingStrategy? indexingStrategy = null, IEqualityComparer<TKey> keyEqualityComparer = null, IComparer<TKey> keyComparer = null)
         {
             switch (indexingStrategy)
             {
@@ -94,7 +94,11 @@ namespace Gear.ActiveQuery
             }
         }
 
+        public static ISynchronizedObservableRangeDictionary<TKey, TValue> CreateSimilarSynchronizedObservableDictionary<TKey, TValue>(this IDictionary<TKey, TValue> dictionary) => CreateSimilarSynchronizedObservableDictionary<TKey, TValue, TValue>(dictionary, SynchronizationContext.Current);
+
         public static ISynchronizedObservableRangeDictionary<TKey, TValue> CreateSimilarSynchronizedObservableDictionary<TKey, TValue>(this IDictionary<TKey, TValue> dictionary, SynchronizationContext synchronizationContext) => CreateSimilarSynchronizedObservableDictionary<TKey, TValue, TValue>(dictionary, synchronizationContext);
+
+        public static ISynchronizedObservableRangeDictionary<TKey, TResultValue> CreateSimilarSynchronizedObservableDictionary<TKey, TSourceValue, TResultValue>(this IDictionary<TKey, TSourceValue> dictionary) => CreateSimilarSynchronizedObservableDictionary<TKey, TSourceValue, TResultValue>(dictionary, SynchronizationContext.Current);
 
         public static ISynchronizedObservableRangeDictionary<TKey, TResultValue> CreateSimilarSynchronizedObservableDictionary<TKey, TSourceValue, TResultValue>(this IDictionary<TKey, TSourceValue> dictionary, SynchronizationContext synchronizationContext)
         {
@@ -108,7 +112,11 @@ namespace Gear.ActiveQuery
             }
         }
 
+        public static ISynchronizedObservableRangeDictionary<TKey, TValue> CreateSimilarSynchronizedObservableDictionary<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> readOnlyDictionary) => CreateSimilarSynchronizedObservableDictionary(readOnlyDictionary, SynchronizationContext.Current);
+
         public static ISynchronizedObservableRangeDictionary<TKey, TValue> CreateSimilarSynchronizedObservableDictionary<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> readOnlyDictionary, SynchronizationContext synchronizationContext) => CreateSimilarSynchronizedObservableDictionary<TKey, TValue, TValue>(readOnlyDictionary, synchronizationContext);
+
+        public static ISynchronizedObservableRangeDictionary<TKey, TResultValue> CreateSimilarSynchronizedObservableDictionary<TKey, TSourceValue, TResultValue>(this IReadOnlyDictionary<TKey, TSourceValue> readOnlyDictionary) => CreateSimilarSynchronizedObservableDictionary<TKey, TSourceValue, TResultValue>(readOnlyDictionary, SynchronizationContext.Current);
 
         public static ISynchronizedObservableRangeDictionary<TKey, TResultValue> CreateSimilarSynchronizedObservableDictionary<TKey, TSourceValue, TResultValue>(this IReadOnlyDictionary<TKey, TSourceValue> readOnlyDictionary, SynchronizationContext synchronizationContext)
         {
@@ -122,7 +130,7 @@ namespace Gear.ActiveQuery
             }
         }
 
-        public static ISynchronizedObservableRangeDictionary<TKey, TResultValue> CreateSynchronizedObservableDictionary<TKey, TSourceValue, TResultValue>(SynchronizationContext synchronizationContext, IndexingStrategy? indexingStrategy = null, IEqualityComparer<TKey> keyEqualityComparer = null, IComparer<TKey> keyComparer = null)
+        static ISynchronizedObservableRangeDictionary<TKey, TResultValue> CreateSynchronizedObservableDictionary<TKey, TSourceValue, TResultValue>(SynchronizationContext synchronizationContext, IndexingStrategy? indexingStrategy = null, IEqualityComparer<TKey> keyEqualityComparer = null, IComparer<TKey> keyComparer = null)
         {
             switch (indexingStrategy)
             {
@@ -138,7 +146,7 @@ namespace Gear.ActiveQuery
             }
         }
 
-        public static IndexingStrategy? GetIndexingStrategy<TKey, TValue>(this IDictionary<TKey, TValue> dictionary)
+        static IndexingStrategy? GetIndexingStrategy<TKey, TValue>(this IDictionary<TKey, TValue> dictionary)
         {
             if (dictionary is Dictionary<TKey, TValue> || dictionary is ObservableDictionary<TKey, TValue> || dictionary is SynchronizedObservableDictionary<TKey, TValue>)
                 return IndexingStrategy.HashTable;
@@ -147,7 +155,7 @@ namespace Gear.ActiveQuery
             return null;
         }
 
-        public static IndexingStrategy? GetIndexingStrategy<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> readOnlyDictionary)
+        static IndexingStrategy? GetIndexingStrategy<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> readOnlyDictionary)
         {
             if (readOnlyDictionary is Dictionary<TKey, TValue> || readOnlyDictionary is ObservableDictionary<TKey, TValue> || readOnlyDictionary is SynchronizedObservableDictionary<TKey, TValue>)
                 return IndexingStrategy.HashTable;
