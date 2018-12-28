@@ -90,6 +90,10 @@ namespace Gear.Components
 
         protected override IEnumerator GetNonGenericEnumerator() => this.Execute(() => base.GetNonGenericEnumerator());
 
+        public override IReadOnlyList<KeyValuePair<TKey, TValue>> GetRange(IEnumerable<TKey> keys) => this.Execute(() => base.GetRange(keys));
+
+        public Task<IReadOnlyList<KeyValuePair<TKey, TValue>>> GetRangeAsync(IEnumerable<TKey> keys) => this.ExecuteAsync(() => base.GetRange(keys));
+
         protected override object GetValue(object key) => this.Execute(() => base.GetValue(key));
 
         public virtual Task<TValue> GetValueAsync(TKey key) => this.ExecuteAsync(() => base[key]);
@@ -105,6 +109,10 @@ namespace Gear.Components
         public override IReadOnlyList<TKey> RemoveRange(IEnumerable<TKey> keys) => this.Execute(() => base.RemoveRange(keys));
 
         public virtual Task<IReadOnlyList<TKey>> RemoveRangeAsync(IEnumerable<TKey> keys) => this.ExecuteAsync(() => base.RemoveRange(keys));
+
+        public override void ReplaceRange(IEnumerable<KeyValuePair<TKey, TValue>> keyValuePairs) => this.Execute(() => base.ReplaceRange(keyValuePairs));
+
+        public Task ReplaceRangeAsync(IEnumerable<KeyValuePair<TKey, TValue>> keyValuePairs) => this.ExecuteAsync(() => base.ReplaceRange(keyValuePairs));
 
         protected override void SetValue(object key, object value) => this.Execute(() => base.SetValue(key, value));
 

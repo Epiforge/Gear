@@ -161,6 +161,8 @@ namespace Gear.Components
 
         protected virtual IEnumerator GetNonGenericEnumerator() => ei.GetEnumerator();
 
+        public virtual IReadOnlyList<KeyValuePair<TKey, TValue>> GetRange(IEnumerable<TKey> keys) => keys.Select(key => new KeyValuePair<TKey, TValue>(key, this[key])).ToImmutableArray();
+
         protected virtual object GetValue(object key) => di[key];
 
         protected void NotifyCountChanged() => OnPropertyChanged(nameof(Count));
@@ -230,6 +232,16 @@ namespace Gear.Components
                 NotifyCountChanged();
             }
             return removedKeys.ToImmutableArray();
+        }
+
+        public virtual void ReplaceRange(IEnumerable<KeyValuePair<TKey, TValue>> keyValuePairs)
+        {
+            if (keyValuePairs.Any(kvp => !gsd.ContainsKey(kvp.Key)))
+                throw new ArgumentException("One of the keys was not found in the dictionary", nameof(keyValuePairs));
+            var oldItems = GetRange(keyValuePairs.Select(kv => kv.Key));
+            foreach (var keyValuePair in keyValuePairs)
+                gsd[keyValuePair.Key] = keyValuePair.Value;
+            OnDictionaryChanged(new NotifyDictionaryChangedEventArgs<TKey, TValue>(NotifyDictionaryChangedAction.Replace, keyValuePairs, oldItems));
         }
 
         protected virtual void SetValue(object key, object value)
