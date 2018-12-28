@@ -97,6 +97,7 @@
     <Compile Include="Enumerable\ActiveSelect.cs" />
     <Compile Include="Enumerable\ActiveOrderBy.cs" />
     <Compile Include="Enumerable\ActiveGroupBy.cs" />
+    <Compile Include="Lookup\ActiveAll.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="TestPerson.cs" />
     <Compile Include="TestSimpleObservableCollection.cs" />
@@ -116,9 +117,7 @@
       <Name>Gear.Components</Name>
     </ProjectReference>
   </ItemGroup>
-  <ItemGroup>
-    <Folder Include="Lookup\" />
-  </ItemGroup>
+  <ItemGroup />
   <ItemGroup>
     <None Include="app.config" />
     <None Include="packages.config" />
