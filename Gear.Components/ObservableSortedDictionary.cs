@@ -6,7 +6,7 @@ using System.Linq;
 
 namespace Gear.Components
 {
-    public class ObservableSortedDictionary<TKey, TValue> : PropertyChangeNotifier, ICollection, ICollection<KeyValuePair<TKey, TValue>>, IDictionary, IDictionary<TKey, TValue>, IEnumerable, IEnumerable<KeyValuePair<TKey, TValue>>, INotifyDictionaryChanged, INotifyDictionaryChanged<TKey, TValue>, IObservableRangeDictionary<TKey, TValue>, IRangeDictionary<TKey, TValue>, IReadOnlyCollection<KeyValuePair<TKey, TValue>>, IReadOnlyDictionary<TKey, TValue>
+    public class ObservableSortedDictionary<TKey, TValue> : PropertyChangeNotifier, ICollection, ICollection<KeyValuePair<TKey, TValue>>, IDictionary, IDictionary<TKey, TValue>, IEnumerable, IEnumerable<KeyValuePair<TKey, TValue>>, INotifyDictionaryChanged<TKey, TValue>, IObservableRangeDictionary<TKey, TValue>, IRangeDictionary<TKey, TValue>, IReadOnlyCollection<KeyValuePair<TKey, TValue>>, IReadOnlyDictionary<TKey, TValue>
     {
         public ObservableSortedDictionary()
         {
@@ -65,55 +65,16 @@ namespace Gear.Components
         readonly IEnumerable<KeyValuePair<TKey, TValue>> gei;
         readonly IReadOnlyDictionary<TKey, TValue> grodi;
 
-        event EventHandler<NotifyDictionaryValueEventArgs> UntypedValueAdded;
-        event EventHandler<NotifyDictionaryValueEventArgs> UntypedValueRemoved;
-        event EventHandler<NotifyDictionaryValueReplacedEventArgs> UntypedValueReplaced;
-        event EventHandler<NotifyDictionaryValuesEventArgs> UntypedValuesAdded;
-        event EventHandler<NotifyDictionaryValuesEventArgs> UntypedValuesRemoved;
-        public event EventHandler<NotifyDictionaryValueEventArgs<TKey, TValue>> ValueAdded;
-        public event EventHandler<NotifyDictionaryValueEventArgs<TKey, TValue>> ValueRemoved;
-        public event EventHandler<NotifyDictionaryValueReplacedEventArgs<TKey, TValue>> ValueReplaced;
-        public event EventHandler<NotifyDictionaryValuesEventArgs<TKey, TValue>> ValuesAdded;
-        public event EventHandler<NotifyDictionaryValuesEventArgs<TKey, TValue>> ValuesRemoved;
-
-        event EventHandler<NotifyDictionaryValueEventArgs> INotifyDictionaryChanged.ValueAdded
-        {
-            add => UntypedValueAdded += value;
-            remove => UntypedValueAdded -= value;
-        }
-
-        event EventHandler<NotifyDictionaryValueEventArgs> INotifyDictionaryChanged.ValueRemoved
-        {
-            add => UntypedValueRemoved += value;
-            remove => UntypedValueRemoved -= value;
-        }
-
-        event EventHandler<NotifyDictionaryValueReplacedEventArgs> INotifyDictionaryChanged.ValueReplaced
-        {
-            add => UntypedValueReplaced += value;
-            remove => UntypedValueReplaced -= value;
-        }
-
-        event EventHandler<NotifyDictionaryValuesEventArgs> INotifyDictionaryChanged.ValuesAdded
-        {
-            add => UntypedValuesAdded += value;
-            remove => UntypedValuesAdded -= value;
-        }
-
-        event EventHandler<NotifyDictionaryValuesEventArgs> INotifyDictionaryChanged.ValuesRemoved
-        {
-            add => UntypedValuesRemoved += value;
-            remove => UntypedValuesRemoved -= value;
-        }
+        public event EventHandler<NotifyDictionaryChangedEventArgs<TKey, TValue>> DictionaryChanged;
 
         public virtual void Add(TKey key, TValue value)
         {
             if (key == null)
                 throw new ArgumentNullException(nameof(key));
-            if (gsd.ContainsKey(key))
+            if (!gsd.ContainsKey(key))
                 NotifyCountChanging();
             gsd.Add(key, value);
-            OnValueAdded(key, value);
+            OnDictionaryChanged(new NotifyDictionaryChangedEventArgs<TKey, TValue>(NotifyDictionaryChangedAction.Add, key, value));
             NotifyCountChanged();
         }
 
@@ -125,10 +86,10 @@ namespace Gear.Components
         {
             if (key == null)
                 throw new ArgumentNullException(nameof(key));
-            if (key is TKey typedKey && gsd.ContainsKey(typedKey))
+            if (key is TKey typedKey && !gsd.ContainsKey(typedKey))
                 NotifyCountChanging();
             di.Add(key, value);
-            OnValueAdded((TKey)key, (TValue)value);
+            OnDictionaryChanged(new NotifyDictionaryChangedEventArgs<TKey, TValue>(NotifyDictionaryChangedAction.Add, (TKey)key, (TValue)value));
             NotifyCountChanged();
         }
 
@@ -136,10 +97,10 @@ namespace Gear.Components
         {
             if (item.Key == null)
                 throw new ArgumentNullException("key");
-            if (gsd.ContainsKey(item.Key))
+            if (!gsd.ContainsKey(item.Key))
                 NotifyCountChanging();
             gci.Add(item);
-            OnValueAdded(item.Key, item.Value);
+            OnDictionaryChanged(new NotifyDictionaryChangedEventArgs<TKey, TValue>(NotifyDictionaryChangedAction.Add, item));
             NotifyCountChanged();
         }
 
@@ -153,18 +114,19 @@ namespace Gear.Components
             NotifyCountChanging();
             foreach (var keyValuePair in keyValuePairs)
                 gsd.Add(keyValuePair.Key, keyValuePair.Value);
-            OnValuesAdded(keyValuePairs);
+            OnDictionaryChanged(new NotifyDictionaryChangedEventArgs<TKey, TValue>(NotifyDictionaryChangedAction.Add, keyValuePairs));
             NotifyCountChanged();
         }
 
         public virtual void Clear()
         {
-            var removed = gsd.ToImmutableArray();
-            if (removed.Any())
+            if (Count > 0)
+            {
                 NotifyCountChanging();
-            gsd.Clear();
-            OnValuesRemoved(removed);
-            NotifyCountChanged();
+                gsd.Clear();
+                OnDictionaryChanged(new NotifyDictionaryChangedEventArgs<TKey, TValue>(NotifyDictionaryChangedAction.Reset));
+                NotifyCountChanged();
+            }
         }
 
         bool ICollection<KeyValuePair<TKey, TValue>>.Contains(KeyValuePair<TKey, TValue> item) => Contains(item);
@@ -205,65 +167,7 @@ namespace Gear.Components
 
         protected void NotifyCountChanging() => OnPropertyChanging(nameof(Count));
 
-        protected virtual void OnUntypedValueAdded(NotifyDictionaryValueEventArgs e) => UntypedValueAdded?.Invoke(this, e);
-
-        protected virtual void OnUntypedValueRemoved(NotifyDictionaryValueEventArgs e) => UntypedValueRemoved?.Invoke(this, e);
-
-        protected virtual void OnUntypedValueReplaced(NotifyDictionaryValueReplacedEventArgs e) => UntypedValueReplaced?.Invoke(this, e);
-
-        protected virtual void OnUntypedValuesAdded(NotifyDictionaryValuesEventArgs e) => UntypedValuesAdded?.Invoke(this, e);
-
-        protected virtual void OnUntypedValuesRemoved(NotifyDictionaryValuesEventArgs e) => UntypedValuesRemoved?.Invoke(this, e);
-
-        protected virtual void OnValueAdded(NotifyDictionaryValueEventArgs<TKey, TValue> e) => ValueAdded?.Invoke(this, e);
-
-        protected void OnValueAdded(TKey key, TValue value)
-        {
-            if (UntypedValueAdded != null)
-                OnUntypedValueAdded(new NotifyDictionaryValueEventArgs(key, value));
-            if (ValueAdded != null)
-                OnValueAdded(new NotifyDictionaryValueEventArgs<TKey, TValue>(key, value));
-        }
-
-        protected virtual void OnValueRemoved(NotifyDictionaryValueEventArgs<TKey, TValue> e) => ValueRemoved?.Invoke(this, e);
-
-        protected void OnValueRemoved(TKey key, TValue value)
-        {
-            if (UntypedValueRemoved != null)
-                OnUntypedValueRemoved(new NotifyDictionaryValueEventArgs(key, value));
-            if (ValueRemoved != null)
-                OnValueRemoved(new NotifyDictionaryValueEventArgs<TKey, TValue>(key, value));
-        }
-
-        protected virtual void OnValueReplaced(NotifyDictionaryValueReplacedEventArgs<TKey, TValue> e) => ValueReplaced?.Invoke(this, e);
-
-        protected void OnValueReplaced(TKey key, TValue oldValue, TValue newValue)
-        {
-            if (UntypedValueReplaced != null)
-                OnUntypedValueReplaced(new NotifyDictionaryValueReplacedEventArgs(key, oldValue, newValue));
-            if (ValueReplaced != null)
-                OnValueReplaced(new NotifyDictionaryValueReplacedEventArgs<TKey, TValue>(key, oldValue, newValue));
-        }
-
-        protected virtual void OnValuesAdded(NotifyDictionaryValuesEventArgs<TKey, TValue> e) => ValuesAdded?.Invoke(this, e);
-
-        protected void OnValuesAdded(IReadOnlyList<KeyValuePair<TKey, TValue>> keyValuePairs)
-        {
-            if (UntypedValuesAdded != null)
-                OnUntypedValuesAdded(new NotifyDictionaryValuesEventArgs(keyValuePairs.Select(kv => new KeyValuePair<object, object>(kv.Key, kv.Value)).ToImmutableArray()));
-            if (ValuesAdded != null)
-                OnValuesAdded(new NotifyDictionaryValuesEventArgs<TKey, TValue>(keyValuePairs));
-        }
-
-        protected virtual void OnValuesRemoved(NotifyDictionaryValuesEventArgs<TKey, TValue> e) => ValuesRemoved?.Invoke(this, e);
-
-        protected void OnValuesRemoved(IReadOnlyList<KeyValuePair<TKey, TValue>> keyValuePairs)
-        {
-            if (UntypedValuesRemoved != null)
-                OnUntypedValuesRemoved(new NotifyDictionaryValuesEventArgs(keyValuePairs.Select(kv => new KeyValuePair<object, object>(kv.Key, kv.Value)).ToImmutableArray()));
-            if (ValuesRemoved != null)
-                OnValuesRemoved(new NotifyDictionaryValuesEventArgs<TKey, TValue>(keyValuePairs));
-        }
+        protected virtual void OnDictionaryChanged(NotifyDictionaryChangedEventArgs<TKey, TValue> e) => DictionaryChanged?.Invoke(this, e);
 
         public virtual bool Remove(TKey key)
         {
@@ -271,7 +175,7 @@ namespace Gear.Components
             {
                 NotifyCountChanging();
                 gsd.Remove(key);
-                OnValueRemoved(key, value);
+                OnDictionaryChanged(new NotifyDictionaryChangedEventArgs<TKey, TValue>(NotifyDictionaryChangedAction.Remove, key, value));
                 NotifyCountChanged();
                 return true;
             }
@@ -289,7 +193,7 @@ namespace Gear.Components
                 var value = di[key];
                 NotifyCountChanging();
                 Remove(key);
-                OnValueRemoved((TKey)key, (TValue)value);
+                OnDictionaryChanged(new NotifyDictionaryChangedEventArgs<TKey, TValue>(NotifyDictionaryChangedAction.Remove, (TKey)key, (TValue)value));
                 NotifyCountChanged();
             }
         }
@@ -300,7 +204,7 @@ namespace Gear.Components
             {
                 NotifyCountChanging();
                 gci.Remove(item);
-                OnValueRemoved(item.Key, item.Value);
+                OnDictionaryChanged(new NotifyDictionaryChangedEventArgs<TKey, TValue>(NotifyDictionaryChangedAction.Remove, item));
                 NotifyCountChanged();
                 return true;
             }
@@ -322,7 +226,7 @@ namespace Gear.Components
                     gsd.Remove(removingKeyValuePair.Key);
                     removedKeys.Add(removingKeyValuePair.Key);
                 }
-                OnValuesRemoved(removingKeyValuePairs);
+                OnDictionaryChanged(new NotifyDictionaryChangedEventArgs<TKey, TValue>(NotifyDictionaryChangedAction.Remove, removingKeyValuePairs));
                 NotifyCountChanged();
             }
             return removedKeys.ToImmutableArray();
@@ -332,7 +236,7 @@ namespace Gear.Components
         {
             var oldValue = GetValue(key);
             di[key] = value;
-            OnValueReplaced((TKey)key, (TValue)oldValue, (TValue)value);
+            OnDictionaryChanged(new NotifyDictionaryChangedEventArgs<TKey, TValue>(NotifyDictionaryChangedAction.Replace, (TKey)key, (TValue)value, (TValue)oldValue));
         }
 
         public bool TryGetValue(TKey key, out TValue value)
@@ -351,7 +255,12 @@ namespace Gear.Components
         public virtual TValue this[TKey key]
         {
             get => gsd[key];
-            set => gsd[key] = value;
+            set
+            {
+                var oldValue = gsd[key];
+                gsd[key] = value;
+                OnDictionaryChanged(new NotifyDictionaryChangedEventArgs<TKey, TValue>(NotifyDictionaryChangedAction.Replace, key, value, oldValue));
+            }
         }
 
         object IDictionary.this[object key]

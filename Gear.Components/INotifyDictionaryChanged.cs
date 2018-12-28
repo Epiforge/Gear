@@ -3,68 +3,15 @@ using System;
 namespace Gear.Components
 {
     /// <summary>
-    /// Notifies listeners of changes to values in a dictionary
-    /// </summary>
-    /// <typeparam name="TKey">The type of the dictionary's keys</typeparam>
-    /// <typeparam name="TValue">The type of the dictionary's values</typeparam>
-    public interface INotifyDictionaryChanged
-    {
-        /// <summary>
-        /// Occurs when a value is added
-        /// </summary>
-        event EventHandler<NotifyDictionaryValueEventArgs> ValueAdded;
-
-        /// <summary>
-        /// Occurs when a value is removed
-        /// </summary>
-        event EventHandler<NotifyDictionaryValueEventArgs> ValueRemoved;
-
-        /// <summary>
-        /// Occurs when a value is replaced
-        /// </summary>
-        event EventHandler<NotifyDictionaryValueReplacedEventArgs> ValueReplaced;
-
-        /// <summary>
-        /// Occurs when multiple values are added
-        /// </summary>
-        event EventHandler<NotifyDictionaryValuesEventArgs> ValuesAdded;
-
-        /// <summary>
-        /// Occurs when multiple values are removed
-        /// </summary>
-        event EventHandler<NotifyDictionaryValuesEventArgs> ValuesRemoved;
-    }
-
-    /// <summary>
-    /// Notifies listeners of changes to values in a dictionary
+    /// Notifies listeners of dynamic changes, such as when a value is added and removed or the whole dictionary is cleared
     /// </summary>
     /// <typeparam name="TKey">The type of the dictionary's keys</typeparam>
     /// <typeparam name="TValue">The type of the dictionary's values</typeparam>
     public interface INotifyDictionaryChanged<TKey, TValue>
     {
         /// <summary>
-        /// Occurs when a value is added
+        /// Occurs when the dictionary changes
         /// </summary>
-        event EventHandler<NotifyDictionaryValueEventArgs<TKey, TValue>> ValueAdded;
-
-        /// <summary>
-        /// Occurs when a value is removed
-        /// </summary>
-        event EventHandler<NotifyDictionaryValueEventArgs<TKey, TValue>> ValueRemoved;
-
-        /// <summary>
-        /// Occurs when a value is replaced
-        /// </summary>
-        event EventHandler<NotifyDictionaryValueReplacedEventArgs<TKey, TValue>> ValueReplaced;
-
-        /// <summary>
-        /// Occurs when multiple values are added
-        /// </summary>
-        event EventHandler<NotifyDictionaryValuesEventArgs<TKey, TValue>> ValuesAdded;
-
-        /// <summary>
-        /// Occurs when multiple values are removed
-        /// </summary>
-        event EventHandler<NotifyDictionaryValuesEventArgs<TKey, TValue>> ValuesRemoved;
+        event EventHandler<NotifyDictionaryChangedEventArgs<TKey, TValue>> DictionaryChanged;
     }
 }

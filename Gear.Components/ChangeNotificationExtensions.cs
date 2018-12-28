@@ -69,58 +69,26 @@ namespace Gear.Components
             return () => notifyingReadOnlyList.CollectionChanged -= collectionChanged;
         }
 
-        public static Action OnDictionaryChange<TKey, TValue>(this INotifyDictionaryChanged notifyingDictionary, Action<object, object> onValueAdded, Action<object, object> onValueRemoved, Action<object, object, object> onValueReplaced, Action<IReadOnlyList<KeyValuePair<object, object>>> onValuesAdded, Action<IReadOnlyList<KeyValuePair<object, object>>> onValuesRemoved)
+        public static Action OnDictionaryChange<TKey, TValue>(this INotifyDictionaryChanged<TKey, TValue> notifyingDictionary, Action onReset, Action<TKey, TValue, TValue> onValueReplaced, Action<IReadOnlyList<KeyValuePair<TKey, TValue>>> onValuesAdded, Action<IReadOnlyList<KeyValuePair<TKey, TValue>>> onValuesRemoved)
         {
-            void valueAdded(object sender, NotifyDictionaryValueEventArgs e) => onValueAdded(e.Key, e.Value);
-
-            void valueRemoved(object sender, NotifyDictionaryValueEventArgs e) => onValueRemoved(e.Key, e.Value);
-
-            void valueReplaced(object sender, NotifyDictionaryValueReplacedEventArgs e) => onValueReplaced(e.Key, e.OldValue, e.NewValue);
-
-            void valuesAdded(object sender, NotifyDictionaryValuesEventArgs e) => onValuesAdded(e.KeyValuePairs);
-
-            void valuesRemoved(object sender, NotifyDictionaryValuesEventArgs e) => onValuesRemoved(e.KeyValuePairs);
-
-            notifyingDictionary.ValueAdded += valueAdded;
-            notifyingDictionary.ValueRemoved += valueRemoved;
-            notifyingDictionary.ValueReplaced += valueReplaced;
-            notifyingDictionary.ValuesAdded += valuesAdded;
-            notifyingDictionary.ValuesRemoved += valuesRemoved;
-            return () =>
+            void dictionaryChanged(object sender, NotifyDictionaryChangedEventArgs<TKey, TValue> e)
             {
-                notifyingDictionary.ValueAdded -= valueAdded;
-                notifyingDictionary.ValueRemoved -= valueRemoved;
-                notifyingDictionary.ValueReplaced -= valueReplaced;
-                notifyingDictionary.ValuesAdded -= valuesAdded;
-                notifyingDictionary.ValuesRemoved -= valuesRemoved;
-            };
-        }
+                switch (e.Action)
+                {
+                    case NotifyDictionaryChangedAction.Reset:
+                        onReset();
+                        break;
+                    default:
+                        if (e.OldItems != null)
+                            onValuesRemoved(e.OldItems);
+                        if (e.NewItems != null)
+                            onValuesAdded(e.NewItems);
+                        break;
+                }
+            }
 
-        public static Action OnDictionaryChange<TKey, TValue>(this INotifyDictionaryChanged<TKey, TValue> notifyingDictionary, Action<TKey, TValue> onValueAdded, Action<TKey, TValue> onValueRemoved, Action<TKey, TValue, TValue> onValueReplaced, Action<IReadOnlyList<KeyValuePair<TKey, TValue>>> onValuesAdded, Action<IReadOnlyList<KeyValuePair<TKey, TValue>>> onValuesRemoved)
-        {
-            void valueAdded(object sender, NotifyDictionaryValueEventArgs<TKey, TValue> e) => onValueAdded(e.Key, e.Value);
-
-            void valueRemoved(object sender, NotifyDictionaryValueEventArgs<TKey, TValue> e) => onValueRemoved(e.Key, e.Value);
-
-            void valueReplaced(object sender, NotifyDictionaryValueReplacedEventArgs<TKey, TValue> e) => onValueReplaced(e.Key, e.OldValue, e.NewValue);
-
-            void valuesAdded(object sender, NotifyDictionaryValuesEventArgs<TKey, TValue> e) => onValuesAdded(e.KeyValuePairs);
-
-            void valuesRemoved(object sender, NotifyDictionaryValuesEventArgs<TKey, TValue> e) => onValuesRemoved(e.KeyValuePairs);
-
-            notifyingDictionary.ValueAdded += valueAdded;
-            notifyingDictionary.ValueRemoved += valueRemoved;
-            notifyingDictionary.ValueReplaced += valueReplaced;
-            notifyingDictionary.ValuesAdded += valuesAdded;
-            notifyingDictionary.ValuesRemoved += valuesRemoved;
-            return () =>
-            {
-                notifyingDictionary.ValueAdded -= valueAdded;
-                notifyingDictionary.ValueRemoved -= valueRemoved;
-                notifyingDictionary.ValueReplaced -= valueReplaced;
-                notifyingDictionary.ValuesAdded -= valuesAdded;
-                notifyingDictionary.ValuesRemoved -= valuesRemoved;
-            };
+            notifyingDictionary.DictionaryChanged += dictionaryChanged;
+            return () => notifyingDictionary.DictionaryChanged -= dictionaryChanged;
         }
 
         public static Action OnPropertyChange<TInstance, TPropertyValue>(this TInstance obj, string propertyName, Action<TPropertyValue> onPropertyChanging, Action<TPropertyValue> onPropertyChanged) where TInstance : INotifyPropertyChanged, INotifyPropertyChanging
