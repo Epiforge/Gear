@@ -137,25 +137,12 @@ namespace Gear.ActiveQuery
         {
             if (elements.Any())
             {
-                var addedActiveExpressions = new List<ActiveExpression<object, TResult>>();
+                List<ActiveExpression<object, TResult>> addedActiveExpressions;
                 activeExpressionsAccess.EnterWriteLock();
                 OnPropertyChanging(nameof(Count));
                 try
                 {
-                    activeExpressions.InsertRange(index, elements.Select(element =>
-                    {
-                        var activeExpression = ActiveExpression.Create(expression, element, Options);
-                        if (activeExpressionCounts.TryGetValue(activeExpression, out var activeExpressionCount))
-                            activeExpressionCounts[activeExpression] = activeExpressionCount + 1;
-                        else
-                        {
-                            activeExpressionCounts.Add(activeExpression, 1);
-                            activeExpression.PropertyChanging += ActiveExpressionPropertyChanging;
-                            activeExpression.PropertyChanged += ActiveExpressionPropertyChanged;
-                        }
-                        addedActiveExpressions.Add(activeExpression);
-                        return (element, activeExpression);
-                    }));
+                    addedActiveExpressions = AddActiveExpressionsUnderLock(index, elements);
                 }
                 finally
                 {
@@ -167,41 +154,67 @@ namespace Gear.ActiveQuery
             return null;
         }
 
+        List<ActiveExpression<object, TResult>> AddActiveExpressionsUnderLock(int index, IEnumerable<object> elements)
+        {
+            var addedActiveExpressions = new List<ActiveExpression<object, TResult>>();
+            activeExpressions.InsertRange(index, elements.Select(element =>
+            {
+                var activeExpression = ActiveExpression.Create(expression, element, Options);
+                if (activeExpressionCounts.TryGetValue(activeExpression, out var activeExpressionCount))
+                    activeExpressionCounts[activeExpression] = activeExpressionCount + 1;
+                else
+                {
+                    activeExpressionCounts.Add(activeExpression, 1);
+                    activeExpression.PropertyChanging += ActiveExpressionPropertyChanging;
+                    activeExpression.PropertyChanged += ActiveExpressionPropertyChanged;
+                }
+                addedActiveExpressions.Add(activeExpression);
+                return (element, activeExpression);
+            }));
+            return addedActiveExpressions;
+        }
+
         void CollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
         {
             var oldItems = e.OldItems != null ? e.OldItems.Cast<object>() : Enumerable.Empty<object>();
-            var oldItemsCount = e.OldItems != null ? e.OldItems.Count : 0;
+            var oldItemsCount = e.OldItems?.Count ?? 0;
             var newItems = e.NewItems != null ? e.NewItems.Cast<object>() : Enumerable.Empty<object>();
-            switch (e.Action)
+            var newItemsCount = e.NewItems?.Count ?? 0;
+            activeExpressionsAccess.EnterWriteLock();
+            var countChanging = e.Action == NotifyCollectionChangedAction.Reset || oldItemsCount != newItemsCount;
+            if (countChanging)
+                OnPropertyChanging(nameof(Count));
+            try
             {
-                case NotifyCollectionChangedAction.Reset:
-                    if (activeExpressions.Count > 0)
-                        OnElementsRemoved(RemoveActiveExpressions(0, activeExpressions.Count), 0);
-                    var addedActiveExpressions = AddActiveExpressions(0, source.Cast<object>());
-                    if (addedActiveExpressions != null)
-                        OnElementsAdded(addedActiveExpressions, 0);
-                    break;
-                case NotifyCollectionChangedAction.Move when oldItems.SequenceEqual(newItems):
-                    List<(object element, ActiveExpression<object, TResult> activeExpression)> moving;
-                    activeExpressionsAccess.EnterWriteLock();
-                    try
-                    {
+                switch (e.Action)
+                {
+                    case NotifyCollectionChangedAction.Reset:
+                        if (activeExpressions.Count > 0)
+                            OnElementsRemoved(RemoveActiveExpressionsUnderLock(0, activeExpressions.Count), 0);
+                        var addedActiveExpressions = AddActiveExpressionsUnderLock(0, source.Cast<object>()).Select(ae => (ae.Arg, ae.Value)).ToImmutableArray();
+                        if (addedActiveExpressions.Length > 0)
+                            OnElementsAdded(addedActiveExpressions, 0);
+                        break;
+                    case NotifyCollectionChangedAction.Move when oldItems.SequenceEqual(newItems):
+                        List<(object element, ActiveExpression<object, TResult> activeExpression)> moving;
                         moving = activeExpressions.GetRange(e.OldStartingIndex, oldItemsCount);
                         activeExpressions.RemoveRange(e.OldStartingIndex, oldItemsCount);
                         activeExpressions.InsertRange(e.NewStartingIndex, moving);
-                    }
-                    finally
-                    {
-                        activeExpressionsAccess.ExitWriteLock();
-                    }
-                    OnElementsMoved(moving.Select(eae => (eae.element, eae.activeExpression.Value)).ToList(), e.OldStartingIndex, e.NewStartingIndex);
-                    break;
-                default:
-                    if (e.OldItems != null && e.OldStartingIndex >= 0)
-                        OnElementsRemoved(RemoveActiveExpressions(e.OldStartingIndex, oldItemsCount), e.OldStartingIndex);
-                    if (e.NewItems != null && e.NewStartingIndex >= 0)
-                        OnElementsAdded(AddActiveExpressions(e.NewStartingIndex, newItems), e.NewStartingIndex);
-                    break;
+                        OnElementsMoved(moving.Select(eae => (eae.element, eae.activeExpression.Value)).ToList(), e.OldStartingIndex, e.NewStartingIndex);
+                        break;
+                    default:
+                        if (e.OldItems != null && e.OldStartingIndex >= 0)
+                            OnElementsRemoved(RemoveActiveExpressionsUnderLock(e.OldStartingIndex, oldItemsCount), e.OldStartingIndex);
+                        if (e.NewItems != null && e.NewStartingIndex >= 0)
+                            OnElementsAdded(AddActiveExpressionsUnderLock(e.NewStartingIndex, newItems).Select(ae => (ae.Arg, ae.Value)).ToImmutableArray(), e.NewStartingIndex);
+                        break;
+                }
+            }
+            finally
+            {
+                if (countChanging)
+                    OnPropertyChanged(nameof(Count));
+                activeExpressionsAccess.ExitWriteLock();
             }
         }
 
@@ -341,38 +354,43 @@ namespace Gear.ActiveQuery
         IReadOnlyList<(object element, TResult result)> RemoveActiveExpressions(int index, int count)
         {
             List<(object element, TResult result)> result = null;
-            activeExpressionsAccess.EnterWriteLock();
-            try
+            if (count > 0)
             {
-                if (count > 0)
+                activeExpressionsAccess.EnterWriteLock();
+                OnPropertyChanging(nameof(Count));
+                try
                 {
-                    result = new List<(object element, TResult result)>();
-                    OnPropertyChanging(nameof(Count));
-                    foreach (var (element, activeExpression) in activeExpressions.GetRange(index, count))
-                    {
-                        result.Add((element, activeExpression.Value));
-                        var activeExpressionCount = activeExpressionCounts[activeExpression];
-                        if (activeExpressionCount == 0)
-                        {
-                            activeExpressionCounts.Remove(activeExpression);
-                            activeExpression.PropertyChanging -= ActiveExpressionPropertyChanging;
-                            activeExpression.PropertyChanged -= ActiveExpressionPropertyChanged;
-                        }
-                        else
-                            activeExpressionCounts[activeExpression] = activeExpressionCount - 1;
-                        activeExpression.Dispose();
-                    }
-                    activeExpressions.RemoveRange(index, count);
+                    result = RemoveActiveExpressionsUnderLock(index, count);
+                }
+                finally
+                {
                     OnPropertyChanged(nameof(Count));
+                    activeExpressionsAccess.ExitWriteLock();
                 }
             }
-            finally
-            {
-                if (result != null)
-                    OnPropertyChanged(nameof(Count));
-                activeExpressionsAccess.ExitWriteLock();
-            }
             return (result ?? Enumerable.Empty<(object element, TResult result)>()).ToImmutableArray();
+        }
+
+        List<(object element, TResult result)> RemoveActiveExpressionsUnderLock(int index, int count)
+        {
+            var result = new List<(object element, TResult result)>();
+            OnPropertyChanging(nameof(Count));
+            foreach (var (element, activeExpression) in activeExpressions.GetRange(index, count))
+            {
+                result.Add((element, activeExpression.Value));
+                var activeExpressionCount = activeExpressionCounts[activeExpression];
+                if (activeExpressionCount == 0)
+                {
+                    activeExpressionCounts.Remove(activeExpression);
+                    activeExpression.PropertyChanging -= ActiveExpressionPropertyChanging;
+                    activeExpression.PropertyChanged -= ActiveExpressionPropertyChanged;
+                }
+                else
+                    activeExpressionCounts[activeExpression] = activeExpressionCount - 1;
+                activeExpression.Dispose();
+            }
+            activeExpressions.RemoveRange(index, count);
+            return result;
         }
 
         void SourceElementFaultChanged(object sender, ElementFaultChangeEventArgs e) => ElementFaultChanged?.Invoke(sender, e);
@@ -525,25 +543,12 @@ namespace Gear.ActiveQuery
         {
             if (elements.Any())
             {
-                var addedActiveExpressions = new List<ActiveExpression<TElement, TResult>>();
+                List<ActiveExpression<TElement, TResult>> addedActiveExpressions;
                 activeExpressionsAccess.EnterWriteLock();
                 OnPropertyChanging(nameof(Count));
                 try
                 {
-                    activeExpressions.InsertRange(index, elements.Select(element =>
-                    {
-                        var activeExpression = ActiveExpression.Create(expression, element, Options);
-                        if (activeExpressionCounts.TryGetValue(activeExpression, out var activeExpressionCount))
-                            activeExpressionCounts[activeExpression] = activeExpressionCount + 1;
-                        else
-                        {
-                            activeExpressionCounts.Add(activeExpression, 1);
-                            activeExpression.PropertyChanging += ActiveExpressionPropertyChanging;
-                            activeExpression.PropertyChanged += ActiveExpressionPropertyChanged;
-                        }
-                        addedActiveExpressions.Add(activeExpression);
-                        return (element, activeExpression);
-                    }));
+                    addedActiveExpressions = AddActiveExpressionsUnderLock(index, elements);
                 }
                 finally
                 {
@@ -555,41 +560,67 @@ namespace Gear.ActiveQuery
             return null;
         }
 
+        List<ActiveExpression<TElement, TResult>> AddActiveExpressionsUnderLock(int index, IEnumerable<TElement> elements)
+        {
+            var addedActiveExpressions = new List<ActiveExpression<TElement, TResult>>();
+            activeExpressions.InsertRange(index, elements.Select(element =>
+            {
+                var activeExpression = ActiveExpression.Create(expression, element, Options);
+                if (activeExpressionCounts.TryGetValue(activeExpression, out var activeExpressionCount))
+                    activeExpressionCounts[activeExpression] = activeExpressionCount + 1;
+                else
+                {
+                    activeExpressionCounts.Add(activeExpression, 1);
+                    activeExpression.PropertyChanging += ActiveExpressionPropertyChanging;
+                    activeExpression.PropertyChanged += ActiveExpressionPropertyChanged;
+                }
+                addedActiveExpressions.Add(activeExpression);
+                return (element, activeExpression);
+            }));
+            return addedActiveExpressions;
+        }
+
         void CollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
         {
             var oldItems = e.OldItems != null ? e.OldItems.Cast<TElement>() : Enumerable.Empty<TElement>();
-            var oldItemsCount = e.OldItems != null ? e.OldItems.Count : 0;
+            var oldItemsCount = e.OldItems?.Count ?? 0;
             var newItems = e.NewItems != null ? e.NewItems.Cast<TElement>() : Enumerable.Empty<TElement>();
-            switch (e.Action)
+            var newItemsCount = e.NewItems?.Count ?? 0;
+            activeExpressionsAccess.EnterWriteLock();
+            var countChanging = e.Action == NotifyCollectionChangedAction.Reset || oldItemsCount != newItemsCount;
+            if (countChanging)
+                OnPropertyChanging(nameof(Count));
+            try
             {
-                case NotifyCollectionChangedAction.Reset:
-                    if (activeExpressions.Count > 0)
-                        OnElementsRemoved(RemoveActiveExpressions(0, activeExpressions.Count), 0);
-                    var addedActiveExpressions = AddActiveExpressions(0, source);
-                    if (addedActiveExpressions != null)
-                        OnElementsAdded(addedActiveExpressions, 0);
-                    break;
-                case NotifyCollectionChangedAction.Move when oldItems.SequenceEqual(newItems):
-                    List<(TElement element, ActiveExpression<TElement, TResult> activeExpression)> moving;
-                    activeExpressionsAccess.EnterWriteLock();
-                    try
-                    {
+                switch (e.Action)
+                {
+                    case NotifyCollectionChangedAction.Reset:
+                        if (activeExpressions.Count > 0)
+                            OnElementsRemoved(RemoveActiveExpressionsUnderLock(0, activeExpressions.Count), 0);
+                        var addedActiveExpressions = AddActiveExpressionsUnderLock(0, source).Select(ae => (ae.Arg, ae.Value)).ToImmutableArray();
+                        if (addedActiveExpressions.Length > 0)
+                            OnElementsAdded(addedActiveExpressions, 0);
+                        break;
+                    case NotifyCollectionChangedAction.Move when oldItems.SequenceEqual(newItems):
+                        List<(TElement element, ActiveExpression<TElement, TResult> activeExpression)> moving;
                         moving = activeExpressions.GetRange(e.OldStartingIndex, oldItemsCount);
                         activeExpressions.RemoveRange(e.OldStartingIndex, oldItemsCount);
                         activeExpressions.InsertRange(e.NewStartingIndex, moving);
-                    }
-                    finally
-                    {
-                        activeExpressionsAccess.ExitWriteLock();
-                    }
-                    OnElementsMoved(moving.Select(ae => (ae.element, ae.activeExpression.Value)).ToList(), e.OldStartingIndex, e.NewStartingIndex);
-                    break;
-                default:
-                    if (e.OldItems != null && e.OldStartingIndex >= 0)
-                        OnElementsRemoved(RemoveActiveExpressions(e.OldStartingIndex, oldItemsCount), e.OldStartingIndex);
-                    if (e.NewItems != null && e.NewStartingIndex >= 0)
-                        OnElementsAdded(AddActiveExpressions(e.NewStartingIndex, newItems), e.NewStartingIndex);
-                    break;
+                        OnElementsMoved(moving.Select(ae => (ae.element, ae.activeExpression.Value)).ToList(), e.OldStartingIndex, e.NewStartingIndex);
+                        break;
+                    default:
+                        if (e.OldItems != null && e.OldStartingIndex >= 0)
+                            OnElementsRemoved(RemoveActiveExpressionsUnderLock(e.OldStartingIndex, oldItemsCount), e.OldStartingIndex);
+                        if (e.NewItems != null && e.NewStartingIndex >= 0)
+                            OnElementsAdded(AddActiveExpressionsUnderLock(e.NewStartingIndex, newItems).Select(ae => (ae.Arg, ae.Value)).ToImmutableArray(), e.NewStartingIndex);
+                        break;
+                }
+            }
+            finally
+            {
+                if (countChanging)
+                    OnPropertyChanged(nameof(Count));
+                activeExpressionsAccess.ExitWriteLock();
             }
         }
 
@@ -729,37 +760,42 @@ namespace Gear.ActiveQuery
         IReadOnlyList<(TElement element, TResult result)> RemoveActiveExpressions(int index, int count)
         {
             List<(TElement element, TResult result)> result = null;
-            activeExpressionsAccess.EnterWriteLock();
-            try
+            if (count > 0)
             {
-                if (count > 0)
+                activeExpressionsAccess.EnterWriteLock();
+                OnPropertyChanging(nameof(Count));
+                try
                 {
-                    result = new List<(TElement element, TResult result)>();
-                    OnPropertyChanging(nameof(Count));
-                    foreach (var (element, activeExpression) in activeExpressions.GetRange(index, count))
-                    {
-                        result.Add((element, activeExpression.Value));
-                        var activeExpressionCount = activeExpressionCounts[activeExpression];
-                        if (activeExpressionCount == 0)
-                        {
-                            activeExpressionCounts.Remove(activeExpression);
-                            activeExpression.PropertyChanging -= ActiveExpressionPropertyChanging;
-                            activeExpression.PropertyChanged -= ActiveExpressionPropertyChanged;
-                        }
-                        else
-                            activeExpressionCounts[activeExpression] = activeExpressionCount - 1;
-                        activeExpression.Dispose();
-                    }
-                    activeExpressions.RemoveRange(index, count);
+                    result = RemoveActiveExpressionsUnderLock(index, count);
+                }
+                finally
+                {
+                    OnPropertyChanged(nameof(Count));
+                    activeExpressionsAccess.ExitWriteLock();
                 }
             }
-            finally
-            {
-                if (result != null)
-                    OnPropertyChanged(nameof(Count));
-                activeExpressionsAccess.ExitWriteLock();
-            }
             return (result ?? Enumerable.Empty<(TElement element, TResult result)>()).ToImmutableArray();
+        }
+
+        List<(TElement element, TResult result)> RemoveActiveExpressionsUnderLock(int index, int count)
+        {
+            var result = new List<(TElement element, TResult result)>();
+            foreach (var (element, activeExpression) in activeExpressions.GetRange(index, count))
+            {
+                result.Add((element, activeExpression.Value));
+                var activeExpressionCount = activeExpressionCounts[activeExpression];
+                if (activeExpressionCount == 0)
+                {
+                    activeExpressionCounts.Remove(activeExpression);
+                    activeExpression.PropertyChanging -= ActiveExpressionPropertyChanging;
+                    activeExpression.PropertyChanged -= ActiveExpressionPropertyChanged;
+                }
+                else
+                    activeExpressionCounts[activeExpression] = activeExpressionCount - 1;
+                activeExpression.Dispose();
+            }
+            activeExpressions.RemoveRange(index, count);
+            return result;
         }
 
         void SourceElementFaultChanged(object sender, ElementFaultChangeEventArgs e) => ElementFaultChanged?.Invoke(sender, e);
