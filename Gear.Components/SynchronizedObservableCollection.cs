@@ -1,12 +1,15 @@
+using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace Gear.Components
 {
-    public class SynchronizedObservableCollection<T> : ObservableCollection<T>, ISynchronized
+    public class SynchronizedObservableCollection<T> : ObservableCollection<T>, INotifyGenericCollectionChanged<T>, ISynchronized
     {
         public SynchronizedObservableCollection() : this(SynchronizationContext.Current ?? Synchronization.DefaultSynchronizationContext)
         {
@@ -19,6 +22,8 @@ namespace Gear.Components
         public SynchronizedObservableCollection(SynchronizationContext synchronizationContext) : base() => SynchronizationContext = synchronizationContext;
 
         public SynchronizedObservableCollection(SynchronizationContext synchronizationContext, IEnumerable<T> collection) : base(collection) => SynchronizationContext = synchronizationContext;
+
+        public event EventHandler<NotifyGenericCollectionChangedEventArgs<T>> GenericCollectionChanged;
 
         public Task AddAsync(T item) => this.ExecuteAsync(() => Add(item));
 
@@ -50,6 +55,33 @@ namespace Gear.Components
         public Task MoveAsync(int oldIndex, int newIndex) => this.ExecuteAsync(() => Move(oldIndex, newIndex));
 
         protected override void MoveItem(int oldIndex, int newIndex) => this.Execute(() => base.MoveItem(oldIndex, newIndex));
+
+        protected override void OnCollectionChanged(NotifyCollectionChangedEventArgs e)
+        {
+            base.OnCollectionChanged(e);
+            switch (e.Action)
+            {
+                case NotifyCollectionChangedAction.Add:
+                    OnGenericCollectionChanged(new NotifyGenericCollectionChangedEventArgs<T>(NotifyCollectionChangedAction.Add, e.NewItems.Cast<T>().ToImmutableArray(), e.NewStartingIndex));
+                    break;
+                case NotifyCollectionChangedAction.Move:
+                    OnGenericCollectionChanged(new NotifyGenericCollectionChangedEventArgs<T>(NotifyCollectionChangedAction.Move, (e.NewItems ?? e.OldItems).Cast<T>().ToImmutableArray(), e.NewStartingIndex, e.OldStartingIndex));
+                    break;
+                case NotifyCollectionChangedAction.Remove:
+                    OnGenericCollectionChanged(new NotifyGenericCollectionChangedEventArgs<T>(NotifyCollectionChangedAction.Remove, e.OldItems.Cast<T>().ToImmutableArray(), e.OldStartingIndex));
+                    break;
+                case NotifyCollectionChangedAction.Replace:
+                    OnGenericCollectionChanged(new NotifyGenericCollectionChangedEventArgs<T>(NotifyCollectionChangedAction.Replace, e.NewItems.Cast<T>().ToImmutableArray(), e.OldItems.Cast<T>().ToImmutableArray(), e.NewStartingIndex));
+                    break;
+                case NotifyCollectionChangedAction.Reset:
+                    OnGenericCollectionChanged(new NotifyGenericCollectionChangedEventArgs<T>(NotifyCollectionChangedAction.Reset));
+                    break;
+                default:
+                    throw new NotSupportedException();
+            }
+        }
+
+        protected virtual void OnGenericCollectionChanged(NotifyGenericCollectionChangedEventArgs<T> e) => GenericCollectionChanged?.Invoke(this, e);
 
         public Task<bool> RemoveAsync(T item) => this.ExecuteAsync(() => Remove(item));
 

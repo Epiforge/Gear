@@ -4,10 +4,11 @@ using System.Collections.Immutable;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
+using System.Linq;
 
 namespace Gear.Components
 {
-    public class RangeObservableCollection<T> : ObservableCollection<T>
+    public class RangeObservableCollection<T> : ObservableCollection<T>, INotifyGenericCollectionChanged<T>
     {
         public RangeObservableCollection() : base()
         {
@@ -16,6 +17,8 @@ namespace Gear.Components
         public RangeObservableCollection(IEnumerable<T> collection) : base(collection)
         {
         }
+
+        public event EventHandler<NotifyGenericCollectionChangedEventArgs<T>> GenericCollectionChanged;
 
         public void AddRange(IEnumerable<T> items) => InsertRange(Items.Count, items);
 
@@ -64,6 +67,33 @@ namespace Gear.Components
                 OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Move, movedItems, newStartIndex, oldStartIndex));
             }
         }
+
+        protected override void OnCollectionChanged(NotifyCollectionChangedEventArgs e)
+        {
+            base.OnCollectionChanged(e);
+            switch (e.Action)
+            {
+                case NotifyCollectionChangedAction.Add:
+                    OnGenericCollectionChanged(new NotifyGenericCollectionChangedEventArgs<T>(NotifyCollectionChangedAction.Add, e.NewItems.Cast<T>().ToImmutableArray(), e.NewStartingIndex));
+                    break;
+                case NotifyCollectionChangedAction.Move:
+                    OnGenericCollectionChanged(new NotifyGenericCollectionChangedEventArgs<T>(NotifyCollectionChangedAction.Move, (e.NewItems ?? e.OldItems).Cast<T>().ToImmutableArray(), e.NewStartingIndex, e.OldStartingIndex));
+                    break;
+                case NotifyCollectionChangedAction.Remove:
+                    OnGenericCollectionChanged(new NotifyGenericCollectionChangedEventArgs<T>(NotifyCollectionChangedAction.Remove, e.OldItems.Cast<T>().ToImmutableArray(), e.OldStartingIndex));
+                    break;
+                case NotifyCollectionChangedAction.Replace:
+                    OnGenericCollectionChanged(new NotifyGenericCollectionChangedEventArgs<T>(NotifyCollectionChangedAction.Replace, e.NewItems.Cast<T>().ToImmutableArray(), e.OldItems.Cast<T>().ToImmutableArray(), e.NewStartingIndex));
+                    break;
+                case NotifyCollectionChangedAction.Reset:
+                    OnGenericCollectionChanged(new NotifyGenericCollectionChangedEventArgs<T>(NotifyCollectionChangedAction.Reset));
+                    break;
+                default:
+                    throw new NotSupportedException();
+            }
+        }
+
+        protected virtual void OnGenericCollectionChanged(NotifyGenericCollectionChangedEventArgs<T> e) => GenericCollectionChanged?.Invoke(this, e);
 
         public int RemoveAll(Func<T, bool> predicate)
         {
