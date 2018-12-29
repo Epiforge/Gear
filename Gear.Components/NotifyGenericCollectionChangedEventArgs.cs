@@ -52,7 +52,7 @@ namespace Gear.Components
             }
         }
 
-        public NotifyGenericCollectionChangedEventArgs(NotifyCollectionChangedAction action, IReadOnlyList<T> changedItems)
+        public NotifyGenericCollectionChangedEventArgs(NotifyCollectionChangedAction action, IEnumerable<T> changedItems)
         {
             switch (action)
             {
