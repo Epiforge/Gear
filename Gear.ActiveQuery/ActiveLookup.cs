@@ -17,13 +17,7 @@ namespace Gear.ActiveQuery
             else
                 this.readOnlyDictionary = readOnlyDictionary;
             if (this.readOnlyDictionary is INotifyDictionaryChanged<TKey, TValue> dictionaryNotifier)
-            {
-                dictionaryNotifier.ValueAdded += ValueAddedHandler;
-                dictionaryNotifier.ValueRemoved += ValueRemovedHandler;
-                dictionaryNotifier.ValueReplaced += ValueReplacedHandler;
-                dictionaryNotifier.ValuesAdded += ValuesAddedHandler;
-                dictionaryNotifier.ValuesRemoved += ValuesRemovedHandler;
-            }
+                dictionaryNotifier.DictionaryChanged += DictionaryChangedHandler;
             if (this.readOnlyDictionary is INotifyPropertyChanged propertyChangedNotifier)
                 propertyChangedNotifier.PropertyChanged += PropertyChangedHandler;
             if (this.readOnlyDictionary is INotifyPropertyChanging propertyChangingNotifier)
@@ -54,15 +48,13 @@ namespace Gear.ActiveQuery
         readonly IReadOnlyDictionary<TKey, TValue> readOnlyDictionary;
         readonly ISynchronized synchronized;
 
+        public event EventHandler<NotifyDictionaryChangedEventArgs<TKey, TValue>> DictionaryChanged;
         public event EventHandler<ElementFaultChangeEventArgs> ElementFaultChanged;
         public event EventHandler<ElementFaultChangeEventArgs> ElementFaultChanging;
-        public event EventHandler<NotifyDictionaryValueEventArgs<TKey, TValue>> ValueAdded;
-        public event EventHandler<NotifyDictionaryValueEventArgs<TKey, TValue>> ValueRemoved;
-        public event EventHandler<NotifyDictionaryValueReplacedEventArgs<TKey, TValue>> ValueReplaced;
-        public event EventHandler<NotifyDictionaryValuesEventArgs<TKey, TValue>> ValuesAdded;
-        public event EventHandler<NotifyDictionaryValuesEventArgs<TKey, TValue>> ValuesRemoved;
 
         public bool ContainsKey(TKey key) => readOnlyDictionary.ContainsKey(key);
+
+        void DictionaryChangedHandler(object sender, NotifyDictionaryChangedEventArgs<TKey, TValue> e) => DictionaryChanged?.Invoke(this, e);
 
         protected override void Dispose(bool disposing)
         {
@@ -70,13 +62,7 @@ namespace Gear.ActiveQuery
             if (disposing)
             {
                 if (readOnlyDictionary is INotifyDictionaryChanged<TKey, TValue> dictionaryNotifier)
-                {
-                    dictionaryNotifier.ValueAdded -= ValueAddedHandler;
-                    dictionaryNotifier.ValueRemoved -= ValueRemovedHandler;
-                    dictionaryNotifier.ValueReplaced -= ValueReplacedHandler;
-                    dictionaryNotifier.ValuesAdded -= ValuesAddedHandler;
-                    dictionaryNotifier.ValuesRemoved -= ValuesRemovedHandler;
-                }
+                    dictionaryNotifier.DictionaryChanged -= DictionaryChangedHandler;
                 if (readOnlyDictionary is INotifyPropertyChanged propertyChangedNotifier)
                     propertyChangedNotifier.PropertyChanged -= PropertyChangedHandler;
                 if (readOnlyDictionary is INotifyPropertyChanging propertyChangingNotifier)
@@ -109,16 +95,6 @@ namespace Gear.ActiveQuery
         IEnumerator IEnumerable.GetEnumerator() => ((IEnumerable)readOnlyDictionary).GetEnumerator();
 
         void SetOperationFault(Exception operationFault) => OperationFault = operationFault;
-
-        void ValueAddedHandler(object sender, NotifyDictionaryValueEventArgs<TKey, TValue> e) => ValueAdded?.Invoke(this, e);
-
-        void ValueRemovedHandler(object sender, NotifyDictionaryValueEventArgs<TKey, TValue> e) => ValueRemoved?.Invoke(this, e);
-
-        void ValueReplacedHandler(object sender, NotifyDictionaryValueReplacedEventArgs<TKey, TValue> e) => ValueReplaced?.Invoke(this, e);
-
-        void ValuesAddedHandler(object sender, NotifyDictionaryValuesEventArgs<TKey, TValue> e) => ValuesAdded?.Invoke(this, e);
-
-        void ValuesRemovedHandler(object sender, NotifyDictionaryValuesEventArgs<TKey, TValue> e) => ValuesRemoved?.Invoke(this, e);
 
         public TValue this[TKey key] => readOnlyDictionary[key];
 

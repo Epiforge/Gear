@@ -177,48 +177,25 @@ namespace Gear.ActiveExpressions
             }
         }
 
-        void ObjectValueDictionaryValueAdded(object sender, NotifyDictionaryValueEventArgs e)
+        void ObjectValueDictionaryChanged(object sender, NotifyDictionaryChangedEventArgs<object, object> e)
         {
-            if (arguments.Count == 1 && (arguments[0].Value?.Equals(e.Key) ?? false))
-                Value = e.Value;
-        }
-
-        void ObjectValueDictionaryValueRemoved(object sender, NotifyDictionaryValueEventArgs e)
-        {
-            if (arguments.Count == 1)
+            if (e.Action == NotifyDictionaryChangedAction.Reset)
+                Evaluate();
+            else if (arguments.Count == 1)
             {
-                var key = arguments[0].Value;
-                if (key?.Equals(e.Key) ?? false)
-                    Fault = new KeyNotFoundException($"Key '{key}' was removed");
-            }
-        }
-
-        void ObjectValueDictionaryValueReplaced(object sender, NotifyDictionaryValueReplacedEventArgs e)
-        {
-            if (arguments.Count == 1 && (arguments[0].Value?.Equals(e.Key) ?? false))
-                Value = e.NewValue;
-        }
-
-        void ObjectValueDictionaryValuesAdded(object sender, NotifyDictionaryValuesEventArgs e)
-        {
-            if (arguments.Count == 1)
-            {
+                var removed = false;
                 var key = arguments[0].Value;
                 if (key != null)
                 {
-                    var keyValuePair = e.KeyValuePairs?.FirstOrDefault(kv => key.Equals(kv.Key)) ?? default;
+                    removed = e.OldItems?.Any(kv => key.Equals(kv.Key)) ?? false;
+                    var keyValuePair = e.NewItems?.FirstOrDefault(kv => key.Equals(kv.Key)) ?? default;
                     if (keyValuePair.Key != null)
+                    {
+                        removed = false;
                         Value = keyValuePair.Value;
+                    }
                 }
-            }
-        }
-
-        void ObjectValueDictionaryValuesRemoved(object sender, NotifyDictionaryValuesEventArgs e)
-        {
-            if (arguments.Count == 1)
-            {
-                var key = arguments[0].Value;
-                if (key != null && (e.KeyValuePairs?.Any(kv => key.Equals(kv.Key)) ?? false))
+                if (removed)
                     Fault = new KeyNotFoundException($"Key '{key}' was removed");
             }
         }
@@ -231,16 +208,10 @@ namespace Gear.ActiveExpressions
 
         void SubscribeToObjectValueNotifications()
         {
-            if (objectValue is INotifyCollectionChanged collectionChangedNotifier)
-                collectionChangedNotifier.CollectionChanged += ObjectValueCollectionChanged;
             if (objectValue is INotifyDictionaryChanged dictionaryChangedNotifier)
-            {
-                dictionaryChangedNotifier.ValueAdded += ObjectValueDictionaryValueAdded;
-                dictionaryChangedNotifier.ValueRemoved += ObjectValueDictionaryValueRemoved;
-                dictionaryChangedNotifier.ValueReplaced += ObjectValueDictionaryValueReplaced;
-                dictionaryChangedNotifier.ValuesAdded += ObjectValueDictionaryValuesAdded;
-                dictionaryChangedNotifier.ValuesRemoved += ObjectValueDictionaryValuesRemoved;
-            }
+                dictionaryChangedNotifier.DictionaryChanged += ObjectValueDictionaryChanged;
+            else if (objectValue is INotifyCollectionChanged collectionChangedNotifier)
+                collectionChangedNotifier.CollectionChanged += ObjectValueCollectionChanged;
             if (objectValue is INotifyPropertyChanged propertyChangedNotifier)
                 propertyChangedNotifier.PropertyChanged += ObjectValuePropertyChanged;
         }
@@ -249,16 +220,10 @@ namespace Gear.ActiveExpressions
 
         void UnsubscribeFromObjectValueNotifications()
         {
-            if (objectValue is INotifyCollectionChanged collectionChangedNotifier)
-                collectionChangedNotifier.CollectionChanged -= ObjectValueCollectionChanged;
             if (objectValue is INotifyDictionaryChanged dictionaryChangedNotifier)
-            {
-                dictionaryChangedNotifier.ValueAdded -= ObjectValueDictionaryValueAdded;
-                dictionaryChangedNotifier.ValueRemoved -= ObjectValueDictionaryValueRemoved;
-                dictionaryChangedNotifier.ValueReplaced -= ObjectValueDictionaryValueReplaced;
-                dictionaryChangedNotifier.ValuesAdded -= ObjectValueDictionaryValuesAdded;
-                dictionaryChangedNotifier.ValuesRemoved -= ObjectValueDictionaryValuesRemoved;
-            }
+                dictionaryChangedNotifier.DictionaryChanged -= ObjectValueDictionaryChanged;
+            else if (objectValue is INotifyCollectionChanged collectionChangedNotifier)
+                collectionChangedNotifier.CollectionChanged -= ObjectValueCollectionChanged;
             if (objectValue is INotifyPropertyChanged propertyChangedNotifier)
                 propertyChangedNotifier.PropertyChanged -= ObjectValuePropertyChanged;
         }

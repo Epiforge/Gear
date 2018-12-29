@@ -25,32 +25,16 @@ namespace Gear.ActiveQuery
             return (source as ISynchronized).SequentialExecute(() =>
             {
                 where = ActiveWhere(source, predicate, predicateOptions);
-                where.ValueAdded += dictionaryChanged;
-                where.ValueRemoved += dictionaryChanged;
-                where.ValuesAdded += dictionaryChanged;
-                where.ValuesRemoved += dictionaryChanged;
+                where.DictionaryChanged += dictionaryChanged;
                 if (changeNotifyingSource != null)
-                {
-                    changeNotifyingSource.ValueAdded += dictionaryChanged;
-                    changeNotifyingSource.ValueRemoved += dictionaryChanged;
-                    changeNotifyingSource.ValuesAdded += dictionaryChanged;
-                    changeNotifyingSource.ValuesRemoved += dictionaryChanged;
-                }
+                    changeNotifyingSource.DictionaryChanged += dictionaryChanged;
 
                 return new ActiveValue<bool>(where.Count == source.Count, out setValue, elementFaultChangeNotifier: where, onDispose: () =>
                 {
-                    where.ValueAdded -= dictionaryChanged;
-                    where.ValueRemoved -= dictionaryChanged;
-                    where.ValuesAdded -= dictionaryChanged;
-                    where.ValuesRemoved -= dictionaryChanged;
+                    where.DictionaryChanged -= dictionaryChanged;
                     where.Dispose();
                     if (changeNotifyingSource != null)
-                    {
-                        changeNotifyingSource.ValueAdded -= dictionaryChanged;
-                        changeNotifyingSource.ValueRemoved -= dictionaryChanged;
-                        changeNotifyingSource.ValuesAdded -= dictionaryChanged;
-                        changeNotifyingSource.ValuesRemoved -= dictionaryChanged;
-                    }
+                        changeNotifyingSource.DictionaryChanged -= dictionaryChanged;
                 });
             });
         }
@@ -67,22 +51,12 @@ namespace Gear.ActiveQuery
                 var synchronizedSource = source as ISynchronized;
                 Action<bool> setValue = null;
 
-                void sourceChanged(object sender, EventArgs e) => synchronizedSource.SequentialExecute(() => setValue(source.Any()));
+                void sourceChanged(object sender, EventArgs e) => synchronizedSource.SequentialExecute(() => setValue(source.Count > 0));
 
                 return synchronizedSource.SequentialExecute(() =>
                 {
-                    changeNotifyingSource.ValueAdded += sourceChanged;
-                    changeNotifyingSource.ValueRemoved += sourceChanged;
-                    changeNotifyingSource.ValuesAdded += sourceChanged;
-                    changeNotifyingSource.ValuesRemoved += sourceChanged;
-
-                    return new ActiveValue<bool>(source.Any(), out setValue, elementFaultChangeNotifier: elementFaultChangeNotifier, onDispose: () =>
-                    {
-                        changeNotifyingSource.ValueAdded -= sourceChanged;
-                        changeNotifyingSource.ValueRemoved -= sourceChanged;
-                        changeNotifyingSource.ValuesAdded -= sourceChanged;
-                        changeNotifyingSource.ValuesRemoved -= sourceChanged;
-                    });
+                    changeNotifyingSource.DictionaryChanged += sourceChanged;
+                    return new ActiveValue<bool>(source.Any(), out setValue, elementFaultChangeNotifier: elementFaultChangeNotifier, onDispose: () => changeNotifyingSource.DictionaryChanged -= sourceChanged);
                 });
             }
             try
@@ -99,25 +73,20 @@ namespace Gear.ActiveQuery
         {
             ActiveQueryOptions.Optimize(ref predicate);
 
+            var changeNotifyingSource = source as INotifyDictionaryChanged<TKey, TValue>;
             ActiveLookup<TKey, TValue> where;
             Action<bool> setValue = null;
 
-            void whereChanged(object sender, EventArgs e) => setValue(where.Count > 0);
+            void dictionaryChanged(object sender, EventArgs e) => setValue(where.Count > 0);
 
             return (source as ISynchronized).SequentialExecute(() =>
             {
                 where = ActiveWhere(source, predicate, predicateOptions);
-                where.ValueAdded += whereChanged;
-                where.ValueRemoved += whereChanged;
-                where.ValuesAdded += whereChanged;
-                where.ValuesRemoved += whereChanged;
+                where.DictionaryChanged += dictionaryChanged;
 
                 return new ActiveValue<bool>(where.Count > 0, out setValue, elementFaultChangeNotifier: where, onDispose: () =>
                 {
-                    where.ValueAdded -= whereChanged;
-                    where.ValueRemoved -= whereChanged;
-                    where.ValuesAdded -= whereChanged;
-                    where.ValuesRemoved -= whereChanged;
+                    where.DictionaryChanged -= dictionaryChanged;
                     where.Dispose();
                 });
             });
@@ -189,88 +158,53 @@ namespace Gear.ActiveQuery
                 Action<KeyValuePair<TKey, TValue>> setValue = null;
                 Action<Exception> setOperationFault = null;
 
-                void dispose()
-                {
-                    changingSource.ValueAdded += valueAdded;
-                    changingSource.ValueRemoved += valueRemoved;
-                    changingSource.ValueReplaced += valueReplaced;
-                    changingSource.ValuesAdded += valuesAdded;
-                    changingSource.ValuesRemoved += valuesRemoved;
-                }
+                void dispose() => changingSource.DictionaryChanged -= sourceChanged;
 
-                void valueAdded(object sender, NotifyDictionaryValueEventArgs<TKey, TValue> e) =>
+                void sourceChanged(object sender, NotifyDictionaryChangedEventArgs<TKey, TValue> e) =>
                     synchronizedSource.SequentialExecute(() =>
                     {
-                        if (activeValue.OperationFault != null || keyComparer.Compare(e.Key, activeValue.Value.Key) < 0)
-                        {
-                            setOperationFault(null);
-                            setValue(new KeyValuePair<TKey, TValue>(e.Key, e.Value));
-                        }
-                    });
-
-                void valueRemoved(object sender, NotifyDictionaryValueEventArgs<TKey, TValue> e) =>
-                    synchronizedSource.SequentialExecute(() =>
-                    {
-                        if (keyComparer.Compare(e.Key, activeValue.Value.Key) == 0)
+                        if (e.Action == NotifyDictionaryChangedAction.Reset)
                         {
                             try
-                            {
-                                setValue(source.OrderBy(kv => kv.Key, keyComparer).First());
-                            }
-                            catch (Exception ex)
-                            {
-                                setOperationFault(ex);
-                                setValue(default);
-                            }
-                        }
-                    });
-
-                void valueReplaced(object sender, NotifyDictionaryValueReplacedEventArgs<TKey, TValue> e) =>
-                    synchronizedSource.SequentialExecute(() =>
-                    {
-                        if (keyComparer.Compare(e.Key, activeValue.Value.Key) == 0)
-                            setValue(new KeyValuePair<TKey, TValue>(e.Key, e.NewValue));
-                    });
-
-                void valuesAdded(object sender, NotifyDictionaryValuesEventArgs<TKey, TValue> e) =>
-                    synchronizedSource.SequentialExecute(() =>
-                    {
-                        var keyValuePairs = e.KeyValuePairs;
-                        if (keyValuePairs.Count > 0)
-                        {
-                            var firstKv = keyValuePairs.OrderBy(kv => kv.Key, keyComparer).First();
-                            if (activeValue.OperationFault != null || keyComparer.Compare(firstKv.Key, activeValue.Value.Key) < 0)
                             {
                                 setOperationFault(null);
-                                setValue(firstKv);
-                            }
-                        }
-                    });
-
-                void valuesRemoved(object sender, NotifyDictionaryValuesEventArgs<TKey, TValue> e) =>
-                    synchronizedSource.SequentialExecute(() =>
-                    {
-                        if (e.KeyValuePairs.Any(kv => keyComparer.Compare(kv.Key, activeValue.Value.Key) == 0))
-                        {
-                            try
-                            {
                                 setValue(source.OrderBy(kv => kv.Key, keyComparer).First());
                             }
                             catch (Exception ex)
                             {
                                 setOperationFault(ex);
                                 setValue(default);
+                            }
+                        }
+                        else
+                        {
+                            if (e.OldItems?.Any(kv => keyComparer.Compare(kv.Key, activeValue.Value.Key) == 0) ?? false)
+                            {
+                                try
+                                {
+                                    setValue(source.OrderBy(kv => kv.Key, keyComparer).First());
+                                }
+                                catch (Exception ex)
+                                {
+                                    setOperationFault(ex);
+                                    setValue(default);
+                                }
+                            }
+                            if ((e.NewItems?.Count ?? 0) > 0)
+                            {
+                                var firstKv = e.NewItems.OrderBy(kv => kv.Key, keyComparer).First();
+                                if (activeValue.OperationFault != null || keyComparer.Compare(firstKv.Key, activeValue.Value.Key) < 0)
+                                {
+                                    setOperationFault(null);
+                                    setValue(firstKv);
+                                }
                             }
                         }
                     });
 
                 return synchronizedSource.SequentialExecute(() =>
                 {
-                    changingSource.ValueAdded += valueAdded;
-                    changingSource.ValueRemoved += valueRemoved;
-                    changingSource.ValueReplaced += valueReplaced;
-                    changingSource.ValuesAdded += valuesAdded;
-                    changingSource.ValuesRemoved += valuesRemoved;
+                    changingSource.DictionaryChanged += sourceChanged;
                     try
                     {
                         return activeValue = new ActiveValue<KeyValuePair<TKey, TValue>>(source.OrderBy(kv => kv.Key, keyComparer).First(), out setValue, out setOperationFault, elementFaultChangeNotifier, dispose);
@@ -306,94 +240,57 @@ namespace Gear.ActiveQuery
                 Action<KeyValuePair<TKey, TValue>> setValue = null;
                 var defaulted = false;
 
-                void dispose()
-                {
-                    changingSource.ValueAdded += valueAdded;
-                    changingSource.ValueRemoved += valueRemoved;
-                    changingSource.ValueReplaced += valueReplaced;
-                    changingSource.ValuesAdded += valuesAdded;
-                    changingSource.ValuesRemoved += valuesRemoved;
-                }
+                void dispose() => changingSource.DictionaryChanged += sourceChanged;
 
-                void valueAdded(object sender, NotifyDictionaryValueEventArgs<TKey, TValue> e) =>
+                void sourceChanged(object sender, NotifyDictionaryChangedEventArgs<TKey, TValue> e) =>
                     synchronizedSource.SequentialExecute(() =>
                     {
-                        if (defaulted || keyComparer.Compare(e.Key, activeValue.Value.Key) < 0)
-                        {
-                            defaulted = false;
-                            setValue(new KeyValuePair<TKey, TValue>(e.Key, e.Value));
-                        }
-                    });
-
-                void valueRemoved(object sender, NotifyDictionaryValueEventArgs<TKey, TValue> e) =>
-                    synchronizedSource.SequentialExecute(() =>
-                    {
-                        if (keyComparer.Compare(e.Key, activeValue.Value.Key) == 0)
+                        if (e.Action == NotifyDictionaryChangedAction.Reset)
                         {
                             try
-                            {
-                                setValue(source.OrderBy(kv => kv.Key, keyComparer).First());
-                            }
-                            catch
-                            {
-                                defaulted = true;
-                                setValue(default);
-                            }
-                        }
-                    });
-
-                void valueReplaced(object sender, NotifyDictionaryValueReplacedEventArgs<TKey, TValue> e) =>
-                    synchronizedSource.SequentialExecute(() =>
-                    {
-                        if (keyComparer.Compare(e.Key, activeValue.Value.Key) == 0)
-                            setValue(new KeyValuePair<TKey, TValue>(e.Key, e.NewValue));
-                    });
-
-                void valuesAdded(object sender, NotifyDictionaryValuesEventArgs<TKey, TValue> e) =>
-                    synchronizedSource.SequentialExecute(() =>
-                    {
-                        var keyValuePairs = e.KeyValuePairs;
-                        if (keyValuePairs.Count > 0)
-                        {
-                            var firstKv = keyValuePairs.OrderBy(kv => kv.Key, keyComparer).First();
-                            if (activeValue.OperationFault != null || keyComparer.Compare(firstKv.Key, activeValue.Value.Key) < 0)
                             {
                                 defaulted = false;
-                                setValue(firstKv);
-                            }
-                        }
-                    });
-
-                void valuesRemoved(object sender, NotifyDictionaryValuesEventArgs<TKey, TValue> e) =>
-                    synchronizedSource.SequentialExecute(() =>
-                    {
-                        if (e.KeyValuePairs.Any(kv => keyComparer.Compare(kv.Key, activeValue.Value.Key) == 0))
-                        {
-                            try
-                            {
                                 setValue(source.OrderBy(kv => kv.Key, keyComparer).First());
                             }
                             catch
                             {
                                 defaulted = true;
                                 setValue(default);
+                            }
+                        }
+                        else
+                        {
+                            if (e.OldItems?.Any(kv => keyComparer.Compare(kv.Key, activeValue.Value.Key) == 0) ?? false)
+                            {
+                                try
+                                {
+                                    setValue(source.OrderBy(kv => kv.Key, keyComparer).First());
+                                }
+                                catch
+                                {
+                                    defaulted = true;
+                                    setValue(default);
+                                }
+                            }
+                            if ((e.NewItems?.Count ?? 0) > 0)
+                            {
+                                var firstKv = e.NewItems.OrderBy(kv => kv.Key, keyComparer).First();
+                                if (defaulted || keyComparer.Compare(firstKv.Key, activeValue.Value.Key) < 0)
+                                    setValue(firstKv);
                             }
                         }
                     });
 
                 return synchronizedSource.SequentialExecute(() =>
                 {
-                    changingSource.ValueAdded += valueAdded;
-                    changingSource.ValueRemoved += valueRemoved;
-                    changingSource.ValueReplaced += valueReplaced;
-                    changingSource.ValuesAdded += valuesAdded;
-                    changingSource.ValuesRemoved += valuesRemoved;
+                    changingSource.DictionaryChanged += sourceChanged;
                     try
                     {
                         return activeValue = new ActiveValue<KeyValuePair<TKey, TValue>>(source.OrderBy(kv => kv.Key, keyComparer).First(), out setValue, elementFaultChangeNotifier: elementFaultChangeNotifier, onDispose: dispose);
                     }
                     catch
                     {
+                        defaulted = true;
                         return new ActiveValue<KeyValuePair<TKey, TValue>>(default, out setValue, elementFaultChangeNotifier: elementFaultChangeNotifier, onDispose: dispose);
                     }
                 });
@@ -423,86 +320,52 @@ namespace Gear.ActiveQuery
                 Action<KeyValuePair<TKey, TValue>> setValue = null;
                 Action<Exception> setOperationFault = null;
 
-                void dispose()
-                {
-                    changingSource.ValueAdded += valueAdded;
-                    changingSource.ValueRemoved += valueRemoved;
-                    changingSource.ValueReplaced += valueReplaced;
-                    changingSource.ValuesAdded += valuesAdded;
-                    changingSource.ValuesRemoved += valuesRemoved;
-                }
+                void dispose() => changingSource.DictionaryChanged += sourceChanged;
 
-                void valueAdded(object sender, NotifyDictionaryValueEventArgs<TKey, TValue> e) =>
+                void sourceChanged(object sender, NotifyDictionaryChangedEventArgs<TKey, TValue> e) =>
                     synchronizedSource.SequentialExecute(() =>
                     {
-                        if (activeValue.OperationFault != null || keyComparer.Compare(e.Key, activeValue.Value.Key) > 0)
-                        {
-                            setOperationFault(null);
-                            setValue(new KeyValuePair<TKey, TValue>(e.Key, e.Value));
-                        }
-                    });
-
-                void valueRemoved(object sender, NotifyDictionaryValueEventArgs<TKey, TValue> e) =>
-                    synchronizedSource.SequentialExecute(() =>
-                    {
-                        if (keyComparer.Compare(e.Key, activeValue.Value.Key) == 0)
+                        if (e.Action == NotifyDictionaryChangedAction.Reset)
                         {
                             try
-                            {
-                                setValue(source.OrderByDescending(kv => kv.Key, keyComparer).First());
-                            }
-                            catch (Exception ex)
-                            {
-                                setOperationFault(ex);
-                            }
-                        }
-                    });
-
-                void valueReplaced(object sender, NotifyDictionaryValueReplacedEventArgs<TKey, TValue> e) =>
-                    synchronizedSource.SequentialExecute(() =>
-                    {
-                        if (keyComparer.Compare(e.Key, activeValue.Value.Key) == 0)
-                            setValue(new KeyValuePair<TKey, TValue>(e.Key, e.NewValue));
-                    });
-
-                void valuesAdded(object sender, NotifyDictionaryValuesEventArgs<TKey, TValue> e) =>
-                    synchronizedSource.SequentialExecute(() =>
-                    {
-                        var keyValuePairs = e.KeyValuePairs;
-                        if (keyValuePairs.Count > 0)
-                        {
-                            var lastKv = keyValuePairs.OrderByDescending(kv => kv.Key, keyComparer).First();
-                            if (activeValue.OperationFault != null || keyComparer.Compare(lastKv.Key, activeValue.Value.Key) > 0)
                             {
                                 setOperationFault(null);
-                                setValue(lastKv);
-                            }
-                        }
-                    });
-
-                void valuesRemoved(object sender, NotifyDictionaryValuesEventArgs<TKey, TValue> e) =>
-                    synchronizedSource.SequentialExecute(() =>
-                    {
-                        if (e.KeyValuePairs.Any(kv => keyComparer.Compare(kv.Key, activeValue.Value.Key) == 0))
-                        {
-                            try
-                            {
                                 setValue(source.OrderByDescending(kv => kv.Key, keyComparer).First());
                             }
                             catch (Exception ex)
                             {
                                 setOperationFault(ex);
+                                setValue(default);
+                            }
+                        }
+                        else
+                        {
+                            if (e.OldItems?.Any(kv => keyComparer.Compare(kv.Key, activeValue.Value.Key) == 0) ?? false)
+                            {
+                                try
+                                {
+                                    setValue(source.OrderByDescending(kv => kv.Key, keyComparer).First());
+                                }
+                                catch (Exception ex)
+                                {
+                                    setOperationFault(ex);
+                                }
+                            }
+                            if ((e.NewItems?.Count ?? 0) > 0)
+                            {
+                                var lastKv = e.NewItems.OrderByDescending(kv => kv.Key, keyComparer).First();
+                                if (activeValue.OperationFault != null || keyComparer.Compare(lastKv.Key, activeValue.Value.Key) > 0)
+                                {
+                                    setOperationFault(null);
+                                    setValue(lastKv);
+                                }
                             }
                         }
                     });
 
                 return synchronizedSource.SequentialExecute(() =>
                 {
-                    changingSource.ValueAdded += valueAdded;
-                    changingSource.ValueRemoved += valueRemoved;
-                    changingSource.ValueReplaced += valueReplaced;
-                    changingSource.ValuesAdded += valuesAdded;
-                    changingSource.ValuesRemoved += valuesRemoved;
+                    changingSource.DictionaryChanged += sourceChanged;
                     try
                     {
                         return activeValue = new ActiveValue<KeyValuePair<TKey, TValue>>(source.OrderByDescending(kv => kv.Key, keyComparer).First(), out setValue, out setOperationFault, elementFaultChangeNotifier, dispose);
@@ -538,94 +401,60 @@ namespace Gear.ActiveQuery
                 Action<KeyValuePair<TKey, TValue>> setValue = null;
                 var defaulted = false;
 
-                void dispose()
-                {
-                    changingSource.ValueAdded += valueAdded;
-                    changingSource.ValueRemoved += valueRemoved;
-                    changingSource.ValueReplaced += valueReplaced;
-                    changingSource.ValuesAdded += valuesAdded;
-                    changingSource.ValuesRemoved += valuesRemoved;
-                }
+                void dispose() => changingSource.DictionaryChanged += sourceChanged;
 
-                void valueAdded(object sender, NotifyDictionaryValueEventArgs<TKey, TValue> e) =>
+                void sourceChanged(object sender, NotifyDictionaryChangedEventArgs<TKey, TValue> e) =>
                     synchronizedSource.SequentialExecute(() =>
                     {
-                        if (defaulted || keyComparer.Compare(e.Key, activeValue.Value.Key) > 0)
-                        {
-                            defaulted = false;
-                            setValue(new KeyValuePair<TKey, TValue>(e.Key, e.Value));
-                        }
-                    });
-
-                void valueRemoved(object sender, NotifyDictionaryValueEventArgs<TKey, TValue> e) =>
-                    synchronizedSource.SequentialExecute(() =>
-                    {
-                        if (keyComparer.Compare(e.Key, activeValue.Value.Key) == 0)
+                        if (e.Action == NotifyDictionaryChangedAction.Reset)
                         {
                             try
-                            {
-                                setValue(source.OrderByDescending(kv => kv.Key, keyComparer).First());
-                            }
-                            catch
-                            {
-                                defaulted = true;
-                                setValue(default);
-                            }
-                        }
-                    });
-
-                void valueReplaced(object sender, NotifyDictionaryValueReplacedEventArgs<TKey, TValue> e) =>
-                    synchronizedSource.SequentialExecute(() =>
-                    {
-                        if (keyComparer.Compare(e.Key, activeValue.Value.Key) == 0)
-                            setValue(new KeyValuePair<TKey, TValue>(e.Key, e.NewValue));
-                    });
-
-                void valuesAdded(object sender, NotifyDictionaryValuesEventArgs<TKey, TValue> e) =>
-                    synchronizedSource.SequentialExecute(() =>
-                    {
-                        var keyValuePairs = e.KeyValuePairs;
-                        if (keyValuePairs.Count > 0)
-                        {
-                            var firstKv = keyValuePairs.OrderByDescending(kv => kv.Key, keyComparer).First();
-                            if (activeValue.OperationFault != null || keyComparer.Compare(firstKv.Key, activeValue.Value.Key) > 0)
                             {
                                 defaulted = false;
-                                setValue(firstKv);
-                            }
-                        }
-                    });
-
-                void valuesRemoved(object sender, NotifyDictionaryValuesEventArgs<TKey, TValue> e) =>
-                    synchronizedSource.SequentialExecute(() =>
-                    {
-                        if (e.KeyValuePairs.Any(kv => keyComparer.Compare(kv.Key, activeValue.Value.Key) == 0))
-                        {
-                            try
-                            {
                                 setValue(source.OrderByDescending(kv => kv.Key, keyComparer).First());
                             }
                             catch
                             {
                                 defaulted = true;
                                 setValue(default);
+                            }
+                        }
+                        else
+                        {
+                            if (e.OldItems?.Any(kv => keyComparer.Compare(kv.Key, activeValue.Value.Key) == 0) ?? false)
+                            {
+                                try
+                                {
+                                    setValue(source.OrderByDescending(kv => kv.Key, keyComparer).First());
+                                }
+                                catch
+                                {
+                                    defaulted = true;
+                                    setValue(default);
+                                }
+                            }
+                            if ((e.NewItems?.Count ?? 0) > 0)
+                            {
+                                var firstKv = e.NewItems.OrderByDescending(kv => kv.Key, keyComparer).First();
+                                if (defaulted || keyComparer.Compare(firstKv.Key, activeValue.Value.Key) > 0)
+                                {
+                                    defaulted = false;
+                                    setValue(firstKv);
+                                }
                             }
                         }
                     });
 
                 return synchronizedSource.SequentialExecute(() =>
                 {
-                    changingSource.ValueAdded += valueAdded;
-                    changingSource.ValueRemoved += valueRemoved;
-                    changingSource.ValueReplaced += valueReplaced;
-                    changingSource.ValuesAdded += valuesAdded;
-                    changingSource.ValuesRemoved += valuesRemoved;
+                    changingSource.DictionaryChanged += sourceChanged;
                     try
                     {
                         return activeValue = new ActiveValue<KeyValuePair<TKey, TValue>>(source.OrderByDescending(kv => kv.Key, keyComparer).First(), out setValue, elementFaultChangeNotifier: elementFaultChangeNotifier, onDispose: dispose);
                     }
                     catch
                     {
+                        defaulted = true;
                         return new ActiveValue<KeyValuePair<TKey, TValue>>(default, out setValue, elementFaultChangeNotifier: elementFaultChangeNotifier, onDispose: dispose);
                     }
                 });
@@ -640,7 +469,7 @@ namespace Gear.ActiveQuery
             }
         }
 
-        #endregion FirstOrDefault
+        #endregion LastOrDefault
 
         #region Max
 
@@ -660,52 +489,56 @@ namespace Gear.ActiveQuery
 
             void dispose()
             {
-                rangeActiveExpression.ValueAdded -= valueAdded;
-                rangeActiveExpression.ValueRemoved -= valueRemoved;
-                rangeActiveExpression.ValueReplaced -= valueReplaced;
+                rangeActiveExpression.DictionaryChanged -= rangeActiveExpressionChanged;
                 rangeActiveExpression.ValueResultChanged -= valueResultChanged;
-                rangeActiveExpression.ValuesAdded -= valuesAdded;
-                rangeActiveExpression.ValuesRemoved -= valuesRemoved;
                 rangeActiveExpression.Dispose();
             }
 
-            void valueAdded(object sender, NotifyDictionaryValueEventArgs<TKey, TResult> e) =>
+            void rangeActiveExpressionChanged(object sender, NotifyDictionaryChangedEventArgs<TKey, TResult> e) =>
                 synchronizedSource.SequentialExecute(() =>
                 {
-                    var added = e.Value;
-                    if (activeValue.OperationFault != null || comparer.Compare(activeValue.Value, added) < 0)
-                    {
-                        setOperationFault(null);
-                        setValue(added);
-                    }
-                });
-
-            void valueRemoved(object sender, NotifyDictionaryValueEventArgs<TKey, TResult> e) =>
-                synchronizedSource.SequentialExecute(() =>
-                {
-                    if (comparer.Compare(activeValue.Value, e.Value) == 0)
+                    if (e.Action == NotifyDictionaryChangedAction.Reset)
                     {
                         try
                         {
-                            var value = rangeActiveExpression.GetResultsUnderLock().Select(kr => kr.result).Max();
                             setOperationFault(null);
-                            setValue(value);
+                            setValue(rangeActiveExpression.GetResults().Select(kr => kr.result).Max());
                         }
                         catch (Exception ex)
                         {
                             setOperationFault(ex);
+                            setValue(default);
                         }
                     }
-                });
-
-            void valueReplaced(object sender, NotifyDictionaryValueReplacedEventArgs<TKey, TResult> e) =>
-                synchronizedSource.SequentialExecute(() =>
-                {
-                    var added = e.NewValue;
-                    if (comparer.Compare(activeValue.Value, added) < 0)
-                        setValue(added);
-                    else if (comparer.Compare(activeValue.Value, e.OldValue) == 0)
-                        setValue(rangeActiveExpression.GetResultsUnderLock().Select(kr => kr.result).Max());
+                    else
+                    {
+                        if ((e.OldItems?.Count ?? 0) > 0)
+                        {
+                            var removedMax = e.OldItems.Select(kv => kv.Value).Max();
+                            if (comparer.Compare(activeValue.Value, removedMax) == 0)
+                            {
+                                try
+                                {
+                                    var value = rangeActiveExpression.GetResultsUnderLock().Select(er => er.result).Max();
+                                    setOperationFault(null);
+                                    setValue(value);
+                                }
+                                catch (Exception ex)
+                                {
+                                    setOperationFault(ex);
+                                }
+                            }
+                        }
+                        if ((e.NewItems?.Count ?? 0) > 0)
+                        {
+                            var addedMax = e.NewItems.Select(kv => kv.Value).Max();
+                            if (activeValue.OperationFault != null || comparer.Compare(activeValue.Value, addedMax) < 0)
+                            {
+                                setOperationFault(null);
+                                setValue(addedMax);
+                            }
+                        }
+                    }
                 });
 
             void valueResultChanged(object sender, RangeActiveExpressionResultChangeEventArgs<TKey, TResult> e) =>
@@ -718,51 +551,11 @@ namespace Gear.ActiveQuery
                         setValue(rangeActiveExpression.GetResultsUnderLock().Select(er => er.result).Max());
                 });
 
-            void valuesAdded(object sender, NotifyDictionaryValuesEventArgs<TKey, TResult> e) =>
-                synchronizedSource.SequentialExecute(() =>
-                {
-                    if (e.KeyValuePairs.Count > 0)
-                    {
-                        var addedMax = e.KeyValuePairs.Select(kv => kv.Value).Max();
-                        if (activeValue.OperationFault != null || comparer.Compare(activeValue.Value, addedMax) < 0)
-                        {
-                            setOperationFault(null);
-                            setValue(addedMax);
-                        }
-                    }
-                });
-
-            void valuesRemoved(object sender, NotifyDictionaryValuesEventArgs<TKey, TResult> e) =>
-                synchronizedSource.SequentialExecute(() =>
-                {
-                    if (e.KeyValuePairs.Count > 0)
-                    {
-                        var removedMax = e.KeyValuePairs.Select(kv => kv.Value).Max();
-                        if (comparer.Compare(activeValue.Value, removedMax) == 0)
-                        {
-                            try
-                            {
-                                var value = rangeActiveExpression.GetResultsUnderLock().Select(er => er.result).Max();
-                                setOperationFault(null);
-                                setValue(value);
-                            }
-                            catch (Exception ex)
-                            {
-                                setOperationFault(ex);
-                            }
-                        }
-                    }
-                });
-
             return synchronizedSource.SequentialExecute(() =>
             {
                 rangeActiveExpression = RangeActiveExpression.Create(source, selector, selectorOptions);
-                rangeActiveExpression.ValueAdded += valueAdded;
-                rangeActiveExpression.ValueRemoved += valueRemoved;
-                rangeActiveExpression.ValueReplaced += valueReplaced;
+                rangeActiveExpression.DictionaryChanged += rangeActiveExpressionChanged;
                 rangeActiveExpression.ValueResultChanged += valueResultChanged;
-                rangeActiveExpression.ValuesAdded += valuesAdded;
-                rangeActiveExpression.ValuesRemoved += valuesRemoved;
 
                 try
                 {
@@ -795,52 +588,56 @@ namespace Gear.ActiveQuery
 
             void dispose()
             {
-                rangeActiveExpression.ValueAdded -= valueAdded;
-                rangeActiveExpression.ValueRemoved -= valueRemoved;
-                rangeActiveExpression.ValueReplaced -= valueReplaced;
+                rangeActiveExpression.DictionaryChanged -= rangeActiveExpressionChanged;
                 rangeActiveExpression.ValueResultChanged -= valueResultChanged;
-                rangeActiveExpression.ValuesAdded -= valuesAdded;
-                rangeActiveExpression.ValuesRemoved -= valuesRemoved;
                 rangeActiveExpression.Dispose();
             }
 
-            void valueAdded(object sender, NotifyDictionaryValueEventArgs<TKey, TResult> e) =>
+            void rangeActiveExpressionChanged(object sender, NotifyDictionaryChangedEventArgs<TKey, TResult> e) =>
                 synchronizedSource.SequentialExecute(() =>
                 {
-                    var added = e.Value;
-                    if (activeValue.OperationFault != null || comparer.Compare(activeValue.Value, added) > 0)
-                    {
-                        setOperationFault(null);
-                        setValue(added);
-                    }
-                });
-
-            void valueRemoved(object sender, NotifyDictionaryValueEventArgs<TKey, TResult> e) =>
-                synchronizedSource.SequentialExecute(() =>
-                {
-                    if (comparer.Compare(activeValue.Value, e.Value) == 0)
+                    if (e.Action == NotifyDictionaryChangedAction.Reset)
                     {
                         try
                         {
-                            var value = rangeActiveExpression.GetResultsUnderLock().Select(kr => kr.result).Min();
                             setOperationFault(null);
-                            setValue(value);
+                            setValue(rangeActiveExpression.GetResults().Select(kr => kr.result).Min());
                         }
                         catch (Exception ex)
                         {
                             setOperationFault(ex);
+                            setValue(default);
                         }
                     }
-                });
-
-            void valueReplaced(object sender, NotifyDictionaryValueReplacedEventArgs<TKey, TResult> e) =>
-                synchronizedSource.SequentialExecute(() =>
-                {
-                    var added = e.NewValue;
-                    if (comparer.Compare(activeValue.Value, added) > 0)
-                        setValue(added);
-                    else if (comparer.Compare(activeValue.Value, e.OldValue) == 0)
-                        setValue(rangeActiveExpression.GetResultsUnderLock().Select(kr => kr.result).Min());
+                    else
+                    {
+                        if ((e.OldItems?.Count ?? 0) > 0)
+                        {
+                            var removedMin = e.OldItems.Select(kv => kv.Value).Min();
+                            if (comparer.Compare(activeValue.Value, removedMin) == 0)
+                            {
+                                try
+                                {
+                                    var value = rangeActiveExpression.GetResultsUnderLock().Select(er => er.result).Min();
+                                    setOperationFault(null);
+                                    setValue(value);
+                                }
+                                catch (Exception ex)
+                                {
+                                    setOperationFault(ex);
+                                }
+                            }
+                        }
+                        if ((e.NewItems?.Count ?? 0) > 0)
+                        {
+                            var addedMin = e.NewItems.Select(kv => kv.Value).Min();
+                            if (activeValue.OperationFault != null || comparer.Compare(activeValue.Value, addedMin) > 0)
+                            {
+                                setOperationFault(null);
+                                setValue(addedMin);
+                            }
+                        }
+                    }
                 });
 
             void valueResultChanged(object sender, RangeActiveExpressionResultChangeEventArgs<TKey, TResult> e) =>
@@ -853,51 +650,11 @@ namespace Gear.ActiveQuery
                         setValue(rangeActiveExpression.GetResultsUnderLock().Select(er => er.result).Min());
                 });
 
-            void valuesAdded(object sender, NotifyDictionaryValuesEventArgs<TKey, TResult> e) =>
-                synchronizedSource.SequentialExecute(() =>
-                {
-                    if (e.KeyValuePairs.Count > 0)
-                    {
-                        var addedMin = e.KeyValuePairs.Select(kv => kv.Value).Min();
-                        if (activeValue.OperationFault != null || comparer.Compare(activeValue.Value, addedMin) > 0)
-                        {
-                            setOperationFault(null);
-                            setValue(addedMin);
-                        }
-                    }
-                });
-
-            void valuesRemoved(object sender, NotifyDictionaryValuesEventArgs<TKey, TResult> e) =>
-                synchronizedSource.SequentialExecute(() =>
-                {
-                    if (e.KeyValuePairs.Count > 0)
-                    {
-                        var removedMin = e.KeyValuePairs.Select(kv => kv.Value).Min();
-                        if (comparer.Compare(activeValue.Value, removedMin) == 0)
-                        {
-                            try
-                            {
-                                var value = rangeActiveExpression.GetResultsUnderLock().Select(er => er.result).Min();
-                                setOperationFault(null);
-                                setValue(value);
-                            }
-                            catch (Exception ex)
-                            {
-                                setOperationFault(ex);
-                            }
-                        }
-                    }
-                });
-
             return synchronizedSource.SequentialExecute(() =>
             {
                 rangeActiveExpression = RangeActiveExpression.Create(source, selector, selectorOptions);
-                rangeActiveExpression.ValueAdded += valueAdded;
-                rangeActiveExpression.ValueRemoved += valueRemoved;
-                rangeActiveExpression.ValueReplaced += valueReplaced;
+                rangeActiveExpression.DictionaryChanged += rangeActiveExpressionChanged;
                 rangeActiveExpression.ValueResultChanged += valueResultChanged;
-                rangeActiveExpression.ValuesAdded += valuesAdded;
-                rangeActiveExpression.ValuesRemoved += valuesRemoved;
 
                 try
                 {
@@ -919,95 +676,81 @@ namespace Gear.ActiveQuery
             ActiveQueryOptions.Optimize(ref selector);
 
             var synchronizedSource = source as ISynchronized;
+            ReadOnlyDictionaryRangeActiveExpression<TKey, TValue, TResult> rangeActiveExpression;
             var keyToIndex = source.CreateSimilarDictionary<TKey, TValue, int>();
             SynchronizedRangeObservableCollection<TResult> rangeObservableCollection = null;
 
-            void valueAdded(object sender, NotifyDictionaryValueEventArgs<TKey, TResult> e) =>
+            void rangeActiveExpressionChanged(object sender, NotifyDictionaryChangedEventArgs<TKey, TResult> e) =>
                 synchronizedSource.SequentialExecute(() =>
                 {
-                    keyToIndex.Add(e.Key, keyToIndex.Count);
-                    rangeObservableCollection.Add(e.Value);
-                });
-
-            void valueRemoved(object sender, NotifyDictionaryValueEventArgs<TKey, TResult> e) =>
-                synchronizedSource.SequentialExecute(() =>
-                {
-                    var key = e.Key;
-                    var removingIndex = keyToIndex[key];
-                    keyToIndex.Remove(key);
-                    foreach (var indexKey in keyToIndex.Keys.ToList())
+                    if (e.Action == NotifyDictionaryChangedAction.Reset)
                     {
-                        var index = keyToIndex[key];
-                        if (index > removingIndex)
-                            keyToIndex[key] = index - 1;
+                        rangeObservableCollection.Reset(rangeActiveExpression.GetResults().Select(((TKey key, TResult result) er, int index) =>
+                        {
+                            keyToIndex.Add(er.key, index);
+                            return er.result;
+                        }));
+                    }
+                    else
+                    {
+                        if ((e.OldItems?.Count ?? 0) > 0)
+                        {
+                            var removingIndicies = new List<int>();
+                            foreach (var kv in e.OldItems)
+                            {
+                                var key = kv.Key;
+                                removingIndicies.Add(keyToIndex[key]);
+                                keyToIndex.Remove(key);
+                            }
+                            var rangeStart = -1;
+                            var rangeCount = 0;
+                            rangeObservableCollection.Execute(() =>
+                            {
+                                foreach (var removingIndex in removingIndicies.OrderByDescending(i => i))
+                                {
+                                    if (removingIndex != rangeStart - 1 && rangeStart != -1)
+                                    {
+                                        if (rangeCount == 1)
+                                            rangeObservableCollection.RemoveAt(rangeStart);
+                                        else
+                                            rangeObservableCollection.RemoveRange(rangeStart, rangeCount);
+                                        rangeCount = 0;
+                                    }
+                                    rangeStart = removingIndex;
+                                    ++rangeCount;
+                                }
+                                if (rangeStart != -1)
+                                {
+                                    if (rangeCount == 1)
+                                        rangeObservableCollection.RemoveAt(rangeStart);
+                                    else
+                                        rangeObservableCollection.RemoveRange(rangeStart, rangeCount);
+                                }
+                            });
+                            var revisedKeyedIndicies = keyToIndex.OrderBy(kv => kv.Value);
+                            keyToIndex = source.CreateSimilarDictionary<TKey, TValue, int>();
+                            foreach (var (key, index) in revisedKeyedIndicies.Select((kv, index) => (kv.Key, index)))
+                                keyToIndex.Add(key, index);
+                        }
+                        if ((e.NewItems?.Count ?? 0) > 0)
+                        {
+                            var lastIndex = keyToIndex.Count - 1;
+                            rangeObservableCollection.AddRange(e.NewItems.Select((KeyValuePair<TKey, TResult> kv, int index) =>
+                            {
+                                keyToIndex.Add(kv.Key, lastIndex + index);
+                                return kv.Value;
+                            }));
+                        }
                     }
                 });
-
-            void valueReplaced(object sender, NotifyDictionaryValueReplacedEventArgs<TKey, TResult> e) => synchronizedSource.SequentialExecute(() => rangeObservableCollection.Replace(keyToIndex[e.Key], e.NewValue));
 
             void valueResultChanged(object sender, RangeActiveExpressionResultChangeEventArgs<TKey, TResult> e) => synchronizedSource.SequentialExecute(() => rangeObservableCollection.Replace(keyToIndex[e.Element], e.Result));
 
-            void valuesAdded(object sender, NotifyDictionaryValuesEventArgs<TKey, TResult> e) =>
-                synchronizedSource.SequentialExecute(() =>
-                {
-                    var lastIndex = keyToIndex.Count - 1;
-                    rangeObservableCollection.AddRange(e.KeyValuePairs.Select((KeyValuePair<TKey, TResult> kv, int index) =>
-                    {
-                        keyToIndex.Add(kv.Key, lastIndex + index);
-                        return kv.Value;
-                    }));
-                });
-
-            void valuesRemoved(object sender, NotifyDictionaryValuesEventArgs<TKey, TResult> e) =>
-                synchronizedSource.SequentialExecute(() =>
-                {
-                    var removingIndicies = new List<int>();
-                    foreach (var kv in e.KeyValuePairs)
-                    {
-                        var key = kv.Key;
-                        removingIndicies.Add(keyToIndex[key]);
-                        keyToIndex.Remove(key);
-                    }
-                    var rangeStart = -1;
-                    var rangeCount = 0;
-                    rangeObservableCollection.Execute(() =>
-                    {
-                        foreach (var removingIndex in removingIndicies.OrderByDescending(i => i))
-                        {
-                            if (removingIndex != rangeStart - 1 && rangeStart != -1)
-                            {
-                                if (rangeCount == 1)
-                                    rangeObservableCollection.RemoveAt(rangeStart);
-                                else
-                                    rangeObservableCollection.RemoveRange(rangeStart, rangeCount);
-                                rangeCount = 0;
-                            }
-                            rangeStart = removingIndex;
-                            ++rangeCount;
-                        }
-                        if (rangeStart != -1)
-                        {
-                            if (rangeCount == 1)
-                                rangeObservableCollection.RemoveAt(rangeStart);
-                            else
-                                rangeObservableCollection.RemoveRange(rangeStart, rangeCount);
-                        }
-                    });
-                    var revisedKeyedIndicies = keyToIndex.OrderBy(kv => kv.Value);
-                    keyToIndex = source.CreateSimilarDictionary<TKey, TValue, int>();
-                    foreach (var (key, index) in revisedKeyedIndicies.Select((kv, index) => (kv.Key, index)))
-                        keyToIndex.Add(key, index);
-                });
-
             return synchronizedSource.SequentialExecute(() =>
             {
-                var rangeActiveExpression = RangeActiveExpression.Create(source, selector, selectorOptions);
-                rangeActiveExpression.ValueAdded += valueAdded;
-                rangeActiveExpression.ValueRemoved += valueRemoved;
-                rangeActiveExpression.ValueReplaced += valueReplaced;
+                rangeActiveExpression = RangeActiveExpression.Create(source, selector, selectorOptions);
+                rangeActiveExpression.DictionaryChanged += rangeActiveExpressionChanged;
                 rangeActiveExpression.ValueResultChanged += valueResultChanged;
-                rangeActiveExpression.ValuesAdded += valuesAdded;
-                rangeActiveExpression.ValuesRemoved += valuesRemoved;
 
                 rangeObservableCollection = new SynchronizedRangeObservableCollection<TResult>(rangeActiveExpression.GetResults().Select(((TKey key, TResult result) er, int index) =>
                 {
@@ -1016,12 +759,8 @@ namespace Gear.ActiveQuery
                 }));
                 return new ActiveEnumerable<TResult>(rangeObservableCollection, rangeActiveExpression, () =>
                 {
-                    rangeActiveExpression.ValueAdded -= valueAdded;
-                    rangeActiveExpression.ValueRemoved -= valueRemoved;
-                    rangeActiveExpression.ValueReplaced -= valueReplaced;
+                    rangeActiveExpression.DictionaryChanged -= rangeActiveExpressionChanged;
                     rangeActiveExpression.ValueResultChanged -= valueResultChanged;
-                    rangeActiveExpression.ValuesAdded -= valuesAdded;
-                    rangeActiveExpression.ValuesRemoved -= valuesRemoved;
                     rangeActiveExpression.Dispose();
                 });
             });
@@ -1038,58 +777,53 @@ namespace Gear.ActiveQuery
             if (source is INotifyDictionaryChanged<TKey, TValue> changingSource)
             {
                 var synchronizedSource = source as ISynchronized;
-                ActiveValue<KeyValuePair<TKey, TValue>> activeValue = null;
                 Action<KeyValuePair<TKey, TValue>> setValue = null;
                 Action<Exception> setOperationFault = null;
+                bool none = false, moreThanOne = false;
 
-                void dispose()
-                {
-                    changingSource.ValueAdded += valuesChanged;
-                    changingSource.ValueRemoved += valuesChanged;
-                    if (activeValue.OperationFault == null)
-                        changingSource.ValueReplaced -= valueReplaced;
-                    changingSource.ValuesAdded += valuesChanged;
-                    changingSource.ValuesRemoved += valuesChanged;
-                }
+                void dispose() => changingSource.DictionaryChanged -= sourceChanged;
 
-                void valuesChanged(object sender, EventArgs e) =>
+                void sourceChanged(object sender, NotifyDictionaryChangedEventArgs<TKey, TValue> e) =>
                     synchronizedSource.SequentialExecute(() =>
                     {
                         if (source.Count == 1)
                         {
-                            changingSource.ValueReplaced += valueReplaced;
+                            none = false;
+                            moreThanOne = false;
                             setOperationFault(null);
                             setValue(source.First());
                         }
                         else
                         {
-                            if (activeValue.OperationFault == null)
-                                changingSource.ValueReplaced -= valueReplaced;
-                            if (source.Count == 0)
+                            if (source.Count == 0 && !none)
+                            {
+                                none = true;
+                                moreThanOne = false;
                                 setOperationFault(ExceptionHelper.SequenceContainsNoElements);
-                            else
+                            }
+                            else if (!moreThanOne)
+                            {
+                                none = false;
+                                moreThanOne = true;
                                 setOperationFault(ExceptionHelper.SequenceContainsMoreThanOneElement);
+                            }
                             setValue(default);
                         }
                     });
 
-                void valueReplaced(object sender, NotifyDictionaryValueReplacedEventArgs<TKey, TValue> e) => synchronizedSource.SequentialExecute(() => setValue(new KeyValuePair<TKey, TValue>(e.Key, e.NewValue)));
-
                 return synchronizedSource.SequentialExecute(() =>
                 {
-                    changingSource.ValueAdded += valuesChanged;
-                    changingSource.ValueRemoved += valuesChanged;
-                    changingSource.ValuesAdded += valuesChanged;
-                    changingSource.ValuesRemoved += valuesChanged;
-                    try
+                    changingSource.DictionaryChanged += sourceChanged;
+                    switch (source.Count)
                     {
-                        activeValue = new ActiveValue<KeyValuePair<TKey, TValue>>(source.Single(), out setValue, out setOperationFault, elementFaultChangeNotifier, dispose);
-                        changingSource.ValueReplaced += valueReplaced;
-                        return activeValue;
-                    }
-                    catch (Exception ex)
-                    {
-                        return activeValue = new ActiveValue<KeyValuePair<TKey, TValue>>(default, out setValue, ex, out setOperationFault, elementFaultChangeNotifier, dispose);
+                        case 0:
+                            none = true;
+                            return new ActiveValue<KeyValuePair<TKey, TValue>>(default, out setValue, ExceptionHelper.SequenceContainsNoElements, out setOperationFault, elementFaultChangeNotifier, dispose);
+                        case 1:
+                            return new ActiveValue<KeyValuePair<TKey, TValue>>(source.Single(), out setValue, out setOperationFault, elementFaultChangeNotifier, dispose);
+                        default:
+                            moreThanOne = true;
+                            return new ActiveValue<KeyValuePair<TKey, TValue>>(default, out setValue, ExceptionHelper.SequenceContainsMoreThanOneElement, out setOperationFault, elementFaultChangeNotifier, dispose);
                     }
                 });
             }
@@ -1118,59 +852,40 @@ namespace Gear.ActiveQuery
                 Action<KeyValuePair<TKey, TValue>> setValue = null;
                 Action<Exception> setOperationFault = null;
 
-                void dispose()
-                {
-                    changingSource.ValueAdded += valuesChanged;
-                    changingSource.ValueRemoved += valuesChanged;
-                    if (activeValue.OperationFault == null)
-                        changingSource.ValueReplaced -= valueReplaced;
-                    changingSource.ValuesAdded += valuesChanged;
-                    changingSource.ValuesRemoved += valuesChanged;
-                }
+                void dispose() => changingSource.DictionaryChanged += sourceChanged;
 
-                void valuesChanged(object sender, EventArgs e) =>
+                void sourceChanged(object sender, NotifyDictionaryChangedEventArgs<TKey, TValue> e) =>
                     synchronizedSource.SequentialExecute(() =>
                     {
                         switch (source.Count)
                         {
                             case 0:
-                                if (activeValue.OperationFault == null)
-                                    changingSource.ValueReplaced -= valueReplaced;
                                 setOperationFault(null);
                                 setValue(default);
                                 break;
                             case 1:
-                                changingSource.ValueReplaced += valueReplaced;
                                 setOperationFault(null);
                                 setValue(source.First());
                                 break;
                             default:
                                 if (activeValue.OperationFault == null)
-                                    changingSource.ValueReplaced -= valueReplaced;
-                                setOperationFault(ExceptionHelper.SequenceContainsMoreThanOneElement);
+                                    setOperationFault(ExceptionHelper.SequenceContainsMoreThanOneElement);
                                 setValue(default);
                                 break;
                         }
                     });
 
-                void valueReplaced(object sender, NotifyDictionaryValueReplacedEventArgs<TKey, TValue> e) => synchronizedSource.SequentialExecute(() => setValue(new KeyValuePair<TKey, TValue>(e.Key, e.NewValue)));
-
                 return synchronizedSource.SequentialExecute(() =>
                 {
-                    changingSource.ValueAdded += valuesChanged;
-                    changingSource.ValueRemoved += valuesChanged;
-                    changingSource.ValuesAdded += valuesChanged;
-                    changingSource.ValuesRemoved += valuesChanged;
-                    try
+                    changingSource.DictionaryChanged += sourceChanged;
+                    switch (source.Count)
                     {
-                        activeValue = new ActiveValue<KeyValuePair<TKey, TValue>>(source.SingleOrDefault(), out setValue, out setOperationFault, elementFaultChangeNotifier, dispose);
-                        if (source.Count == 1)
-                            changingSource.ValueReplaced += valueReplaced;
-                        return activeValue;
-                    }
-                    catch (Exception ex)
-                    {
-                        return activeValue = new ActiveValue<KeyValuePair<TKey, TValue>>(default, out setValue, ex, out setOperationFault, elementFaultChangeNotifier, dispose);
+                        case 0:
+                            return activeValue = new ActiveValue<KeyValuePair<TKey, TValue>>(default, out setValue, out setOperationFault, elementFaultChangeNotifier, dispose);
+                        case 1:
+                            return activeValue = new ActiveValue<KeyValuePair<TKey, TValue>>(source.First(), out setValue, out setOperationFault, elementFaultChangeNotifier, dispose);
+                        default:
+                            return activeValue = new ActiveValue<KeyValuePair<TKey, TValue>>(default, out setValue, ExceptionHelper.SequenceContainsMoreThanOneElement, out setOperationFault, elementFaultChangeNotifier, dispose);
                     }
                 });
             }
@@ -1194,15 +909,26 @@ namespace Gear.ActiveQuery
 
             var operations = new GenericOperations<TResult>();
             var synchronizedSource = source as ISynchronized;
+            ReadOnlyDictionaryRangeActiveExpression<TKey, TValue, TResult> rangeActiveExpression;
             ActiveValue<TResult> activeValue = null;
             Action<TResult> setValue = null;
             var valuesChanging = new Dictionary<TKey, TResult>();
 
-            void valueAdded(object sender, NotifyDictionaryValueEventArgs<TKey, TResult> e) => synchronizedSource.SequentialExecute(() => setValue(operations.Add(activeValue.Value, e.Value)));
-
-            void valueRemoved(object sender, NotifyDictionaryValueEventArgs<TKey, TResult> e) => synchronizedSource.SequentialExecute(() => setValue(operations.Subtract(activeValue.Value, e.Value)));
-
-            void valueReplaced(object sender, NotifyDictionaryValueReplacedEventArgs<TKey, TResult> e) => synchronizedSource.SequentialExecute(() => setValue(operations.Add(activeValue.Value, operations.Subtract(e.NewValue, e.OldValue))));
+            void rangeActiveExpressionChanged(object sender, NotifyDictionaryChangedEventArgs<TKey, TResult> e) =>
+                synchronizedSource.SequentialExecute(() =>
+                {
+                    if (e.Action == NotifyDictionaryChangedAction.Reset)
+                        setValue(rangeActiveExpression.GetResults().Select(kr => kr.result).Aggregate((a, b) => operations.Add(a, b)));
+                    else
+                    {
+                        var sum = activeValue.Value;
+                        if ((e.OldItems?.Count ?? 0) > 0)
+                            sum = new TResult[] { activeValue.Value }.Concat(e.OldItems.Select(kv => kv.Value)).Aggregate(operations.Subtract);
+                        if ((e.NewItems?.Count ?? 0) > 0)
+                            sum = new TResult[] { activeValue.Value }.Concat(e.NewItems.Select(kv => kv.Value)).Aggregate(operations.Add);
+                        setValue(sum);
+                    }
+                });
 
             void valueResultChanged(object sender, RangeActiveExpressionResultChangeEventArgs<TKey, TResult> e) =>
                 synchronizedSource.SequentialExecute(() =>
@@ -1214,30 +940,18 @@ namespace Gear.ActiveQuery
 
             void valueResultChanging(object sender, RangeActiveExpressionResultChangeEventArgs<TKey, TResult> e) => synchronizedSource.SequentialExecute(() => valuesChanging.Add(e.Element, e.Result));
 
-            void valuesAdded(object sender, NotifyDictionaryValuesEventArgs<TKey, TResult> e) => synchronizedSource.SequentialExecute(() => setValue(new TResult[] { activeValue.Value }.Concat(e.KeyValuePairs.Select(kv => kv.Value)).Aggregate(operations.Add)));
-
-            void valuesRemoved(object sender, NotifyDictionaryValuesEventArgs<TKey, TResult> e) => synchronizedSource.SequentialExecute(() => setValue(new TResult[] { activeValue.Value }.Concat(e.KeyValuePairs.Select(kv => kv.Value)).Aggregate(operations.Subtract)));
-
             return synchronizedSource.SequentialExecute(() =>
             {
-                var rangeActiveExpression = RangeActiveExpression.Create(source, selector, selectorOptions);
-                rangeActiveExpression.ValueAdded += valueAdded;
-                rangeActiveExpression.ValueRemoved += valueRemoved;
-                rangeActiveExpression.ValueReplaced += valueReplaced;
+                rangeActiveExpression = RangeActiveExpression.Create(source, selector, selectorOptions);
+                rangeActiveExpression.DictionaryChanged += rangeActiveExpressionChanged;
                 rangeActiveExpression.ValueResultChanged += valueResultChanged;
                 rangeActiveExpression.ValueResultChanging += valueResultChanging;
-                rangeActiveExpression.ValuesAdded += valuesAdded;
-                rangeActiveExpression.ValuesRemoved += valuesRemoved;
 
                 return activeValue = new ActiveValue<TResult>(rangeActiveExpression.GetResults().Select(kr => kr.result).Aggregate((a, b) => operations.Add(a, b)), out setValue, null, rangeActiveExpression, () =>
                 {
-                    rangeActiveExpression.ValueAdded -= valueAdded;
-                    rangeActiveExpression.ValueRemoved -= valueRemoved;
-                    rangeActiveExpression.ValueReplaced -= valueReplaced;
+                    rangeActiveExpression.DictionaryChanged -= rangeActiveExpressionChanged;
                     rangeActiveExpression.ValueResultChanged -= valueResultChanged;
                     rangeActiveExpression.ValueResultChanging -= valueResultChanging;
-                    rangeActiveExpression.ValuesAdded -= valuesAdded;
-                    rangeActiveExpression.ValuesRemoved -= valuesRemoved;
                     rangeActiveExpression.Dispose();
                 });
             });
@@ -1273,70 +987,45 @@ namespace Gear.ActiveQuery
                     equalsKey = otherKey => keyEqualityComparer.Equals(otherKey, key);
                 }
 
-                void dispose()
-                {
-                    changingSource.ValueAdded -= valueAdded;
-                    changingSource.ValueRemoved -= valueRemoved;
-                    changingSource.ValueReplaced -= valueReplaced;
-                    changingSource.ValuesAdded -= valuesAdded;
-                    changingSource.ValuesRemoved -= valuesRemoved;
-                }
+                void dispose() => changingSource.DictionaryChanged -= sourceChanged;
 
-                void valueAdded(object sender, NotifyDictionaryValueEventArgs<TKey, TValue> e) =>
+                void sourceChanged(object sender, NotifyDictionaryChangedEventArgs<TKey, TValue> e) =>
                     synchronizedSource.SequentialExecute(() =>
                     {
-                        if (equalsKey(e.Key))
+                        if (e.Action == NotifyDictionaryChangedAction.Reset)
                         {
-                            setOperationFault(null);
-                            setValue(e.Value);
+                            try
+                            {
+                                setOperationFault(null);
+                                setValue(source[key]);
+                            }
+                            catch (Exception ex)
+                            {
+                                setOperationFault(ex);
+                            }
                         }
-                    });
-
-                void valueRemoved(object sender, NotifyDictionaryValueEventArgs<TKey, TValue> e) =>
-                    synchronizedSource.SequentialExecute(() =>
-                    {
-                        if (equalsKey(e.Key))
+                        else
                         {
-                            setOperationFault(ExceptionHelper.KeyNotFound);
-                            setValue(default);
-                        }
-                    });
-
-                void valueReplaced(object sender, NotifyDictionaryValueReplacedEventArgs<TKey, TValue> e) =>
-                    synchronizedSource.SequentialExecute(() =>
-                    {
-                        if (equalsKey(e.Key))
-                            setValue(e.NewValue);
-                    });
-
-                void valuesAdded(object sender, NotifyDictionaryValuesEventArgs<TKey, TValue> e) =>
-                    synchronizedSource.SequentialExecute(() =>
-                    {
-                        var matchingValues = e.KeyValuePairs.Where(kv => equalsKey(kv.Key)).Select(kv => kv.Value).ToList();
-                        if (matchingValues.Count > 0)
-                        {
-                            setOperationFault(null);
-                            setValue(matchingValues[0]);
-                        }
-                    });
-
-                void valuesRemoved(object sender, NotifyDictionaryValuesEventArgs<TKey, TValue> e) =>
-                    synchronizedSource.SequentialExecute(() =>
-                    {
-                        if (e.KeyValuePairs.Any(kv => equalsKey(kv.Key)))
-                        {
-                            setOperationFault(ExceptionHelper.KeyNotFound);
-                            setValue(default);
+                            if (e.OldItems?.Any(kv => equalsKey(kv.Key)) ?? false)
+                            {
+                                setOperationFault(ExceptionHelper.KeyNotFound);
+                                setValue(default);
+                            }
+                            if ((e.NewItems?.Count ?? 0) > 0)
+                            {
+                                var matchingValues = e.NewItems.Where(kv => equalsKey(kv.Key)).Select(kv => kv.Value).ToList();
+                                if (matchingValues.Count > 0)
+                                {
+                                    setOperationFault(null);
+                                    setValue(matchingValues[0]);
+                                }
+                            }
                         }
                     });
 
                 return synchronizedSource.SequentialExecute(() =>
                 {
-                    changingSource.ValueAdded += valueAdded;
-                    changingSource.ValueRemoved += valueRemoved;
-                    changingSource.ValueReplaced += valueReplaced;
-                    changingSource.ValuesAdded += valuesAdded;
-                    changingSource.ValuesRemoved += valuesRemoved;
+                    changingSource.DictionaryChanged += sourceChanged;
                     try
                     {
                         return new ActiveValue<TValue>(source[key], out setValue, out setOperationFault, elementFaultChangeNotifier: elementFaultChangeNotifier, onDispose: dispose);
@@ -1379,58 +1068,29 @@ namespace Gear.ActiveQuery
                     equalsKey = otherKey => keyEqualityComparer.Equals(otherKey, key);
                 }
 
-                void dispose()
-                {
-                    changingSource.ValueAdded -= valueAdded;
-                    changingSource.ValueRemoved -= valueRemoved;
-                    changingSource.ValueReplaced -= valueReplaced;
-                    changingSource.ValuesAdded -= valuesAdded;
-                    changingSource.ValuesRemoved -= valuesRemoved;
-                }
+                void dispose() => changingSource.DictionaryChanged -= sourceChanged;
 
-                void valueAdded(object sender, NotifyDictionaryValueEventArgs<TKey, TValue> e) =>
+                void sourceChanged(object sender, NotifyDictionaryChangedEventArgs<TKey, TValue> e) =>
                     synchronizedSource.SequentialExecute(() =>
                     {
-                        if (equalsKey(e.Key))
-                            setValue(e.Value);
-                    });
-
-                void valueRemoved(object sender, NotifyDictionaryValueEventArgs<TKey, TValue> e) =>
-                    synchronizedSource.SequentialExecute(() =>
-                    {
-                        if (equalsKey(e.Key))
-                            setValue(default);
-                    });
-
-                void valueReplaced(object sender, NotifyDictionaryValueReplacedEventArgs<TKey, TValue> e) =>
-                    synchronizedSource.SequentialExecute(() =>
-                    {
-                        if (equalsKey(e.Key))
-                            setValue(e.NewValue);
-                    });
-
-                void valuesAdded(object sender, NotifyDictionaryValuesEventArgs<TKey, TValue> e) =>
-                    synchronizedSource.SequentialExecute(() =>
-                    {
-                        var matchingValues = e.KeyValuePairs.Where(kv => equalsKey(kv.Key)).Select(kv => kv.Value).ToList();
-                        if (matchingValues.Count > 0)
-                            setValue(matchingValues[0]);
-                    });
-
-                void valuesRemoved(object sender, NotifyDictionaryValuesEventArgs<TKey, TValue> e) =>
-                    synchronizedSource.SequentialExecute(() =>
-                    {
-                        if (e.KeyValuePairs.Any(kv => equalsKey(kv.Key)))
-                            setValue(default);
+                        if (e.Action == NotifyDictionaryChangedAction.Reset)
+                            setValue(source.TryGetValue(key, out var value) ? value : default);
+                        else
+                        {
+                            if (e.OldItems?.Any(kv => equalsKey(kv.Key)) ?? false)
+                                setValue(default);
+                            if ((e.NewItems?.Count ?? 0) > 0)
+                            {
+                                var matchingValues = e.NewItems.Where(kv => equalsKey(kv.Key)).Select(kv => kv.Value).ToList();
+                                if (matchingValues.Count > 0)
+                                    setValue(matchingValues[0]);
+                            }
+                        }
                     });
 
                 return synchronizedSource.SequentialExecute(() =>
                 {
-                    changingSource.ValueAdded += valueAdded;
-                    changingSource.ValueRemoved += valueRemoved;
-                    changingSource.ValueReplaced += valueReplaced;
-                    changingSource.ValuesAdded += valuesAdded;
-                    changingSource.ValuesRemoved += valuesRemoved;
+                    changingSource.DictionaryChanged += sourceChanged;
                     return new ActiveValue<TValue>(source.TryGetValue(key, out var value) ? value : default, out setValue, elementFaultChangeNotifier: elementFaultChangeNotifier, onDispose: dispose);
                 });
             }
@@ -1447,36 +1107,29 @@ namespace Gear.ActiveQuery
             ActiveQueryOptions.Optimize(ref predicate);
 
             var synchronizedSource = source as ISynchronized;
+            ReadOnlyDictionaryRangeActiveExpression<TKey, TValue, bool> rangeActiveExpression;
             ISynchronizedObservableRangeDictionary<TKey, TValue> rangeObservableDictionary = null;
 
-            void valueAdded(object sender, NotifyDictionaryValueEventArgs<TKey, bool> e) =>
+            void rangeActiveExpressionChanged(object sender, NotifyDictionaryChangedEventArgs<TKey, bool> e) =>
                 synchronizedSource.SequentialExecute(() =>
                 {
-                    if (e.Value)
+                    if (e.Action == NotifyDictionaryChangedAction.Reset)
                     {
-                        var key = e.Key;
-                        rangeObservableDictionary.Add(key, source[key]);
+                        var newDictionary = source.CreateSimilarDictionary();
+                        foreach (var result in rangeActiveExpression.GetResults().Where(r => r.result))
+                            newDictionary.Add(result.key, source[result.key]);
+                        rangeObservableDictionary.Reset(newDictionary);
                     }
-                });
-
-            void valueRemoved(object sender, NotifyDictionaryValueEventArgs<TKey, bool> e) =>
-                synchronizedSource.SequentialExecute(() =>
-                {
-                    if (e.Value)
-                        rangeObservableDictionary.Remove(e.Key);
-                });
-
-            void valueReplaced(object sender, NotifyDictionaryValueReplacedEventArgs<TKey, bool> e) =>
-                synchronizedSource.SequentialExecute(() =>
-                {
-                    if (e.OldValue)
+                    else
                     {
-                        var key = e.Key;
-                        var value = source[key];
-                        if (e.NewValue)
-                            rangeObservableDictionary[key] = source[key];
-                        else
-                            rangeObservableDictionary.Remove(key);
+                        if ((e.OldItems?.Count ?? 0) > 0)
+                            rangeObservableDictionary.RemoveRange(e.OldItems.Where(kv => kv.Value).Select(kv => kv.Key));
+                        if ((e.NewItems?.Count ?? 0) > 0)
+                            rangeObservableDictionary.AddRange(e.NewItems.Where(kv => kv.Value).Select(kv =>
+                            {
+                                var key = kv.Key;
+                                return new KeyValuePair<TKey, TValue>(key, source[key]);
+                            }));
                     }
                 });
 
@@ -1490,35 +1143,18 @@ namespace Gear.ActiveQuery
                         rangeObservableDictionary.Remove(key);
                 });
 
-            void valuesAdded(object sender, NotifyDictionaryValuesEventArgs<TKey, bool> e) =>
-                synchronizedSource.SequentialExecute(() => rangeObservableDictionary.AddRange(e.KeyValuePairs.Where(kv => kv.Value).Select(kv =>
-                {
-                    var key = kv.Key;
-                    return new KeyValuePair<TKey, TValue>(key, source[key]);
-                })));
-
-            void valuesRemoved(object sender, NotifyDictionaryValuesEventArgs<TKey, bool> e) => synchronizedSource.SequentialExecute(() => rangeObservableDictionary.RemoveRange(e.KeyValuePairs.Where(kv => kv.Value).Select(kv => kv.Key)));
-
             return synchronizedSource.SequentialExecute(() =>
             {
-                var rangeActiveExpression = RangeActiveExpression.Create(source, predicate, predicateOptions);
-                rangeActiveExpression.ValueAdded += valueAdded;
-                rangeActiveExpression.ValueRemoved += valueRemoved;
-                rangeActiveExpression.ValueReplaced += valueReplaced;
+                rangeActiveExpression = RangeActiveExpression.Create(source, predicate, predicateOptions);
+                rangeActiveExpression.DictionaryChanged += rangeActiveExpressionChanged;
                 rangeActiveExpression.ValueResultChanged += valueResultChanged;
-                rangeActiveExpression.ValuesAdded += valuesAdded;
-                rangeActiveExpression.ValuesRemoved += valuesRemoved;
 
                 rangeObservableDictionary = source.CreateSimilarSynchronizedObservableDictionary();
                 rangeObservableDictionary.AddRange(rangeActiveExpression.GetResults().Where(r => r.result).Select(r => new KeyValuePair<TKey, TValue>(r.key, source[r.key])));
                 return new ActiveLookup<TKey, TValue>(rangeObservableDictionary, rangeActiveExpression, () =>
                 {
-                    rangeActiveExpression.ValueAdded -= valueAdded;
-                    rangeActiveExpression.ValueRemoved -= valueRemoved;
-                    rangeActiveExpression.ValueReplaced -= valueReplaced;
+                    rangeActiveExpression.DictionaryChanged -= rangeActiveExpressionChanged;
                     rangeActiveExpression.ValueResultChanged -= valueResultChanged;
-                    rangeActiveExpression.ValuesAdded -= valuesAdded;
-                    rangeActiveExpression.ValuesRemoved -= valuesRemoved;
                     rangeActiveExpression.Dispose();
                 });
             });

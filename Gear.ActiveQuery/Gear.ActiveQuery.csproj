@@ -41,7 +41,7 @@
 
   <ItemGroup>
     <PackageReference Include="Gear.ActiveExpressions" Version="1.0.41" />
-    <PackageReference Include="Gear.Components" Version="1.0.84" />
+    <PackageReference Include="Gear.Components" Version="1.0.92" />
     <PackageReference Include="System.ValueTuple" Version="4.5.0" />
   </ItemGroup>
 
