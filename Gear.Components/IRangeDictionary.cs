@@ -10,6 +10,8 @@ namespace Gear.Components
         IReadOnlyList<KeyValuePair<TKey, TValue>> GetRange(IEnumerable<TKey> keys);
         IReadOnlyList<TKey> RemoveRange(IEnumerable<TKey> keys);
         void ReplaceRange(IEnumerable<KeyValuePair<TKey, TValue>> keyValuePairs);
+        void Reset();
+        void Reset(IDictionary<TKey, TValue> dictionary);
         new bool TryGetValue(TKey key, out TValue value);
 
         new TValue this[TKey key] { get; set; }

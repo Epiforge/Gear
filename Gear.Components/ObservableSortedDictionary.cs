@@ -6,7 +6,7 @@ using System.Linq;
 
 namespace Gear.Components
 {
-    public class ObservableSortedDictionary<TKey, TValue> : PropertyChangeNotifier, ICollection, ICollection<KeyValuePair<TKey, TValue>>, IDictionary, IDictionary<TKey, TValue>, IEnumerable, IEnumerable<KeyValuePair<TKey, TValue>>, INotifyDictionaryChanged<TKey, TValue>, IObservableRangeDictionary<TKey, TValue>, IRangeDictionary<TKey, TValue>, IReadOnlyCollection<KeyValuePair<TKey, TValue>>, IReadOnlyDictionary<TKey, TValue>
+    public class ObservableSortedDictionary<TKey, TValue> : PropertyChangeNotifier, ICollection, ICollection<KeyValuePair<TKey, TValue>>, IDictionary, IDictionary<TKey, TValue>, IEnumerable, IEnumerable<KeyValuePair<TKey, TValue>>, INotifyDictionaryChanged<TKey, TValue>, IObservableRangeDictionary<TKey, TValue>, IReadOnlyCollection<KeyValuePair<TKey, TValue>>, IReadOnlyDictionary<TKey, TValue>
     {
         public ObservableSortedDictionary()
         {
@@ -56,14 +56,14 @@ namespace Gear.Components
             grodi = gsd;
         }
 
-        readonly SortedDictionary<TKey, TValue> gsd;
-        readonly ICollection ci;
-        readonly ICollection<KeyValuePair<TKey, TValue>> gci;
-        readonly IDictionary di;
-        readonly IDictionary<TKey, TValue> gdi;
-        readonly IEnumerable ei;
-        readonly IEnumerable<KeyValuePair<TKey, TValue>> gei;
-        readonly IReadOnlyDictionary<TKey, TValue> grodi;
+        SortedDictionary<TKey, TValue> gsd;
+        ICollection ci;
+        ICollection<KeyValuePair<TKey, TValue>> gci;
+        IDictionary di;
+        IDictionary<TKey, TValue> gdi;
+        IEnumerable ei;
+        IEnumerable<KeyValuePair<TKey, TValue>> gei;
+        IReadOnlyDictionary<TKey, TValue> grodi;
 
         public event EventHandler<NotifyDictionaryChangedEventArgs<TKey, TValue>> DictionaryChanged;
 
@@ -242,6 +242,30 @@ namespace Gear.Components
             foreach (var keyValuePair in keyValuePairs)
                 gsd[keyValuePair.Key] = keyValuePair.Value;
             OnDictionaryChanged(new NotifyDictionaryChangedEventArgs<TKey, TValue>(NotifyDictionaryChangedAction.Replace, keyValuePairs, oldItems));
+        }
+
+        public virtual void Reset()
+        {
+            gsd = new SortedDictionary<TKey, TValue>(gsd.Comparer);
+            ResetCasts();
+        }
+
+        public virtual void Reset(IDictionary<TKey, TValue> dictionary)
+        {
+            gsd = new SortedDictionary<TKey, TValue>(dictionary, gsd.Comparer);
+            ResetCasts();
+        }
+
+        void ResetCasts()
+        {
+            ci = gsd;
+            gci = gsd;
+            di = gsd;
+            gdi = gsd;
+            ei = gsd;
+            gei = gsd;
+            grodi = gsd;
+            OnDictionaryChanged(new NotifyDictionaryChangedEventArgs<TKey, TValue>(NotifyDictionaryChangedAction.Reset));
         }
 
         protected virtual void SetValue(object key, object value)

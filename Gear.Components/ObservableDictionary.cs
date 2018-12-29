@@ -6,7 +6,7 @@ using System.Linq;
 
 namespace Gear.Components
 {
-    public class ObservableDictionary<TKey, TValue> : PropertyChangeNotifier, ICollection, ICollection<KeyValuePair<TKey, TValue>>, IDictionary, IDictionary<TKey, TValue>, IEnumerable, IEnumerable<KeyValuePair<TKey, TValue>>, INotifyDictionaryChanged<TKey, TValue>, IObservableRangeDictionary<TKey, TValue>, IRangeDictionary<TKey, TValue>, IReadOnlyCollection<KeyValuePair<TKey, TValue>>, IReadOnlyDictionary<TKey, TValue>
+    public class ObservableDictionary<TKey, TValue> : PropertyChangeNotifier, ICollection, ICollection<KeyValuePair<TKey, TValue>>, IDictionary, IDictionary<TKey, TValue>, IEnumerable, IEnumerable<KeyValuePair<TKey, TValue>>, INotifyDictionaryChanged<TKey, TValue>, IObservableRangeDictionary<TKey, TValue>, IReadOnlyCollection<KeyValuePair<TKey, TValue>>, IReadOnlyDictionary<TKey, TValue>
     {
         public ObservableDictionary()
         {
@@ -35,6 +35,7 @@ namespace Gear.Components
         public ObservableDictionary(IEqualityComparer<TKey> comparer)
         {
             gd = new Dictionary<TKey, TValue>(comparer);
+            this.comparer = comparer;
             ci = gd;
             gci = gd;
             di = gd;
@@ -59,6 +60,7 @@ namespace Gear.Components
         public ObservableDictionary(IDictionary<TKey, TValue> dictionary, IEqualityComparer<TKey> comparer)
         {
             gd = new Dictionary<TKey, TValue>(dictionary, comparer);
+            this.comparer = comparer;
             ci = gd;
             gci = gd;
             di = gd;
@@ -71,6 +73,7 @@ namespace Gear.Components
         public ObservableDictionary(int capacity, IEqualityComparer<TKey> comparer)
         {
             gd = new Dictionary<TKey, TValue>(capacity, comparer);
+            this.comparer = comparer;
             ci = gd;
             gci = gd;
             di = gd;
@@ -80,14 +83,15 @@ namespace Gear.Components
             grodi = gd;
         }
 
-        readonly Dictionary<TKey, TValue> gd;
-        readonly ICollection ci;
-        readonly ICollection<KeyValuePair<TKey, TValue>> gci;
-        readonly IDictionary di;
-        readonly IDictionary<TKey, TValue> gdi;
-        readonly IEnumerable ei;
-        readonly IEnumerable<KeyValuePair<TKey, TValue>> gei;
-        readonly IReadOnlyDictionary<TKey, TValue> grodi;
+        readonly IEqualityComparer<TKey> comparer;
+        Dictionary<TKey, TValue> gd;
+        ICollection ci;
+        ICollection<KeyValuePair<TKey, TValue>> gci;
+        IDictionary di;
+        IDictionary<TKey, TValue> gdi;
+        IEnumerable ei;
+        IEnumerable<KeyValuePair<TKey, TValue>> gei;
+        IReadOnlyDictionary<TKey, TValue> grodi;
 
         public event EventHandler<NotifyDictionaryChangedEventArgs<TKey, TValue>> DictionaryChanged;
 
@@ -268,6 +272,36 @@ namespace Gear.Components
             foreach (var keyValuePair in keyValuePairs)
                 gd[keyValuePair.Key] = keyValuePair.Value;
             OnDictionaryChanged(new NotifyDictionaryChangedEventArgs<TKey, TValue>(NotifyDictionaryChangedAction.Replace, keyValuePairs, oldItems));
+        }
+
+        public virtual void Reset()
+        {
+            if (comparer == null)
+                gd = new Dictionary<TKey, TValue>();
+            else
+                gd = new Dictionary<TKey, TValue>(comparer);
+            ResetCasts();
+        }
+
+        public virtual void Reset(IDictionary<TKey, TValue> dictionary)
+        {
+            if (comparer == null)
+                gd = new Dictionary<TKey, TValue>(dictionary);
+            else
+                gd = new Dictionary<TKey, TValue>(dictionary, comparer);
+            ResetCasts();
+        }
+
+        void ResetCasts()
+        {
+            ci = gd;
+            gci = gd;
+            di = gd;
+            gdi = gd;
+            ei = gd;
+            gei = gd;
+            grodi = gd;
+            OnDictionaryChanged(new NotifyDictionaryChangedEventArgs<TKey, TValue>(NotifyDictionaryChangedAction.Reset));
         }
 
         protected virtual void SetValue(object key, object value)

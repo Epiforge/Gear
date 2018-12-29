@@ -104,6 +104,14 @@ namespace Gear.Components
 
         public Task ReplaceRangeAsync(IEnumerable<KeyValuePair<TKey, TValue>> keyValuePairs) => this.ExecuteAsync(() => base.ReplaceRange(keyValuePairs));
 
+        public override void Reset() => this.Execute(() => base.Reset());
+
+        public override void Reset(IDictionary<TKey, TValue> dictionary) => this.Execute(() => base.Reset(dictionary));
+
+        public Task ResetAsync() => this.ExecuteAsync(() => base.Reset());
+
+        public Task ResetAsync(IDictionary<TKey, TValue> dictionary) => this.ExecuteAsync(() => base.Reset(dictionary));
+
         protected override void SetValue(object key, object value) => this.Execute(() => base.SetValue(key, value));
 
         public virtual Task SetValueAsync(TKey key, TValue value) => this.ExecuteAsync(() => base[key] = value);
