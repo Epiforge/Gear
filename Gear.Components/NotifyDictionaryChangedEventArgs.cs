@@ -49,7 +49,7 @@ namespace Gear.Components
             if (action != NotifyDictionaryChangedAction.Replace)
                 throw new ArgumentOutOfRangeException(nameof(action));
             InitializeAdd(action, newItems);
-            InitializeRemove(action, newItems);
+            InitializeRemove(action, oldItems);
         }
 
         void InitializeAdd(NotifyDictionaryChangedAction action, IEnumerable<KeyValuePair<TKey, TValue>> newItems = null)
