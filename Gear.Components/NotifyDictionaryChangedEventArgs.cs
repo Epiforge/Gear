@@ -4,7 +4,7 @@ using System.Collections.Immutable;
 
 namespace Gear.Components
 {
-    public class NotifyDictionaryChangedEventArgs<TKey, TValue>
+    public class NotifyDictionaryChangedEventArgs<TKey, TValue> : EventArgs
     {
         public NotifyDictionaryChangedEventArgs(NotifyDictionaryChangedAction action)
         {

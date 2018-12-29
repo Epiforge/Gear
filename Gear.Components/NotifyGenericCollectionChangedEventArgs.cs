@@ -5,7 +5,7 @@ using System.Collections.Specialized;
 
 namespace Gear.Components
 {
-    public class NotifyGenericCollectionChangedEventArgs<T>
+    public class NotifyGenericCollectionChangedEventArgs<T> : EventArgs
     {
         public NotifyGenericCollectionChangedEventArgs(NotifyCollectionChangedAction action)
         {
