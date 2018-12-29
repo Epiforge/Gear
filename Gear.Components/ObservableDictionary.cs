@@ -7,7 +7,7 @@ using System.Linq;
 
 namespace Gear.Components
 {
-    public class ObservableDictionary<TKey, TValue> : PropertyChangeNotifier, ICollection, ICollection<KeyValuePair<TKey, TValue>>, IDictionary, IDictionary<TKey, TValue>, IEnumerable, IEnumerable<KeyValuePair<TKey, TValue>>, INotifyCollectionChanged, INotifyGenericCollectionChanged<KeyValuePair<TKey, TValue>>, INotifyDictionaryChanged<TKey, TValue>, IObservableRangeDictionary<TKey, TValue>, IReadOnlyCollection<KeyValuePair<TKey, TValue>>, IReadOnlyDictionary<TKey, TValue>
+    public class ObservableDictionary<TKey, TValue> : PropertyChangeNotifier, ICollection, ICollection<KeyValuePair<TKey, TValue>>, IDictionary, IDictionary<TKey, TValue>, IEnumerable, IEnumerable<KeyValuePair<TKey, TValue>>, IObservableRangeDictionary<TKey, TValue>, IReadOnlyCollection<KeyValuePair<TKey, TValue>>, IReadOnlyDictionary<TKey, TValue>
     {
         public ObservableDictionary()
         {
@@ -96,6 +96,7 @@ namespace Gear.Components
 
         public event NotifyCollectionChangedEventHandler CollectionChanged;
         public event EventHandler<NotifyDictionaryChangedEventArgs<TKey, TValue>> DictionaryChanged;
+        event EventHandler<NotifyDictionaryChangedEventArgs<object, object>> DictionaryChangedBoxed;
         public event EventHandler<NotifyGenericCollectionChangedEventArgs<KeyValuePair<TKey, TValue>>> GenericCollectionChanged;
 
         public virtual void Add(TKey key, TValue value)
@@ -206,29 +207,62 @@ namespace Gear.Components
 
         protected virtual void OnDictionaryChanged(NotifyDictionaryChangedEventArgs<TKey, TValue> e)
         {
-            switch (e.Action)
-            {
-                case NotifyDictionaryChangedAction.Add:
-                    OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Add, e.NewItems));
-                    OnGenericCollectionChanged(new NotifyGenericCollectionChangedEventArgs<KeyValuePair<TKey, TValue>>(NotifyCollectionChangedAction.Add, e.NewItems));
-                    break;
-                case NotifyDictionaryChangedAction.Remove:
-                    OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, e.OldItems));
-                    OnGenericCollectionChanged(new NotifyGenericCollectionChangedEventArgs<KeyValuePair<TKey, TValue>>(NotifyCollectionChangedAction.Remove, e.OldItems));
-                    break;
-                case NotifyDictionaryChangedAction.Replace:
-                    OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Replace, e.NewItems, e.OldItems));
-                    OnGenericCollectionChanged(new NotifyGenericCollectionChangedEventArgs<KeyValuePair<TKey, TValue>>(NotifyCollectionChangedAction.Replace, e.NewItems, e.OldItems));
-                    break;
-                case NotifyDictionaryChangedAction.Reset:
-                    OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
-                    OnGenericCollectionChanged(new NotifyGenericCollectionChangedEventArgs<KeyValuePair<TKey, TValue>>(NotifyCollectionChangedAction.Reset));
-                    break;
-                default:
-                    throw new NotSupportedException();
-            }
+            if (CollectionChanged != null)
+                switch (e.Action)
+                {
+                    case NotifyDictionaryChangedAction.Add:
+                        OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Add, e.NewItems));
+                        break;
+                    case NotifyDictionaryChangedAction.Remove:
+                        OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, e.OldItems));
+                        break;
+                    case NotifyDictionaryChangedAction.Replace:
+                        OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Replace, e.NewItems, e.OldItems));
+                        break;
+                    case NotifyDictionaryChangedAction.Reset:
+                        OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
+                        break;
+                    default:
+                        throw new NotSupportedException();
+                }
+            if (GenericCollectionChanged != null)
+                switch (e.Action)
+                {
+                    case NotifyDictionaryChangedAction.Add:
+                        OnGenericCollectionChanged(new NotifyGenericCollectionChangedEventArgs<KeyValuePair<TKey, TValue>>(NotifyCollectionChangedAction.Add, e.NewItems));
+                        break;
+                    case NotifyDictionaryChangedAction.Remove:
+                        OnGenericCollectionChanged(new NotifyGenericCollectionChangedEventArgs<KeyValuePair<TKey, TValue>>(NotifyCollectionChangedAction.Remove, e.OldItems));
+                        break;
+                    case NotifyDictionaryChangedAction.Replace:
+                        OnGenericCollectionChanged(new NotifyGenericCollectionChangedEventArgs<KeyValuePair<TKey, TValue>>(NotifyCollectionChangedAction.Replace, e.NewItems, e.OldItems));
+                        break;
+                    case NotifyDictionaryChangedAction.Reset:
+                        OnGenericCollectionChanged(new NotifyGenericCollectionChangedEventArgs<KeyValuePair<TKey, TValue>>(NotifyCollectionChangedAction.Reset));
+                        break;
+                    default:
+                        throw new NotSupportedException();
+                }
+            if (DictionaryChangedBoxed != null)
+                switch (e.Action)
+                {
+                    case NotifyDictionaryChangedAction.Add:
+                        OnDictionaryChangedBoxed(new NotifyDictionaryChangedEventArgs<object, object>(NotifyDictionaryChangedAction.Add, e.NewItems.Select(kv => new KeyValuePair<object, object>(kv.Key, kv.Value))));
+                        break;
+                    case NotifyDictionaryChangedAction.Remove:
+                        OnDictionaryChangedBoxed(new NotifyDictionaryChangedEventArgs<object, object>(NotifyDictionaryChangedAction.Remove, e.OldItems.Select(kv => new KeyValuePair<object, object>(kv.Key, kv.Value))));
+                        break;
+                    case NotifyDictionaryChangedAction.Replace:
+                        OnDictionaryChangedBoxed(new NotifyDictionaryChangedEventArgs<object, object>(NotifyDictionaryChangedAction.Replace, e.NewItems.Select(kv => new KeyValuePair<object, object>(kv.Key, kv.Value)), e.OldItems.Select(kv => new KeyValuePair<object, object>(kv.Key, kv.Value))));
+                        break;
+                    case NotifyDictionaryChangedAction.Reset:
+                        OnDictionaryChangedBoxed(new NotifyDictionaryChangedEventArgs<object, object>(NotifyDictionaryChangedAction.Reset));
+                        break;
+                }
             DictionaryChanged?.Invoke(this, e);
         }
+
+        protected virtual void OnDictionaryChangedBoxed(NotifyDictionaryChangedEventArgs<object, object> e) => DictionaryChangedBoxed?.Invoke(this, e);
 
         protected virtual void OnGenericCollectionChanged(NotifyGenericCollectionChangedEventArgs<KeyValuePair<TKey, TValue>> e) => GenericCollectionChanged?.Invoke(this, e);
 
@@ -353,6 +387,12 @@ namespace Gear.Components
         {
             var valueRetrieved = gd.TryGetValue(key, out var value);
             return (valueRetrieved, value);
+        }
+
+        event EventHandler<NotifyDictionaryChangedEventArgs<object, object>> INotifyDictionaryChanged.DictionaryChanged
+        {
+            add => DictionaryChangedBoxed += value;
+            remove => DictionaryChangedBoxed -= value;
         }
 
         public virtual TValue this[TKey key]
