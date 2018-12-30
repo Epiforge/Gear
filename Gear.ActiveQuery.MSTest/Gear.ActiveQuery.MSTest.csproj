@@ -103,6 +103,7 @@
     <Compile Include="Lookup\ActiveFirst.cs" />
     <Compile Include="Lookup\ActiveFirstOrDefault.cs" />
     <Compile Include="Lookup\ActiveLast.cs" />
+    <Compile Include="Lookup\ActiveLastOrDefault.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="TestPerson.cs" />
     <Compile Include="TestSimpleObservableCollection.cs" />
