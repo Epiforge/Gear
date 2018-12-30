@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
@@ -12,6 +13,7 @@ namespace Gear.Components
         Task<bool> ContainsKeyAsync(TKey key);
         Task<IReadOnlyList<KeyValuePair<TKey, TValue>>> GetRangeAsync(IEnumerable<TKey> keys);
         Task<TValue> GetValueAsync(TKey key);
+        Task<IReadOnlyList<KeyValuePair<TKey, TValue>>> RemoveAllAsync(Func<TKey, TValue, bool> predicate);
         Task<bool> RemoveAsync(TKey key);
         Task<IReadOnlyList<TKey>> RemoveRangeAsync(IEnumerable<TKey> keys);
         Task ReplaceRangeAsync(IEnumerable<KeyValuePair<TKey, TValue>> keyValuePairs);

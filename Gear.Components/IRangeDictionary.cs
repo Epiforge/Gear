@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 
 namespace Gear.Components
@@ -8,6 +9,7 @@ namespace Gear.Components
         void AddRange(IReadOnlyList<KeyValuePair<TKey, TValue>> keyValuePairs);
         new bool ContainsKey(TKey key);
         IReadOnlyList<KeyValuePair<TKey, TValue>> GetRange(IEnumerable<TKey> keys);
+        IReadOnlyList<KeyValuePair<TKey, TValue>> RemoveAll(Func<TKey, TValue, bool> predicate);
         IReadOnlyList<TKey> RemoveRange(IEnumerable<TKey> keys);
         void ReplaceRange(IEnumerable<KeyValuePair<TKey, TValue>> keyValuePairs);
         void Reset();

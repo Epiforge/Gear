@@ -94,6 +94,10 @@ namespace Gear.Components
 
         protected override bool Remove(KeyValuePair<TKey, TValue> item) => this.Execute(() => base.Remove(item));
 
+        public override IReadOnlyList<KeyValuePair<TKey, TValue>> RemoveAll(Func<TKey, TValue, bool> predicate) => this.Execute(() => base.RemoveAll(predicate));
+
+        public Task<IReadOnlyList<KeyValuePair<TKey, TValue>>> RemoveAllAsync(Func<TKey, TValue, bool> predicate) => this.ExecuteAsync(() => base.RemoveAll(predicate));
+
         public virtual Task<bool> RemoveAsync(TKey key) => this.ExecuteAsync(() => base.Remove(key));
 
         public override IReadOnlyList<TKey> RemoveRange(IEnumerable<TKey> keys) => this.Execute(() => base.RemoveRange(keys));

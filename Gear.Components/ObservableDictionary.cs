@@ -308,6 +308,19 @@ namespace Gear.Components
             return false;
         }
 
+        public virtual IReadOnlyList<KeyValuePair<TKey, TValue>> RemoveAll(Func<TKey, TValue, bool> predicate)
+        {
+            var removed = new List<KeyValuePair<TKey, TValue>>();
+            foreach (var kv in gd.ToList())
+                if (predicate(kv.Key, kv.Value))
+                {
+                    gd.Remove(kv.Key);
+                    removed.Add(kv);
+                }
+            OnDictionaryChanged(new NotifyDictionaryChangedEventArgs<TKey, TValue>(NotifyDictionaryChangedAction.Remove, removed));
+            return removed.ToImmutableArray();
+        }
+
         public virtual IReadOnlyList<TKey> RemoveRange(IEnumerable<TKey> keys)
         {
             var removingKeyValuePairs = new List<KeyValuePair<TKey, TValue>>();
