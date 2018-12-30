@@ -14,8 +14,6 @@ namespace Gear.ActiveQuery
 
         public static ActiveValue<bool> ActiveAll<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, bool>> predicate, ActiveExpressionOptions predicateOptions = null)
         {
-            ActiveQueryOptions.Optimize(ref predicate);
-
             var changeNotifyingSource = source as INotifyDictionaryChanged<TKey, TValue>;
             ActiveLookup<TKey, TValue> where;
             Action<bool> setValue = null;
@@ -71,8 +69,6 @@ namespace Gear.ActiveQuery
 
         public static ActiveValue<bool> ActiveAny<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, bool>> predicate, ActiveExpressionOptions predicateOptions = null)
         {
-            ActiveQueryOptions.Optimize(ref predicate);
-
             var changeNotifyingSource = source as INotifyDictionaryChanged<TKey, TValue>;
             ActiveLookup<TKey, TValue> where;
             Action<bool> setValue = null;
@@ -225,6 +221,43 @@ namespace Gear.ActiveQuery
             }
         }
 
+        public static ActiveValue<KeyValuePair<TKey, TValue>> ActiveFirst<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, bool>> predicate, ActiveExpressionOptions predicateOptions = null)
+        {
+            var keyComparer = source.GetKeyComparer() ?? Comparer<TKey>.Default;
+            ActiveLookup<TKey, TValue> where;
+            Action<KeyValuePair<TKey, TValue>> setValue = null;
+            Action<Exception> setOperationFault = null;
+            var none = false;
+
+            void dictionaryChanged(object sender, NotifyDictionaryChangedEventArgs<TKey, TValue> e)
+            {
+                if (none && where.Count > 0)
+                {
+                    setOperationFault(null);
+                    none = false;
+                }
+                else if (!none && where.Count == 0)
+                {
+                    setOperationFault(ExceptionHelper.SequenceContainsNoElements);
+                    none = true;
+                }
+                setValue(where.Count > 0 ? where.OrderBy(kv => kv.Key, keyComparer).First() : default);
+            }
+
+            return (source as ISynchronized).SequentialExecute(() =>
+            {
+                where = ActiveWhere(source, predicate, predicateOptions);
+                where.DictionaryChanged += dictionaryChanged;
+
+                none = where.Count == 0;
+                return new ActiveValue<KeyValuePair<TKey, TValue>>(!none ? where.OrderBy(kv => kv.Key, keyComparer).First() : default, out setValue, none ? ExceptionHelper.SequenceContainsNoElements : null, out setOperationFault, where, () =>
+                {
+                    where.DictionaryChanged -= dictionaryChanged;
+                    where.Dispose();
+                });
+            });
+        }
+
         #endregion First
 
         #region FirstOrDefault
@@ -303,6 +336,27 @@ namespace Gear.ActiveQuery
             {
                 return new ActiveValue<KeyValuePair<TKey, TValue>>(default, ex, elementFaultChangeNotifier);
             }
+        }
+
+        public static ActiveValue<KeyValuePair<TKey, TValue>> ActiveFirstOrDefault<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, bool>> predicate, ActiveExpressionOptions predicateOptions = null)
+        {
+            var keyComparer = source.GetKeyComparer() ?? Comparer<TKey>.Default;
+            ActiveLookup<TKey, TValue> where;
+            Action<KeyValuePair<TKey, TValue>> setValue = null;
+
+            void dictionaryChanged(object sender, NotifyDictionaryChangedEventArgs<TKey, TValue> e) => setValue(where.Count > 0 ? where.OrderBy(kv => kv.Key, keyComparer).First() : default);
+
+            return (source as ISynchronized).SequentialExecute(() =>
+            {
+                where = ActiveWhere(source, predicate, predicateOptions);
+                where.DictionaryChanged += dictionaryChanged;
+
+                return new ActiveValue<KeyValuePair<TKey, TValue>>(where.Count > 0 ? where.OrderBy(kv => kv.Key, keyComparer).First() : default, out setValue, elementFaultChangeNotifier: where, onDispose: () =>
+                {
+                    where.DictionaryChanged -= dictionaryChanged;
+                    where.Dispose();
+                });
+            });
         }
 
         #endregion FirstOrDefault
@@ -386,6 +440,42 @@ namespace Gear.ActiveQuery
             }
         }
 
+        public static ActiveValue<KeyValuePair<TKey, TValue>> ActiveLast<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, bool>> predicate, ActiveExpressionOptions predicateOptions = null)
+        {
+            var keyComparer = source.GetKeyComparer() ?? Comparer<TKey>.Default;
+            ActiveLookup<TKey, TValue> where;
+            Action<KeyValuePair<TKey, TValue>> setValue = null;
+            Action<Exception> setOperationFault = null;
+            var none = false;
+
+            void dictionaryChanged(object sender, NotifyDictionaryChangedEventArgs<TKey, TValue> e)
+            {
+                if (none && where.Count > 0)
+                {
+                    setOperationFault(null);
+                    none = false;
+                }
+                else if (!none && where.Count == 0)
+                {
+                    setOperationFault(ExceptionHelper.SequenceContainsNoElements);
+                    none = true;
+                }
+                setValue(where.Count > 0 ? source.OrderByDescending(kv => kv.Key, keyComparer).First() : default);
+            }
+
+            return (source as ISynchronized).SequentialExecute(() =>
+            {
+                where = ActiveWhere(source, predicate, predicateOptions);
+                where.DictionaryChanged += dictionaryChanged;
+
+                return new ActiveValue<KeyValuePair<TKey, TValue>>(!none ? source.OrderByDescending(kv => kv.Key, keyComparer).First() : default, out setValue, none ? ExceptionHelper.SequenceContainsNoElements : null, out setOperationFault, where, () =>
+                {
+                    where.DictionaryChanged -= dictionaryChanged;
+                    where.Dispose();
+                });
+            });
+        }
+
         #endregion Last
 
         #region LastOrDefault
@@ -467,6 +557,27 @@ namespace Gear.ActiveQuery
             {
                 return new ActiveValue<KeyValuePair<TKey, TValue>>(default, ex, elementFaultChangeNotifier);
             }
+        }
+
+        public static ActiveValue<KeyValuePair<TKey, TValue>> ActiveLastOrDefault<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, bool>> predicate, ActiveExpressionOptions predicateOptions = null)
+        {
+            var keyComparer = source.GetKeyComparer() ?? Comparer<TKey>.Default;
+            ActiveLookup<TKey, TValue> where;
+            Action<KeyValuePair<TKey, TValue>> setValue = null;
+
+            void dictionaryChanged(object sender, NotifyDictionaryChangedEventArgs<TKey, TValue> e) => setValue(where.Count > 0 ? source.OrderByDescending(kv => kv.Key, keyComparer).First() : default);
+
+            return (source as ISynchronized).SequentialExecute(() =>
+            {
+                where = ActiveWhere(source, predicate, predicateOptions);
+                where.DictionaryChanged += dictionaryChanged;
+
+                return new ActiveValue<KeyValuePair<TKey, TValue>>(where.Count > 0 ? source.OrderByDescending(kv => kv.Key, keyComparer).First() : default, out setValue, elementFaultChangeNotifier: where, onDispose: () =>
+                {
+                    where.DictionaryChanged -= dictionaryChanged;
+                    where.Dispose();
+                });
+            });
         }
 
         #endregion LastOrDefault
@@ -772,7 +883,6 @@ namespace Gear.ActiveQuery
 
         public static ActiveValue<KeyValuePair<TKey, TValue>> ActiveSingle<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source)
         {
-            var keyEqualityComparer = source.GetKeyEqualityComparer() ?? EqualityComparer<TKey>.Default;
             var elementFaultChangeNotifier = source as INotifyElementFaultChanges;
             if (source is INotifyDictionaryChanged<TKey, TValue> changingSource)
             {
@@ -820,7 +930,7 @@ namespace Gear.ActiveQuery
                             none = true;
                             return new ActiveValue<KeyValuePair<TKey, TValue>>(default, out setValue, ExceptionHelper.SequenceContainsNoElements, out setOperationFault, elementFaultChangeNotifier, dispose);
                         case 1:
-                            return new ActiveValue<KeyValuePair<TKey, TValue>>(source.Single(), out setValue, out setOperationFault, elementFaultChangeNotifier, dispose);
+                            return new ActiveValue<KeyValuePair<TKey, TValue>>(source.First(), out setValue, out setOperationFault, elementFaultChangeNotifier, dispose);
                         default:
                             moreThanOne = true;
                             return new ActiveValue<KeyValuePair<TKey, TValue>>(default, out setValue, ExceptionHelper.SequenceContainsMoreThanOneElement, out setOperationFault, elementFaultChangeNotifier, dispose);
@@ -837,13 +947,65 @@ namespace Gear.ActiveQuery
             }
         }
 
+        public static ActiveValue<KeyValuePair<TKey, TValue>> ActiveSingle<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, bool>> predicate, ActiveExpressionOptions predicateOptions = null)
+        {
+            ActiveLookup<TKey, TValue> where;
+            Action<KeyValuePair<TKey, TValue>> setValue = null;
+            Action<Exception> setOperationFault = null;
+            var none = false;
+            var moreThanOne = false;
+
+            void dictionaryChanged(object sender, NotifyDictionaryChangedEventArgs<TKey, TValue> e)
+            {
+                if (none && where.Count > 0)
+                {
+                    setOperationFault(null);
+                    none = false;
+                }
+                else if (!none && where.Count == 0)
+                {
+                    setOperationFault(ExceptionHelper.SequenceContainsNoElements);
+                    none = true;
+                    moreThanOne = false;
+                }
+                if (moreThanOne && where.Count <= 1)
+                {
+                    setOperationFault(null);
+                    moreThanOne = false;
+                }
+                else if (!moreThanOne && where.Count > 1)
+                {
+                    setOperationFault(ExceptionHelper.SequenceContainsMoreThanOneElement);
+                    none = false;
+                    moreThanOne = true;
+                }
+                setValue(where.Count == 1 ? where.First() : default);
+            }
+
+            return (source as ISynchronized).SequentialExecute(() =>
+            {
+                where = ActiveWhere(source, predicate, predicateOptions);
+                where.DictionaryChanged += dictionaryChanged;
+
+                Exception operationFault = null;
+                if (none = where.Count == 0)
+                    operationFault = ExceptionHelper.SequenceContainsNoElements;
+                else if (moreThanOne = where.Count > 1)
+                    operationFault = ExceptionHelper.SequenceContainsMoreThanOneElement;
+                return new ActiveValue<KeyValuePair<TKey, TValue>>(operationFault == null ? where.First() : default, out setValue, operationFault, out setOperationFault, where, () =>
+                {
+                    where.DictionaryChanged -= dictionaryChanged;
+                    where.Dispose();
+                });
+            });
+        }
+
         #endregion Single
 
         #region SingleOrDefault
 
         public static ActiveValue<KeyValuePair<TKey, TValue>> ActiveSingleOrDefault<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source)
         {
-            var keyEqualityComparer = source.GetKeyEqualityComparer() ?? EqualityComparer<TKey>.Default;
             var elementFaultChangeNotifier = source as INotifyElementFaultChanges;
             if (source is INotifyDictionaryChanged<TKey, TValue> changingSource)
             {
@@ -897,6 +1059,42 @@ namespace Gear.ActiveQuery
             {
                 return new ActiveValue<KeyValuePair<TKey, TValue>>(default, ex, elementFaultChangeNotifier);
             }
+        }
+
+        public static ActiveValue<KeyValuePair<TKey, TValue>> ActiveSingleOrDefault<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, bool>> predicate, ActiveExpressionOptions predicateOptions = null)
+        {
+            ActiveLookup<TKey, TValue> where;
+            Action<KeyValuePair<TKey, TValue>> setValue = null;
+            Action<Exception> setOperationFault = null;
+            var moreThanOne = false;
+
+            void dictionaryChanged(object sender, NotifyDictionaryChangedEventArgs<TKey, TValue> e)
+            {
+                if (moreThanOne && where.Count <= 1)
+                {
+                    setOperationFault(null);
+                    moreThanOne = false;
+                }
+                else if (!moreThanOne && where.Count > 1)
+                {
+                    setOperationFault(ExceptionHelper.SequenceContainsMoreThanOneElement);
+                    moreThanOne = true;
+                }
+                setValue(where.Count == 1 ? where.First() : default);
+            }
+
+            return (source as ISynchronized).SequentialExecute(() =>
+            {
+                where = ActiveWhere(source, predicate, predicateOptions);
+                where.DictionaryChanged += dictionaryChanged;
+
+                var operationFault = (moreThanOne = where.Count > 1) ? ExceptionHelper.SequenceContainsMoreThanOneElement : null;
+                return new ActiveValue<KeyValuePair<TKey, TValue>>(!moreThanOne && where.Count == 1 ? where.First() : default, out setValue, operationFault, out setOperationFault, where, () =>
+                {
+                    where.DictionaryChanged -= dictionaryChanged;
+                    where.Dispose();
+                });
+            });
         }
 
         #endregion SingleOrDefault
