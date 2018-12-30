@@ -6,13 +6,13 @@ using System.Linq;
 namespace Gear.ActiveQuery.MSTest.Lookup
 {
     [TestClass]
-    public class ActiveMax
+    public class ActiveMin
     {
         [TestMethod]
         public void ExpressionlessSourceManipulation()
         {
             var numbers = new ObservableDictionary<int, int>();
-            using (var aggregate = numbers.ActiveMax())
+            using (var aggregate = numbers.ActiveMin())
             {
                 Assert.IsNotNull(aggregate.OperationFault);
                 Assert.AreEqual(0, aggregate.Value);
@@ -20,13 +20,13 @@ namespace Gear.ActiveQuery.MSTest.Lookup
                 Assert.IsNull(aggregate.OperationFault);
                 Assert.AreEqual(1, aggregate.Value);
                 numbers.AddRange(System.Linq.Enumerable.Range(2, 3).Select(i => new KeyValuePair<int, int>(i, i)));
-                Assert.AreEqual(4, aggregate.Value);
+                Assert.AreEqual(1, aggregate.Value);
                 numbers.RemoveRange(new int[] { 1, 2 });
-                Assert.AreEqual(4, aggregate.Value);
-                numbers.Remove(4);
                 Assert.AreEqual(3, aggregate.Value);
-                numbers.Reset(System.Linq.Enumerable.Range(2, 3).ToDictionary(i => i));
+                numbers.Remove(3);
                 Assert.AreEqual(4, aggregate.Value);
+                numbers.Reset(System.Linq.Enumerable.Range(1, 3).ToDictionary(i => i));
+                Assert.AreEqual(1, aggregate.Value);
             }
         }
 
@@ -34,16 +34,16 @@ namespace Gear.ActiveQuery.MSTest.Lookup
         public void SourceManipulation()
         {
             var people = new ObservableDictionary<string, TestPerson>(TestPerson.CreatePeopleCollection().ToDictionary(p => p.Name));
-            using (var aggregate = people.ActiveMax((key, value) => value.Name.Length))
+            using (var aggregate = people.ActiveMin((key, value) => value.Name.Length))
             {
                 Assert.IsNull(aggregate.OperationFault);
-                Assert.AreEqual(7, aggregate.Value);
+                Assert.AreEqual(3, aggregate.Value);
                 people.Add("John2", people["John"]);
-                Assert.AreEqual(7, aggregate.Value);
-                people["John"].Name = "Johnathon";
-                Assert.AreEqual(9, aggregate.Value);
+                Assert.AreEqual(3, aggregate.Value);
+                people["John"].Name = "J";
+                Assert.AreEqual(1, aggregate.Value);
                 people["John"].Name = "John";
-                Assert.AreEqual(7, aggregate.Value);
+                Assert.AreEqual(3, aggregate.Value);
             }
         }
     }
