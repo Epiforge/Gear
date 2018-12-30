@@ -453,7 +453,7 @@ namespace Gear.ActiveQuery
                     setOperationFault(ExceptionHelper.SequenceContainsNoElements);
                     none = true;
                 }
-                setValue(where.Count > 0 ? source.OrderByDescending(kv => kv.Key, keyComparer).First() : default);
+                setValue(where.Count > 0 ? where.OrderByDescending(kv => kv.Key, keyComparer).First() : default);
             }
 
             return (source as ISynchronized).SequentialExecute(() =>
@@ -551,7 +551,7 @@ namespace Gear.ActiveQuery
             ActiveLookup<TKey, TValue> where;
             Action<KeyValuePair<TKey, TValue>> setValue = null;
 
-            void dictionaryChanged(object sender, NotifyDictionaryChangedEventArgs<TKey, TValue> e) => setValue(where.Count > 0 ? source.OrderByDescending(kv => kv.Key, keyComparer).First() : default);
+            void dictionaryChanged(object sender, NotifyDictionaryChangedEventArgs<TKey, TValue> e) => setValue(where.Count > 0 ? where.OrderByDescending(kv => kv.Key, keyComparer).First() : default);
 
             return (source as ISynchronized).SequentialExecute(() =>
             {
