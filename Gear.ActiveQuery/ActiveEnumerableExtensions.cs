@@ -516,8 +516,7 @@ namespace Gear.ActiveQuery
                     return new ActiveValue<TSource>(source.ElementAtOrDefault(index), out setValue, elementFaultChangeNotifier: elementFaultChangeNotifier, onDispose: () => changingSource.CollectionChanged -= collectionChanged);
                 });
             }
-            else
-                return new ActiveValue<TSource>(source.ElementAtOrDefault(index), elementFaultChangeNotifier: elementFaultChangeNotifier);
+            return new ActiveValue<TSource>(source.ElementAtOrDefault(index), elementFaultChangeNotifier: elementFaultChangeNotifier);
         }
 
         public static ActiveValue<TSource> ActiveElementAtOrDefault<TSource>(this IReadOnlyList<TSource> source, int index)
@@ -648,8 +647,7 @@ namespace Gear.ActiveQuery
                     return new ActiveValue<TSource>(source.FirstOrDefault(), out setValue, elementFaultChangeNotifier: elementFaultChangeNotifier, onDispose: () => changingSource.CollectionChanged -= collectionChanged);
                 });
             }
-            else
-                return new ActiveValue<TSource>(source.FirstOrDefault(), elementFaultChangeNotifier: elementFaultChangeNotifier);
+            return new ActiveValue<TSource>(source.FirstOrDefault(), elementFaultChangeNotifier: elementFaultChangeNotifier);
         }
 
         public static ActiveValue<TSource> ActiveFirstOrDefault<TSource>(this IReadOnlyList<TSource> source, Expression<Func<TSource, bool>> predicate, ActiveExpressionOptions predicateOptions = null)
@@ -822,16 +820,13 @@ namespace Gear.ActiveQuery
                     }
                 });
             }
-            else
+            try
             {
-                try
-                {
-                    return new ActiveValue<TSource>(source.Last(), elementFaultChangeNotifier: elementFaultChangeNotifier);
-                }
-                catch (Exception ex)
-                {
-                    return new ActiveValue<TSource>(default, ex, elementFaultChangeNotifier);
-                }
+                return new ActiveValue<TSource>(source.Last(), elementFaultChangeNotifier: elementFaultChangeNotifier);
+            }
+            catch (Exception ex)
+            {
+                return new ActiveValue<TSource>(default, ex, elementFaultChangeNotifier);
             }
         }
 
@@ -891,8 +886,7 @@ namespace Gear.ActiveQuery
                     return new ActiveValue<TSource>(source.LastOrDefault(), out setValue, elementFaultChangeNotifier: elementFaultChangeNotifier, onDispose: () => changingSource.CollectionChanged -= collectionChanged);
                 });
             }
-            else
-                return new ActiveValue<TSource>(source.LastOrDefault(), elementFaultChangeNotifier: elementFaultChangeNotifier);
+            return new ActiveValue<TSource>(source.LastOrDefault(), elementFaultChangeNotifier: elementFaultChangeNotifier);
         }
 
         public static ActiveValue<TSource> ActiveLastOrDefault<TSource>(this IReadOnlyList<TSource> source, Expression<Func<TSource, bool>> predicate, ActiveExpressionOptions predicateOptions = null)
@@ -2131,16 +2125,13 @@ namespace Gear.ActiveQuery
                     }
                 });
             }
-            else
+            try
             {
-                try
-                {
-                    return new ActiveValue<TSource>(source.Single(), elementFaultChangeNotifier: elementFaultChangeNotifier);
-                }
-                catch (Exception ex)
-                {
-                    return new ActiveValue<TSource>(default, ex, elementFaultChangeNotifier);
-                }
+                return new ActiveValue<TSource>(source.Single(), elementFaultChangeNotifier: elementFaultChangeNotifier);
+            }
+            catch (Exception ex)
+            {
+                return new ActiveValue<TSource>(default, ex, elementFaultChangeNotifier);
             }
         }
 
@@ -2239,16 +2230,13 @@ namespace Gear.ActiveQuery
                     }
                 });
             }
-            else
+            try
             {
-                try
-                {
-                    return new ActiveValue<TSource>(source.SingleOrDefault(), elementFaultChangeNotifier: elementFaultChangeNotifier);
-                }
-                catch (Exception ex)
-                {
-                    return new ActiveValue<TSource>(default, ex, elementFaultChangeNotifier);
-                }
+                return new ActiveValue<TSource>(source.SingleOrDefault(), elementFaultChangeNotifier: elementFaultChangeNotifier);
+            }
+            catch (Exception ex)
+            {
+                return new ActiveValue<TSource>(default, ex, elementFaultChangeNotifier);
             }
         }
 
