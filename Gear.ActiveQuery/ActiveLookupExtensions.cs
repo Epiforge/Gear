@@ -947,13 +947,22 @@ namespace Gear.ActiveQuery
                 rangeActiveExpression.ValueResultChanged += valueResultChanged;
                 rangeActiveExpression.ValueResultChanging += valueResultChanging;
 
-                return activeValue = new ActiveValue<TResult>(rangeActiveExpression.GetResults().Select(kr => kr.result).Aggregate((a, b) => operations.Add(a, b)), out setValue, null, rangeActiveExpression, () =>
+                void dispose()
                 {
                     rangeActiveExpression.DictionaryChanged -= rangeActiveExpressionChanged;
                     rangeActiveExpression.ValueResultChanged -= valueResultChanged;
                     rangeActiveExpression.ValueResultChanging -= valueResultChanging;
                     rangeActiveExpression.Dispose();
-                });
+                }
+
+                try
+                {
+                    return activeValue = new ActiveValue<TResult>(rangeActiveExpression.GetResults().Select(kr => kr.result).Aggregate((a, b) => operations.Add(a, b)), out setValue, null, rangeActiveExpression, dispose);
+                }
+                catch (InvalidOperationException)
+                {
+                    return activeValue = new ActiveValue<TResult>(default, out setValue, null, rangeActiveExpression, dispose);
+                }
             });
         }
 

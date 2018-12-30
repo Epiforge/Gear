@@ -99,6 +99,7 @@
     <Compile Include="Enumerable\ActiveGroupBy.cs" />
     <Compile Include="Lookup\ActiveAll.cs" />
     <Compile Include="Lookup\ActiveAny.cs" />
+    <Compile Include="Lookup\ActiveAverage.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="TestPerson.cs" />
     <Compile Include="TestSimpleObservableCollection.cs" />
