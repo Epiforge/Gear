@@ -328,14 +328,7 @@ namespace Gear.ActiveQuery
                     }
                 });
             }
-            try
-            {
-                return new ActiveValue<KeyValuePair<TKey, TValue>>(source.OrderBy(kv => kv.Key, keyComparer).First(), elementFaultChangeNotifier: elementFaultChangeNotifier);
-            }
-            catch (Exception ex)
-            {
-                return new ActiveValue<KeyValuePair<TKey, TValue>>(default, ex, elementFaultChangeNotifier);
-            }
+            return new ActiveValue<KeyValuePair<TKey, TValue>>(source.OrderBy(kv => kv.Key, keyComparer).FirstOrDefault(), elementFaultChangeNotifier: elementFaultChangeNotifier);
         }
 
         public static ActiveValue<KeyValuePair<TKey, TValue>> ActiveFirstOrDefault<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, bool>> predicate, ActiveExpressionOptions predicateOptions = null)
@@ -549,14 +542,7 @@ namespace Gear.ActiveQuery
                     }
                 });
             }
-            try
-            {
-                return new ActiveValue<KeyValuePair<TKey, TValue>>(source.OrderByDescending(kv => kv.Key, keyComparer).First(), elementFaultChangeNotifier: elementFaultChangeNotifier);
-            }
-            catch (Exception ex)
-            {
-                return new ActiveValue<KeyValuePair<TKey, TValue>>(default, ex, elementFaultChangeNotifier);
-            }
+            return new ActiveValue<KeyValuePair<TKey, TValue>>(source.OrderByDescending(kv => kv.Key, keyComparer).FirstOrDefault(), elementFaultChangeNotifier: elementFaultChangeNotifier);
         }
 
         public static ActiveValue<KeyValuePair<TKey, TValue>> ActiveLastOrDefault<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, bool>> predicate, ActiveExpressionOptions predicateOptions = null)
