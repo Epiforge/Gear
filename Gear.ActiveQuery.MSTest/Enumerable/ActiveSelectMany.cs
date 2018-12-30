@@ -1,7 +1,7 @@
-using System;
-using System.Linq;
 using Gear.Components;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System;
+using System.Linq;
 
 namespace Gear.ActiveQuery.MSTest.Enumerable
 {

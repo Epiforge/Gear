@@ -1,8 +1,8 @@
+using Gear.ActiveExpressions;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Linq;
 using System.Linq.Expressions;
-using Gear.ActiveExpressions;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace Gear.ActiveQuery.MSTest.Enumerable
 {
