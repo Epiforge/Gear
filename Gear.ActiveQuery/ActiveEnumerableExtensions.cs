@@ -18,8 +18,6 @@ namespace Gear.ActiveQuery
 
         public static ActiveValue<bool> ActiveAll<TSource>(this IEnumerable<TSource> source, Expression<Func<TSource, bool>> predicate, ActiveExpressionOptions predicateOptions = null)
         {
-            ActiveQueryOptions.Optimize(ref predicate);
-
             var readOnlySource = source as IReadOnlyCollection<TSource>;
             var changeNotifyingSource = source as INotifyCollectionChanged;
             ActiveEnumerable<TSource> where;
@@ -76,8 +74,6 @@ namespace Gear.ActiveQuery
 
         public static ActiveValue<bool> ActiveAny<TSource>(this IEnumerable<TSource> source, Expression<Func<TSource, bool>> predicate, ActiveExpressionOptions predicateOptions = null)
         {
-            ActiveQueryOptions.Optimize(ref predicate);
-
             ActiveEnumerable<TSource> where;
             Action<bool> setValue = null;
 
@@ -598,8 +594,6 @@ namespace Gear.ActiveQuery
 
         public static ActiveValue<TSource> ActiveFirst<TSource>(this IReadOnlyList<TSource> source, Expression<Func<TSource, bool>> predicate, ActiveExpressionOptions predicateOptions = null)
         {
-            ActiveQueryOptions.Optimize(ref predicate);
-
             ActiveEnumerable<TSource> where;
             Action<TSource> setValue = null;
             Action<Exception> setOperationFault = null;
@@ -843,8 +837,6 @@ namespace Gear.ActiveQuery
 
         public static ActiveValue<TSource> ActiveLast<TSource>(this IReadOnlyList<TSource> source, Expression<Func<TSource, bool>> predicate, ActiveExpressionOptions predicateOptions = null)
         {
-            ActiveQueryOptions.Optimize(ref predicate);
-
             ActiveEnumerable<TSource> where;
             Action<TSource> setValue = null;
             Action<Exception> setOperationFault = null;
@@ -2154,8 +2146,6 @@ namespace Gear.ActiveQuery
 
         public static ActiveValue<TSource> ActiveSingle<TSource>(this IReadOnlyList<TSource> source, Expression<Func<TSource, bool>> predicate, ActiveExpressionOptions predicateOptions = null)
         {
-            ActiveQueryOptions.Optimize(ref predicate);
-
             ActiveEnumerable<TSource> where;
             Action<TSource> setValue = null;
             Action<Exception> setOperationFault = null;
@@ -2264,8 +2254,6 @@ namespace Gear.ActiveQuery
 
         public static ActiveValue<TSource> ActiveSingleOrDefault<TSource>(this IReadOnlyList<TSource> source, Expression<Func<TSource, bool>> predicate, ActiveExpressionOptions predicateOptions = null)
         {
-            ActiveQueryOptions.Optimize(ref predicate);
-
             ActiveEnumerable<TSource> where;
             Action<TSource> setValue = null;
             Action<Exception> setOperationFault = null;
