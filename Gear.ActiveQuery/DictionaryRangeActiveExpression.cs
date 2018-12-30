@@ -351,6 +351,8 @@ namespace Gear.ActiveQuery
                     }
                     OnDictionaryChanged(new NotifyDictionaryChangedEventArgs<TKey, TResult>(NotifyDictionaryChangedAction.Reset));
                     break;
+                default:
+                    throw new NotSupportedException();
             }
         }
 
@@ -720,6 +722,8 @@ namespace Gear.ActiveQuery
                     }
                     OnDictionaryChanged(new NotifyDictionaryChangedEventArgs<TKey, TResult>(NotifyDictionaryChangedAction.Reset));
                     break;
+                default:
+                    throw new NotSupportedException();
             }
         }
 

@@ -17,7 +17,7 @@ namespace Gear.ActiveQuery
     /// </summary>
     /// <typeparam name="TElement">The type of the elements in the sequence</typeparam>
     /// <typeparam name="TResult">The type of the result of the active expression</typeparam>
-    class EnumerableRangeActiveExpression<TResult> : OverridableSyncDisposablePropertyChangeNotifier, INotifyElementFaultChanges
+    class EnumerableRangeActiveExpression<TResult> : OverridableSyncDisposablePropertyChangeNotifier, INotifyElementFaultChanges, INotifyGenericCollectionChanged<(object element, TResult result)>
     {
         static readonly object rangeActiveExpressionsAccess = new object();
         static readonly Dictionary<(IEnumerable source, Expression<Func<object, TResult>> expression, ActiveExpressionOptions options), EnumerableRangeActiveExpression<TResult>> rangeActiveExpressions = new Dictionary<(IEnumerable source, Expression<Func<object, TResult>> expression, ActiveExpressionOptions options), EnumerableRangeActiveExpression<TResult>>(CachedRangeActiveExpressionKeyEqualityComparer<TResult>.Default);
@@ -71,9 +71,7 @@ namespace Gear.ActiveQuery
         public event EventHandler<ElementFaultChangeEventArgs> ElementFaultChanging;
         public event EventHandler<RangeActiveExpressionResultChangeEventArgs<object, TResult>> ElementResultChanged;
         public event EventHandler<RangeActiveExpressionResultChangeEventArgs<object, TResult>> ElementResultChanging;
-        public event EventHandler<RangeActiveExpressionMembershipEventArgs<object, TResult>> ElementsAdded;
-        public event EventHandler<RangeActiveExpressionMovedEventArgs<object, TResult>> ElementsMoved;
-        public event EventHandler<RangeActiveExpressionMembershipEventArgs<object, TResult>> ElementsRemoved;
+        public event EventHandler<NotifyGenericCollectionChangedEventArgs<(object element, TResult result)>> GenericCollectionChanged;
 
         void ActiveExpressionPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
@@ -176,45 +174,65 @@ namespace Gear.ActiveQuery
 
         void CollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
         {
-            var oldItems = e.OldItems != null ? e.OldItems.Cast<object>() : Enumerable.Empty<object>();
-            var oldItemsCount = e.OldItems?.Count ?? 0;
-            var newItems = e.NewItems != null ? e.NewItems.Cast<object>() : Enumerable.Empty<object>();
-            var newItemsCount = e.NewItems?.Count ?? 0;
-            activeExpressionsAccess.EnterWriteLock();
-            var countChanging = e.Action == NotifyCollectionChangedAction.Reset || oldItemsCount != newItemsCount;
-            if (countChanging)
-                OnPropertyChanging(nameof(Count));
-            try
+            switch (e.Action)
             {
-                switch (e.Action)
-                {
-                    case NotifyCollectionChangedAction.Reset:
-                        if (activeExpressions.Count > 0)
-                            OnElementsRemoved(RemoveActiveExpressionsUnderLock(0, activeExpressions.Count), 0);
-                        var addedActiveExpressions = AddActiveExpressionsUnderLock(0, source.Cast<object>()).Select(ae => (ae.Arg, ae.Value)).ToImmutableArray();
-                        if (addedActiveExpressions.Length > 0)
-                            OnElementsAdded(addedActiveExpressions, 0);
-                        break;
-                    case NotifyCollectionChangedAction.Move when oldItems.SequenceEqual(newItems):
-                        List<(object element, ActiveExpression<object, TResult> activeExpression)> moving;
-                        moving = activeExpressions.GetRange(e.OldStartingIndex, oldItemsCount);
-                        activeExpressions.RemoveRange(e.OldStartingIndex, oldItemsCount);
+                case NotifyCollectionChangedAction.Add:
+                    OnGenericCollectionChanged(new NotifyGenericCollectionChangedEventArgs<(object element, TResult result)>(NotifyCollectionChangedAction.Add, AddActiveExpressions(e.NewStartingIndex, e.NewItems.Cast<object>()), e.NewStartingIndex));
+                    break;
+                case NotifyCollectionChangedAction.Move:
+                    activeExpressionsAccess.EnterWriteLock();
+                    List<(object element, ActiveExpression<object, TResult> activeExpression)> moving;
+                    try
+                    {
+                        moving = activeExpressions.GetRange(e.OldStartingIndex, e.OldItems.Count);
+                        activeExpressions.RemoveRange(e.OldStartingIndex, moving.Count);
                         activeExpressions.InsertRange(e.NewStartingIndex, moving);
-                        OnElementsMoved(moving.Select(eae => (eae.element, eae.activeExpression.Value)).ToList(), e.OldStartingIndex, e.NewStartingIndex);
-                        break;
-                    default:
-                        if (e.OldItems != null && e.OldStartingIndex >= 0)
-                            OnElementsRemoved(RemoveActiveExpressionsUnderLock(e.OldStartingIndex, oldItemsCount), e.OldStartingIndex);
-                        if (e.NewItems != null && e.NewStartingIndex >= 0)
-                            OnElementsAdded(AddActiveExpressionsUnderLock(e.NewStartingIndex, newItems).Select(ae => (ae.Arg, ae.Value)).ToImmutableArray(), e.NewStartingIndex);
-                        break;
-                }
-            }
-            finally
-            {
-                if (countChanging)
-                    OnPropertyChanged(nameof(Count));
-                activeExpressionsAccess.ExitWriteLock();
+                    }
+                    finally
+                    {
+                        activeExpressionsAccess.ExitWriteLock();
+                    }
+                    OnGenericCollectionChanged(new NotifyGenericCollectionChangedEventArgs<(object element, TResult result)>(NotifyCollectionChangedAction.Move, moving.Select(eae => (eae.element, eae.activeExpression.Value)), e.NewStartingIndex, e.OldStartingIndex));
+                    break;
+                case NotifyCollectionChangedAction.Remove:
+                    OnGenericCollectionChanged(new NotifyGenericCollectionChangedEventArgs<(object element, TResult result)>(NotifyCollectionChangedAction.Remove, RemoveActiveExpressions(e.OldStartingIndex, e.OldItems.Count), e.OldStartingIndex));
+                    break;
+                case NotifyCollectionChangedAction.Replace:
+                    activeExpressionsAccess.EnterWriteLock();
+                    var replaceCountChanging = e.NewItems.Count != e.OldItems.Count;
+                    if (replaceCountChanging)
+                        OnPropertyChanging(nameof(Count));
+                    IEnumerable<(object element, TResult result)> removed, added;
+                    try
+                    {
+                        removed = RemoveActiveExpressionsUnderLock(e.OldStartingIndex, e.OldItems.Count);
+                        added = AddActiveExpressionsUnderLock(e.NewStartingIndex, e.NewItems.Cast<object>()).Select(ae => (ae.Arg, ae.Value));
+                    }
+                    finally
+                    {
+                        if (replaceCountChanging)
+                            OnPropertyChanged(nameof(Count));
+                        activeExpressionsAccess.ExitWriteLock();
+                    }
+                    OnGenericCollectionChanged(new NotifyGenericCollectionChangedEventArgs<(object element, TResult result)>(NotifyCollectionChangedAction.Replace, added, removed, e.OldStartingIndex));
+                    break;
+                case NotifyCollectionChangedAction.Reset:
+                    activeExpressionsAccess.EnterWriteLock();
+                    OnPropertyChanging(nameof(Count));
+                    try
+                    {
+                        RemoveActiveExpressionsUnderLock(0, activeExpressions.Count);
+                        AddActiveExpressionsUnderLock(0, source.Cast<object>());
+                    }
+                    finally
+                    {
+                        OnPropertyChanged(nameof(Count));
+                        activeExpressionsAccess.ExitWriteLock();
+                    }
+                    OnGenericCollectionChanged(new NotifyGenericCollectionChangedEventArgs<(object element, TResult result)>(NotifyCollectionChangedAction.Reset));
+                    break;
+                default:
+                    throw new NotSupportedException();
             }
         }
 
@@ -333,23 +351,8 @@ namespace Gear.ActiveQuery
         protected void OnElementResultChanging(object element, TResult result, int count) =>
             OnElementResultChanging(new RangeActiveExpressionResultChangeEventArgs<object, TResult>(element, result, count));
 
-        protected virtual void OnElementsAdded(RangeActiveExpressionMembershipEventArgs<object, TResult> e) =>
-            ElementsAdded?.Invoke(this, e);
-
-        void OnElementsAdded(IReadOnlyList<(object element, TResult result)> elementResults, int index) =>
-            OnElementsAdded(new RangeActiveExpressionMembershipEventArgs<object, TResult>(elementResults, index));
-
-        protected virtual void OnElementsMoved(RangeActiveExpressionMovedEventArgs<object, TResult> e) =>
-            ElementsMoved?.Invoke(this, e);
-
-        void OnElementsMoved(IReadOnlyList<(object element, TResult result)> elementResults, int fromIndex, int toIndex) =>
-            OnElementsMoved(new RangeActiveExpressionMovedEventArgs<object, TResult>(elementResults, fromIndex, toIndex));
-
-        protected virtual void OnElementsRemoved(RangeActiveExpressionMembershipEventArgs<object, TResult> e) =>
-            ElementsRemoved?.Invoke(this, e);
-
-        void OnElementsRemoved(IReadOnlyList<(object element, TResult result)> elementResults, int index) =>
-            OnElementsRemoved(new RangeActiveExpressionMembershipEventArgs<object, TResult>(elementResults, index));
+        protected virtual void OnGenericCollectionChanged(NotifyGenericCollectionChangedEventArgs<(object element, TResult result)> e) =>
+            GenericCollectionChanged?.Invoke(this, e);
 
         IReadOnlyList<(object element, TResult result)> RemoveActiveExpressions(int index, int count)
         {
@@ -423,7 +426,7 @@ namespace Gear.ActiveQuery
     /// </summary>
     /// <typeparam name="TElement">The type of the elements in the sequence</typeparam>
     /// <typeparam name="TResult">The type of the result of the active expression</typeparam>
-    class EnumerableRangeActiveExpression<TElement, TResult> : OverridableSyncDisposablePropertyChangeNotifier, INotifyElementFaultChanges
+    class EnumerableRangeActiveExpression<TElement, TResult> : OverridableSyncDisposablePropertyChangeNotifier, INotifyElementFaultChanges, INotifyGenericCollectionChanged<(TElement element, TResult result)>
     {
         static readonly object rangeActiveExpressionsAccess = new object();
         static readonly Dictionary<(IEnumerable<TElement> source, Expression<Func<TElement, TResult>> expression, ActiveExpressionOptions options), EnumerableRangeActiveExpression<TElement, TResult>> rangeActiveExpressions = new Dictionary<(IEnumerable<TElement> source, Expression<Func<TElement, TResult>> expression, ActiveExpressionOptions options), EnumerableRangeActiveExpression<TElement, TResult>>(CachedRangeActiveExpressionKeyEqualityComparer<TElement, TResult>.Default);
@@ -477,9 +480,7 @@ namespace Gear.ActiveQuery
         public event EventHandler<ElementFaultChangeEventArgs> ElementFaultChanging;
         public event EventHandler<RangeActiveExpressionResultChangeEventArgs<TElement, TResult>> ElementResultChanged;
         public event EventHandler<RangeActiveExpressionResultChangeEventArgs<TElement, TResult>> ElementResultChanging;
-        public event EventHandler<RangeActiveExpressionMembershipEventArgs<TElement, TResult>> ElementsAdded;
-        public event EventHandler<RangeActiveExpressionMovedEventArgs<TElement, TResult>> ElementsMoved;
-        public event EventHandler<RangeActiveExpressionMembershipEventArgs<TElement, TResult>> ElementsRemoved;
+        public event EventHandler<NotifyGenericCollectionChangedEventArgs<(TElement element, TResult result)>> GenericCollectionChanged;
 
         void ActiveExpressionPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
@@ -582,45 +583,65 @@ namespace Gear.ActiveQuery
 
         void CollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
         {
-            var oldItems = e.OldItems != null ? e.OldItems.Cast<TElement>() : Enumerable.Empty<TElement>();
-            var oldItemsCount = e.OldItems?.Count ?? 0;
-            var newItems = e.NewItems != null ? e.NewItems.Cast<TElement>() : Enumerable.Empty<TElement>();
-            var newItemsCount = e.NewItems?.Count ?? 0;
-            activeExpressionsAccess.EnterWriteLock();
-            var countChanging = e.Action == NotifyCollectionChangedAction.Reset || oldItemsCount != newItemsCount;
-            if (countChanging)
-                OnPropertyChanging(nameof(Count));
-            try
+            switch (e.Action)
             {
-                switch (e.Action)
-                {
-                    case NotifyCollectionChangedAction.Reset:
-                        if (activeExpressions.Count > 0)
-                            OnElementsRemoved(RemoveActiveExpressionsUnderLock(0, activeExpressions.Count), 0);
-                        var addedActiveExpressions = AddActiveExpressionsUnderLock(0, source).Select(ae => (ae.Arg, ae.Value)).ToImmutableArray();
-                        if (addedActiveExpressions.Length > 0)
-                            OnElementsAdded(addedActiveExpressions, 0);
-                        break;
-                    case NotifyCollectionChangedAction.Move when oldItems.SequenceEqual(newItems):
-                        List<(TElement element, ActiveExpression<TElement, TResult> activeExpression)> moving;
-                        moving = activeExpressions.GetRange(e.OldStartingIndex, oldItemsCount);
-                        activeExpressions.RemoveRange(e.OldStartingIndex, oldItemsCount);
+                case NotifyCollectionChangedAction.Add:
+                    OnGenericCollectionChanged(new NotifyGenericCollectionChangedEventArgs<(TElement element, TResult result)>(NotifyCollectionChangedAction.Add, AddActiveExpressions(e.NewStartingIndex, e.NewItems.Cast<TElement>()), e.NewStartingIndex));
+                    break;
+                case NotifyCollectionChangedAction.Move:
+                    activeExpressionsAccess.EnterWriteLock();
+                    List<(TElement element, ActiveExpression<TElement, TResult> activeExpression)> moving;
+                    try
+                    {
+                        moving = activeExpressions.GetRange(e.OldStartingIndex, e.OldItems.Count);
+                        activeExpressions.RemoveRange(e.OldStartingIndex, moving.Count);
                         activeExpressions.InsertRange(e.NewStartingIndex, moving);
-                        OnElementsMoved(moving.Select(ae => (ae.element, ae.activeExpression.Value)).ToList(), e.OldStartingIndex, e.NewStartingIndex);
-                        break;
-                    default:
-                        if (e.OldItems != null && e.OldStartingIndex >= 0)
-                            OnElementsRemoved(RemoveActiveExpressionsUnderLock(e.OldStartingIndex, oldItemsCount), e.OldStartingIndex);
-                        if (e.NewItems != null && e.NewStartingIndex >= 0)
-                            OnElementsAdded(AddActiveExpressionsUnderLock(e.NewStartingIndex, newItems).Select(ae => (ae.Arg, ae.Value)).ToImmutableArray(), e.NewStartingIndex);
-                        break;
-                }
-            }
-            finally
-            {
-                if (countChanging)
-                    OnPropertyChanged(nameof(Count));
-                activeExpressionsAccess.ExitWriteLock();
+                    }
+                    finally
+                    {
+                        activeExpressionsAccess.ExitWriteLock();
+                    }
+                    OnGenericCollectionChanged(new NotifyGenericCollectionChangedEventArgs<(TElement element, TResult result)>(NotifyCollectionChangedAction.Move, moving.Select(eae => (eae.element, eae.activeExpression.Value)), e.NewStartingIndex, e.OldStartingIndex));
+                    break;
+                case NotifyCollectionChangedAction.Remove:
+                    OnGenericCollectionChanged(new NotifyGenericCollectionChangedEventArgs<(TElement element, TResult result)>(NotifyCollectionChangedAction.Remove, RemoveActiveExpressions(e.OldStartingIndex, e.OldItems.Count), e.OldStartingIndex));
+                    break;
+                case NotifyCollectionChangedAction.Replace:
+                    activeExpressionsAccess.EnterWriteLock();
+                    var countChanging = e.NewItems.Count != e.OldItems.Count;
+                    if (countChanging)
+                        OnPropertyChanging(nameof(Count));
+                    IEnumerable<(TElement element, TResult result)> removed, added;
+                    try
+                    {
+                        removed = RemoveActiveExpressionsUnderLock(e.OldStartingIndex, e.OldItems.Count);
+                        added = AddActiveExpressionsUnderLock(e.NewStartingIndex, e.NewItems.Cast<TElement>()).Select(ae => (ae.Arg, ae.Value));
+                    }
+                    finally
+                    {
+                        if (countChanging)
+                            OnPropertyChanged(nameof(Count));
+                        activeExpressionsAccess.ExitWriteLock();
+                    }
+                    OnGenericCollectionChanged(new NotifyGenericCollectionChangedEventArgs<(TElement element, TResult result)>(NotifyCollectionChangedAction.Replace, added, removed, e.OldStartingIndex));
+                    break;
+                case NotifyCollectionChangedAction.Reset:
+                    activeExpressionsAccess.EnterWriteLock();
+                    OnPropertyChanging(nameof(Count));
+                    try
+                    {
+                        RemoveActiveExpressionsUnderLock(0, activeExpressions.Count);
+                        AddActiveExpressionsUnderLock(0, source.Cast<TElement>());
+                    }
+                    finally
+                    {
+                        OnPropertyChanged(nameof(Count));
+                        activeExpressionsAccess.ExitWriteLock();
+                    }
+                    OnGenericCollectionChanged(new NotifyGenericCollectionChangedEventArgs<(TElement element, TResult result)>(NotifyCollectionChangedAction.Reset));
+                    break;
+                default:
+                    throw new NotSupportedException();
             }
         }
 
@@ -739,23 +760,8 @@ namespace Gear.ActiveQuery
         protected void OnElementResultChanging(TElement element, TResult result, int count) =>
             OnElementResultChanging(new RangeActiveExpressionResultChangeEventArgs<TElement, TResult>(element, result, count));
 
-        protected virtual void OnElementsAdded(RangeActiveExpressionMembershipEventArgs<TElement, TResult> e) =>
-            ElementsAdded?.Invoke(this, e);
-
-        void OnElementsAdded(IReadOnlyList<(TElement element, TResult result)> elementResults, int index) =>
-            OnElementsAdded(new RangeActiveExpressionMembershipEventArgs<TElement, TResult>(elementResults, index));
-
-        protected virtual void OnElementsMoved(RangeActiveExpressionMovedEventArgs<TElement, TResult> e) =>
-            ElementsMoved?.Invoke(this, e);
-
-        void OnElementsMoved(IReadOnlyList<(TElement element, TResult result)> elementResults, int fromIndex, int toIndex) =>
-            OnElementsMoved(new RangeActiveExpressionMovedEventArgs<TElement, TResult>(elementResults, fromIndex, toIndex));
-
-        protected virtual void OnElementsRemoved(RangeActiveExpressionMembershipEventArgs<TElement, TResult> e) =>
-            ElementsRemoved?.Invoke(this, e);
-
-        void OnElementsRemoved(IReadOnlyList<(TElement element, TResult result)> elementResults, int index) =>
-            OnElementsRemoved(new RangeActiveExpressionMembershipEventArgs<TElement, TResult>(elementResults, index));
+        protected virtual void OnGenericCollectionChanged(NotifyGenericCollectionChangedEventArgs<(TElement element, TResult result)> e) =>
+            GenericCollectionChanged?.Invoke(this, e);
 
         IReadOnlyList<(TElement element, TResult result)> RemoveActiveExpressions(int index, int count)
         {

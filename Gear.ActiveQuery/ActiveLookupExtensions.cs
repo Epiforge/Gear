@@ -923,9 +923,9 @@ namespace Gear.ActiveQuery
                     {
                         var sum = activeValue.Value;
                         if ((e.OldItems?.Count ?? 0) > 0)
-                            sum = new TResult[] { activeValue.Value }.Concat(e.OldItems.Select(kv => kv.Value)).Aggregate(operations.Subtract);
+                            sum = new TResult[] { sum }.Concat(e.OldItems.Select(kv => kv.Value)).Aggregate(operations.Subtract);
                         if ((e.NewItems?.Count ?? 0) > 0)
-                            sum = new TResult[] { activeValue.Value }.Concat(e.NewItems.Select(kv => kv.Value)).Aggregate(operations.Add);
+                            sum = new TResult[] { sum }.Concat(e.NewItems.Select(kv => kv.Value)).Aggregate(operations.Add);
                         setValue(sum);
                     }
                 });

@@ -687,6 +687,7 @@ namespace Gear.ActiveQuery
             ActiveQueryOptions.Optimize(ref keySelector);
 
             var synchronizedSource = source as ISynchronized;
+            EnumerableRangeActiveExpression<TSource, TKey> rangeActiveExpression;
             IDictionary<TKey, (SynchronizedRangeObservableCollection<TSource> groupingObservableCollection, ActiveGrouping<TKey, TSource> grouping)> collectionAndGroupingDictionary;
             SynchronizedRangeObservableCollection<ActiveGrouping<TKey, TSource>> rangeObservableCollection = null;
 
@@ -721,18 +722,35 @@ namespace Gear.ActiveQuery
 
             void elementResultChanging(object sender, RangeActiveExpressionResultChangeEventArgs<TSource, TKey> e) => synchronizedSource.SequentialExecute(() => removeElement(e.Element, e.Result, e.Count));
 
-            void elementsAdded(object sender, RangeActiveExpressionMembershipEventArgs<TSource, TKey> e) =>
+            void genericCollectionChanged(object sender, NotifyGenericCollectionChangedEventArgs<(TSource element, TKey key)> e) =>
                 synchronizedSource.SequentialExecute(() =>
                 {
-                    foreach (var (element, result) in e.ElementResults)
-                        addElement(element, result);
-                });
-
-            void elementsRemoved(object sender, RangeActiveExpressionMembershipEventArgs<TSource, TKey> e) =>
-                synchronizedSource.SequentialExecute(() =>
-                {
-                    foreach (var (element, result) in e.ElementResults)
-                        removeElement(element, result);
+                    if (e.Action == NotifyCollectionChangedAction.Reset)
+                    {
+                        switch (indexingStrategy)
+                        {
+                            case IndexingStrategy.HashTable:
+                                collectionAndGroupingDictionary = new Dictionary<TKey, (SynchronizedRangeObservableCollection<TSource> groupingObservableCollection, ActiveGrouping<TKey, TSource> grouping)>();
+                                break;
+                            case IndexingStrategy.SelfBalancingBinarySearchTree:
+                                collectionAndGroupingDictionary = new SortedDictionary<TKey, (SynchronizedRangeObservableCollection<TSource> groupingObservableCollection, ActiveGrouping<TKey, TSource> grouping)>();
+                                break;
+                            default:
+                                throw new ArgumentOutOfRangeException(nameof(indexingStrategy), $"{nameof(indexingStrategy)} must be {IndexingStrategy.HashTable} or {IndexingStrategy.SelfBalancingBinarySearchTree}");
+                        }
+                        rangeObservableCollection.Clear();
+                        foreach (var (element, key) in rangeActiveExpression.GetResults())
+                            addElement(element, key);
+                    }
+                    else if (e.Action != NotifyCollectionChangedAction.Move)
+                    {
+                        if ((e.OldItems?.Count ?? 0) > 0)
+                            foreach (var (element, key) in e.OldItems)
+                                removeElement(element, key);
+                        if ((e.NewItems?.Count ?? 0) > 0)
+                            foreach (var (element, key) in e.NewItems)
+                                addElement(element, key);
+                    }
                 });
 
             void removeElement(TSource element, TKey key, int count = 1)
@@ -750,22 +768,20 @@ namespace Gear.ActiveQuery
 
             return synchronizedSource.SequentialExecute(() =>
             {
-                var rangeActiveExpression = RangeActiveExpression.Create(source, keySelector, keySelectorOptions);
+                rangeActiveExpression = RangeActiveExpression.Create(source, keySelector, keySelectorOptions);
                 rangeActiveExpression.ElementResultChanged += elementResultChanged;
                 rangeActiveExpression.ElementResultChanging += elementResultChanging;
-                rangeActiveExpression.ElementsAdded += elementsAdded;
-                rangeActiveExpression.ElementsRemoved += elementsRemoved;
+                rangeActiveExpression.GenericCollectionChanged += genericCollectionChanged;
 
                 rangeObservableCollection = new SynchronizedRangeObservableCollection<ActiveGrouping<TKey, TSource>>();
-                foreach (var (element, result) in rangeActiveExpression.GetResults())
-                    addElement(element, result);
+                foreach (var (element, key) in rangeActiveExpression.GetResults())
+                    addElement(element, key);
 
                 return new ActiveEnumerable<ActiveGrouping<TKey, TSource>>(rangeObservableCollection, rangeActiveExpression, () =>
                 {
                     rangeActiveExpression.ElementResultChanged -= elementResultChanged;
                     rangeActiveExpression.ElementResultChanging -= elementResultChanging;
-                    rangeActiveExpression.ElementsAdded -= elementsAdded;
-                    rangeActiveExpression.ElementsRemoved -= elementsRemoved;
+                    rangeActiveExpression.GenericCollectionChanged -= genericCollectionChanged;
                 });
             });
         }
@@ -928,8 +944,7 @@ namespace Gear.ActiveQuery
             void dispose()
             {
                 rangeActiveExpression.ElementResultChanged -= elementResultChanged;
-                rangeActiveExpression.ElementsAdded -= elementsAdded;
-                rangeActiveExpression.ElementsRemoved -= elementsRemoved;
+                rangeActiveExpression.GenericCollectionChanged -= genericCollectionChanged;
                 rangeActiveExpression.Dispose();
             }
 
@@ -943,37 +958,48 @@ namespace Gear.ActiveQuery
                         setValue(rangeActiveExpression.GetResultsUnderLock().Select(er => er.result).Max());
                 });
 
-            void elementsAdded(object sender, RangeActiveExpressionMembershipEventArgs<TSource, TResult> e) =>
+            void genericCollectionChanged(object sender, NotifyGenericCollectionChangedEventArgs<(TSource element, TResult result)> e) =>
                 synchronizedSource.SequentialExecute(() =>
                 {
-                    if (e.ElementResults.Count > 0)
+                    if (e.Action == NotifyCollectionChangedAction.Reset)
                     {
-                        var addedMax = e.ElementResults.Select(er => er.result).Max();
-                        if (activeValue.OperationFault != null || comparer.Compare(activeValue.Value, addedMax) < 0)
+                        try
                         {
                             setOperationFault(null);
-                            setValue(addedMax);
+                            setValue(rangeActiveExpression.GetResults().Select(er => er.result).Max());
+                        }
+                        catch (Exception ex)
+                        {
+                            setOperationFault(ex);
+                            setValue(default);
                         }
                     }
-                });
-
-            void elementsRemoved(object sender, RangeActiveExpressionMembershipEventArgs<TSource, TResult> e) =>
-                synchronizedSource.SequentialExecute(() =>
-                {
-                    if (e.ElementResults.Count > 0)
+                    else if (e.Action != NotifyCollectionChangedAction.Move)
                     {
-                        var removedMax = e.ElementResults.Select(er => er.result).Max();
-                        if (comparer.Compare(activeValue.Value, removedMax) == 0)
+                        if ((e.OldItems?.Count ?? 0) > 0)
                         {
-                            try
+                            var removedMax = e.OldItems.Select(er => er.result).Max();
+                            if (comparer.Compare(activeValue.Value, removedMax) == 0)
                             {
-                                var value = rangeActiveExpression.GetResultsUnderLock().Select(er => er.result).Max();
-                                setOperationFault(null);
-                                setValue(value);
+                                try
+                                {
+                                    var value = rangeActiveExpression.GetResultsUnderLock().Select(er => er.result).Max();
+                                    setOperationFault(null);
+                                    setValue(value);
+                                }
+                                catch (Exception ex)
+                                {
+                                    setOperationFault(ex);
+                                }
                             }
-                            catch (Exception ex)
+                        }
+                        if ((e.NewItems?.Count ?? 0) > 0)
+                        {
+                            var addedMax = e.NewItems.Select(er => er.result).Max();
+                            if (activeValue.OperationFault != null || comparer.Compare(activeValue.Value, addedMax) < 0)
                             {
-                                setOperationFault(ex);
+                                setOperationFault(null);
+                                setValue(addedMax);
                             }
                         }
                     }
@@ -983,8 +1009,7 @@ namespace Gear.ActiveQuery
             {
                 rangeActiveExpression = RangeActiveExpression.Create(source, selector, selectorOptions);
                 rangeActiveExpression.ElementResultChanged += elementResultChanged;
-                rangeActiveExpression.ElementsAdded += elementsAdded;
-                rangeActiveExpression.ElementsRemoved += elementsRemoved;
+                rangeActiveExpression.GenericCollectionChanged += genericCollectionChanged;
 
                 try
                 {
@@ -1018,8 +1043,7 @@ namespace Gear.ActiveQuery
             void dispose()
             {
                 rangeActiveExpression.ElementResultChanged -= elementResultChanged;
-                rangeActiveExpression.ElementsAdded -= elementsAdded;
-                rangeActiveExpression.ElementsRemoved -= elementsRemoved;
+                rangeActiveExpression.GenericCollectionChanged -= genericCollectionChanged;
                 rangeActiveExpression.Dispose();
             }
 
@@ -1033,37 +1057,48 @@ namespace Gear.ActiveQuery
                         setValue(rangeActiveExpression.GetResultsUnderLock().Select(er => er.result).Min());
                 });
 
-            void elementsAdded(object sender, RangeActiveExpressionMembershipEventArgs<TSource, TResult> e) =>
+            void genericCollectionChanged(object sender, NotifyGenericCollectionChangedEventArgs<(TSource element, TResult result)> e) =>
                 synchronizedSource.SequentialExecute(() =>
                 {
-                    if (e.ElementResults.Count > 0)
+                    if (e.Action == NotifyCollectionChangedAction.Reset)
                     {
-                        var addedMin = e.ElementResults.Select(er => er.result).Min();
-                        if (activeValue.OperationFault != null || comparer.Compare(activeValue.Value, addedMin) > 0)
+                        try
                         {
                             setOperationFault(null);
-                            setValue(addedMin);
+                            setValue(rangeActiveExpression.GetResults().Select(er => er.result).Min());
+                        }
+                        catch (Exception ex)
+                        {
+                            setOperationFault(ex);
+                            setValue(default);
                         }
                     }
-                });
-
-            void elementsRemoved(object sender, RangeActiveExpressionMembershipEventArgs<TSource, TResult> e) =>
-                synchronizedSource.SequentialExecute(() =>
-                {
-                    if (e.ElementResults.Count > 0)
+                    else if (e.Action != NotifyCollectionChangedAction.Move)
                     {
-                        var removedMin = e.ElementResults.Select(er => er.result).Min();
-                        if (comparer.Compare(activeValue.Value, removedMin) == 0)
+                        if ((e.OldItems?.Count ?? 0) > 0)
                         {
-                            try
+                            var removedMin = e.OldItems.Select(er => er.result).Min();
+                            if (comparer.Compare(activeValue.Value, removedMin) == 0)
                             {
-                                var value = rangeActiveExpression.GetResultsUnderLock().Select(er => er.result).Min();
-                                setOperationFault(null);
-                                setValue(value);
+                                try
+                                {
+                                    var value = rangeActiveExpression.GetResultsUnderLock().Select(er => er.result).Min();
+                                    setOperationFault(null);
+                                    setValue(value);
+                                }
+                                catch (Exception ex)
+                                {
+                                    setOperationFault(ex);
+                                }
                             }
-                            catch (Exception ex)
+                        }
+                        if ((e.NewItems?.Count ?? 0) > 0)
+                        {
+                            var addedMin = e.NewItems.Select(er => er.result).Min();
+                            if (activeValue.OperationFault != null || comparer.Compare(activeValue.Value, addedMin) > 0)
                             {
-                                setOperationFault(ex);
+                                setOperationFault(null);
+                                setValue(addedMin);
                             }
                         }
                     }
@@ -1073,8 +1108,7 @@ namespace Gear.ActiveQuery
             {
                 rangeActiveExpression = RangeActiveExpression.Create(source, selector, selectorOptions);
                 rangeActiveExpression.ElementResultChanged += elementResultChanged;
-                rangeActiveExpression.ElementsAdded += elementsAdded;
-                rangeActiveExpression.ElementsRemoved += elementsRemoved;
+                rangeActiveExpression.GenericCollectionChanged += genericCollectionChanged;
 
                 try
                 {
@@ -1218,79 +1252,90 @@ namespace Gear.ActiveQuery
 
             void elementResultChanged(object sender, RangeActiveExpressionResultChangeEventArgs<TSource, IComparable> e) => synchronizedSource.SequentialExecute(() => repositionElement(e.Element));
 
-            void elementsAdded(object sender, RangeActiveExpressionMembershipEventArgs<TSource, IComparable> e) =>
+            void genericCollectionChanged(object sender, NotifyGenericCollectionChangedEventArgs<(TSource element, IComparable comparable)> e) =>
                 synchronizedSource.SequentialExecute(() =>
                 {
-                    if (rangeObservableCollection.Count == 0)
+                    if (e.Action == NotifyCollectionChangedAction.Reset)
                     {
-                        var sorted = e.ElementResults.Select(er => er.element).ToList();
-                        sorted.Sort(comparer);
+                        var sortedSource = source.ToList();
+                        sortedSource.Sort(comparer);
                         if (indexingStrategy != IndexingStrategy.NoneOrInherit)
-                            rebuildStartingIndiciesAndCounts(sorted);
-                        rangeObservableCollection.Reset(sorted);
+                            rebuildStartingIndiciesAndCounts(sortedSource);
+                        rangeObservableCollection.Reset(sortedSource);
                     }
-                    else
-                        foreach (var elementAndResults in e.ElementResults.GroupBy(er => er.element, er => er.result))
+                    else if (e.Action != NotifyCollectionChangedAction.Move)
+                    {
+                        if ((e.OldItems?.Count ?? 0) > 0)
                         {
-                            var element = elementAndResults.Key;
-                            var count = elementAndResults.Count();
-                            var index = 0;
-                            while (index < rangeObservableCollection.Count && comparer.Compare(element, rangeObservableCollection[index]) >= 0)
-                                ++index;
-                            if (indexingStrategy != IndexingStrategy.NoneOrInherit)
-                                foreach (var startingIndexAndCountKv in startingIndiciesAndCounts.ToList())
+                            if (e.OldItems.Count == rangeObservableCollection.Count)
+                            {
+                                switch (indexingStrategy)
                                 {
-                                    var otherElement = startingIndexAndCountKv.Key;
-                                    if (!equalityComparer.Equals(otherElement, element))
+                                    case IndexingStrategy.HashTable:
+                                        startingIndiciesAndCounts = new Dictionary<TSource, (int startingIndex, int count)>();
+                                        break;
+                                    case IndexingStrategy.SelfBalancingBinarySearchTree:
+                                        startingIndiciesAndCounts = new SortedDictionary<TSource, (int startingIndex, int count)>();
+                                        break;
+                                }
+                                rangeObservableCollection.Clear();
+                            }
+                            else if (indexingStrategy == IndexingStrategy.NoneOrInherit)
+                                foreach (var elementAndResults in e.OldItems.GroupBy(er => er.element, er => er.comparable))
+                                    rangeObservableCollection.RemoveRange(rangeObservableCollection.IndexOf(elementAndResults.Key), elementAndResults.Count());
+                            else
+                                foreach (var elementAndResults in e.OldItems.GroupBy(er => er.element, er => er.comparable))
+                                {
+                                    var element = elementAndResults.Key;
+                                    var (startingIndex, currentCount) = startingIndiciesAndCounts[element];
+                                    var removedCount = elementAndResults.Count();
+                                    rangeObservableCollection.RemoveRange(startingIndex, removedCount);
+                                    if (removedCount == currentCount)
+                                        startingIndiciesAndCounts.Remove(element);
+                                    else
+                                        startingIndiciesAndCounts[element] = (startingIndex, currentCount - removedCount);
+                                }
+                        }
+                        if ((e.NewItems?.Count ?? 0) > 0)
+                        {
+                            if (rangeObservableCollection.Count == 0)
+                            {
+                                var sorted = e.NewItems.Select(er => er.element).ToList();
+                                sorted.Sort(comparer);
+                                if (indexingStrategy != IndexingStrategy.NoneOrInherit)
+                                    rebuildStartingIndiciesAndCounts(sorted);
+                                rangeObservableCollection.Reset(sorted);
+                            }
+                            else
+                                foreach (var elementAndResults in e.NewItems.GroupBy(er => er.element, er => er.comparable))
+                                {
+                                    var element = elementAndResults.Key;
+                                    var count = elementAndResults.Count();
+                                    var index = 0;
+                                    while (index < rangeObservableCollection.Count && comparer.Compare(element, rangeObservableCollection[index]) >= 0)
+                                        ++index;
+                                    if (indexingStrategy != IndexingStrategy.NoneOrInherit)
+                                        foreach (var startingIndexAndCountKv in startingIndiciesAndCounts.ToList())
+                                        {
+                                            var otherElement = startingIndexAndCountKv.Key;
+                                            if (!equalityComparer.Equals(otherElement, element))
+                                            {
+                                                var (otherStartingIndex, otherCount) = startingIndexAndCountKv.Value;
+                                                if (otherStartingIndex >= index)
+                                                    startingIndiciesAndCounts[otherElement] = (otherStartingIndex + count, otherCount);
+                                            }
+                                        }
+                                    rangeObservableCollection.InsertRange(index, Enumerable.Range(0, count).Select(i => element));
+                                    if (indexingStrategy != IndexingStrategy.NoneOrInherit)
                                     {
-                                        var (otherStartingIndex, otherCount) = startingIndexAndCountKv.Value;
-                                        if (otherStartingIndex >= index)
-                                            startingIndiciesAndCounts[otherElement] = (otherStartingIndex + count, otherCount);
+                                        if (startingIndiciesAndCounts.TryGetValue(element, out var startingIndexAndCount))
+                                            startingIndiciesAndCounts[element] = (startingIndexAndCount.startingIndex, startingIndexAndCount.count + count);
+                                        else
+                                            startingIndiciesAndCounts.Add(element, (index, count));
                                     }
                                 }
-                            rangeObservableCollection.InsertRange(index, Enumerable.Range(0, count).Select(i => element));
-                            if (indexingStrategy != IndexingStrategy.NoneOrInherit)
-                            {
-                                if (startingIndiciesAndCounts.TryGetValue(element, out var startingIndexAndCount))
-                                    startingIndiciesAndCounts[element] = (startingIndexAndCount.startingIndex, startingIndexAndCount.count + count);
-                                else
-                                    startingIndiciesAndCounts.Add(element, (index, count));
-                            }
                         }
-                });
-
-            void elementsRemoved(object sender, RangeActiveExpressionMembershipEventArgs<TSource, IComparable> e) =>
-                synchronizedSource.SequentialExecute(() =>
-                {
-                    var elementResults = e.ElementResults;
-                    if (elementResults.Count == rangeObservableCollection.Count)
-                    {
-                        switch (indexingStrategy)
-                        {
-                            case IndexingStrategy.HashTable:
-                                startingIndiciesAndCounts = new Dictionary<TSource, (int startingIndex, int count)>();
-                                break;
-                            case IndexingStrategy.SelfBalancingBinarySearchTree:
-                                startingIndiciesAndCounts = new SortedDictionary<TSource, (int startingIndex, int count)>();
-                                break;
-                        }
-                        rangeObservableCollection.Clear();
                     }
-                    else if (indexingStrategy == IndexingStrategy.NoneOrInherit)
-                        foreach (var elementAndResults in elementResults.GroupBy(er => er.element, er => er.result))
-                            rangeObservableCollection.RemoveRange(rangeObservableCollection.IndexOf(elementAndResults.Key), elementAndResults.Count());
-                    else
-                        foreach (var elementAndResults in elementResults.GroupBy(er => er.element, er => er.result))
-                        {
-                            var element = elementAndResults.Key;
-                            var (startingIndex, currentCount) = startingIndiciesAndCounts[element];
-                            var removedCount = elementAndResults.Count();
-                            rangeObservableCollection.RemoveRange(startingIndex, removedCount);
-                            if (removedCount == currentCount)
-                                startingIndiciesAndCounts.Remove(element);
-                            else
-                                startingIndiciesAndCounts[element] = (startingIndex, currentCount - removedCount);
-                        }
                 });
 
             return synchronizedSource.SequentialExecute(() =>
@@ -1298,8 +1343,7 @@ namespace Gear.ActiveQuery
                 var selections = selectors.Select(selector => (rangeActiveExpression: EnumerableRangeActiveExpression<TSource, IComparable>.Create(source, selector.expression, selector.expressionOptions), selector.isDescending)).ToList();
                 comparer = new ActiveOrderingComparer<TSource>(selections.Select(selection => (selection.rangeActiveExpression, selection.isDescending)).ToList(), indexingStrategy);
                 var (lastRangeActiveExpression, lastIsDescending) = selections[selections.Count - 1];
-                lastRangeActiveExpression.ElementsAdded += elementsAdded;
-                lastRangeActiveExpression.ElementsRemoved += elementsRemoved;
+                lastRangeActiveExpression.GenericCollectionChanged += genericCollectionChanged;
                 foreach (var (rangeActiveExpression, isDescending) in selections)
                     rangeActiveExpression.ElementResultChanged += elementResultChanged;
                 var sortedSource = source.ToList();
@@ -1312,8 +1356,7 @@ namespace Gear.ActiveQuery
                 var mergedElementFaultChangeNotifier = new MergedElementFaultChangeNotifier(selections.Select(selection => selection.rangeActiveExpression));
                 return new ActiveEnumerable<TSource>(rangeObservableCollection, mergedElementFaultChangeNotifier, () =>
                 {
-                    lastRangeActiveExpression.ElementsAdded -= elementsAdded;
-                    lastRangeActiveExpression.ElementsRemoved -= elementsRemoved;
+                    lastRangeActiveExpression.GenericCollectionChanged -= genericCollectionChanged;
                     foreach (var (rangeActiveExpression, isDescending) in selections)
                     {
                         rangeActiveExpression.ElementResultChanged -= elementResultChanged;
@@ -1346,6 +1389,7 @@ namespace Gear.ActiveQuery
             }
 
             var synchronizedSource = source as ISynchronized;
+            EnumerableRangeActiveExpression<TResult> rangeActiveExpression;
             SynchronizedRangeObservableCollection<TResult> rangeObservableCollection = null;
 
             void elementResultChanged(object sender, RangeActiveExpressionResultChangeEventArgs<object, TResult> e) =>
@@ -1359,114 +1403,123 @@ namespace Gear.ActiveQuery
                         rangeObservableCollection[remainingIndex] = newResultElement;
                 });
 
-            void elementsAdded(object sender, RangeActiveExpressionMembershipEventArgs<object, TResult> e) =>
+            void genericCollectionChanged(object sender, NotifyGenericCollectionChangedEventArgs<(object element, TResult result)> e) =>
                 synchronizedSource.SequentialExecute(() =>
                 {
-                    var elementResults = e.ElementResults;
-                    var count = elementResults.Count;
-                    if (count > 0)
+                    switch (e.Action)
                     {
-                        var index = e.Index;
-                        if (indexingStrategy == IndexingStrategy.NoneOrInherit)
-                            rangeObservableCollection.InsertRange(index, elementResults.Select(er => er.result));
-                        else
-                        {
-                            foreach (var indiciesList in sourceToIndicies.Values)
-                                for (int i = 0, ii = indiciesList.Count; i < ii; ++i)
-                                {
-                                    var listIndex = indiciesList[i];
-                                    if (listIndex >= index)
-                                        indiciesList[i] = listIndex + count;
-                                }
-                            rangeObservableCollection.InsertRange(index, elementResults.Select((er, sIndex) =>
-                            {
-                                var (element, result) = er;
-                                if (!sourceToIndicies.TryGetValue(element, out var indiciesList))
-                                {
-                                    indiciesList = new List<int>();
-                                    sourceToIndicies.Add(element, indiciesList);
-                                }
-                                indiciesList.Add(index + sIndex);
-                                return result;
-                            }));
-                        }
-                    }
-                });
-
-            void elementsMoved(object sender, RangeActiveExpressionMovedEventArgs<object, TResult> e) =>
-                synchronizedSource.SequentialExecute(() =>
-                {
-                    var count = e.ElementResults.Count;
-                    var fromIndex = e.FromIndex;
-                    var toIndex = e.ToIndex;
-                    if (count > 0 && fromIndex != toIndex)
-                    {
-                        if (indexingStrategy != IndexingStrategy.NoneOrInherit)
-                        {
-                            int movementEnd = fromIndex + count, move = toIndex - fromIndex, displacementStart, displacementEnd, displace;
-                            if (fromIndex < toIndex)
-                            {
-                                displacementStart = movementEnd;
-                                displacementEnd = toIndex + count;
-                                displace = count * -1;
-                            }
+                        case NotifyCollectionChangedAction.Reset:
+                            if (indexingStrategy == IndexingStrategy.NoneOrInherit)
+                                rangeObservableCollection.Reset(rangeActiveExpression.GetResults().Select(er => er.result));
                             else
                             {
-                                displacementStart = toIndex;
-                                displacementEnd = fromIndex;
-                                displace = count;
-                            }
-                            foreach (var element in sourceToIndicies.Keys.ToList())
-                            {
-                                var indiciesList = sourceToIndicies[element];
-                                for (int i = 0, ii = indiciesList.Count; i < ii; ++i)
+                                switch (indexingStrategy)
                                 {
-                                    var index = indiciesList[i];
-                                    if (index >= fromIndex && index < movementEnd)
-                                        indiciesList[i] = index + move;
-                                    else if (index >= displacementStart && index < displacementEnd)
-                                        indiciesList[i] = index + displace;
+                                    case IndexingStrategy.SelfBalancingBinarySearchTree:
+                                        throw new ArgumentOutOfRangeException(nameof(indexingStrategy), $"{nameof(indexingStrategy)} must be {IndexingStrategy.HashTable} or {IndexingStrategy.NoneOrInherit}");
+                                    default:
+                                        sourceToIndicies = new Dictionary<object, List<int>>();
+                                        break;
                                 }
+                                rangeObservableCollection.Reset(rangeActiveExpression.GetResults().Select(indexedInitializer));
                             }
-                        }
-                        rangeObservableCollection.MoveRange(fromIndex, toIndex, count);
-                    }
-                });
-
-            void elementsRemoved(object sender, RangeActiveExpressionMembershipEventArgs<object, TResult> e) =>
-                synchronizedSource.SequentialExecute(() =>
-                {
-                    var count = e.ElementResults.Count;
-                    if (count > 0)
-                    {
-                        var startIndex = e.Index;
-                        rangeObservableCollection.RemoveRange(startIndex, count);
-                        if (indexingStrategy != IndexingStrategy.NoneOrInherit)
-                        {
-                            var endIndex = startIndex + count;
-                            foreach (var element in sourceToIndicies.Keys.ToList())
+                            break;
+                        case NotifyCollectionChangedAction.Move:
+                            if (e.NewItems.Count > 0 && e.OldStartingIndex != e.NewStartingIndex)
                             {
-                                var indiciesList = sourceToIndicies[element];
-                                for (var i = 0; i < indiciesList.Count;)
+                                if (indexingStrategy != IndexingStrategy.NoneOrInherit)
                                 {
-                                    var listIndex = indiciesList[i];
-                                    if (listIndex >= startIndex)
+                                    int movementEnd = e.OldStartingIndex + e.NewItems.Count, move = e.NewStartingIndex - e.OldStartingIndex, displacementStart, displacementEnd, displace;
+                                    if (e.OldStartingIndex < e.NewStartingIndex)
                                     {
-                                        if (listIndex >= endIndex)
-                                        {
-                                            indiciesList[i] = listIndex - count;
-                                            ++i;
-                                        }
-                                        else
-                                            indiciesList.RemoveAt(i);
+                                        displacementStart = movementEnd;
+                                        displacementEnd = e.NewStartingIndex + e.NewItems.Count;
+                                        displace = e.NewItems.Count * -1;
                                     }
                                     else
-                                        ++i;
+                                    {
+                                        displacementStart = e.NewStartingIndex;
+                                        displacementEnd = e.OldStartingIndex;
+                                        displace = e.NewItems.Count;
+                                    }
+                                    foreach (var element in sourceToIndicies.Keys.ToList())
+                                    {
+                                        var indiciesList = sourceToIndicies[element];
+                                        for (int i = 0, ii = indiciesList.Count; i < ii; ++i)
+                                        {
+                                            var index = indiciesList[i];
+                                            if (index >= e.OldStartingIndex && index < movementEnd)
+                                                indiciesList[i] = index + move;
+                                            else if (index >= displacementStart && index < displacementEnd)
+                                                indiciesList[i] = index + displace;
+                                        }
+                                    }
                                 }
-                                if (indiciesList.Count == 0)
-                                    sourceToIndicies.Remove(element);
+                                rangeObservableCollection.MoveRange(e.OldStartingIndex, e.NewStartingIndex, e.NewItems.Count);
                             }
-                        }
+                            break;
+                        case NotifyCollectionChangedAction.Add:
+                        case NotifyCollectionChangedAction.Remove:
+                        case NotifyCollectionChangedAction.Replace:
+                            if ((e.OldItems?.Count ?? 0) > 0)
+                            {
+                                rangeObservableCollection.RemoveRange(e.OldStartingIndex, e.OldItems.Count);
+                                if (indexingStrategy != IndexingStrategy.NoneOrInherit)
+                                {
+                                    var endIndex = e.OldStartingIndex + e.OldItems.Count;
+                                    foreach (var element in sourceToIndicies.Keys.ToList())
+                                    {
+                                        var indiciesList = sourceToIndicies[element];
+                                        for (var i = 0; i < indiciesList.Count;)
+                                        {
+                                            var listIndex = indiciesList[i];
+                                            if (listIndex >= e.OldStartingIndex)
+                                            {
+                                                if (listIndex >= endIndex)
+                                                {
+                                                    indiciesList[i] = listIndex - e.OldItems.Count;
+                                                    ++i;
+                                                }
+                                                else
+                                                    indiciesList.RemoveAt(i);
+                                            }
+                                            else
+                                                ++i;
+                                        }
+                                        if (indiciesList.Count == 0)
+                                            sourceToIndicies.Remove(element);
+                                    }
+                                }
+                            }
+                            if ((e.NewItems?.Count ?? 0) > 0)
+                            {
+                                if (indexingStrategy == IndexingStrategy.NoneOrInherit)
+                                    rangeObservableCollection.InsertRange(e.NewStartingIndex, e.NewItems.Select(er => er.result));
+                                else
+                                {
+                                    foreach (var indiciesList in sourceToIndicies.Values)
+                                        for (int i = 0, ii = indiciesList.Count; i < ii; ++i)
+                                        {
+                                            var listIndex = indiciesList[i];
+                                            if (listIndex >= e.NewStartingIndex)
+                                                indiciesList[i] = listIndex + e.NewItems.Count;
+                                        }
+                                    rangeObservableCollection.InsertRange(e.NewStartingIndex, e.NewItems.Select((er, sIndex) =>
+                                    {
+                                        var (element, result) = er;
+                                        if (!sourceToIndicies.TryGetValue(element, out var indiciesList))
+                                        {
+                                            indiciesList = new List<int>();
+                                            sourceToIndicies.Add(element, indiciesList);
+                                        }
+                                        indiciesList.Add(e.NewStartingIndex + sIndex);
+                                        return result;
+                                    }));
+                                }
+                            }
+                            break;
+                        default:
+                            throw new NotSupportedException();
                     }
                 });
 
@@ -1484,19 +1537,15 @@ namespace Gear.ActiveQuery
 
             return synchronizedSource.SequentialExecute(() =>
             {
-                var rangeActiveExpression = RangeActiveExpression.Create(source, selector, selectorOptions);
+                rangeActiveExpression = RangeActiveExpression.Create(source, selector, selectorOptions);
                 rangeActiveExpression.ElementResultChanged += elementResultChanged;
-                rangeActiveExpression.ElementsAdded += elementsAdded;
-                rangeActiveExpression.ElementsMoved += elementsMoved;
-                rangeActiveExpression.ElementsRemoved += elementsRemoved;
+                rangeActiveExpression.GenericCollectionChanged += genericCollectionChanged;
 
                 rangeObservableCollection = new SynchronizedRangeObservableCollection<TResult>(indexingStrategy != IndexingStrategy.NoneOrInherit ? rangeActiveExpression.GetResults().Select(indexedInitializer) : rangeActiveExpression.GetResults().Select(er => er.result));
                 return new ActiveEnumerable<TResult>(rangeObservableCollection, rangeActiveExpression, () =>
                 {
                     rangeActiveExpression.ElementResultChanged -= elementResultChanged;
-                    rangeActiveExpression.ElementsAdded -= elementsAdded;
-                    rangeActiveExpression.ElementsMoved -= elementsMoved;
-                    rangeActiveExpression.ElementsRemoved -= elementsRemoved;
+                    rangeActiveExpression.GenericCollectionChanged -= genericCollectionChanged;
 
                     rangeActiveExpression.Dispose();
                 });
@@ -1522,6 +1571,7 @@ namespace Gear.ActiveQuery
             }
 
             var synchronizedSource = source as ISynchronized;
+            EnumerableRangeActiveExpression<TSource, TResult> rangeActiveExpression;
             SynchronizedRangeObservableCollection<TResult> rangeObservableCollection = null;
 
             void elementResultChanged(object sender, RangeActiveExpressionResultChangeEventArgs<TSource, TResult> e) =>
@@ -1535,114 +1585,122 @@ namespace Gear.ActiveQuery
                         rangeObservableCollection[remainingIndex] = newResultElement;
                 });
 
-            void elementsAdded(object sender, RangeActiveExpressionMembershipEventArgs<TSource, TResult> e) =>
+            void genericCollectionChanged(object sender, NotifyGenericCollectionChangedEventArgs<(TSource element, TResult result)> e) =>
                 synchronizedSource.SequentialExecute(() =>
                 {
-                    var elementResults = e.ElementResults;
-                    var count = elementResults.Count;
-                    if (count > 0)
+                    switch (e.Action)
                     {
-                        var index = e.Index;
-                        if (indexingStrategy == IndexingStrategy.NoneOrInherit)
-                            rangeObservableCollection.InsertRange(index, elementResults.Select(er => er.result));
-                        else
-                        {
-                            foreach (var indiciesList in sourceToIndicies.Values)
-                                for (int i = 0, ii = indiciesList.Count; i < ii; ++i)
-                                {
-                                    var listIndex = indiciesList[i];
-                                    if (listIndex >= index)
-                                        indiciesList[i] = listIndex + count;
-                                }
-                            rangeObservableCollection.InsertRange(index, elementResults.Select((er, sIndex) =>
-                            {
-                                var (element, result) = er;
-                                if (!sourceToIndicies.TryGetValue(element, out var indiciesList))
-                                {
-                                    indiciesList = new List<int>();
-                                    sourceToIndicies.Add(element, indiciesList);
-                                }
-                                indiciesList.Add(index + sIndex);
-                                return result;
-                            }));
-                        }
-                    }
-                });
-
-            void elementsMoved(object sender, RangeActiveExpressionMovedEventArgs<TSource, TResult> e) =>
-                synchronizedSource.SequentialExecute(() =>
-                {
-                    var count = e.ElementResults.Count;
-                    var fromIndex = e.FromIndex;
-                    var toIndex = e.ToIndex;
-                    if (count > 0 && fromIndex != toIndex)
-                    {
-                        if (indexingStrategy != IndexingStrategy.NoneOrInherit)
-                        {
-                            int movementEnd = fromIndex + count, move = toIndex - fromIndex, displacementStart, displacementEnd, displace;
-                            if (fromIndex < toIndex)
-                            {
-                                displacementStart = movementEnd;
-                                displacementEnd = toIndex + count;
-                                displace = count * -1;
-                            }
+                        case NotifyCollectionChangedAction.Reset:
+                            rangeObservableCollection.Reset(indexingStrategy != IndexingStrategy.NoneOrInherit ? rangeActiveExpression.GetResults().Select(indexedInitializer) : rangeActiveExpression.GetResults().Select(er => er.result));
+                            if (indexingStrategy == IndexingStrategy.NoneOrInherit)
+                                rangeObservableCollection.Reset(rangeActiveExpression.GetResults().Select(er => er.result));
                             else
                             {
-                                displacementStart = toIndex;
-                                displacementEnd = fromIndex;
-                                displace = count;
-                            }
-                            foreach (var element in sourceToIndicies.Keys.ToList())
-                            {
-                                var indiciesList = sourceToIndicies[element];
-                                for (int i = 0, ii = indiciesList.Count; i < ii; ++i)
+                                switch (indexingStrategy)
                                 {
-                                    var index = indiciesList[i];
-                                    if (index >= fromIndex && index < movementEnd)
-                                        indiciesList[i] = index + move;
-                                    else if (index >= displacementStart && index < displacementEnd)
-                                        indiciesList[i] = index + displace;
+                                    case IndexingStrategy.SelfBalancingBinarySearchTree:
+                                        sourceToIndicies = new SortedDictionary<TSource, List<int>>();
+                                        break;
+                                    default:
+                                        sourceToIndicies = new Dictionary<TSource, List<int>>();
+                                        break;
                                 }
+                                rangeObservableCollection.Reset(rangeActiveExpression.GetResults().Select(indexedInitializer));
                             }
-                        }
-                        rangeObservableCollection.MoveRange(fromIndex, toIndex, count);
-                    }
-                });
-
-            void elementsRemoved(object sender, RangeActiveExpressionMembershipEventArgs<TSource, TResult> e) =>
-                synchronizedSource.SequentialExecute(() =>
-                {
-                    var count = e.ElementResults.Count;
-                    if (count > 0)
-                    {
-                        var startIndex = e.Index;
-                        rangeObservableCollection.RemoveRange(startIndex, count);
-                        if (indexingStrategy != IndexingStrategy.NoneOrInherit)
-                        {
-                            var endIndex = startIndex + count;
-                            foreach (var element in sourceToIndicies.Keys.ToList())
+                            break;
+                        case NotifyCollectionChangedAction.Move:
+                            if (indexingStrategy != IndexingStrategy.NoneOrInherit)
                             {
-                                var indiciesList = sourceToIndicies[element];
-                                for (var i = 0; i < indiciesList.Count;)
+                                int movementEnd = e.OldStartingIndex + e.NewItems.Count, move = e.NewStartingIndex - e.OldStartingIndex, displacementStart, displacementEnd, displace;
+                                if (e.OldStartingIndex < e.NewStartingIndex)
                                 {
-                                    var listIndex = indiciesList[i];
-                                    if (listIndex >= startIndex)
+                                    displacementStart = movementEnd;
+                                    displacementEnd = e.NewStartingIndex + e.NewItems.Count;
+                                    displace = e.NewItems.Count * -1;
+                                }
+                                else
+                                {
+                                    displacementStart = e.NewStartingIndex;
+                                    displacementEnd = e.OldStartingIndex;
+                                    displace = e.NewItems.Count;
+                                }
+                                foreach (var element in sourceToIndicies.Keys.ToList())
+                                {
+                                    var indiciesList = sourceToIndicies[element];
+                                    for (int i = 0, ii = indiciesList.Count; i < ii; ++i)
                                     {
-                                        if (listIndex >= endIndex)
-                                        {
-                                            indiciesList[i] = listIndex - count;
-                                            ++i;
-                                        }
-                                        else
-                                            indiciesList.RemoveAt(i);
+                                        var index = indiciesList[i];
+                                        if (index >= e.OldStartingIndex && index < movementEnd)
+                                            indiciesList[i] = index + move;
+                                        else if (index >= displacementStart && index < displacementEnd)
+                                            indiciesList[i] = index + displace;
                                     }
-                                    else
-                                        ++i;
                                 }
-                                if (indiciesList.Count == 0)
-                                    sourceToIndicies.Remove(element);
                             }
-                        }
+                            rangeObservableCollection.MoveRange(e.OldStartingIndex, e.NewStartingIndex, e.NewItems.Count);
+                            break;
+                        case NotifyCollectionChangedAction.Add:
+                        case NotifyCollectionChangedAction.Remove:
+                        case NotifyCollectionChangedAction.Replace:
+                            if ((e.OldItems?.Count ?? 0) > 0)
+                            {
+                                rangeObservableCollection.RemoveRange(e.OldStartingIndex, e.OldItems.Count);
+                                if (indexingStrategy != IndexingStrategy.NoneOrInherit)
+                                {
+                                    var endIndex = e.OldStartingIndex + e.OldItems.Count;
+                                    foreach (var element in sourceToIndicies.Keys.ToList())
+                                    {
+                                        var indiciesList = sourceToIndicies[element];
+                                        for (var i = 0; i < indiciesList.Count;)
+                                        {
+                                            var listIndex = indiciesList[i];
+                                            if (listIndex >= e.OldStartingIndex)
+                                            {
+                                                if (listIndex >= endIndex)
+                                                {
+                                                    indiciesList[i] = listIndex - e.OldItems.Count;
+                                                    ++i;
+                                                }
+                                                else
+                                                    indiciesList.RemoveAt(i);
+                                            }
+                                            else
+                                                ++i;
+                                        }
+                                        if (indiciesList.Count == 0)
+                                            sourceToIndicies.Remove(element);
+                                    }
+                                }
+                            }
+                            if ((e.NewItems?.Count ?? 0) > 0)
+                            {
+                                if (indexingStrategy == IndexingStrategy.NoneOrInherit)
+                                    rangeObservableCollection.InsertRange(e.NewStartingIndex, e.NewItems.Select(er => er.result));
+                                else
+                                {
+                                    foreach (var indiciesList in sourceToIndicies.Values)
+                                        for (int i = 0, ii = indiciesList.Count; i < ii; ++i)
+                                        {
+                                            var listIndex = indiciesList[i];
+                                            if (listIndex >= e.NewStartingIndex)
+                                                indiciesList[i] = listIndex + e.NewItems.Count;
+                                        }
+                                    rangeObservableCollection.InsertRange(e.NewStartingIndex, e.NewItems.Select((er, sIndex) =>
+                                    {
+                                        var (element, result) = er;
+                                        if (!sourceToIndicies.TryGetValue(element, out var indiciesList))
+                                        {
+                                            indiciesList = new List<int>();
+                                            sourceToIndicies.Add(element, indiciesList);
+                                        }
+                                        indiciesList.Add(e.NewStartingIndex + sIndex);
+                                        return result;
+                                    }));
+                                }
+                            }
+                            break;
+                        default:
+                            throw new NotSupportedException();
                     }
                 });
 
@@ -1660,19 +1718,15 @@ namespace Gear.ActiveQuery
 
             return synchronizedSource.SequentialExecute(() =>
             {
-                var rangeActiveExpression = RangeActiveExpression.Create(source, selector, predicateOptions);
+                rangeActiveExpression = RangeActiveExpression.Create(source, selector, predicateOptions);
                 rangeActiveExpression.ElementResultChanged += elementResultChanged;
-                rangeActiveExpression.ElementsAdded += elementsAdded;
-                rangeActiveExpression.ElementsMoved += elementsMoved;
-                rangeActiveExpression.ElementsRemoved += elementsRemoved;
+                rangeActiveExpression.GenericCollectionChanged += genericCollectionChanged;
 
                 rangeObservableCollection = new SynchronizedRangeObservableCollection<TResult>(indexingStrategy != IndexingStrategy.NoneOrInherit ? rangeActiveExpression.GetResults().Select(indexedInitializer) : rangeActiveExpression.GetResults().Select(er => er.result));
                 return new ActiveEnumerable<TResult>(rangeObservableCollection, rangeActiveExpression, () =>
                 {
                     rangeActiveExpression.ElementResultChanged -= elementResultChanged;
-                    rangeActiveExpression.ElementsAdded -= elementsAdded;
-                    rangeActiveExpression.ElementsMoved -= elementsMoved;
-                    rangeActiveExpression.ElementsRemoved -= elementsRemoved;
+                    rangeActiveExpression.GenericCollectionChanged -= genericCollectionChanged;
 
                     rangeActiveExpression.Dispose();
                 });
@@ -1709,6 +1763,7 @@ namespace Gear.ActiveQuery
             }
 
             var synchronizableSource = source as ISynchronized;
+            EnumerableRangeActiveExpression<TSource, IEnumerable<TResult>> rangeActiveExpression;
             SynchronizedRangeObservableCollection<TResult> rangeObservableCollection = null;
 
             void collectionChanged(object sender, NotifyCollectionChangedEventArgs e) =>
@@ -1821,157 +1876,183 @@ namespace Gear.ActiveQuery
                     }
                 });
 
-            void elementsAdded(object sender, RangeActiveExpressionMembershipEventArgs<TSource, IEnumerable<TResult>> e) =>
+            void genericCollectionChanged(object sender, NotifyGenericCollectionChangedEventArgs<(TSource element, IEnumerable<TResult> results)> e) =>
                 synchronizableSource.SequentialExecute(() =>
                 {
-                    int resultsIndex;
-                    if (e.Index == 0)
-                        resultsIndex = 0;
-                    else
+                    switch (e.Action)
                     {
-                        var indexTranslation = sourceToStartingIndicies.SelectMany(kv => kv.Value).OrderBy(resultIndex => resultIndex).ToImmutableArray();
-                        resultsIndex = e.Index < indexTranslation.Length ? indexTranslation[e.Index] : rangeObservableCollection.Count;
-                    }
-
-                    var iterativeResultsIndex = resultsIndex;
-                    IDictionary<TSource, List<int>> newSourceToStartingIndicies;
-                    switch (indexingStrategy)
-                    {
-                        case IndexingStrategy.SelfBalancingBinarySearchTree:
-                            newSourceToStartingIndicies = new SortedDictionary<TSource, List<int>>();
-                            break;
-                        default:
-                            newSourceToStartingIndicies = new Dictionary<TSource, List<int>>();
-                            break;
-                    }
-
-                    IEnumerable<TResult> indexingSelector((TSource element, IEnumerable<TResult> result) er)
-                    {
-                        var (element, result) = er;
-                        if (!newSourceToStartingIndicies.TryGetValue(element, out var newStartingIndicies))
-                        {
-                            newStartingIndicies = new List<int>();
-                            newSourceToStartingIndicies.Add(element, newStartingIndicies);
-                        }
-                        newStartingIndicies.Add(iterativeResultsIndex);
-                        var resultCount = result.Count();
-                        iterativeResultsIndex += resultCount;
-                        if (!sourceToCount.ContainsKey(element))
-                            sourceToCount.Add(element, resultCount);
-                        if (result is INotifyCollectionChanged changingResult && !changingResultToSource.ContainsKey(changingResult))
-                        {
-                            changingResult.CollectionChanged += collectionChanged;
-                            changingResultToSource.Add(changingResult, element);
-                            sourceToChangingResult.Add(element, changingResult);
-                        }
-                        return er.result;
-                    }
-
-                    var results = e.ElementResults.SelectMany(indexingSelector).ToList();
-                    var count = results.Count;
-                    if (count > 0)
-                    {
-                        foreach (var startingIndiciesList in sourceToStartingIndicies.Values)
-                            for (int i = 0, ii = startingIndiciesList.Count; i < ii; ++i)
+                        case NotifyCollectionChangedAction.Reset:
+                            foreach (var changingResult in changingResultToSource.Keys)
+                                changingResult.CollectionChanged -= collectionChanged;
+                            switch (indexingStrategy)
                             {
-                                var startingIndex = startingIndiciesList[i];
-                                if (startingIndex >= resultsIndex)
-                                    startingIndiciesList[i] = startingIndex + count;
+                                case IndexingStrategy.HashTable:
+                                    sourceToChangingResult = new Dictionary<TSource, INotifyCollectionChanged>();
+                                    sourceToCount = new Dictionary<TSource, int>();
+                                    sourceToStartingIndicies = new Dictionary<TSource, List<int>>();
+                                    break;
+                                case IndexingStrategy.SelfBalancingBinarySearchTree:
+                                    sourceToChangingResult = new SortedDictionary<TSource, INotifyCollectionChanged>();
+                                    sourceToCount = new SortedDictionary<TSource, int>();
+                                    sourceToStartingIndicies = new SortedDictionary<TSource, List<int>>();
+                                    break;
                             }
-                        rangeObservableCollection.InsertRange(resultsIndex, results);
-                    }
-                    foreach (var kv in newSourceToStartingIndicies)
-                    {
-                        var key = kv.Key;
-                        if (sourceToStartingIndicies.TryGetValue(key, out var startingIndicies))
-                        {
-                            startingIndicies.AddRange(kv.Value);
-                            startingIndicies.Sort();
-                        }
-                        else
-                            sourceToStartingIndicies.Add(key, kv.Value);
-                    }
-                });
-
-            void elementsMoved(object sender, RangeActiveExpressionMovedEventArgs<TSource, IEnumerable<TResult>> e) =>
-                synchronizableSource.SequentialExecute(() =>
-                {
-                    var elementResults = e.ElementResults;
-                    var count = elementResults.SelectMany(er => er.result).Count();
-                    if (count > 0 && e.FromIndex != e.ToIndex)
-                    {
-                        var indexTranslation = sourceToStartingIndicies.SelectMany(kv => kv.Value).OrderBy(resultIndex => resultIndex).ToImmutableArray();
-                        var fromIndex = indexTranslation[e.FromIndex];
-                        var toIndex = e.FromIndex > e.ToIndex ? indexTranslation[e.ToIndex] : (e.ToIndex == indexTranslation.Length - 1 ? rangeObservableCollection.Count : indexTranslation[e.ToIndex + 1]) - count;
-                        int movementEnd = fromIndex + count, move = toIndex - fromIndex, displacementStart, displacementEnd, displace;
-                        if (fromIndex < toIndex)
-                        {
-                            displacementStart = movementEnd;
-                            displacementEnd = toIndex + count;
-                            displace = count * -1;
-                        }
-                        else
-                        {
-                            displacementStart = toIndex;
-                            displacementEnd = fromIndex;
-                            displace = count;
-                        }
-                        foreach (var element in sourceToStartingIndicies.Keys.ToList())
-                        {
-                            var startingIndiciesList = sourceToStartingIndicies[element];
-                            for (int i = 0, ii = startingIndiciesList.Count; i < ii; ++i)
+                            rangeObservableCollection.Reset(rangeActiveExpression.GetResults().SelectMany(initializer));
+                            break;
+                        case NotifyCollectionChangedAction.Move:
                             {
-                                var startingIndex = startingIndiciesList[i];
-                                if (startingIndex >= fromIndex && startingIndex < movementEnd)
-                                    startingIndiciesList[i] = startingIndex + move;
-                                else if (startingIndex >= displacementStart && startingIndex < displacementEnd)
-                                    startingIndiciesList[i] = startingIndex + displace;
-                            }
-                        }
-                        rangeObservableCollection.MoveRange(fromIndex, toIndex, count);
-                    }
-                });
-
-            void elementsRemoved(object sender, RangeActiveExpressionMembershipEventArgs<TSource, IEnumerable<TResult>> e) =>
-                synchronizableSource.SequentialExecute(() =>
-                {
-                    var count = e.ElementResults.SelectMany(er => er.result).Count();
-                    if (count > 0)
-                    {
-                        var startIndex = e.Index == 0 ? 0 : sourceToStartingIndicies.SelectMany(kv => kv.Value).OrderBy(resultIndex => resultIndex).ElementAt(e.Index);
-                        rangeObservableCollection.RemoveRange(startIndex, count);
-                        var endIndex = startIndex + count;
-                        foreach (var element in sourceToStartingIndicies.Keys.ToList())
-                        {
-                            var startingIndiciesList = sourceToStartingIndicies[element];
-                            for (var i = 0; i < startingIndiciesList.Count;)
-                            {
-                                var startingListIndex = startingIndiciesList[i];
-                                if (startingListIndex >= startIndex)
+                                var count = e.NewItems.SelectMany(er => er.results).Count();
+                                if (count > 0 && e.OldStartingIndex != e.NewStartingIndex)
                                 {
-                                    if (startingListIndex >= endIndex)
+                                    var indexTranslation = sourceToStartingIndicies.SelectMany(kv => kv.Value).OrderBy(resultIndex => resultIndex).ToImmutableArray();
+                                    var fromIndex = indexTranslation[e.OldStartingIndex];
+                                    var toIndex = e.OldStartingIndex > e.NewStartingIndex ? indexTranslation[e.NewStartingIndex] : (e.NewStartingIndex == indexTranslation.Length - 1 ? rangeObservableCollection.Count : indexTranslation[e.NewStartingIndex + 1]) - count;
+                                    int movementEnd = fromIndex + count, move = toIndex - fromIndex, displacementStart, displacementEnd, displace;
+                                    if (fromIndex < toIndex)
                                     {
-                                        startingIndiciesList[i] = startingListIndex - count;
-                                        ++i;
+                                        displacementStart = movementEnd;
+                                        displacementEnd = toIndex + count;
+                                        displace = count * -1;
                                     }
                                     else
-                                        startingIndiciesList.RemoveAt(i);
+                                    {
+                                        displacementStart = toIndex;
+                                        displacementEnd = fromIndex;
+                                        displace = count;
+                                    }
+                                    foreach (var element in sourceToStartingIndicies.Keys.ToList())
+                                    {
+                                        var startingIndiciesList = sourceToStartingIndicies[element];
+                                        for (int i = 0, ii = startingIndiciesList.Count; i < ii; ++i)
+                                        {
+                                            var startingIndex = startingIndiciesList[i];
+                                            if (startingIndex >= fromIndex && startingIndex < movementEnd)
+                                                startingIndiciesList[i] = startingIndex + move;
+                                            else if (startingIndex >= displacementStart && startingIndex < displacementEnd)
+                                                startingIndiciesList[i] = startingIndex + displace;
+                                        }
+                                    }
+                                    rangeObservableCollection.MoveRange(fromIndex, toIndex, count);
                                 }
-                                else
-                                    ++i;
                             }
-                            if (startingIndiciesList.Count == 0)
+                            break;
+                        case NotifyCollectionChangedAction.Add:
+                        case NotifyCollectionChangedAction.Remove:
+                        case NotifyCollectionChangedAction.Replace:
+                            if ((e.OldItems?.Count ?? 0) > 0)
                             {
-                                sourceToCount.Remove(element);
-                                sourceToStartingIndicies.Remove(element);
-                                if (sourceToChangingResult.TryGetValue(element, out var changingResult))
+                                var count = e.OldItems.SelectMany(er => er.results).Count();
+                                if (count > 0)
                                 {
-                                    changingResultToSource.Remove(changingResult);
-                                    sourceToChangingResult.Remove(element);
-                                    changingResult.CollectionChanged -= collectionChanged;
+                                    var startIndex = e.OldStartingIndex == 0 ? 0 : sourceToStartingIndicies.SelectMany(kv => kv.Value).OrderBy(resultIndex => resultIndex).ElementAt(e.OldStartingIndex);
+                                    rangeObservableCollection.RemoveRange(startIndex, count);
+                                    var endIndex = startIndex + count;
+                                    foreach (var element in sourceToStartingIndicies.Keys.ToList())
+                                    {
+                                        var startingIndiciesList = sourceToStartingIndicies[element];
+                                        for (var i = 0; i < startingIndiciesList.Count;)
+                                        {
+                                            var startingListIndex = startingIndiciesList[i];
+                                            if (startingListIndex >= startIndex)
+                                            {
+                                                if (startingListIndex >= endIndex)
+                                                {
+                                                    startingIndiciesList[i] = startingListIndex - count;
+                                                    ++i;
+                                                }
+                                                else
+                                                    startingIndiciesList.RemoveAt(i);
+                                            }
+                                            else
+                                                ++i;
+                                        }
+                                        if (startingIndiciesList.Count == 0)
+                                        {
+                                            sourceToCount.Remove(element);
+                                            sourceToStartingIndicies.Remove(element);
+                                            if (sourceToChangingResult.TryGetValue(element, out var changingResult))
+                                            {
+                                                changingResultToSource.Remove(changingResult);
+                                                sourceToChangingResult.Remove(element);
+                                                changingResult.CollectionChanged -= collectionChanged;
+                                            }
+                                        }
+                                    }
                                 }
                             }
-                        }
+                            if ((e.NewItems?.Count ?? 0) > 0)
+                            {
+                                int resultsIndex;
+                                if (e.NewStartingIndex == 0)
+                                    resultsIndex = 0;
+                                else
+                                {
+                                    var indexTranslation = sourceToStartingIndicies.SelectMany(kv => kv.Value).OrderBy(resultIndex => resultIndex).ToImmutableArray();
+                                    resultsIndex = e.NewStartingIndex < indexTranslation.Length ? indexTranslation[e.NewStartingIndex] : rangeObservableCollection.Count;
+                                }
+
+                                var iterativeResultsIndex = resultsIndex;
+                                IDictionary<TSource, List<int>> newSourceToStartingIndicies;
+                                switch (indexingStrategy)
+                                {
+                                    case IndexingStrategy.SelfBalancingBinarySearchTree:
+                                        newSourceToStartingIndicies = new SortedDictionary<TSource, List<int>>();
+                                        break;
+                                    default:
+                                        newSourceToStartingIndicies = new Dictionary<TSource, List<int>>();
+                                        break;
+                                }
+
+                                IEnumerable<TResult> indexingSelector((TSource element, IEnumerable<TResult> result) er)
+                                {
+                                    var (element, result) = er;
+                                    if (!newSourceToStartingIndicies.TryGetValue(element, out var newStartingIndicies))
+                                    {
+                                        newStartingIndicies = new List<int>();
+                                        newSourceToStartingIndicies.Add(element, newStartingIndicies);
+                                    }
+                                    newStartingIndicies.Add(iterativeResultsIndex);
+                                    var resultCount = result.Count();
+                                    iterativeResultsIndex += resultCount;
+                                    if (!sourceToCount.ContainsKey(element))
+                                        sourceToCount.Add(element, resultCount);
+                                    if (result is INotifyCollectionChanged changingResult && !changingResultToSource.ContainsKey(changingResult))
+                                    {
+                                        changingResult.CollectionChanged += collectionChanged;
+                                        changingResultToSource.Add(changingResult, element);
+                                        sourceToChangingResult.Add(element, changingResult);
+                                    }
+                                    return er.result;
+                                }
+
+                                var results = e.NewItems.SelectMany(indexingSelector).ToList();
+                                var count = results.Count;
+                                if (count > 0)
+                                {
+                                    foreach (var startingIndiciesList in sourceToStartingIndicies.Values)
+                                        for (int i = 0, ii = startingIndiciesList.Count; i < ii; ++i)
+                                        {
+                                            var startingIndex = startingIndiciesList[i];
+                                            if (startingIndex >= resultsIndex)
+                                                startingIndiciesList[i] = startingIndex + count;
+                                        }
+                                    rangeObservableCollection.InsertRange(resultsIndex, results);
+                                }
+                                foreach (var kv in newSourceToStartingIndicies)
+                                {
+                                    var key = kv.Key;
+                                    if (sourceToStartingIndicies.TryGetValue(key, out var startingIndicies))
+                                    {
+                                        startingIndicies.AddRange(kv.Value);
+                                        startingIndicies.Sort();
+                                    }
+                                    else
+                                        sourceToStartingIndicies.Add(key, kv.Value);
+                                }
+                            }
+                            break;
+                        default:
+                            throw new NotSupportedException();
                     }
                 });
 
@@ -2001,11 +2082,9 @@ namespace Gear.ActiveQuery
 
             return synchronizableSource.SequentialExecute(() =>
             {
-                var rangeActiveExpression = RangeActiveExpression.Create(source, selector, selectorOptions);
+                rangeActiveExpression = RangeActiveExpression.Create(source, selector, selectorOptions);
                 rangeActiveExpression.ElementResultChanged += elementResultChanged;
-                rangeActiveExpression.ElementsAdded += elementsAdded;
-                rangeActiveExpression.ElementsMoved += elementsMoved;
-                rangeActiveExpression.ElementsRemoved += elementsRemoved;
+                rangeActiveExpression.GenericCollectionChanged += genericCollectionChanged;
 
                 rangeObservableCollection = new SynchronizedRangeObservableCollection<TResult>(rangeActiveExpression.GetResults().SelectMany(initializer));
                 return new ActiveEnumerable<TResult>(rangeObservableCollection, onDispose: () =>
@@ -2013,9 +2092,7 @@ namespace Gear.ActiveQuery
                     foreach (var changingResult in changingResultToSource.Keys)
                         changingResult.CollectionChanged -= collectionChanged;
                     rangeActiveExpression.ElementResultChanged -= elementResultChanged;
-                    rangeActiveExpression.ElementsAdded -= elementsAdded;
-                    rangeActiveExpression.ElementsMoved -= elementsMoved;
-                    rangeActiveExpression.ElementsRemoved -= elementsRemoved;
+                    rangeActiveExpression.GenericCollectionChanged -= genericCollectionChanged;
                 });
             });
         }
@@ -2096,6 +2173,7 @@ namespace Gear.ActiveQuery
                 {
                     setOperationFault(ExceptionHelper.SequenceContainsNoElements);
                     none = true;
+                    moreThanOne = false;
                 }
                 if (moreThanOne && where.Count <= 1)
                 {
@@ -2105,6 +2183,7 @@ namespace Gear.ActiveQuery
                 else if (!moreThanOne && where.Count > 1)
                 {
                     setOperationFault(ExceptionHelper.SequenceContainsMoreThanOneElement);
+                    none = false;
                     moreThanOne = true;
                 }
                 setValue(where.Count == 1 ? where[0] : default);
@@ -2234,6 +2313,7 @@ namespace Gear.ActiveQuery
 
             var operations = new GenericOperations<TResult>();
             var synchronizedSource = source as ISynchronized;
+            EnumerableRangeActiveExpression<TSource, TResult> rangeActiveExpression;
             ActiveValue<TResult> activeValue = null;
             Action<TResult> setValue = null;
             var resultsChanging = new Dictionary<TSource, (TResult result, int instances)>();
@@ -2248,24 +2328,43 @@ namespace Gear.ActiveQuery
 
             void elementResultChanging(object sender, RangeActiveExpressionResultChangeEventArgs<TSource, TResult> e) => synchronizedSource.SequentialExecute(() => resultsChanging.Add(e.Element, (e.Result, e.Count)));
 
-            void elementsAdded(object sender, RangeActiveExpressionMembershipEventArgs<TSource, TResult> e) => synchronizedSource.SequentialExecute(() => setValue(new TResult[] { activeValue.Value }.Concat(e.ElementResults.Select(er => er.result)).Aggregate(operations.Add)));
-
-            void elementsRemoved(object sender, RangeActiveExpressionMembershipEventArgs<TSource, TResult> e) => synchronizedSource.SequentialExecute(() => setValue(new TResult[] { activeValue.Value }.Concat(e.ElementResults.Select(er => er.result)).Aggregate(operations.Subtract)));
+            void genericCollectionChanged(object sender, NotifyGenericCollectionChangedEventArgs<(TSource element, TResult result)> e) =>
+                synchronizedSource.SequentialExecute(() =>
+                {
+                    if (e.Action == NotifyCollectionChangedAction.Reset)
+                    {
+                        try
+                        {
+                            setValue(rangeActiveExpression.GetResults().Select(er => er.result).Aggregate(operations.Add));
+                        }
+                        catch (InvalidOperationException)
+                        {
+                            setValue(default);
+                        }
+                    }
+                    else if (e.Action != NotifyCollectionChangedAction.Move)
+                    {
+                        var sum = activeValue.Value;
+                        if ((e.OldItems?.Count ?? 0) > 0)
+                            sum = new TResult[] { sum }.Concat(e.OldItems.Select(er => er.result)).Aggregate(operations.Subtract);
+                        if ((e.NewItems?.Count ?? 0) > 0)
+                            sum = new TResult[] { sum }.Concat(e.NewItems.Select(er => er.result)).Aggregate(operations.Add);
+                        setValue(sum);
+                    }
+                });
 
             return synchronizedSource.SequentialExecute(() =>
             {
-                var rangeActiveExpression = RangeActiveExpression.Create(source, selector, selectorOptions);
+                rangeActiveExpression = RangeActiveExpression.Create(source, selector, selectorOptions);
                 rangeActiveExpression.ElementResultChanged += elementResultChanged;
                 rangeActiveExpression.ElementResultChanging += elementResultChanging;
-                rangeActiveExpression.ElementsAdded += elementsAdded;
-                rangeActiveExpression.ElementsRemoved += elementsRemoved;
+                rangeActiveExpression.GenericCollectionChanged += genericCollectionChanged;
 
                 void dispose()
                 {
                     rangeActiveExpression.ElementResultChanged -= elementResultChanged;
                     rangeActiveExpression.ElementResultChanging -= elementResultChanging;
-                    rangeActiveExpression.ElementsAdded -= elementsAdded;
-                    rangeActiveExpression.ElementsRemoved -= elementsRemoved;
+                    rangeActiveExpression.GenericCollectionChanged -= genericCollectionChanged;
 
                     rangeActiveExpression.Dispose();
                 }
@@ -2345,6 +2444,7 @@ namespace Gear.ActiveQuery
             var isFaultedDuplicateKeys = false;
             var isFaultedNullKey = false;
             var nullKeys = 0;
+            EnumerableRangeActiveExpression<TSource, KeyValuePair<TKey, TValue>> rangeActiveExpression;
             ISynchronizedObservableRangeDictionary<TKey, TValue> rangeObservableDictionary;
             Action<Exception> setOperationFault = null;
 
@@ -2427,53 +2527,80 @@ namespace Gear.ActiveQuery
                     checkOperationFault();
                 });
 
-            void elementsAdded(object sender, RangeActiveExpressionMembershipEventArgs<TSource, KeyValuePair<TKey, TValue>> e) =>
+            void genericCollectionChanged(object sender, NotifyGenericCollectionChangedEventArgs<(TSource element, KeyValuePair<TKey, TValue> keyValuePair)> e) =>
                 synchronizedSource.SequentialExecute(() =>
                 {
-                    foreach (var (element, result) in e.ElementResults)
+                    if (e.Action == NotifyCollectionChangedAction.Reset)
                     {
-                        var key = result.Key;
-                        if (key == null)
-                            ++nullKeys;
+                        IDictionary<TKey, TValue> replacementDictionary;
+                        if (indexingStategy == IndexingStrategy.SelfBalancingBinarySearchTree)
+                        {
+                            duplicateKeys = keyComparer == null ? new SortedDictionary<TKey, int>() : new SortedDictionary<TKey, int>(keyComparer);
+                            replacementDictionary = keyComparer == null ? new SortedDictionary<TKey, TValue>() : new SortedDictionary<TKey, TValue>(keyComparer);
+                        }
                         else
                         {
-                            var value = result.Value;
-                            if (rangeObservableDictionary.TryGetValue(key, out var existingValue))
-                            {
-                                if (duplicateKeys.TryGetValue(key, out var duplicates))
-                                    duplicateKeys[key] = duplicates + 1;
-                                else
-                                    duplicateKeys.Add(key, 1);
-                            }
-                            else
-                                rangeObservableDictionary.Add(key, value);
+                            duplicateKeys = keyEqualityComparer == null ? new Dictionary<TKey, int>() : new Dictionary<TKey, int>(keyEqualityComparer);
+                            replacementDictionary = keyEqualityComparer == null ? new Dictionary<TKey, TValue>() : new Dictionary<TKey, TValue>(keyEqualityComparer);
                         }
+                        var resultsFaultsAndCounts = rangeActiveExpression.GetResultsFaultsAndCounts();
+                        nullKeys = resultsFaultsAndCounts.Count(rfc => rfc.result.Key == null);
+                        var distinctResultsFaultsAndCounts = resultsFaultsAndCounts.Where(rfc => rfc.result.Key != null).GroupBy(rfc => rfc.result.Key).ToList();
+                        foreach (var keyValuePair in distinctResultsFaultsAndCounts.Select(g => g.First().result))
+                            replacementDictionary.Add(keyValuePair);
+                        rangeObservableDictionary.Reset(replacementDictionary);
+                        foreach (var (key, duplicateCount) in distinctResultsFaultsAndCounts.Select(g => (key: g.Key, duplicateCount: g.Sum(rfc => rfc.count) - 1)).Where(kc => kc.duplicateCount > 0))
+                            duplicateKeys.Add(key, duplicateCount);
+                        checkOperationFault();
                     }
-                    checkOperationFault();
-                });
-
-            void elementsRemoved(object sender, RangeActiveExpressionMembershipEventArgs<TSource, KeyValuePair<TKey, TValue>> e) =>
-                synchronizedSource.SequentialExecute(() =>
-                {
-                    foreach (var (element, result) in e.ElementResults)
+                    else if (e.Action != NotifyCollectionChangedAction.Move)
                     {
-                        var key = result.Key;
-                        if (key == null)
-                            --nullKeys;
-                        else
+                        if ((e.OldItems?.Count ?? 0) > 0)
                         {
-                            if (duplicateKeys.TryGetValue(key, out var duplicates))
+                            foreach (var (element, result) in e.OldItems)
                             {
-                                if (duplicates == 1)
-                                    duplicateKeys.Remove(key);
+                                var key = result.Key;
+                                if (key == null)
+                                    --nullKeys;
                                 else
-                                    duplicateKeys[key] = duplicates - 1;
+                                {
+                                    if (duplicateKeys.TryGetValue(key, out var duplicates))
+                                    {
+                                        if (duplicates == 1)
+                                            duplicateKeys.Remove(key);
+                                        else
+                                            duplicateKeys[key] = duplicates - 1;
+                                    }
+                                    else
+                                        rangeObservableDictionary.Remove(key);
+                                }
                             }
-                            else
-                                rangeObservableDictionary.Remove(key);
+                            checkOperationFault();
+                        }
+                        if ((e.NewItems?.Count ?? 0) > 0)
+                        {
+                            foreach (var (element, result) in e.NewItems)
+                            {
+                                var key = result.Key;
+                                if (key == null)
+                                    ++nullKeys;
+                                else
+                                {
+                                    var value = result.Value;
+                                    if (rangeObservableDictionary.TryGetValue(key, out var existingValue))
+                                    {
+                                        if (duplicateKeys.TryGetValue(key, out var duplicates))
+                                            duplicateKeys[key] = duplicates + 1;
+                                        else
+                                            duplicateKeys.Add(key, 1);
+                                    }
+                                    else
+                                        rangeObservableDictionary.Add(key, value);
+                                }
+                            }
+                            checkOperationFault();
                         }
                     }
-                    checkOperationFault();
                 });
 
             return synchronizedSource.SequentialExecute(() =>
@@ -2490,11 +2617,10 @@ namespace Gear.ActiveQuery
                         break;
                 }
 
-                var rangeActiveExpression = RangeActiveExpression.Create(source, selector, selectorOptions);
+                rangeActiveExpression = RangeActiveExpression.Create(source, selector, selectorOptions);
                 rangeActiveExpression.ElementResultChanged += elementResultChanged;
                 rangeActiveExpression.ElementResultChanging += elementResultChanging;
-                rangeActiveExpression.ElementsAdded += elementsAdded;
-                rangeActiveExpression.ElementsRemoved += elementsRemoved;
+                rangeActiveExpression.GenericCollectionChanged += genericCollectionChanged;
 
                 ActiveLookup<TKey, TValue> activeLookup;
                 var resultsFaultsAndCounts = rangeActiveExpression.GetResultsFaultsAndCounts();
@@ -2507,8 +2633,7 @@ namespace Gear.ActiveQuery
                 {
                     rangeActiveExpression.ElementResultChanged -= elementResultChanged;
                     rangeActiveExpression.ElementResultChanging -= elementResultChanging;
-                    rangeActiveExpression.ElementsAdded -= elementsAdded;
-                    rangeActiveExpression.ElementsRemoved -= elementsRemoved;
+                    rangeActiveExpression.GenericCollectionChanged -= genericCollectionChanged;
                     rangeActiveExpression.Dispose();
                 });
                 checkOperationFault();
@@ -2526,7 +2651,7 @@ namespace Gear.ActiveQuery
             ActiveQueryOptions.Optimize(ref predicate);
 
             var synchronizedSource = source as ISynchronized;
-            var rangeObservableCollectionAccess = new object();
+            EnumerableRangeActiveExpression<TSource, bool> rangeActiveExpression;
             SynchronizedRangeObservableCollection<TSource> rangeObservableCollection = null;
 
             void elementResultChanged(object sender, RangeActiveExpressionResultChangeEventArgs<TSource, bool> e) =>
@@ -2541,23 +2666,31 @@ namespace Gear.ActiveQuery
                     }
                 });
 
-            void elementsAdded(object sender, RangeActiveExpressionMembershipEventArgs<TSource, bool> e) => synchronizedSource.SequentialExecute(() => rangeObservableCollection.AddRange(e.ElementResults.Where(er => er.result).Select(er => er.element)));
-
-            void elementsRemoved(object sender, RangeActiveExpressionMembershipEventArgs<TSource, bool> e) => synchronizedSource.SequentialExecute(() => rangeObservableCollection.RemoveRange(e.ElementResults.Where(er => er.result).Select(er => er.element)));
+            void genericCollectionChanged(object sender, NotifyGenericCollectionChangedEventArgs<(TSource element, bool included)> e) =>
+                synchronizedSource.SequentialExecute(() =>
+                {
+                    if (e.Action == NotifyCollectionChangedAction.Reset)
+                        rangeObservableCollection.Reset(rangeActiveExpression.GetResults().Where(er => er.result).Select(er => er.element));
+                    else if (e.Action != NotifyCollectionChangedAction.Move)
+                    {
+                        if ((e.OldItems?.Count ?? 0) > 0)
+                            rangeObservableCollection.RemoveRange(e.OldItems.Where(er => er.included).Select(er => er.element));
+                        if ((e.NewItems?.Count ?? 0) > 0)
+                            rangeObservableCollection.AddRange(e.NewItems.Where(er => er.included).Select(er => er.element));
+                    }
+                });
 
             return synchronizedSource.SequentialExecute(() =>
             {
-                var rangeActiveExpression = RangeActiveExpression.Create(source, predicate, predicateOptions);
+                rangeActiveExpression = RangeActiveExpression.Create(source, predicate, predicateOptions);
                 rangeActiveExpression.ElementResultChanged += elementResultChanged;
-                rangeActiveExpression.ElementsAdded += elementsAdded;
-                rangeActiveExpression.ElementsRemoved += elementsRemoved;
+                rangeActiveExpression.GenericCollectionChanged += genericCollectionChanged;
 
                 rangeObservableCollection = new SynchronizedRangeObservableCollection<TSource>(rangeActiveExpression.GetResults().Where(er => er.result).Select(er => er.element));
                 return new ActiveEnumerable<TSource>(rangeObservableCollection, rangeActiveExpression, () =>
                 {
                     rangeActiveExpression.ElementResultChanged -= elementResultChanged;
-                    rangeActiveExpression.ElementsAdded -= elementsAdded;
-                    rangeActiveExpression.ElementsRemoved -= elementsRemoved;
+                    rangeActiveExpression.GenericCollectionChanged -= genericCollectionChanged;
 
                     rangeActiveExpression.Dispose();
                 });

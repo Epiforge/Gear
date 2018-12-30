@@ -2,6 +2,7 @@ using Gear.Components;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Collections.Specialized;
 using System.Linq;
 
 namespace Gear.ActiveQuery
@@ -33,9 +34,9 @@ namespace Gear.ActiveQuery
                     foreach (var (rangeActiveExpression, isDescending) in this.selectors)
                     {
                         rangeActiveExpression.ElementResultChanged += RangeActiveExpressionElementResultChanged;
-                        rangeActiveExpression.ElementsAdded += RangeActiveExpressionElementsAdded;
+                        rangeActiveExpression.GenericCollectionChanged += RangeActiveExpressionGenericCollectionChanged;
                     }
-                    this.selectors.Last().rangeActiveExpression.ElementsRemoved += RangeActiveExpressionElementsRemoved;
+                    lastSelector = this.selectors.Last();
                     rangeActiveExpressionIndicies = new Dictionary<EnumerableRangeActiveExpression<TElement, IComparable>, int>();
                     var index = -1;
                     foreach (var (rangeActiveExpression, isDescending) in this.selectors.Take(1))
@@ -60,11 +61,12 @@ namespace Gear.ActiveQuery
             }
         }
 
-        readonly IDictionary<TElement, List<IComparable>> comparables;
+        IDictionary<TElement, List<IComparable>> comparables;
         readonly object comparablesAccess = new object();
-        readonly IDictionary<TElement, int> counts;
+        IDictionary<TElement, int> counts;
         readonly IndexingStrategy indexingStrategy;
-        readonly Dictionary<EnumerableRangeActiveExpression<TElement, IComparable>, int> rangeActiveExpressionIndicies;
+        readonly (EnumerableRangeActiveExpression<TElement, IComparable> rangeActiveExpression, bool isDescending) lastSelector;
+        Dictionary<EnumerableRangeActiveExpression<TElement, IComparable>, int> rangeActiveExpressionIndicies;
         readonly IReadOnlyList<(EnumerableRangeActiveExpression<TElement, IComparable> rangeActiveExpression, bool isDescending)> selectors;
 
         public int Compare(TElement x, TElement y)
@@ -103,9 +105,8 @@ namespace Gear.ActiveQuery
                 foreach (var (rangeActiveExpression, isDescending) in selectors)
                 {
                     rangeActiveExpression.ElementResultChanged -= RangeActiveExpressionElementResultChanged;
-                    rangeActiveExpression.ElementsAdded -= RangeActiveExpressionElementsAdded;
+                    rangeActiveExpression.GenericCollectionChanged -= RangeActiveExpressionGenericCollectionChanged;
                 }
-                selectors.Last().rangeActiveExpression.ElementsRemoved += RangeActiveExpressionElementsRemoved;
             }
         }
 
@@ -119,52 +120,90 @@ namespace Gear.ActiveQuery
                     comparables[e.Element][rangeActiveExpressionIndicies[(EnumerableRangeActiveExpression<TElement, IComparable>)sender]] = e.Result;
         }
 
-        void RangeActiveExpressionElementsAdded(object sender, RangeActiveExpressionMembershipEventArgs<TElement, IComparable> e)
+        void RangeActiveExpressionGenericCollectionChanged(object sender, NotifyGenericCollectionChangedEventArgs<(TElement element, IComparable comparable)> e)
         {
             lock (comparablesAccess)
             {
-                var rangeActiveExpressionIndex = rangeActiveExpressionIndicies[(EnumerableRangeActiveExpression<TElement, IComparable>)sender];
-                if (rangeActiveExpressionIndex == 0)
-                    foreach (var elementAndResults in e.ElementResults.GroupBy(er => er.element, er => er.result))
-                    {
-                        var element = elementAndResults.Key;
-                        var count = elementAndResults.Count();
-                        if (!comparables.TryGetValue(element, out var elementComparables))
-                        {
-                            elementComparables = new List<IComparable>();
-                            comparables.Add(elementAndResults.Key, elementComparables);
-                            elementComparables.Add(elementAndResults.First());
-                            counts.Add(element, count);
-                        }
-                        else
-                            counts[element] += count;
-                    }
-                else
-                    foreach (var elementAndResults in e.ElementResults.GroupBy(er => er.element, er => er.result))
-                    {
-                        var comparablesList = comparables[elementAndResults.Key];
-                        if (comparablesList.Count == rangeActiveExpressionIndex)
-                            comparablesList.Add(elementAndResults.First());
-                    }
-            }
-        }
-
-        void RangeActiveExpressionElementsRemoved(object sender, RangeActiveExpressionMembershipEventArgs<TElement, IComparable> e)
-        {
-            lock (comparablesAccess)
-                foreach (var elementAndResults in e.ElementResults.GroupBy(er => er.element, er => er.result))
+                if (e.Action == NotifyCollectionChangedAction.Reset && sender == lastSelector.rangeActiveExpression)
                 {
-                    var element = elementAndResults.Key;
-                    var currentCount = counts[element];
-                    var removedCount = elementAndResults.Count();
-                    if (currentCount - removedCount == 0)
+                    switch (indexingStrategy)
                     {
-                        counts.Remove(element);
-                        comparables.Remove(element);
+                        case IndexingStrategy.HashTable:
+                            comparables = new Dictionary<TElement, List<IComparable>>();
+                            counts = new Dictionary<TElement, int>();
+                            break;
+                        case IndexingStrategy.SelfBalancingBinarySearchTree:
+                            comparables = new SortedDictionary<TElement, List<IComparable>>();
+                            counts = new SortedDictionary<TElement, int>();
+                            break;
                     }
-                    else
-                        counts[element] = currentCount - removedCount;
+                    rangeActiveExpressionIndicies = new Dictionary<EnumerableRangeActiveExpression<TElement, IComparable>, int>();
+                    var index = -1;
+                    foreach (var (rangeActiveExpression, isDescending) in selectors.Take(1))
+                    {
+                        rangeActiveExpressionIndicies.Add(rangeActiveExpression, ++index);
+                        foreach (var elementAndResults in rangeActiveExpression.GetResults().GroupBy(er => er.element, er => er.result))
+                        {
+                            var element = elementAndResults.Key;
+                            var elementComparables = new List<IComparable>();
+                            comparables.Add(element, elementComparables);
+                            elementComparables.Add(elementAndResults.First());
+                            counts.Add(element, elementAndResults.Count());
+                        }
+                    }
+                    foreach (var (rangeActiveExpression, isDescending) in selectors.Skip(1))
+                    {
+                        rangeActiveExpressionIndicies.Add(rangeActiveExpression, ++index);
+                        foreach (var elementAndResults in rangeActiveExpression.GetResults().GroupBy(er => er.element, er => er.result))
+                            comparables[elementAndResults.Key].Add(elementAndResults.First());
+                    }
                 }
+                else if (e.Action != NotifyCollectionChangedAction.Move)
+                {
+                    if ((e.OldItems?.Count ?? 0) > 0 && sender == lastSelector.rangeActiveExpression)
+                    {
+                        foreach (var elementAndResults in e.OldItems.GroupBy(er => er.element, er => er.comparable))
+                        {
+                            var element = elementAndResults.Key;
+                            var currentCount = counts[element];
+                            var removedCount = elementAndResults.Count();
+                            if (currentCount - removedCount == 0)
+                            {
+                                counts.Remove(element);
+                                comparables.Remove(element);
+                            }
+                            else
+                                counts[element] = currentCount - removedCount;
+                        }
+                    }
+                    if ((e.NewItems?.Count ?? 0) > 0)
+                    {
+                        var rangeActiveExpressionIndex = rangeActiveExpressionIndicies[(EnumerableRangeActiveExpression<TElement, IComparable>)sender];
+                        if (rangeActiveExpressionIndex == 0)
+                            foreach (var elementAndResults in e.NewItems.GroupBy(er => er.element, er => er.comparable))
+                            {
+                                var element = elementAndResults.Key;
+                                var count = elementAndResults.Count();
+                                if (!comparables.TryGetValue(element, out var elementComparables))
+                                {
+                                    elementComparables = new List<IComparable>();
+                                    comparables.Add(elementAndResults.Key, elementComparables);
+                                    elementComparables.Add(elementAndResults.First());
+                                    counts.Add(element, count);
+                                }
+                                else
+                                    counts[element] += count;
+                            }
+                        else
+                            foreach (var elementAndResults in e.NewItems.GroupBy(er => er.element, er => er.comparable))
+                            {
+                                var comparablesList = comparables[elementAndResults.Key];
+                                if (comparablesList.Count == rangeActiveExpressionIndex)
+                                    comparablesList.Add(elementAndResults.First());
+                            }
+                    }
+                }
+            }
         }
     }
 }
