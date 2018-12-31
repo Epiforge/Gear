@@ -146,7 +146,7 @@ namespace Gear.ActiveQuery
             }
         }
 
-        static IndexingStrategy? GetIndexingStrategy<TKey, TValue>(this IDictionary<TKey, TValue> dictionary)
+        public static IndexingStrategy? GetIndexingStrategy<TKey, TValue>(this IDictionary<TKey, TValue> dictionary)
         {
             if (dictionary is Dictionary<TKey, TValue> || dictionary is ObservableDictionary<TKey, TValue> || dictionary is SynchronizedObservableDictionary<TKey, TValue>)
                 return IndexingStrategy.HashTable;
@@ -155,7 +155,7 @@ namespace Gear.ActiveQuery
             return null;
         }
 
-        static IndexingStrategy? GetIndexingStrategy<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> readOnlyDictionary)
+        public static IndexingStrategy? GetIndexingStrategy<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> readOnlyDictionary)
         {
             if (readOnlyDictionary is Dictionary<TKey, TValue> || readOnlyDictionary is ObservableDictionary<TKey, TValue> || readOnlyDictionary is SynchronizedObservableDictionary<TKey, TValue>)
                 return IndexingStrategy.HashTable;

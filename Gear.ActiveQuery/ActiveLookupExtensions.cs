@@ -831,10 +831,10 @@ namespace Gear.ActiveQuery
                         }
                         if ((e.NewItems?.Count ?? 0) > 0)
                         {
-                            var lastIndex = keyToIndex.Count - 1;
+                            var currentCount = keyToIndex.Count;
                             rangeObservableCollection.AddRange(e.NewItems.Select((KeyValuePair<TKey, TResult> kv, int index) =>
                             {
-                                keyToIndex.Add(kv.Key, lastIndex + index);
+                                keyToIndex.Add(kv.Key, currentCount + index);
                                 return kv.Value;
                             }));
                         }
@@ -855,6 +855,54 @@ namespace Gear.ActiveQuery
                     return er.result;
                 }));
                 return new ActiveEnumerable<TResult>(rangeObservableCollection, rangeActiveExpression, () =>
+                {
+                    rangeActiveExpression.DictionaryChanged -= rangeActiveExpressionChanged;
+                    rangeActiveExpression.ValueResultChanged -= valueResultChanged;
+                    rangeActiveExpression.Dispose();
+                });
+            });
+        }
+
+        public static ActiveLookup<TResultKey, TResultValue> ActiveSelect<TSourceKey, TSourceValue, TResultKey, TResultValue>(this IReadOnlyDictionary<TSourceKey, TSourceValue> source, Expression<Func<TSourceKey, TSourceValue, KeyValuePair<TResultKey, TResultValue>>> selector, ActiveExpressionOptions selectorOptions = null, IEqualityComparer<TResultKey> keyEqualityComparer = null, IComparer<TResultKey> keyComparer = null)
+        {
+            ActiveQueryOptions.Optimize(ref selector);
+
+            var synchronizedSource = source as ISynchronized;
+            ReadOnlyDictionaryRangeActiveExpression<TSourceKey, TSourceValue, KeyValuePair<TResultKey, TResultValue>> rangeActiveExpression;
+            var sourceKeyToResultKey = source.CreateSimilarDictionary<TSourceKey, TSourceValue, TResultKey>();
+            ISynchronizedObservableRangeDictionary<TResultKey, TResultValue> observableDictionary;
+
+            void rangeActiveExpressionChanged(object sender, NotifyDictionaryChangedEventArgs<TSourceKey, KeyValuePair<TResultKey, TResultValue>> e) =>
+                synchronizedSource.SequentialExecute(() =>
+                {
+                    // TODO: source reset; source values added, replaced, or removed
+                });
+
+            void valueResultChanged(object sender, RangeActiveExpressionResultChangeEventArgs<TSourceKey, KeyValuePair<TResultKey, TResultValue>> e) =>
+                synchronizedSource.SequentialExecute(() =>
+                {
+                    // TODO: result key and/or value changed
+                });
+
+            return synchronizedSource.SequentialExecute(() =>
+            {
+                rangeActiveExpression = RangeActiveExpression.Create(source, selector, selectorOptions);
+                rangeActiveExpression.DictionaryChanged += rangeActiveExpressionChanged;
+                rangeActiveExpression.ValueResultChanged += valueResultChanged;
+
+                switch (source.GetIndexingStrategy() ?? IndexingStrategy.NoneOrInherit)
+                {
+                    case IndexingStrategy.SelfBalancingBinarySearchTree:
+                        observableDictionary = keyComparer == null ? new SynchronizedObservableSortedDictionary<TResultKey, TResultValue>() : new SynchronizedObservableSortedDictionary<TResultKey, TResultValue>(keyComparer);
+                        break;
+                    default:
+                        observableDictionary = keyEqualityComparer == null ? new SynchronizedObservableDictionary<TResultKey, TResultValue>() : new SynchronizedObservableDictionary<TResultKey, TResultValue>(keyEqualityComparer);
+                        break;
+                }
+
+                // TODO: initialize from source
+
+                return new ActiveLookup<TResultKey, TResultValue>(observableDictionary, rangeActiveExpression, () =>
                 {
                     rangeActiveExpression.DictionaryChanged -= rangeActiveExpressionChanged;
                     rangeActiveExpression.ValueResultChanged -= valueResultChanged;
