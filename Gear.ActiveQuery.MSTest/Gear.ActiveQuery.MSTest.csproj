@@ -107,6 +107,7 @@
     <Compile Include="Lookup\ActiveMax.cs" />
     <Compile Include="Lookup\ActiveMin.cs" />
     <Compile Include="Lookup\ActiveSelect.cs" />
+    <Compile Include="Lookup\ToActiveLookup.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="TestPerson.cs" />
     <Compile Include="TestSimpleObservableCollection.cs" />

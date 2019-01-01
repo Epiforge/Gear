@@ -863,54 +863,6 @@ namespace Gear.ActiveQuery
             });
         }
 
-        public static ActiveLookup<TResultKey, TResultValue> ActiveSelect<TSourceKey, TSourceValue, TResultKey, TResultValue>(this IReadOnlyDictionary<TSourceKey, TSourceValue> source, Expression<Func<TSourceKey, TSourceValue, KeyValuePair<TResultKey, TResultValue>>> selector, ActiveExpressionOptions selectorOptions = null, IEqualityComparer<TResultKey> keyEqualityComparer = null, IComparer<TResultKey> keyComparer = null)
-        {
-            ActiveQueryOptions.Optimize(ref selector);
-
-            var synchronizedSource = source as ISynchronized;
-            ReadOnlyDictionaryRangeActiveExpression<TSourceKey, TSourceValue, KeyValuePair<TResultKey, TResultValue>> rangeActiveExpression;
-            var sourceKeyToResultKey = source.CreateSimilarDictionary<TSourceKey, TSourceValue, TResultKey>();
-            ISynchronizedObservableRangeDictionary<TResultKey, TResultValue> observableDictionary;
-
-            void rangeActiveExpressionChanged(object sender, NotifyDictionaryChangedEventArgs<TSourceKey, KeyValuePair<TResultKey, TResultValue>> e) =>
-                synchronizedSource.SequentialExecute(() =>
-                {
-                    // TODO: source reset; source values added, replaced, or removed
-                });
-
-            void valueResultChanged(object sender, RangeActiveExpressionResultChangeEventArgs<TSourceKey, KeyValuePair<TResultKey, TResultValue>> e) =>
-                synchronizedSource.SequentialExecute(() =>
-                {
-                    // TODO: result key and/or value changed
-                });
-
-            return synchronizedSource.SequentialExecute(() =>
-            {
-                rangeActiveExpression = RangeActiveExpression.Create(source, selector, selectorOptions);
-                rangeActiveExpression.DictionaryChanged += rangeActiveExpressionChanged;
-                rangeActiveExpression.ValueResultChanged += valueResultChanged;
-
-                switch (source.GetIndexingStrategy() ?? IndexingStrategy.NoneOrInherit)
-                {
-                    case IndexingStrategy.SelfBalancingBinarySearchTree:
-                        observableDictionary = keyComparer == null ? new SynchronizedObservableSortedDictionary<TResultKey, TResultValue>() : new SynchronizedObservableSortedDictionary<TResultKey, TResultValue>(keyComparer);
-                        break;
-                    default:
-                        observableDictionary = keyEqualityComparer == null ? new SynchronizedObservableDictionary<TResultKey, TResultValue>() : new SynchronizedObservableDictionary<TResultKey, TResultValue>(keyEqualityComparer);
-                        break;
-                }
-
-                // TODO: initialize from source
-
-                return new ActiveLookup<TResultKey, TResultValue>(observableDictionary, rangeActiveExpression, () =>
-                {
-                    rangeActiveExpression.DictionaryChanged -= rangeActiveExpressionChanged;
-                    rangeActiveExpression.ValueResultChanged -= valueResultChanged;
-                    rangeActiveExpression.Dispose();
-                });
-            });
-        }
-
         #endregion Select
 
         #region Single
@@ -1206,6 +1158,198 @@ namespace Gear.ActiveQuery
             ActiveSelect(source, (key, value) => value);
 
         #endregion ToActiveEnumerable
+
+        #region ToActiveLookup
+
+        public static ActiveLookup<TResultKey, TResultValue> ToActiveLookup<TSourceKey, TSourceValue, TResultKey, TResultValue>(this IReadOnlyDictionary<TSourceKey, TSourceValue> source, Expression<Func<TSourceKey, TSourceValue, KeyValuePair<TResultKey, TResultValue>>> selector, ActiveExpressionOptions selectorOptions = null, IEqualityComparer<TResultKey> keyEqualityComparer = null, IComparer<TResultKey> keyComparer = null)
+        {
+            ActiveQueryOptions.Optimize(ref selector);
+
+            var synchronizedSource = source as ISynchronized;
+            IDictionary<TResultKey, int> duplicateKeys;
+            var isFaultedDuplicateKeys = false;
+            var isFaultedNullKey = false;
+            var nullKeys = 0;
+            ReadOnlyDictionaryRangeActiveExpression<TSourceKey, TSourceValue, KeyValuePair<TResultKey, TResultValue>> rangeActiveExpression;
+            var sourceKeyToResultKey = source.CreateSimilarDictionary<TSourceKey, TSourceValue, TResultKey>();
+            ISynchronizedObservableRangeDictionary<TResultKey, TResultValue> rangeObservableDictionary;
+            Action<Exception> setOperationFault = null;
+
+            void checkOperationFault()
+            {
+                if (nullKeys > 0 && !isFaultedNullKey)
+                {
+                    isFaultedNullKey = true;
+                    setOperationFault(ExceptionHelper.KeyNull);
+                }
+                else if (nullKeys == 0 && isFaultedNullKey)
+                {
+                    isFaultedNullKey = false;
+                    setOperationFault(null);
+                }
+
+                if (!isFaultedNullKey)
+                {
+                    if (duplicateKeys.Count > 0 && !isFaultedDuplicateKeys)
+                    {
+                        isFaultedDuplicateKeys = true;
+                        setOperationFault(ExceptionHelper.SameKeyAlreadyAdded);
+                    }
+                    else if (duplicateKeys.Count == 0 && isFaultedDuplicateKeys)
+                    {
+                        isFaultedDuplicateKeys = false;
+                        setOperationFault(null);
+                    }
+                }
+            }
+
+            void rangeActiveExpressionChanged(object sender, NotifyDictionaryChangedEventArgs<TSourceKey, KeyValuePair<TResultKey, TResultValue>> e) =>
+                synchronizedSource.SequentialExecute(() =>
+                {
+                    if (e.Action == NotifyDictionaryChangedAction.Reset)
+                    {
+                        IDictionary<TResultKey, TResultValue> replacementDictionary;
+                        switch (source.GetIndexingStrategy() ?? IndexingStrategy.NoneOrInherit)
+                        {
+                            case IndexingStrategy.SelfBalancingBinarySearchTree:
+                                duplicateKeys = keyComparer == null ? new SortedDictionary<TResultKey, int>() : new SortedDictionary<TResultKey, int>(keyComparer);
+                                replacementDictionary = keyComparer == null ? new SortedDictionary<TResultKey, TResultValue>() : new SortedDictionary<TResultKey, TResultValue>(keyComparer);
+                                break;
+                            default:
+                                duplicateKeys = keyEqualityComparer == null ? new Dictionary<TResultKey, int>() : new Dictionary<TResultKey, int>(keyEqualityComparer);
+                                replacementDictionary = keyEqualityComparer == null ? new Dictionary<TResultKey, TResultValue>() : new Dictionary<TResultKey, TResultValue>(keyEqualityComparer);
+                                break;
+                        }
+                        var resultsAndFaults = rangeActiveExpression.GetResultsAndFaults();
+                        nullKeys = resultsAndFaults.Count(rfc => rfc.result.Key == null);
+                        var distinctResultsAndFaults = resultsAndFaults.Where(rfc => rfc.result.Key != null).GroupBy(rfc => rfc.result.Key).ToList();
+                        foreach (var keyValuePair in distinctResultsAndFaults.Select(g => g.First().result))
+                            replacementDictionary.Add(keyValuePair);
+                        rangeObservableDictionary.Reset(replacementDictionary);
+                        foreach (var (key, duplicateCount) in distinctResultsAndFaults.Select(g => (key: g.Key, duplicateCount: g.Count() - 1)).Where(kc => kc.duplicateCount > 0))
+                            duplicateKeys.Add(key, duplicateCount);
+                        checkOperationFault();
+                    }
+                    else
+                    {
+                        if ((e.OldItems?.Count ?? 0) > 0)
+                        {
+                            foreach (var kv in e.OldItems)
+                            {
+                                var key = kv.Value.Key;
+                                if (key == null)
+                                    --nullKeys;
+                                else if (duplicateKeys.TryGetValue(key, out var duplicates))
+                                {
+                                    if (duplicates == 1)
+                                        duplicateKeys.Remove(key);
+                                    else
+                                        duplicateKeys[key] = duplicates - 1;
+                                }
+                                else
+                                    rangeObservableDictionary.Remove(key);
+                            }
+                            checkOperationFault();
+                        }
+                        if ((e.NewItems?.Count ?? 0) > 0)
+                        {
+                            foreach (var kv in e.NewItems)
+                            {
+                                var resultKv = kv.Value;
+                                var key = resultKv.Key;
+                                if (key == null)
+                                    ++nullKeys;
+                                else if (rangeObservableDictionary.ContainsKey(key))
+                                {
+                                    if (duplicateKeys.TryGetValue(key, out var duplicates))
+                                        duplicateKeys[key] = duplicates + 1;
+                                    else
+                                        duplicateKeys.Add(key, 1);
+                                }
+                                else
+                                    rangeObservableDictionary.Add(resultKv);
+                            }
+                            checkOperationFault();
+                        }
+                    }
+                });
+
+            void valueResultChanged(object sender, RangeActiveExpressionResultChangeEventArgs<TSourceKey, KeyValuePair<TResultKey, TResultValue>> e) =>
+                synchronizedSource.SequentialExecute(() =>
+                {
+                    var resultKv = e.Result;
+                    var key = resultKv.Key;
+                    if (key == null)
+                        ++nullKeys;
+                    else if (rangeObservableDictionary.ContainsKey(key))
+                    {
+                        if (duplicateKeys.TryGetValue(key, out var duplicates))
+                            duplicateKeys[key] = duplicates + 1;
+                        else
+                            duplicateKeys.Add(key, 1);
+                    }
+                    else
+                        rangeObservableDictionary.Add(resultKv);
+                    checkOperationFault();
+                });
+
+            void valueResultChanging(object sender, RangeActiveExpressionResultChangeEventArgs<TSourceKey, KeyValuePair<TResultKey, TResultValue>> e) =>
+                synchronizedSource.SequentialExecute(() =>
+                {
+                    var key = e.Result.Key;
+                    if (key == null)
+                        --nullKeys;
+                    else if (duplicateKeys.TryGetValue(key, out var duplicates))
+                    {
+                        if (duplicates <= 1)
+                            duplicateKeys.Remove(key);
+                        else
+                            duplicateKeys[key] = duplicates - 1;
+                    }
+                    else
+                        rangeObservableDictionary.Remove(key);
+                    checkOperationFault();
+                });
+
+            return synchronizedSource.SequentialExecute(() =>
+            {
+                switch (source.GetIndexingStrategy() ?? IndexingStrategy.NoneOrInherit)
+                {
+                    case IndexingStrategy.SelfBalancingBinarySearchTree:
+                        duplicateKeys = keyComparer == null ? new SortedDictionary<TResultKey, int>() : new SortedDictionary<TResultKey, int>(keyComparer);
+                        rangeObservableDictionary = keyComparer == null ? new SynchronizedObservableSortedDictionary<TResultKey, TResultValue>() : new SynchronizedObservableSortedDictionary<TResultKey, TResultValue>(keyComparer);
+                        break;
+                    default:
+                        duplicateKeys = keyEqualityComparer == null ? new Dictionary<TResultKey, int>() : new Dictionary<TResultKey, int>(keyEqualityComparer);
+                        rangeObservableDictionary = keyEqualityComparer == null ? new SynchronizedObservableDictionary<TResultKey, TResultValue>() : new SynchronizedObservableDictionary<TResultKey, TResultValue>(keyEqualityComparer);
+                        break;
+                }
+
+                rangeActiveExpression = RangeActiveExpression.Create(source, selector, selectorOptions);
+                rangeActiveExpression.DictionaryChanged += rangeActiveExpressionChanged;
+                rangeActiveExpression.ValueResultChanged += valueResultChanged;
+                rangeActiveExpression.ValueResultChanging += valueResultChanging;
+
+                var resultsAndFaults = rangeActiveExpression.GetResultsAndFaults();
+                nullKeys = resultsAndFaults.Count(rfc => rfc.result.Key == null);
+                var distinctResultsAndFaults = resultsAndFaults.Where(rfc => rfc.result.Key != null).GroupBy(rfc => rfc.result.Key).ToList();
+                rangeObservableDictionary.AddRange(distinctResultsAndFaults.Select(g => g.First().result));
+                foreach (var (key, duplicateCount) in distinctResultsAndFaults.Select(g => (key: g.Key, duplicateCount: g.Count() - 1)).Where(kc => kc.duplicateCount > 0))
+                    duplicateKeys.Add(key, duplicateCount);
+                var activeLookup = new ActiveLookup<TResultKey, TResultValue>(rangeObservableDictionary, out setOperationFault, rangeActiveExpression, () =>
+                {
+                    rangeActiveExpression.DictionaryChanged -= rangeActiveExpressionChanged;
+                    rangeActiveExpression.ValueResultChanged -= valueResultChanged;
+                    rangeActiveExpression.ValueResultChanging -= valueResultChanging;
+                    rangeActiveExpression.Dispose();
+                });
+                checkOperationFault();
+
+                return activeLookup;
+            });
+        }
+
+        #endregion ToActiveLookup
 
         #region ValueFor
 
