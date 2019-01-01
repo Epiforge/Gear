@@ -12,49 +12,25 @@ namespace Gear.Components
         public ObservableSortedDictionary()
         {
             gsd = new SortedDictionary<TKey, TValue>();
-            ci = gsd;
-            gci = gsd;
-            di = gsd;
-            gdi = gsd;
-            ei = gsd;
-            gei = gsd;
-            grodi = gsd;
+            Cast();
         }
 
         public ObservableSortedDictionary(IComparer<TKey> comparer)
         {
             gsd = new SortedDictionary<TKey, TValue>(comparer);
-            ci = gsd;
-            gci = gsd;
-            di = gsd;
-            gdi = gsd;
-            ei = gsd;
-            gei = gsd;
-            grodi = gsd;
+            Cast();
         }
 
         public ObservableSortedDictionary(IDictionary<TKey, TValue> dictionary)
         {
             gsd = new SortedDictionary<TKey, TValue>(dictionary);
-            ci = gsd;
-            gci = gsd;
-            di = gsd;
-            gdi = gsd;
-            ei = gsd;
-            gei = gsd;
-            grodi = gsd;
+            Cast();
         }
 
         public ObservableSortedDictionary(IDictionary<TKey, TValue> dictionary, IComparer<TKey> comparer)
         {
             gsd = new SortedDictionary<TKey, TValue>(dictionary, comparer);
-            ci = gsd;
-            gci = gsd;
-            di = gsd;
-            gdi = gsd;
-            ei = gsd;
-            gei = gsd;
-            grodi = gsd;
+            Cast();
         }
 
         SortedDictionary<TKey, TValue> gsd;
@@ -120,6 +96,23 @@ namespace Gear.Components
                 gsd.Add(keyValuePair.Key, keyValuePair.Value);
             OnDictionaryChanged(new NotifyDictionaryChangedEventArgs<TKey, TValue>(NotifyDictionaryChangedAction.Add, keyValuePairs));
             NotifyCountChanged();
+        }
+
+        void Cast()
+        {
+            ci = gsd;
+            gci = gsd;
+            di = gsd;
+            gdi = gsd;
+            ei = gsd;
+            gei = gsd;
+            grodi = gsd;
+        }
+
+        void CastAndNotifyReset()
+        {
+            Cast();
+            OnDictionaryChanged(new NotifyDictionaryChangedEventArgs<TKey, TValue>(NotifyDictionaryChangedAction.Reset));
         }
 
         public virtual void Clear()
@@ -325,25 +318,13 @@ namespace Gear.Components
         public virtual void Reset()
         {
             gsd = new SortedDictionary<TKey, TValue>(gsd.Comparer);
-            ResetCasts();
+            CastAndNotifyReset();
         }
 
         public virtual void Reset(IDictionary<TKey, TValue> dictionary)
         {
             gsd = new SortedDictionary<TKey, TValue>(dictionary, gsd.Comparer);
-            ResetCasts();
-        }
-
-        void ResetCasts()
-        {
-            ci = gsd;
-            gci = gsd;
-            di = gsd;
-            gdi = gsd;
-            ei = gsd;
-            gei = gsd;
-            grodi = gsd;
-            OnDictionaryChanged(new NotifyDictionaryChangedEventArgs<TKey, TValue>(NotifyDictionaryChangedAction.Reset));
+            CastAndNotifyReset();
         }
 
         protected virtual void SetValue(object key, object value)

@@ -12,76 +12,40 @@ namespace Gear.Components
         public ObservableDictionary()
         {
             gd = new Dictionary<TKey, TValue>();
-            ci = gd;
-            gci = gd;
-            di = gd;
-            gdi = gd;
-            ei = gd;
-            gei = gd;
-            grodi = gd;
+            Cast();
         }
 
         public ObservableDictionary(IDictionary<TKey, TValue> dictionary)
         {
             gd = new Dictionary<TKey, TValue>(dictionary);
-            ci = gd;
-            gci = gd;
-            di = gd;
-            gdi = gd;
-            ei = gd;
-            gei = gd;
-            grodi = gd;
+            Cast();
         }
 
         public ObservableDictionary(IEqualityComparer<TKey> comparer)
         {
             gd = new Dictionary<TKey, TValue>(comparer);
             this.comparer = comparer;
-            ci = gd;
-            gci = gd;
-            di = gd;
-            gdi = gd;
-            ei = gd;
-            gei = gd;
-            grodi = gd;
+            Cast();
         }
 
         public ObservableDictionary(int capacity)
         {
             gd = new Dictionary<TKey, TValue>(capacity);
-            ci = gd;
-            gci = gd;
-            di = gd;
-            gdi = gd;
-            ei = gd;
-            gei = gd;
-            grodi = gd;
+            Cast();
         }
 
         public ObservableDictionary(IDictionary<TKey, TValue> dictionary, IEqualityComparer<TKey> comparer)
         {
             gd = new Dictionary<TKey, TValue>(dictionary, comparer);
             this.comparer = comparer;
-            ci = gd;
-            gci = gd;
-            di = gd;
-            gdi = gd;
-            ei = gd;
-            gei = gd;
-            grodi = gd;
+            Cast();
         }
 
         public ObservableDictionary(int capacity, IEqualityComparer<TKey> comparer)
         {
             gd = new Dictionary<TKey, TValue>(capacity, comparer);
             this.comparer = comparer;
-            ci = gd;
-            gci = gd;
-            di = gd;
-            gdi = gd;
-            ei = gd;
-            gei = gd;
-            grodi = gd;
+            Cast();
         }
 
         readonly IEqualityComparer<TKey> comparer;
@@ -148,6 +112,23 @@ namespace Gear.Components
                 gd.Add(keyValuePair.Key, keyValuePair.Value);
             OnDictionaryChanged(new NotifyDictionaryChangedEventArgs<TKey, TValue>(NotifyDictionaryChangedAction.Add, keyValuePairs));
             NotifyCountChanged();
+        }
+
+        void Cast()
+        {
+            ci = gd;
+            gci = gd;
+            di = gd;
+            gdi = gd;
+            ei = gd;
+            gei = gd;
+            grodi = gd;
+        }
+
+        void CastAndNotifyReset()
+        {
+            Cast();
+            OnDictionaryChanged(new NotifyDictionaryChangedEventArgs<TKey, TValue>(NotifyDictionaryChangedAction.Reset));
         }
 
         public virtual void Clear()
@@ -358,7 +339,7 @@ namespace Gear.Components
                 gd = new Dictionary<TKey, TValue>();
             else
                 gd = new Dictionary<TKey, TValue>(comparer);
-            ResetCasts();
+            CastAndNotifyReset();
         }
 
         public virtual void Reset(IDictionary<TKey, TValue> dictionary)
@@ -367,19 +348,7 @@ namespace Gear.Components
                 gd = new Dictionary<TKey, TValue>(dictionary);
             else
                 gd = new Dictionary<TKey, TValue>(dictionary, comparer);
-            ResetCasts();
-        }
-
-        void ResetCasts()
-        {
-            ci = gd;
-            gci = gd;
-            di = gd;
-            gdi = gd;
-            ei = gd;
-            gei = gd;
-            grodi = gd;
-            OnDictionaryChanged(new NotifyDictionaryChangedEventArgs<TKey, TValue>(NotifyDictionaryChangedAction.Reset));
+            CastAndNotifyReset();
         }
 
         protected virtual void SetValue(object key, object value)
