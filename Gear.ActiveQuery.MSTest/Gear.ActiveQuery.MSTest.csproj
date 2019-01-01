@@ -114,6 +114,7 @@
     <Compile Include="Lookup\ToActiveEnumerable.cs" />
     <Compile Include="Lookup\ActiveValueFor.cs" />
     <Compile Include="Lookup\ActiveValueForOrDefault.cs" />
+    <Compile Include="Lookup\ActiveWhere.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="TestPerson.cs" />
     <Compile Include="TestSimpleObservableCollection.cs" />
