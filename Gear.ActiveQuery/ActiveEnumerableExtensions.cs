@@ -2460,22 +2460,18 @@ namespace Gear.ActiveQuery
                     var count = e.Count;
                     if (key == null)
                         nullKeys += count;
+                    else if (rangeObservableDictionary.ContainsKey(key))
+                    {
+                        if (duplicateKeys.TryGetValue(key, out var duplicates))
+                            duplicateKeys[key] = duplicates + count;
+                        else
+                            duplicateKeys.Add(key, count);
+                    }
                     else
                     {
-                        var value = result.Value;
-                        if (rangeObservableDictionary.TryGetValue(key, out var existingValue))
-                        {
-                            if (duplicateKeys.TryGetValue(key, out var duplicates))
-                                duplicateKeys[key] = duplicates + count;
-                            else
-                                duplicateKeys.Add(key, count);
-                        }
-                        else
-                        {
-                            rangeObservableDictionary.Add(key, value);
-                            if (count > 1)
-                                duplicateKeys.Add(key, count - 1);
-                        }
+                        rangeObservableDictionary.Add(key, result.Value);
+                        if (count > 1)
+                            duplicateKeys.Add(key, count - 1);
                     }
                     checkOperationFault();
                 });
@@ -2483,23 +2479,19 @@ namespace Gear.ActiveQuery
             void elementResultChanging(object sender, RangeActiveExpressionResultChangeEventArgs<TSource, KeyValuePair<TKey, TValue>> e) =>
                 synchronizedSource.SequentialExecute(() =>
                 {
-                    var result = e.Result;
-                    var key = result.Key;
+                    var key = e.Result.Key;
                     var count = e.Count;
                     if (key == null)
                         nullKeys -= count;
-                    else
+                    else if (duplicateKeys.TryGetValue(key, out var duplicates))
                     {
-                        if (duplicateKeys.TryGetValue(key, out var duplicates))
-                        {
-                            if (duplicates <= count)
-                                duplicateKeys.Remove(key);
-                            else
-                                duplicateKeys[key] = duplicates - count;
-                        }
+                        if (duplicates <= count)
+                            duplicateKeys.Remove(key);
                         else
-                            rangeObservableDictionary.Remove(key);
+                            duplicateKeys[key] = duplicates - count;
                     }
+                    else
+                        rangeObservableDictionary.Remove(key);
                     checkOperationFault();
                 });
 
@@ -2538,18 +2530,15 @@ namespace Gear.ActiveQuery
                                 var key = result.Key;
                                 if (key == null)
                                     --nullKeys;
-                                else
+                                else if (duplicateKeys.TryGetValue(key, out var duplicates))
                                 {
-                                    if (duplicateKeys.TryGetValue(key, out var duplicates))
-                                    {
-                                        if (duplicates == 1)
-                                            duplicateKeys.Remove(key);
-                                        else
-                                            duplicateKeys[key] = duplicates - 1;
-                                    }
+                                    if (duplicates == 1)
+                                        duplicateKeys.Remove(key);
                                     else
-                                        rangeObservableDictionary.Remove(key);
+                                        duplicateKeys[key] = duplicates - 1;
                                 }
+                                else
+                                    rangeObservableDictionary.Remove(key);
                             }
                             checkOperationFault();
                         }
@@ -2560,19 +2549,15 @@ namespace Gear.ActiveQuery
                                 var key = result.Key;
                                 if (key == null)
                                     ++nullKeys;
-                                else
+                                else if (rangeObservableDictionary.ContainsKey(key))
                                 {
-                                    var value = result.Value;
-                                    if (rangeObservableDictionary.TryGetValue(key, out var existingValue))
-                                    {
-                                        if (duplicateKeys.TryGetValue(key, out var duplicates))
-                                            duplicateKeys[key] = duplicates + 1;
-                                        else
-                                            duplicateKeys.Add(key, 1);
-                                    }
+                                    if (duplicateKeys.TryGetValue(key, out var duplicates))
+                                        duplicateKeys[key] = duplicates + 1;
                                     else
-                                        rangeObservableDictionary.Add(key, value);
+                                        duplicateKeys.Add(key, 1);
                                 }
+                                else
+                                    rangeObservableDictionary.Add(key, result.Value);
                             }
                             checkOperationFault();
                         }
@@ -2598,14 +2583,13 @@ namespace Gear.ActiveQuery
                 rangeActiveExpression.ElementResultChanging += elementResultChanging;
                 rangeActiveExpression.GenericCollectionChanged += genericCollectionChanged;
 
-                ActiveLookup<TKey, TValue> activeLookup;
                 var resultsFaultsAndCounts = rangeActiveExpression.GetResultsFaultsAndCounts();
                 nullKeys = resultsFaultsAndCounts.Count(rfc => rfc.result.Key == null);
                 var distinctResultsFaultsAndCounts = resultsFaultsAndCounts.Where(rfc => rfc.result.Key != null).GroupBy(rfc => rfc.result.Key).ToList();
                 rangeObservableDictionary.AddRange(distinctResultsFaultsAndCounts.Select(g => g.First().result));
                 foreach (var (key, duplicateCount) in distinctResultsFaultsAndCounts.Select(g => (key: g.Key, duplicateCount: g.Sum(rfc => rfc.count) - 1)).Where(kc => kc.duplicateCount > 0))
                     duplicateKeys.Add(key, duplicateCount);
-                activeLookup = new ActiveLookup<TKey, TValue>(rangeObservableDictionary, out setOperationFault, rangeActiveExpression, () =>
+                var activeLookup = new ActiveLookup<TKey, TValue>(rangeObservableDictionary, out setOperationFault, rangeActiveExpression, () =>
                 {
                     rangeActiveExpression.ElementResultChanged -= elementResultChanged;
                     rangeActiveExpression.ElementResultChanging -= elementResultChanging;
