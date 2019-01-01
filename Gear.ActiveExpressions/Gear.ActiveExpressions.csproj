@@ -1,11 +1,11 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <AssemblyVersion>1.0.43</AssemblyVersion>
+    <AssemblyVersion>1.0.44</AssemblyVersion>
     <Authors>Epiforge</Authors>
     <Company>Epiforge</Company>
     <Description>Gear for creating expressions that actively re-evaluate when changes occur.</Description>
-    <FileVersion>1.0.43</FileVersion>
+    <FileVersion>1.0.44</FileVersion>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <Owners>Epiforge</Owners>
     <PackageIconUrl>https://raw.githubusercontent.com/Epiforge/Gear/master/NuGet.jpg</PackageIconUrl>
@@ -13,17 +13,17 @@
     <PackageLicenseUrl>https://raw.githubusercontent.com/Epiforge/Gear/master/LICENSE</PackageLicenseUrl>
     <PackageProjectUrl>https://github.com/Epiforge/Gear</PackageProjectUrl>
     <PackageTags>expression tree active live update</PackageTags>
-    <PackageVersion>1.0.43</PackageVersion>
+    <PackageVersion>1.0.44</PackageVersion>
     <PackOnBuild>true</PackOnBuild>
     <Product>Active Expressions Gear</Product>
-    <ReleaseVersion>1.0.43</ReleaseVersion>
+    <ReleaseVersion>1.0.44</ReleaseVersion>
     <RepositoryType>GitHub</RepositoryType>
     <RepositoryUrl>https://github.com/Epiforge/Gear</RepositoryUrl>
     <Summary>Gear for creating expressions that actively re-evaluate when changes occur.</Summary>
     <SynchReleaseVersion>false</SynchReleaseVersion>
     <TargetFramework>netstandard1.3</TargetFramework>
     <Title>Active Expressions Gear</Title>
-    <Version>1.0.43</Version>
+    <Version>1.0.44</Version>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
@@ -40,7 +40,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Gear.Components" Version="1.0.93" />
+    <PackageReference Include="Gear.Components" Version="1.0.94" />
   </ItemGroup>
 
 </Project>

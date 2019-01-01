@@ -1,8 +1,7 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using Gear.Components;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace Gear.ActiveQuery.MSTest.Lookup
 {

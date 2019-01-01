@@ -1087,6 +1087,9 @@ namespace Gear.ActiveQuery
 
         #region Sum
 
+        public static ActiveValue<TValue> ActiveSum<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source) =>
+            ActiveSum(source, (key, value) => value);
+
         public static ActiveValue<TResult> ActiveSum<TKey, TValue, TResult>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, TResult>> selector, ActiveExpressionOptions selectorOptions = null)
         {
             ActiveQueryOptions.Optimize(ref selector);

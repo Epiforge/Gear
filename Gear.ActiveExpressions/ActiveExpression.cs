@@ -528,17 +528,19 @@ namespace Gear.ActiveExpressions
     public class ActiveExpression<TResult> : OverridableSyncDisposablePropertyChangeNotifier
     {
         static readonly object instanceManagementLock = new object();
-        static readonly Dictionary<ActiveExpression, ActiveExpression<TResult>> instances = new Dictionary<ActiveExpression, ActiveExpression<TResult>>();
+        static readonly Dictionary<(ActiveExpression activeExpression, EquatableList<object> args), ActiveExpression<TResult>> instances = new Dictionary<(ActiveExpression activeExpression, EquatableList<object> args), ActiveExpression<TResult>>();
 
         internal static ActiveExpression<TResult> Create(LambdaExpression expression, ActiveExpressionOptions options, params object[] args)
         {
             var activeExpression = ActiveExpression.Create(ActiveExpression.ReplaceParameters(expression, args), options, false);
+            var arguments = new EquatableList<object>(args);
+            var key = (activeExpression, arguments);
             lock (instanceManagementLock)
             {
-                if (!instances.TryGetValue(activeExpression, out var instance))
+                if (!instances.TryGetValue(key, out var instance))
                 {
-                    instance = new ActiveExpression<TResult>(activeExpression, options, args.ToImmutableArray());
-                    instances.Add(activeExpression, instance);
+                    instance = new ActiveExpression<TResult>(activeExpression, options, arguments);
+                    instances.Add(key, instance);
                 }
                 ++instance.disposalCount;
                 return instance;
@@ -551,7 +553,7 @@ namespace Gear.ActiveExpressions
         /// <param name="a">The first expression to compare, or null</param>
         /// <param name="b">The second expression to compare, or null</param>
         /// <returns><c>true</c> is <paramref name="a"/> is the same as <paramref name="b"/>; otherwise, <c>false</c></returns>
-        public static bool operator ==(ActiveExpression<TResult> a, ActiveExpression<TResult> b) => a?.expression == b?.expression;
+        public static bool operator ==(ActiveExpression<TResult> a, ActiveExpression<TResult> b) => a?.activeExpression == b?.activeExpression;
 
         /// <summary>
         /// Determines whether two active expressions are different
@@ -559,20 +561,21 @@ namespace Gear.ActiveExpressions
         /// <param name="a">The first expression to compare, or null</param>
         /// <param name="b">The second expression to compare, or null</param>
         /// <returns><c>true</c> is <paramref name="a"/> is different from <paramref name="b"/>; otherwise, <c>false</c></returns>
-        public static bool operator !=(ActiveExpression<TResult> a, ActiveExpression<TResult> b) => a?.expression != b?.expression;
+        public static bool operator !=(ActiveExpression<TResult> a, ActiveExpression<TResult> b) => a?.activeExpression != b?.activeExpression;
 
-        ActiveExpression(ActiveExpression expression, ActiveExpressionOptions options, IReadOnlyList<object> arguments)
+        ActiveExpression(ActiveExpression activeExpression, ActiveExpressionOptions options, EquatableList<object> arguments)
         {
-            this.expression = expression;
+            this.activeExpression = activeExpression;
             Options = options;
-            Arguments = arguments;
-            fault = this.expression.Fault;
-            val = (TResult)this.expression.Value;
-            this.expression.PropertyChanged += ExpressionPropertyChanged;
+            this.arguments = arguments;
+            fault = this.activeExpression.Fault;
+            val = (TResult)this.activeExpression.Value;
+            this.activeExpression.PropertyChanged += ExpressionPropertyChanged;
         }
 
+        readonly ActiveExpression activeExpression;
+        readonly EquatableList<object> arguments;
         int disposalCount;
-        readonly ActiveExpression expression;
         Exception fault;
         TResult val;
 
@@ -582,31 +585,31 @@ namespace Gear.ActiveExpressions
             {
                 if (--disposalCount > 0)
                     return false;
-                instances.Remove(expression);
+                instances.Remove((activeExpression, arguments));
             }
-            expression.PropertyChanged -= ExpressionPropertyChanged;
-            expression.Dispose();
+            activeExpression.PropertyChanged -= ExpressionPropertyChanged;
+            activeExpression.Dispose();
             return true;
         }
 
-        public override bool Equals(object obj) => obj is ActiveExpression<TResult> other && expression.Equals(other.expression);
+        public override bool Equals(object obj) => obj is ActiveExpression<TResult> other && activeExpression.Equals(other.activeExpression);
 
         void ExpressionPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
             if (e.PropertyName == nameof(Fault))
-                Fault = expression.Fault;
+                Fault = activeExpression.Fault;
             else if (e.PropertyName == nameof(Value))
-                Value = expression.Value is TResult typedValue ? typedValue : default;
+                Value = activeExpression.Value is TResult typedValue ? typedValue : default;
         }
 
-        public override int GetHashCode() => HashCodes.CombineObjects(typeof(ActiveExpression<TResult>), expression);
+        public override int GetHashCode() => HashCodes.CombineObjects(typeof(ActiveExpression<TResult>), activeExpression);
 
-        public override string ToString() => expression.ToString();
+        public override string ToString() => activeExpression.ToString();
 
         /// <summary>
         /// Gets the arguments that were passed to the lambda expression
         /// </summary>
-        public IReadOnlyList<object> Arguments { get; }
+        public IReadOnlyList<object> Arguments => arguments;
 
         /// <summary>
         /// Gets the exception that was thrown while evaluating the lambda expression; <c>null</c> if there was no such exception
@@ -640,17 +643,18 @@ namespace Gear.ActiveExpressions
     public class ActiveExpression<TArg, TResult> : OverridableSyncDisposablePropertyChangeNotifier
     {
         static readonly object instanceManagementLock = new object();
-        static readonly Dictionary<ActiveExpression, ActiveExpression<TArg, TResult>> instances = new Dictionary<ActiveExpression, ActiveExpression<TArg, TResult>>();
+        static readonly Dictionary<(ActiveExpression activeExpression, TArg arg), ActiveExpression<TArg, TResult>> instances = new Dictionary<(ActiveExpression activeExpression, TArg arg), ActiveExpression<TArg, TResult>>();
 
         internal static ActiveExpression<TArg, TResult> Create(LambdaExpression expression, TArg arg, ActiveExpressionOptions options = null)
         {
             var activeExpression = ActiveExpression.Create(ActiveExpression.ReplaceParameters(expression, arg), options, false);
+            var key = (activeExpression, arg);
             lock (instanceManagementLock)
             {
-                if (!instances.TryGetValue(activeExpression, out var instance))
+                if (!instances.TryGetValue(key, out var instance))
                 {
                     instance = new ActiveExpression<TArg, TResult>(activeExpression, options, arg);
-                    instances.Add(activeExpression, instance);
+                    instances.Add(key, instance);
                 }
                 ++instance.disposalCount;
                 return instance;
@@ -663,7 +667,7 @@ namespace Gear.ActiveExpressions
         /// <param name="a">The first expression to compare, or null</param>
         /// <param name="b">The second expression to compare, or null</param>
         /// <returns><c>true</c> is <paramref name="a"/> is the same as <paramref name="b"/>; otherwise, <c>false</c></returns>
-        public static bool operator ==(ActiveExpression<TArg, TResult> a, ActiveExpression<TArg, TResult> b) => a?.expression == b?.expression;
+        public static bool operator ==(ActiveExpression<TArg, TResult> a, ActiveExpression<TArg, TResult> b) => a?.activeExpression == b?.activeExpression;
 
         /// <summary>
         /// Determines whether two active expressions are different
@@ -671,20 +675,20 @@ namespace Gear.ActiveExpressions
         /// <param name="a">The first expression to compare, or null</param>
         /// <param name="b">The second expression to compare, or null</param>
         /// <returns><c>true</c> is <paramref name="a"/> is different from <paramref name="b"/>; otherwise, <c>false</c></returns>
-        public static bool operator !=(ActiveExpression<TArg, TResult> a, ActiveExpression<TArg, TResult> b) => a?.expression != b?.expression;
+        public static bool operator !=(ActiveExpression<TArg, TResult> a, ActiveExpression<TArg, TResult> b) => a?.activeExpression != b?.activeExpression;
 
-        ActiveExpression(ActiveExpression expression, ActiveExpressionOptions options, TArg arg)
+        ActiveExpression(ActiveExpression activeExpression, ActiveExpressionOptions options, TArg arg)
         {
-            this.expression = expression;
+            this.activeExpression = activeExpression;
             Options = options;
             Arg = arg;
-            fault = this.expression.Fault;
-            val = (TResult)this.expression.Value;
-            this.expression.PropertyChanged += ExpressionPropertyChanged;
+            fault = this.activeExpression.Fault;
+            val = (TResult)this.activeExpression.Value;
+            this.activeExpression.PropertyChanged += ExpressionPropertyChanged;
         }
 
+        readonly ActiveExpression activeExpression;
         int disposalCount;
-        readonly ActiveExpression expression;
         Exception fault;
         TResult val;
 
@@ -694,26 +698,26 @@ namespace Gear.ActiveExpressions
             {
                 if (--disposalCount > 0)
                     return false;
-                instances.Remove(expression);
+                instances.Remove((activeExpression, Arg));
             }
-            expression.PropertyChanged -= ExpressionPropertyChanged;
-            expression.Dispose();
+            activeExpression.PropertyChanged -= ExpressionPropertyChanged;
+            activeExpression.Dispose();
             return true;
         }
 
-        public override bool Equals(object obj) => obj is ActiveExpression<TArg, TResult> other && expression.Equals(other.expression);
+        public override bool Equals(object obj) => obj is ActiveExpression<TArg, TResult> other && activeExpression.Equals(other.activeExpression);
 
         void ExpressionPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
             if (e.PropertyName == nameof(Fault))
-                Fault = expression.Fault;
+                Fault = activeExpression.Fault;
             else if (e.PropertyName == nameof(Value))
-                Value = expression.Value is TResult typedValue ? typedValue : default;
+                Value = activeExpression.Value is TResult typedValue ? typedValue : default;
         }
 
-        public override int GetHashCode() => HashCodes.CombineObjects(typeof(ActiveExpression<TArg, TResult>), expression);
+        public override int GetHashCode() => HashCodes.CombineObjects(typeof(ActiveExpression<TArg, TResult>), activeExpression);
 
-        public override string ToString() => expression.ToString();
+        public override string ToString() => activeExpression.ToString();
 
         /// <summary>
         /// Gets the argument that was passed to the lambda expression
@@ -753,17 +757,18 @@ namespace Gear.ActiveExpressions
     public class ActiveExpression<TArg1, TArg2, TResult> : OverridableSyncDisposablePropertyChangeNotifier
     {
         static readonly object instanceManagementLock = new object();
-        static readonly Dictionary<ActiveExpression, ActiveExpression<TArg1, TArg2, TResult>> instances = new Dictionary<ActiveExpression, ActiveExpression<TArg1, TArg2, TResult>>();
+        static readonly Dictionary<(ActiveExpression activeExpression, TArg1 arg1, TArg2 arg2), ActiveExpression<TArg1, TArg2, TResult>> instances = new Dictionary<(ActiveExpression activeExpression, TArg1 arg1, TArg2 arg2), ActiveExpression<TArg1, TArg2, TResult>>();
 
         internal static ActiveExpression<TArg1, TArg2, TResult> Create(LambdaExpression expression, TArg1 arg1, TArg2 arg2, ActiveExpressionOptions options = null)
         {
             var activeExpression = ActiveExpression.Create(ActiveExpression.ReplaceParameters(expression, arg1, arg2), options, false);
+            var key = (activeExpression, arg1, arg2);
             lock (instanceManagementLock)
             {
-                if (!instances.TryGetValue(activeExpression, out var instance))
+                if (!instances.TryGetValue(key, out var instance))
                 {
                     instance = new ActiveExpression<TArg1, TArg2, TResult>(activeExpression, options, arg1, arg2);
-                    instances.Add(activeExpression, instance);
+                    instances.Add(key, instance);
                 }
                 ++instance.disposalCount;
                 return instance;
@@ -776,7 +781,7 @@ namespace Gear.ActiveExpressions
         /// <param name="a">The first expression to compare, or null</param>
         /// <param name="b">The second expression to compare, or null</param>
         /// <returns><c>true</c> is <paramref name="a"/> is the same as <paramref name="b"/>; otherwise, <c>false</c></returns>
-        public static bool operator ==(ActiveExpression<TArg1, TArg2, TResult> a, ActiveExpression<TArg1, TArg2, TResult> b) => a?.expression == b?.expression;
+        public static bool operator ==(ActiveExpression<TArg1, TArg2, TResult> a, ActiveExpression<TArg1, TArg2, TResult> b) => a?.activeExpression == b?.activeExpression;
 
         /// <summary>
         /// Determines whether two active expressions are different
@@ -784,21 +789,21 @@ namespace Gear.ActiveExpressions
         /// <param name="a">The first expression to compare, or null</param>
         /// <param name="b">The second expression to compare, or null</param>
         /// <returns><c>true</c> is <paramref name="a"/> is different from <paramref name="b"/>; otherwise, <c>false</c></returns>
-        public static bool operator !=(ActiveExpression<TArg1, TArg2, TResult> a, ActiveExpression<TArg1, TArg2, TResult> b) => a?.expression != b?.expression;
+        public static bool operator !=(ActiveExpression<TArg1, TArg2, TResult> a, ActiveExpression<TArg1, TArg2, TResult> b) => a?.activeExpression != b?.activeExpression;
 
-        ActiveExpression(ActiveExpression expression, ActiveExpressionOptions options, TArg1 arg1, TArg2 arg2)
+        ActiveExpression(ActiveExpression activeExpression, ActiveExpressionOptions options, TArg1 arg1, TArg2 arg2)
         {
-            this.expression = expression;
+            this.activeExpression = activeExpression;
             Options = options;
             Arg1 = arg1;
             Arg2 = arg2;
-            fault = this.expression.Fault;
-            val = (TResult)this.expression.Value;
-            this.expression.PropertyChanged += ExpressionPropertyChanged;
+            fault = this.activeExpression.Fault;
+            val = (TResult)this.activeExpression.Value;
+            this.activeExpression.PropertyChanged += ExpressionPropertyChanged;
         }
 
+        readonly ActiveExpression activeExpression;
         int disposalCount;
-        readonly ActiveExpression expression;
         Exception fault;
         TResult val;
 
@@ -808,26 +813,26 @@ namespace Gear.ActiveExpressions
             {
                 if (--disposalCount > 0)
                     return false;
-                instances.Remove(expression);
+                instances.Remove((activeExpression, Arg1, Arg2));
             }
-            expression.PropertyChanged -= ExpressionPropertyChanged;
-            expression.Dispose();
+            activeExpression.PropertyChanged -= ExpressionPropertyChanged;
+            activeExpression.Dispose();
             return true;
         }
 
-        public override bool Equals(object obj) => obj is ActiveExpression<TArg1, TArg2, TResult> other && expression.Equals(other.expression);
+        public override bool Equals(object obj) => obj is ActiveExpression<TArg1, TArg2, TResult> other && activeExpression.Equals(other.activeExpression);
 
         void ExpressionPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
             if (e.PropertyName == nameof(Fault))
-                Fault = expression.Fault;
+                Fault = activeExpression.Fault;
             else if (e.PropertyName == nameof(Value))
-                Value = expression.Value is TResult typedValue ? typedValue : default;
+                Value = activeExpression.Value is TResult typedValue ? typedValue : default;
         }
 
-        public override int GetHashCode() => HashCodes.CombineObjects(typeof(ActiveExpression<TArg1, TArg2, TResult>), expression);
+        public override int GetHashCode() => HashCodes.CombineObjects(typeof(ActiveExpression<TArg1, TArg2, TResult>), activeExpression);
 
-        public override string ToString() => expression.ToString();
+        public override string ToString() => activeExpression.ToString();
 
         /// <summary>
         /// Gets the first argument that was passed to the lambda expression
@@ -873,17 +878,18 @@ namespace Gear.ActiveExpressions
     public class ActiveExpression<TArg1, TArg2, TArg3, TResult> : OverridableSyncDisposablePropertyChangeNotifier
     {
         static readonly object instanceManagementLock = new object();
-        static readonly Dictionary<ActiveExpression, ActiveExpression<TArg1, TArg2, TArg3, TResult>> instances = new Dictionary<ActiveExpression, ActiveExpression<TArg1, TArg2, TArg3, TResult>>();
+        static readonly Dictionary<(ActiveExpression activeExpression, TArg1 arg1, TArg2 arg2, TArg3 arg3), ActiveExpression<TArg1, TArg2, TArg3, TResult>> instances = new Dictionary<(ActiveExpression activeExpression, TArg1 arg1, TArg2 arg2, TArg3 arg3), ActiveExpression<TArg1, TArg2, TArg3, TResult>>();
 
         internal static ActiveExpression<TArg1, TArg2, TArg3, TResult> Create(LambdaExpression expression, TArg1 arg1, TArg2 arg2, TArg3 arg3, ActiveExpressionOptions options = null)
         {
             var activeExpression = ActiveExpression.Create(ActiveExpression.ReplaceParameters(expression, arg1, arg2, arg3), options, false);
+            var key = (activeExpression, arg1, arg2, arg3);
             lock (instanceManagementLock)
             {
-                if (!instances.TryGetValue(activeExpression, out var instance))
+                if (!instances.TryGetValue(key, out var instance))
                 {
                     instance = new ActiveExpression<TArg1, TArg2, TArg3, TResult>(activeExpression, options, arg1, arg2, arg3);
-                    instances.Add(activeExpression, instance);
+                    instances.Add(key, instance);
                 }
                 ++instance.disposalCount;
                 return instance;
@@ -896,7 +902,7 @@ namespace Gear.ActiveExpressions
         /// <param name="a">The first expression to compare, or null</param>
         /// <param name="b">The second expression to compare, or null</param>
         /// <returns><c>true</c> is <paramref name="a"/> is the same as <paramref name="b"/>; otherwise, <c>false</c></returns>
-        public static bool operator ==(ActiveExpression<TArg1, TArg2, TArg3, TResult> a, ActiveExpression<TArg1, TArg2, TArg3, TResult> b) => a?.expression == b?.expression;
+        public static bool operator ==(ActiveExpression<TArg1, TArg2, TArg3, TResult> a, ActiveExpression<TArg1, TArg2, TArg3, TResult> b) => a?.activeExpression == b?.activeExpression;
 
         /// <summary>
         /// Determines whether two active expressions are different
@@ -904,22 +910,22 @@ namespace Gear.ActiveExpressions
         /// <param name="a">The first expression to compare, or null</param>
         /// <param name="b">The second expression to compare, or null</param>
         /// <returns><c>true</c> is <paramref name="a"/> is different from <paramref name="b"/>; otherwise, <c>false</c></returns>
-        public static bool operator !=(ActiveExpression<TArg1, TArg2, TArg3, TResult> a, ActiveExpression<TArg1, TArg2, TArg3, TResult> b) => a?.expression != b?.expression;
+        public static bool operator !=(ActiveExpression<TArg1, TArg2, TArg3, TResult> a, ActiveExpression<TArg1, TArg2, TArg3, TResult> b) => a?.activeExpression != b?.activeExpression;
 
-        ActiveExpression(ActiveExpression expression, ActiveExpressionOptions options, TArg1 arg1, TArg2 arg2, TArg3 arg3)
+        ActiveExpression(ActiveExpression activeExpression, ActiveExpressionOptions options, TArg1 arg1, TArg2 arg2, TArg3 arg3)
         {
-            this.expression = expression;
+            this.activeExpression = activeExpression;
             Options = options;
             Arg1 = arg1;
             Arg2 = arg2;
             Arg3 = arg3;
-            fault = this.expression.Fault;
-            val = (TResult)this.expression.Value;
-            this.expression.PropertyChanged += ExpressionPropertyChanged;
+            fault = this.activeExpression.Fault;
+            val = (TResult)this.activeExpression.Value;
+            this.activeExpression.PropertyChanged += ExpressionPropertyChanged;
         }
 
+        readonly ActiveExpression activeExpression;
         int disposalCount;
-        readonly ActiveExpression expression;
         Exception fault;
         TResult val;
 
@@ -929,26 +935,26 @@ namespace Gear.ActiveExpressions
             {
                 if (--disposalCount > 0)
                     return false;
-                instances.Remove(expression);
+                instances.Remove((activeExpression, Arg1, Arg2, Arg3));
             }
-            expression.PropertyChanged -= ExpressionPropertyChanged;
-            expression.Dispose();
+            activeExpression.PropertyChanged -= ExpressionPropertyChanged;
+            activeExpression.Dispose();
             return true;
         }
 
-        public override bool Equals(object obj) => obj is ActiveExpression<TArg1, TArg2, TArg3, TResult> other && expression.Equals(other.expression);
+        public override bool Equals(object obj) => obj is ActiveExpression<TArg1, TArg2, TArg3, TResult> other && activeExpression.Equals(other.activeExpression);
 
         void ExpressionPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
             if (e.PropertyName == nameof(Fault))
-                Fault = expression.Fault;
+                Fault = activeExpression.Fault;
             else if (e.PropertyName == nameof(Value))
-                Value = expression.Value is TResult typedValue ? typedValue : default;
+                Value = activeExpression.Value is TResult typedValue ? typedValue : default;
         }
 
-        public override int GetHashCode() => HashCodes.CombineObjects(typeof(ActiveExpression<TArg1, TArg2, TArg3, TResult>), expression);
+        public override int GetHashCode() => HashCodes.CombineObjects(typeof(ActiveExpression<TArg1, TArg2, TArg3, TResult>), activeExpression);
 
-        public override string ToString() => expression.ToString();
+        public override string ToString() => activeExpression.ToString();
 
         /// <summary>
         /// Gets the first argument that was passed to the lambda expression
