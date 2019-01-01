@@ -197,7 +197,7 @@ namespace Gear.ActiveQuery
             }
         }
 
-        internal IReadOnlyList<(object element, Exception fault)> GetElementFaultsUnderLock() => activeExpressions.Select(ae => ((object)ae.Key, ae.Value.Fault)).ToImmutableArray();
+        internal IReadOnlyList<(object element, Exception fault)> GetElementFaultsUnderLock() => activeExpressions.Select(ae => (element: (object)ae.Key, fault: ae.Value.Fault)).Where(ef => ef.fault != null).ToImmutableArray();
 
         public IReadOnlyList<(TKey key, TResult result)> GetResults()
         {
@@ -568,7 +568,7 @@ namespace Gear.ActiveQuery
             }
         }
 
-        internal IReadOnlyList<(object element, Exception fault)> GetElementFaultsUnderLock() => activeExpressions.Select(ae => ((object)ae.Key, ae.Value.Fault)).ToImmutableArray();
+        internal IReadOnlyList<(object element, Exception fault)> GetElementFaultsUnderLock() => activeExpressions.Select(ae => (element: (object)ae.Key, fault: ae.Value.Fault)).Where(ef => ef.fault != null).ToImmutableArray();
 
         public IReadOnlyList<(TKey key, TResult result)> GetResults()
         {
