@@ -17,6 +17,7 @@ namespace Gear.Components
         Task<bool> RemoveAsync(TKey key);
         Task<IReadOnlyList<TKey>> RemoveRangeAsync(IEnumerable<TKey> keys);
         Task ReplaceRangeAsync(IEnumerable<KeyValuePair<TKey, TValue>> keyValuePairs);
+        Task<IReadOnlyList<TKey>> ReplaceRangeAsync(IEnumerable<TKey> removeKeys, IEnumerable<KeyValuePair<TKey, TValue>> newKeyValuePairs);
         Task ResetAsync();
         Task ResetAsync(IDictionary<TKey, TValue> dictionary);
         Task SetValueAsync(TKey key, TValue value);

@@ -333,6 +333,32 @@ namespace Gear.Components
             OnDictionaryChanged(new NotifyDictionaryChangedEventArgs<TKey, TValue>(NotifyDictionaryChangedAction.Replace, keyValuePairs, oldItems));
         }
 
+        public virtual IReadOnlyList<TKey> ReplaceRange(IEnumerable<TKey> removeKeys, IEnumerable<KeyValuePair<TKey, TValue>> newKeyValuePairs)
+        {
+            var removingKeys = removeKeys.ToImmutableHashSet();
+            if (newKeyValuePairs.Where(kvp => !removingKeys.Contains(kvp.Key)).Any(kvp => kvp.Key == null || gd.ContainsKey(kvp.Key)))
+                throw new ArgumentException("One of the new keys was null or already found in the dictionary", nameof(newKeyValuePairs));
+            var removingKeyValuePairs = new List<KeyValuePair<TKey, TValue>>();
+            foreach (var key in removingKeys)
+                if (gd.TryGetValue(key, out var value))
+                    removingKeyValuePairs.Add(new KeyValuePair<TKey, TValue>(key, value));
+            var countChanging = removingKeyValuePairs.Count != newKeyValuePairs.Count();
+            if (countChanging)
+                NotifyCountChanging();
+            var removedKeys = new List<TKey>();
+            foreach (var removingKeyValuePair in removingKeyValuePairs)
+            {
+                gd.Remove(removingKeyValuePair.Key);
+                removedKeys.Add(removingKeyValuePair.Key);
+            }
+            foreach (var keyValuePair in newKeyValuePairs)
+                gd.Add(keyValuePair.Key, keyValuePair.Value);
+            OnDictionaryChanged(new NotifyDictionaryChangedEventArgs<TKey, TValue>(NotifyDictionaryChangedAction.Replace, newKeyValuePairs, removingKeyValuePairs));
+            if (countChanging)
+                NotifyCountChanged();
+            return removedKeys.ToImmutableArray();
+        }
+
         public virtual void Reset()
         {
             if (comparer == null)

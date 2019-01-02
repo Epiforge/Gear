@@ -12,6 +12,7 @@ namespace Gear.Components
         IReadOnlyList<KeyValuePair<TKey, TValue>> RemoveAll(Func<TKey, TValue, bool> predicate);
         IReadOnlyList<TKey> RemoveRange(IEnumerable<TKey> keys);
         void ReplaceRange(IEnumerable<KeyValuePair<TKey, TValue>> keyValuePairs);
+        IReadOnlyList<TKey> ReplaceRange(IEnumerable<TKey> removeKeys, IEnumerable<KeyValuePair<TKey, TValue>> newKeyValuePairs);
         void Reset();
         void Reset(IDictionary<TKey, TValue> dictionary);
         new bool TryGetValue(TKey key, out TValue value);

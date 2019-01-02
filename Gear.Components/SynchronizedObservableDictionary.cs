@@ -116,6 +116,10 @@ namespace Gear.Components
 
         public override void ReplaceRange(IEnumerable<KeyValuePair<TKey, TValue>> keyValuePairs) => this.Execute(() => base.ReplaceRange(keyValuePairs));
 
+        public override IReadOnlyList<TKey> ReplaceRange(IEnumerable<TKey> removeKeys, IEnumerable<KeyValuePair<TKey, TValue>> newKeyValuePairs) => this.Execute(() => base.ReplaceRange(removeKeys, newKeyValuePairs));
+
+        public Task<IReadOnlyList<TKey>> ReplaceRangeAsync(IEnumerable<TKey> removeKeys, IEnumerable<KeyValuePair<TKey, TValue>> newKeyValuePairs) => this.ExecuteAsync(() => base.ReplaceRange(removeKeys, newKeyValuePairs));
+
         public Task ReplaceRangeAsync(IEnumerable<KeyValuePair<TKey, TValue>> keyValuePairs) => this.ExecuteAsync(() => base.ReplaceRange(keyValuePairs));
 
         public override void Reset() => this.Execute(() => base.Reset());
