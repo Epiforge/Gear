@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Threading;
 
 namespace Gear.ActiveQuery
 {
@@ -1154,6 +1155,86 @@ namespace Gear.ActiveQuery
         }
 
         #endregion Sum
+
+        #region SwitchContext
+
+        public static ActiveLookup<TKey, TValue> SwitchContext<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, SynchronizationContext synchronizationContext = null)
+        {
+            synchronizationContext = synchronizationContext ?? SynchronizationContext.Current;
+            ISynchronizedObservableRangeDictionary<TKey, TValue> rangeObservableDictionary = null;
+
+            async void dictionaryChanged(object sender, NotifyDictionaryChangedEventArgs<TKey, TValue> e)
+            {
+                IDictionary<TKey, TValue> resetDictionary = null;
+                if (e.Action == NotifyDictionaryChangedAction.Reset)
+                {
+                    switch (source.GetIndexingStrategy() ?? IndexingStrategy.NoneOrInherit)
+                    {
+                        case IndexingStrategy.SelfBalancingBinarySearchTree:
+                            var keyComparer = source.GetKeyComparer();
+                            resetDictionary = keyComparer != null ? new SortedDictionary<TKey, TValue>(keyComparer) : new SortedDictionary<TKey, TValue>();
+                            break;
+                        default:
+                            var keyEqualityComparer = source.GetKeyEqualityComparer();
+                            resetDictionary = keyEqualityComparer != null ? new Dictionary<TKey, TValue>(keyEqualityComparer) : new Dictionary<TKey, TValue>();
+                            break;
+                    }
+                    foreach (var kv in source)
+                        resetDictionary.Add(kv);
+                }
+                await rangeObservableDictionary.SequentialExecuteAsync(() =>
+                {
+                    switch (e.Action)
+                    {
+                        case NotifyDictionaryChangedAction.Add:
+                            rangeObservableDictionary.AddRange(e.NewItems);
+                            break;
+                        case NotifyDictionaryChangedAction.Remove:
+                            rangeObservableDictionary.RemoveRange(e.OldItems.Select(kv => kv.Key));
+                            break;
+                        case NotifyDictionaryChangedAction.Replace:
+                            rangeObservableDictionary.ReplaceRange(e.OldItems.Select(kv => kv.Key), e.NewItems);
+                            break;
+                        case NotifyDictionaryChangedAction.Reset:
+                            rangeObservableDictionary.Reset(resetDictionary);
+                            break;
+                    }
+                }).ConfigureAwait(false);
+            }
+
+            return (source as ISynchronized).SequentialExecute(() =>
+            {
+                var notifier = source as INotifyDictionaryChanged<TKey, TValue>;
+                if (notifier != null)
+                    notifier.DictionaryChanged += dictionaryChanged;
+
+                IDictionary<TKey, TValue> startingDictionary = null;
+                switch (source.GetIndexingStrategy() ?? IndexingStrategy.NoneOrInherit)
+                {
+                    case IndexingStrategy.SelfBalancingBinarySearchTree:
+                        var keyComparer = source.GetKeyComparer();
+                        startingDictionary = keyComparer != null ? new SortedDictionary<TKey, TValue>(keyComparer) : new SortedDictionary<TKey, TValue>();
+                        foreach (var kv in source)
+                            startingDictionary.Add(kv);
+                        rangeObservableDictionary = keyComparer != null ? new SynchronizedObservableSortedDictionary<TKey, TValue>(synchronizationContext, startingDictionary, keyComparer) : new SynchronizedObservableSortedDictionary<TKey, TValue>(synchronizationContext, startingDictionary);
+                        break;
+                    default:
+                        var keyEqualityComparer = source.GetKeyEqualityComparer();
+                        startingDictionary = keyEqualityComparer != null ? new Dictionary<TKey, TValue>(keyEqualityComparer) : new Dictionary<TKey, TValue>();
+                        foreach (var kv in source)
+                            startingDictionary.Add(kv);
+                        rangeObservableDictionary = keyEqualityComparer != null ? new SynchronizedObservableDictionary<TKey, TValue>(synchronizationContext, startingDictionary, keyEqualityComparer) : new SynchronizedObservableDictionary<TKey, TValue>(synchronizationContext, startingDictionary);
+                        break;
+                }
+                return new ActiveLookup<TKey, TValue>(rangeObservableDictionary, source as INotifyElementFaultChanges, () =>
+                {
+                    if (notifier != null)
+                        notifier.DictionaryChanged -= dictionaryChanged;
+                });
+            });
+        }
+
+        #endregion SwitchContext
 
         #region ToActiveEnumerable
 

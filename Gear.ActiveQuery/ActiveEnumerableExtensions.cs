@@ -2358,6 +2358,139 @@ namespace Gear.ActiveQuery
 
         #endregion Sum
 
+        #region SwitchContext
+
+        public static ActiveEnumerable<object> SwitchContext(this IEnumerable source, SynchronizationContext synchronizationContext = null)
+        {
+            synchronizationContext = synchronizationContext ?? SynchronizationContext.Current;
+            SynchronizedRangeObservableCollection<object> rangeObservableCollection = null;
+
+            async void collectionChanged(object sender, NotifyCollectionChangedEventArgs e)
+            {
+                IReadOnlyList<object> resetValues = null;
+                if (e.Action == NotifyCollectionChangedAction.Reset)
+                    resetValues = source.Cast<object>().ToImmutableArray();
+                await rangeObservableCollection.SequentialExecuteAsync(() =>
+                {
+                    switch (e.Action)
+                    {
+                        case NotifyCollectionChangedAction.Add:
+                            rangeObservableCollection.InsertRange(e.NewStartingIndex, e.NewItems.Cast<object>());
+                            break;
+                        case NotifyCollectionChangedAction.Move:
+                            rangeObservableCollection.MoveRange(e.OldStartingIndex, e.NewStartingIndex, e.OldItems.Count);
+                            break;
+                        case NotifyCollectionChangedAction.Remove:
+                            rangeObservableCollection.RemoveRange(e.OldStartingIndex, e.OldItems.Count);
+                            break;
+                        case NotifyCollectionChangedAction.Replace:
+                            rangeObservableCollection.ReplaceRange(e.OldStartingIndex, e.OldItems.Count, e.NewItems.Cast<object>());
+                            break;
+                        case NotifyCollectionChangedAction.Reset:
+                            rangeObservableCollection.Reset(resetValues);
+                            break;
+                    }
+                }).ConfigureAwait(false);
+            }
+
+            return (source as ISynchronized).SequentialExecute(() =>
+            {
+                var notifier = source as INotifyCollectionChanged;
+                if (notifier != null)
+                    notifier.CollectionChanged += collectionChanged;
+
+                rangeObservableCollection = new SynchronizedRangeObservableCollection<object>(synchronizationContext, source.Cast<object>());
+                return new ActiveEnumerable<object>(rangeObservableCollection, source as INotifyElementFaultChanges, () =>
+                {
+                    if (notifier != null)
+                        notifier.CollectionChanged -= collectionChanged;
+                });
+            });
+        }
+
+        public static ActiveEnumerable<TElement> SwitchContext<TElement>(this IEnumerable<TElement> source, SynchronizationContext synchronizationContext = null)
+        {
+            synchronizationContext = synchronizationContext ?? SynchronizationContext.Current;
+            SynchronizedRangeObservableCollection<TElement> rangeObservableCollection = null;
+
+            async void collectionChanged(object sender, NotifyCollectionChangedEventArgs e)
+            {
+                IReadOnlyList<TElement> resetValues = null;
+                if (e.Action == NotifyCollectionChangedAction.Reset)
+                    resetValues = source.ToImmutableArray();
+                await rangeObservableCollection.SequentialExecuteAsync(() =>
+                {
+                    switch (e.Action)
+                    {
+                        case NotifyCollectionChangedAction.Add:
+                            rangeObservableCollection.InsertRange(e.NewStartingIndex, e.NewItems.Cast<TElement>());
+                            break;
+                        case NotifyCollectionChangedAction.Move:
+                            rangeObservableCollection.MoveRange(e.OldStartingIndex, e.NewStartingIndex, e.OldItems.Count);
+                            break;
+                        case NotifyCollectionChangedAction.Remove:
+                            rangeObservableCollection.RemoveRange(e.OldStartingIndex, e.OldItems.Count);
+                            break;
+                        case NotifyCollectionChangedAction.Replace:
+                            rangeObservableCollection.ReplaceRange(e.OldStartingIndex, e.OldItems.Count, e.NewItems.Cast<TElement>());
+                            break;
+                        case NotifyCollectionChangedAction.Reset:
+                            rangeObservableCollection.Reset(resetValues);
+                            break;
+                    }
+                }).ConfigureAwait(false);
+            }
+
+            async void genericCollectionChanged(object sender, NotifyGenericCollectionChangedEventArgs<TElement> e)
+            {
+                IReadOnlyList<TElement> resetValues = null;
+                if (e.Action == NotifyCollectionChangedAction.Reset)
+                    resetValues = source.ToImmutableArray();
+                await rangeObservableCollection.SequentialExecuteAsync(() =>
+                {
+                    switch (e.Action)
+                    {
+                        case NotifyCollectionChangedAction.Add:
+                            rangeObservableCollection.InsertRange(e.NewStartingIndex, e.NewItems);
+                            break;
+                        case NotifyCollectionChangedAction.Move:
+                            rangeObservableCollection.MoveRange(e.OldStartingIndex, e.NewStartingIndex, e.OldItems.Count);
+                            break;
+                        case NotifyCollectionChangedAction.Remove:
+                            rangeObservableCollection.RemoveRange(e.OldStartingIndex, e.OldItems.Count);
+                            break;
+                        case NotifyCollectionChangedAction.Replace:
+                            rangeObservableCollection.ReplaceRange(e.OldStartingIndex, e.OldItems.Count, e.NewItems);
+                            break;
+                        case NotifyCollectionChangedAction.Reset:
+                            rangeObservableCollection.Reset(resetValues);
+                            break;
+                    }
+                }).ConfigureAwait(false);
+            }
+
+            return (source as ISynchronized).SequentialExecute(() =>
+            {
+                var notifier = source as INotifyCollectionChanged;
+                var genericNotifier = source as INotifyGenericCollectionChanged<TElement>;
+                if (genericNotifier != null)
+                    genericNotifier.GenericCollectionChanged += genericCollectionChanged;
+                else if (notifier != null)
+                    notifier.CollectionChanged += collectionChanged;
+
+                rangeObservableCollection = new SynchronizedRangeObservableCollection<TElement>(synchronizationContext, source);
+                return new ActiveEnumerable<TElement>(rangeObservableCollection, source as INotifyElementFaultChanges, () =>
+                {
+                    if (genericNotifier != null)
+                        genericNotifier.GenericCollectionChanged -= genericCollectionChanged;
+                    else if (notifier != null)
+                        notifier.CollectionChanged -= collectionChanged;
+                });
+            });
+        }
+
+        #endregion SwitchContext
+
         #region ToActiveEnumerable
 
         public static ActiveEnumerable<TSource> ToActiveEnumerable<TSource>(this IEnumerable<TSource> source)

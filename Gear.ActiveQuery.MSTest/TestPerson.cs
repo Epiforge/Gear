@@ -14,7 +14,7 @@ namespace Gear.ActiveQuery.MSTest
         public static SynchronizedObservableDictionary<int, TestPerson> CreatePeopleDictionary(SynchronizationContext synchronizationContext = null) =>
             new SynchronizedObservableDictionary<int, TestPerson>(synchronizationContext, MakePeople().Select((person, index) => (person, index)).ToDictionary(pi => pi.index, pi => pi.person));
 
-        static IEnumerable<TestPerson> MakePeople() => new TestPerson[]
+        public static IEnumerable<TestPerson> MakePeople() => new TestPerson[]
         {
             new TestPerson("John"),
             new TestPerson("Emily"),
