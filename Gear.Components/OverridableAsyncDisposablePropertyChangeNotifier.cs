@@ -10,6 +10,9 @@ namespace Gear.Components
     /// </summary>
     public abstract class OverridableAsyncDisposablePropertyChangeNotifier : PropertyChangeNotifier, IAsyncDisposable
     {
+        /// <summary>
+        /// Finalizes this object
+        /// </summary>
         ~OverridableAsyncDisposablePropertyChangeNotifier() => DisposeAsync(false).Wait();
 
         readonly AsyncLock disposalAccess = new AsyncLock();

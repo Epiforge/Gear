@@ -3,6 +3,9 @@ using System.Threading.Tasks;
 
 namespace Gear.Components
 {
+    /// <summary>
+    /// Provides extensions for dealing with async utilities like <see cref="TaskCompletionSource{TResult}"/>
+    /// </summary>
     public static class AsyncExtensions
     {
         #region TaskCompletionSource

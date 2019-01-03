@@ -10,6 +10,9 @@ namespace Gear.Components
     /// </summary>
     public abstract class OverridableAsyncDisposable : IAsyncDisposable
     {
+        /// <summary>
+        /// Finalizes this object
+        /// </summary>
         ~OverridableAsyncDisposable() => DisposeAsync(false).Wait();
 
         readonly AsyncLock disposalAccess = new AsyncLock();

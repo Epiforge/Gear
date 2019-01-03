@@ -7,6 +7,9 @@ namespace Gear.Components
     /// </summary>
     public abstract class OverridableSyncDisposablePropertyChangeNotifier : PropertyChangeNotifier, IDisposable
     {
+        /// <summary>
+        /// Finalizes this object
+        /// </summary>
         ~OverridableSyncDisposablePropertyChangeNotifier() => Dispose(false);
 
         readonly object disposalAccess = new object();

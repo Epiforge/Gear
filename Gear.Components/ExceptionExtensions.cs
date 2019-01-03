@@ -1,8 +1,11 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace Gear.Components
 {
+    /// <summary>
+    /// Provides extensions for dealing with exceptions
+    /// </summary>
     public static class ExceptionExtensions
     {
         static string DetailException(Exception ex, int indent)

@@ -7,6 +7,9 @@ namespace Gear.Components
     /// </summary>
     public abstract class OverridableSyncDisposable : IDisposable
     {
+        /// <summary>
+        /// Finalizes this object
+        /// </summary>
         ~OverridableSyncDisposable() => Dispose(false);
 
         readonly object disposalAccess = new object();

@@ -56,6 +56,9 @@ namespace Gear.Components
             }
         }
 
+        /// <summary>
+        /// Finalizes this object
+        /// </summary>
         ~AsyncDisposable() => DisposeAsync(false).Wait();
 
         readonly AsyncLock disposalAccess = new AsyncLock();

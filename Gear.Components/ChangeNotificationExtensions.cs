@@ -1,15 +1,15 @@
 using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Collections.Specialized;
 using System.ComponentModel;
-using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 
 namespace Gear.Components
 {
+    /// <summary>
+    /// Provides extensions for managing event handlers for instances of <see cref="INotifyCollectionChanged"/>, <see cref="INotifyDictionaryChanged{TKey, TValue}"/>, <see cref="INotifyGenericCollectionChanged{T}"/>, <see cref="INotifyPropertyChanged"/>, and <see cref="INotifyPropertyChanging"/>
+    /// </summary>
     public static class ChangeNotificationExtensions
     {
         static readonly ConcurrentDictionary<PropertyInfo, FastMethodInfo> fastGetters = new ConcurrentDictionary<PropertyInfo, FastMethodInfo>();
@@ -19,136 +19,94 @@ namespace Gear.Components
 
         static PropertyInfo GetProperty((Type type, string name) propertyDetails) => propertyDetails.type.GetRuntimeProperty(propertyDetails.name);
 
-        public static Action OnCollectionChange(this INotifyCollectionChanged notifyingCollection, Action<IReadOnlyList<object>, int> onElementsAdded, Action<IReadOnlyList<object>, int, int> onElementsMoved, Action<IReadOnlyList<object>, int> onElementsRemoved, Action onReset)
-        {
-            void collectionChanged(object sender, NotifyCollectionChangedEventArgs e)
-            {
-                switch (e.Action)
-                {
-                    case NotifyCollectionChangedAction.Reset:
-                        onReset();
-                        break;
-                    case NotifyCollectionChangedAction.Move:
-                        onElementsMoved(e.OldItems.Cast<object>().ToImmutableArray(), e.OldStartingIndex, e.NewStartingIndex);
-                        break;
-                    default:
-                        if (e.OldItems != null && e.OldStartingIndex >= 0)
-                            onElementsRemoved(e.OldItems.Cast<object>().ToImmutableArray(), e.OldStartingIndex);
-                        if (e.NewItems != null && e.NewStartingIndex >= 0)
-                            onElementsAdded(e.NewItems.Cast<object>().ToImmutableArray(), e.NewStartingIndex);
-                        break;
-                }
-            }
-
-            notifyingCollection.CollectionChanged += collectionChanged;
-            return () => notifyingCollection.CollectionChanged -= collectionChanged;
-        }
-
-        public static Action OnCollectionChange<TElement, TNotifyingReadOnlyList>(this TNotifyingReadOnlyList notifyingReadOnlyList, Action<IReadOnlyList<TElement>, int> onElementsAdded, Action<IReadOnlyList<TElement>, int, int> onElementsMoved, Action<IReadOnlyList<TElement>, int> onElementsRemoved, Action onReset) where TNotifyingReadOnlyList : IReadOnlyList<TElement>, INotifyCollectionChanged
-        {
-            void collectionChanged(object sender, NotifyCollectionChangedEventArgs e)
-            {
-                switch (e.Action)
-                {
-                    case NotifyCollectionChangedAction.Reset:
-                        onReset();
-                        break;
-                    case NotifyCollectionChangedAction.Move:
-                        onElementsMoved(e.OldItems.Cast<TElement>().ToImmutableArray(), e.OldStartingIndex, e.NewStartingIndex);
-                        break;
-                    default:
-                        if (e.OldItems != null && e.OldStartingIndex >= 0)
-                            onElementsRemoved(e.OldItems.Cast<TElement>().ToImmutableArray(), e.OldStartingIndex);
-                        if (e.NewItems != null && e.NewStartingIndex >= 0)
-                            onElementsAdded(e.NewItems.Cast<TElement>().ToImmutableArray(), e.NewStartingIndex);
-                        break;
-                }
-            }
-
-            notifyingReadOnlyList.CollectionChanged += collectionChanged;
-            return () => notifyingReadOnlyList.CollectionChanged -= collectionChanged;
-        }
-
-        public static Action OnDictionaryChange<TKey, TValue>(this INotifyDictionaryChanged<TKey, TValue> notifyingDictionary, Action onReset, Action<TKey, TValue, TValue> onValueReplaced, Action<IReadOnlyList<KeyValuePair<TKey, TValue>>> onValuesAdded, Action<IReadOnlyList<KeyValuePair<TKey, TValue>>> onValuesRemoved)
-        {
-            void dictionaryChanged(object sender, NotifyDictionaryChangedEventArgs<TKey, TValue> e)
-            {
-                switch (e.Action)
-                {
-                    case NotifyDictionaryChangedAction.Reset:
-                        onReset();
-                        break;
-                    default:
-                        if (e.OldItems != null)
-                            onValuesRemoved(e.OldItems);
-                        if (e.NewItems != null)
-                            onValuesAdded(e.NewItems);
-                        break;
-                }
-            }
-
-            notifyingDictionary.DictionaryChanged += dictionaryChanged;
-            return () => notifyingDictionary.DictionaryChanged -= dictionaryChanged;
-        }
-
-        public static Action OnPropertyChange<TInstance, TPropertyValue>(this TInstance obj, string propertyName, Action<TPropertyValue> onPropertyChanging, Action<TPropertyValue> onPropertyChanged) where TInstance : INotifyPropertyChanged, INotifyPropertyChanging
-        {
-            var fastGetter = fastGetters.GetOrAdd(properties.GetOrAdd((typeof(TInstance), propertyName), GetProperty), CreateFastGetter);
-
-            void propertyChanged(object sender, PropertyChangedEventArgs e)
-            {
-                if (e.PropertyName == propertyName)
-                    onPropertyChanged((TPropertyValue)fastGetter.Invoke(obj));
-            }
-
-            void propertyChanging(object sender, PropertyChangingEventArgs e)
-            {
-                if (e.PropertyName == propertyName)
-                    onPropertyChanging((TPropertyValue)fastGetter.Invoke(obj));
-            }
-
-            obj.PropertyChanging += propertyChanging;
-            obj.PropertyChanged += propertyChanged;
-            return () =>
-            {
-                obj.PropertyChanging -= propertyChanging;
-                obj.PropertyChanged -= propertyChanged;
-            };
-        }
-
-        public static Action OnPropertyChange<TInstance, TPropertyValue>(this TInstance obj, Expression<Func<TInstance, TPropertyValue>> propertyExpression, Action<TPropertyValue> onPropertyChanging, Action<TPropertyValue> onPropertyChanged) where TInstance : INotifyPropertyChanged, INotifyPropertyChanging
+        static string GetPropertyNameFromExpression<TInstance, TPropertyValue>(this TInstance obj, Expression<Func<TInstance, TPropertyValue>> propertyExpression)
         {
             if (propertyExpression.Body is MemberExpression memberExpression && memberExpression.Member is PropertyInfo property && memberExpression.Expression is ParameterExpression)
             {
                 if (memberExpression.Expression.Type != typeof(TInstance))
                     throw new ArgumentException($"Accessed property must belong to {nameof(TInstance)}", nameof(propertyExpression));
-
-                var propertyName = property.Name;
-                var fastGetter = fastGetters.GetOrAdd(property, CreateFastGetter);
-
-                void propertyChanged(object sender, PropertyChangedEventArgs e)
-                {
-                    if (e.PropertyName == propertyName)
-                        onPropertyChanged((TPropertyValue)fastGetter.Invoke(obj));
-                }
-
-                void propertyChanging(object sender, PropertyChangingEventArgs e)
-                {
-                    if (e.PropertyName == propertyName)
-                        onPropertyChanging((TPropertyValue)fastGetter.Invoke(obj));
-                }
-
-                obj.PropertyChanging += propertyChanging;
-                obj.PropertyChanged += propertyChanged;
-                return () =>
-                {
-                    obj.PropertyChanging -= propertyChanging;
-                    obj.PropertyChanged -= propertyChanged;
-                };
+                return property.Name;
             }
             throw new ArgumentException("Expression must only access a property", nameof(propertyExpression));
         }
 
+        /// <summary>
+        /// Subscribes to the <see cref="INotifyCollectionChanged.CollectionChanged"/> event using the specified handler
+        /// </summary>
+        /// <param name="notifyingCollection">The notifying collection</param>
+        /// <param name="onCollectionChanged">The handler</param>
+        /// <returns>An action that will unsubscribe the handler from the <see cref="INotifyCollectionChanged.CollectionChanged"/> event</returns>
+        public static Action OnCollectionChanged(this INotifyCollectionChanged notifyingCollection, Action<NotifyCollectionChangedEventArgs> onCollectionChanged)
+        {
+            void collectionChanged(object sender, NotifyCollectionChangedEventArgs e) => onCollectionChanged(e);
+            notifyingCollection.CollectionChanged += collectionChanged;
+            return () => notifyingCollection.CollectionChanged -= collectionChanged;
+        }
+
+        /// <summary>
+        /// Subscribes to the <see cref="INotifyDictionaryChanged{TKey, TValue}.DictionaryChanged"/> event using the specified handler
+        /// </summary>
+        /// <typeparam name="TKey">The type of keys in the dictionary</typeparam>
+        /// <typeparam name="TValue">The type of values in the dictionary</typeparam>
+        /// <param name="notifyingDictionary">The notifying dictionary</param>
+        /// <param name="onDictionaryChanged">The handler</param>
+        /// <returns>An action that will unsubscribe the handler from the <see cref="INotifyDictionaryChanged{TKey, TValue}.DictionaryChanged"/> event</returns>
+        public static Action OnDictionaryChanged<TKey, TValue>(this INotifyDictionaryChanged<TKey, TValue> notifyingDictionary, Action<NotifyDictionaryChangedEventArgs<TKey, TValue>> onDictionaryChanged)
+        {
+            void dictionaryChanged(object sender, NotifyDictionaryChangedEventArgs<TKey, TValue> e) => onDictionaryChanged(e);
+            notifyingDictionary.DictionaryChanged += dictionaryChanged;
+            return () => notifyingDictionary.DictionaryChanged -= dictionaryChanged;
+        }
+
+        /// <summary>
+        /// Subscribes to the <see cref="INotifyGenericCollectionChanged{T}.GenericCollectionChanged"/> event using the specified handler
+        /// </summary>
+        /// <typeparam name="T">The type of the items in the collection</typeparam>
+        /// <param name="notifyingCollection">The notifying collection</param>
+        /// <param name="onGenericCollectionChanged">The handler</param>
+        /// <returns>An action that will unsubscribe the handler from the <see cref="INotifyGenericCollectionChanged{T}.GenericCollectionChanged"/> event</returns>
+        public static Action OnGenericCollectionChanged<T>(this INotifyGenericCollectionChanged<T> notifyingCollection, Action<NotifyGenericCollectionChangedEventArgs<T>> onGenericCollectionChanged)
+        {
+            void genericCollectionChanged(object sender, NotifyGenericCollectionChangedEventArgs<T> e) => onGenericCollectionChanged(e);
+            notifyingCollection.GenericCollectionChanged += genericCollectionChanged;
+            return () => notifyingCollection.GenericCollectionChanged -= genericCollectionChanged;
+        }
+
+        /// <summary>
+        /// Subscribes to the <see cref="INotifyPropertyChanging.PropertyChanging"/> and <see cref="INotifyPropertyChanged.PropertyChanged"/> events and executes the specified handlers when the specified property is changing or has changed
+        /// </summary>
+        /// <typeparam name="TInstance">The type of the notifying object</typeparam>
+        /// <typeparam name="TPropertyValue">The type of the property</typeparam>
+        /// <param name="obj">The notifying object</param>
+        /// <param name="propertyName">The name of the property</param>
+        /// <param name="onPropertyChanging">The handler to execute when the property is changing</param>
+        /// <param name="onPropertyChanged">The handler to execute when the property has changed</param>
+        /// <returns>An action that will unsubscribe the handlers from the <see cref="INotifyPropertyChanging.PropertyChanging"/> and <see cref="INotifyPropertyChanged.PropertyChanged"/> events</returns>
+        public static Action OnPropertyChange<TInstance, TPropertyValue>(this TInstance obj, string propertyName, Action<TPropertyValue> onPropertyChanging, Action<TPropertyValue> onPropertyChanged) where TInstance : INotifyPropertyChanged, INotifyPropertyChanging =>
+            OnPropertyChanging(obj, propertyName, onPropertyChanging) + OnPropertyChanged(obj, propertyName, onPropertyChanged);
+
+        /// <summary>
+        /// Subscribes to the <see cref="INotifyPropertyChanged.PropertyChanged"/> event and executes the specified handlers when the specified property is changing or has changed
+        /// </summary>
+        /// <typeparam name="TInstance">The type of the notifying object</typeparam>
+        /// <typeparam name="TPropertyValue">The type of the property</typeparam>
+        /// <param name="obj">The notifying object</param>
+        /// <param name="propertyExpression">An expression indicating the property</param>
+        /// <param name="onPropertyChanging">The handler to execute when the property is changing</param>
+        /// <param name="onPropertyChanged">The handler to execute when the property has changed</param>
+        /// <returns>An action that will unsubscribe the handlers from the <see cref="INotifyPropertyChanging.PropertyChanging"/> and <see cref="INotifyPropertyChanged.PropertyChanged"/> events</returns>
+        public static Action OnPropertyChange<TInstance, TPropertyValue>(this TInstance obj, Expression<Func<TInstance, TPropertyValue>> propertyExpression, Action<TPropertyValue> onPropertyChanging, Action<TPropertyValue> onPropertyChanged) where TInstance : INotifyPropertyChanged, INotifyPropertyChanging =>
+            OnPropertyChange(obj, GetPropertyNameFromExpression(obj, propertyExpression), onPropertyChanging, onPropertyChanged);
+
+        /// <summary>
+        /// Subscribes to the <see cref="INotifyPropertyChanged.PropertyChanged"/> event and executes the specified handler when the specified property has changed
+        /// </summary>
+        /// <typeparam name="TInstance">The type of the notifying object</typeparam>
+        /// <typeparam name="TPropertyValue">The type of the property</typeparam>
+        /// <param name="obj">The notifying object</param>
+        /// <param name="propertyName">The name of the property</param>
+        /// <param name="onPropertyChanged">The handler</param>
+        /// <returns>An action that will unsubscribe the handler from the <see cref="INotifyPropertyChanged.PropertyChanged"/> event</returns>
         public static Action OnPropertyChanged<TInstance, TPropertyValue>(this TInstance obj, string propertyName, Action<TPropertyValue> onPropertyChanged) where TInstance : INotifyPropertyChanged
         {
             var fastGetter = fastGetters.GetOrAdd(properties.GetOrAdd((typeof(TInstance), propertyName), GetProperty), CreateFastGetter);
@@ -163,28 +121,27 @@ namespace Gear.Components
             return () => obj.PropertyChanged -= propertyChanged;
         }
 
-        public static Action OnPropertyChanged<TInstance, TPropertyValue>(this TInstance obj, Expression<Func<TInstance, TPropertyValue>> propertyExpression, Action<TPropertyValue> onPropertyChanged) where TInstance : INotifyPropertyChanged
-        {
-            if (propertyExpression.Body is MemberExpression memberExpression && memberExpression.Member is PropertyInfo property && memberExpression.Expression is ParameterExpression)
-            {
-                if (memberExpression.Expression.Type != typeof(TInstance))
-                    throw new ArgumentException($"Accessed property must belong to {nameof(TInstance)}", nameof(propertyExpression));
+        /// <summary>
+        /// Subscribes to the <see cref="INotifyPropertyChanged.PropertyChanged"/> event and executes the specified handler when the specified property has changed
+        /// </summary>
+        /// <typeparam name="TInstance">The type of the notifying object</typeparam>
+        /// <typeparam name="TPropertyValue">The type of the property</typeparam>
+        /// <param name="obj">The notifying object</param>
+        /// <param name="propertyExpression">An expression indicating the property</param>
+        /// <param name="onPropertyChanged">The handler</param>
+        /// <returns>An action that will unsubscribe the handler from the <see cref="INotifyPropertyChanged.PropertyChanged"/> event</returns>
+        public static Action OnPropertyChanged<TInstance, TPropertyValue>(this TInstance obj, Expression<Func<TInstance, TPropertyValue>> propertyExpression, Action<TPropertyValue> onPropertyChanged) where TInstance : INotifyPropertyChanged =>
+            OnPropertyChanged(obj, GetPropertyNameFromExpression(obj, propertyExpression), onPropertyChanged);
 
-                var propertyName = property.Name;
-                var fastGetter = fastGetters.GetOrAdd(property, CreateFastGetter);
-
-                void propertyChanged(object sender, PropertyChangedEventArgs e)
-                {
-                    if (e.PropertyName == propertyName)
-                        onPropertyChanged((TPropertyValue)fastGetter.Invoke(obj));
-                }
-
-                obj.PropertyChanged += propertyChanged;
-                return () => obj.PropertyChanged -= propertyChanged;
-            }
-            throw new ArgumentException("Expression must only access a property", nameof(propertyExpression));
-        }
-
+        /// <summary>
+        /// Subscribes to the <see cref="INotifyPropertyChanging.PropertyChanging"/> event and executes the specified handler when the specified property is changing
+        /// </summary>
+        /// <typeparam name="TInstance">The type of the notifying object</typeparam>
+        /// <typeparam name="TPropertyValue">The type of the property</typeparam>
+        /// <param name="obj">The notifying object</param>
+        /// <param name="propertyName">The name of the property</param>
+        /// <param name="onPropertyChanging">The handler</param>
+        /// <returns>An action that will unsubscribe the handler from the <see cref="INotifyPropertyChanging.PropertyChanging"/> event</returns>
         public static Action OnPropertyChanging<TInstance, TPropertyValue>(this TInstance obj, string propertyName, Action<TPropertyValue> onPropertyChanging) where TInstance : INotifyPropertyChanging
         {
             var fastGetter = fastGetters.GetOrAdd(properties.GetOrAdd((typeof(TInstance), propertyName), GetProperty), CreateFastGetter);
@@ -199,26 +156,16 @@ namespace Gear.Components
             return () => obj.PropertyChanging -= propertyChanging;
         }
 
-        public static Action OnPropertyChanging<TInstance, TPropertyValue>(this TInstance obj, Expression<Func<TInstance, TPropertyValue>> propertyExpression, Action<TPropertyValue> onPropertyChanging) where TInstance : INotifyPropertyChanging
-        {
-            if (propertyExpression.Body is MemberExpression memberExpression && memberExpression.Member is PropertyInfo property && memberExpression.Expression is ParameterExpression)
-            {
-                if (memberExpression.Expression.Type != typeof(TInstance))
-                    throw new ArgumentException($"Accessed property must belong to {nameof(TInstance)}", nameof(propertyExpression));
-
-                var propertyName = property.Name;
-                var fastGetter = fastGetters.GetOrAdd(property, CreateFastGetter);
-
-                void propertyChanging(object sender, PropertyChangingEventArgs e)
-                {
-                    if (e.PropertyName == propertyName)
-                        onPropertyChanging((TPropertyValue)fastGetter.Invoke(obj));
-                }
-
-                obj.PropertyChanging += propertyChanging;
-                return () => obj.PropertyChanging -= propertyChanging;
-            }
-            throw new ArgumentException("Expression must only access a property", nameof(propertyExpression));
-        }
+        /// <summary>
+        /// Subscribes to the <see cref="INotifyPropertyChanging.PropertyChanging"/> event and executes the specified handler when the specified property is changing
+        /// </summary>
+        /// <typeparam name="TInstance">The type of the notifying object</typeparam>
+        /// <typeparam name="TPropertyValue">The type of the property</typeparam>
+        /// <param name="obj">The notifying object</param>
+        /// <param name="propertyExpression">An expression indicating the property</param>
+        /// <param name="onPropertyChanging">The handler</param>
+        /// <returns>An action that will unsubscribe the handler from the <see cref="INotifyPropertyChanging.PropertyChanging"/> event</returns>
+        public static Action OnPropertyChanging<TInstance, TPropertyValue>(this TInstance obj, Expression<Func<TInstance, TPropertyValue>> propertyExpression, Action<TPropertyValue> onPropertyChanging) where TInstance : INotifyPropertyChanging =>
+            OnPropertyChanging(obj, GetPropertyNameFromExpression(obj, propertyExpression), onPropertyChanging);
     }
 }

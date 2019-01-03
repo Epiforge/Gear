@@ -4,11 +4,18 @@ using System.Reflection;
 
 namespace Gear.Components
 {
+    /// <summary>
+    /// Provides a method for invoking a method that is not known at compile time
+    /// </summary>
     public class FastMethodInfo
     {
         private delegate object ReturnValueDelegate(object instance, object[] arguments);
         private delegate void VoidDelegate(object instance, object[] arguments);
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="FastMethodInfo"/> class based on the specified <see cref="System.Reflection.MethodInfo"/>
+        /// </summary>
+        /// <param name="methodInfo">The <see cref="System.Reflection.MethodInfo"/> reflecting the method to be invoked</param>
         public FastMethodInfo(MethodInfo methodInfo)
         {
             MethodInfo = methodInfo;
@@ -33,8 +40,17 @@ namespace Gear.Components
 
         readonly ReturnValueDelegate @delegate;
 
+        /// <summary>
+        /// Invokes the method reflected by <see cref="MethodInfo"/>
+        /// </summary>
+        /// <param name="instance">The object on which to invoke the method (if a method is static, this argument is ignored)</param>
+        /// <param name="arguments">An argument list for the invoked method</param>
+        /// <returns>An object containing the return value of the invoked method</returns>
         public object Invoke(object instance, params object[] arguments) => @delegate(instance, arguments);
 
+        /// <summary>
+        /// Gets the <see cref="System.Reflection.MethodInfo"/> reflecting the method this <see cref="FastMethodInfo"/> will invoke
+        /// </summary>
         public MethodInfo MethodInfo { get; }
     }
 }

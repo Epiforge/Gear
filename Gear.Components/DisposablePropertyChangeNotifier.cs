@@ -10,6 +10,9 @@ namespace Gear.Components
     /// </summary>
     public abstract class DisposablePropertyChangeNotifier : PropertyChangeNotifier, IDisposable, IAsyncDisposable
     {
+        /// <summary>
+        /// Finalizes this object
+        /// </summary>
         ~DisposablePropertyChangeNotifier() => Dispose(false);
 
         readonly AsyncLock disposalAccess = new AsyncLock();

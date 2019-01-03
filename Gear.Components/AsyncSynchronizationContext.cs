@@ -8,6 +8,9 @@ using System.Threading.Tasks;
 
 namespace Gear.Components
 {
+    /// <summary>
+    /// Provides a synchronization context for the Task Parallel Library
+    /// </summary>
     public class AsyncSynchronizationContext : SynchronizationContext
     {
         readonly AsyncLock queuedCallbacksExecutionAccess = new AsyncLock();
@@ -45,12 +48,22 @@ namespace Gear.Components
             }
         });
 
+        /// <summary>
+        /// Dispatches an asynchronous message to the synchronization context
+        /// </summary>
+        /// <param name="d">The <see cref="SendOrPostCallback"/> delegate to call</param>
+        /// <param name="state">The object passed to the delegate</param>
         public override void Post(SendOrPostCallback d, object state)
         {
             queuedCallbacks.Enqueue((d ?? throw new ArgumentNullException(nameof(d)), state, null, null));
             ExecuteQueuedCallbacks();
         }
 
+        /// <summary>
+        /// Dispatches a synchronous message to the synchronization context
+        /// </summary>
+        /// <param name="d">The <see cref="SendOrPostCallback"/> delegate to call</param>
+        /// <param name="state">The object passed to the delegate</param>
         public override void Send(SendOrPostCallback d, object state)
         {
             using (var signal = new ManualResetEventSlim(false))

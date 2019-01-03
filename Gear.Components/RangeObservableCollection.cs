@@ -8,29 +8,75 @@ using System.Linq;
 
 namespace Gear.Components
 {
+    /// <summary>
+    /// Represents a dynamic data collection that supports bulk operations and provides notifications when items get added, removed, or when the whole list is refreshed
+    /// </summary>
+    /// <typeparam name="T">The type of elements in the collection</typeparam>
     public class RangeObservableCollection<T> : ObservableCollection<T>, INotifyGenericCollectionChanged<T>
     {
+        /// <summary>
+        /// Initializes a new instance of the <see cref="RangeObservableCollection{T}"/> class
+        /// </summary>
         public RangeObservableCollection() : base()
         {
         }
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="RangeObservableCollection{T}"/> class that contains elements copied from the specified collection
+        /// </summary>
+        /// <param name="collection">The collection from which the elements are copied</param>
         public RangeObservableCollection(IEnumerable<T> collection) : base(collection)
         {
         }
 
+        /// <summary>
+        /// Occurs when the collection changes
+        /// </summary>
         public event EventHandler<NotifyGenericCollectionChangedEventArgs<T>> GenericCollectionChanged;
 
+        /// <summary>
+        /// Adds objects to the end of the <see cref="RangeObservableCollection{T}"/>
+        /// </summary>
+        /// <param name="items">The objects to be added to the end of the <see cref="RangeObservableCollection{T}"/></param>
         public void AddRange(IEnumerable<T> items) => InsertRange(Items.Count, items);
 
+        /// <summary>
+        /// Adds objects to the end of the <see cref="RangeObservableCollection{T}"/>
+        /// </summary>
+        /// <param name="items">The objects to be added to the end of the <see cref="RangeObservableCollection{T}"/></param>
         public void AddRange(IList<T> items) => AddRange((IEnumerable<T>)items);
 
-        public T GetAndRemoveAt(int index)
+        /// <summary>
+        /// Gets the element at the specified index and removes it from the <see cref="RangeObservableCollection{T}"/>
+        /// </summary>
+        /// <param name="index">The zero-based index of the element</param>
+        /// <returns>The element at the specified index</returns>
+        public virtual T GetAndRemoveAt(int index)
         {
             var item = Items[index];
             RemoveAt(index);
             return item;
         }
 
+        /// <summary>
+        /// Gets the elements in the range starting at the specified index and of the specified length
+        /// </summary>
+        /// <param name="index">The index of the element at the start of the range</param>
+        /// <param name="count">The number of elements in the range</param>
+        /// <returns>The elements in the range</returns>
+        public IReadOnlyList<T> GetRange(int index, int count)
+        {
+            var result = new List<T>();
+            for (int i = index, ii = index + count; i < ii; ++i)
+                result.Add(this[i]);
+            return result.ToImmutableArray();
+        }
+
+        /// <summary>
+        /// Inserts elements into the <see cref="RangeObservableCollection{T}"/> at the specified index
+        /// </summary>
+        /// <param name="index">The zero-based index at which <paramref name="items"/> should be inserted</param>
+        /// <param name="items">The objects to insert</param>
         public void InsertRange(int index, IEnumerable<T> items)
         {
             var originalIndex = index;
@@ -48,8 +94,19 @@ namespace Gear.Components
             }
         }
 
+        /// <summary>
+        /// Inserts elements into the <see cref="RangeObservableCollection{T}"/> at the specified index
+        /// </summary>
+        /// <param name="index">The zero-based index at which <paramref name="items"/> should be inserted</param>
+        /// <param name="items">The objects to insert</param>
         public void InsertRange(int index, IList<T> items) => InsertRange(index, (IEnumerable<T>)items);
 
+        /// <summary>
+        /// Moves the items at the specified index to a new location in the collection
+        /// </summary>
+        /// <param name="oldStartIndex">The zero-based index specifying the location of the items to be moved</param>
+        /// <param name="newStartIndex">The zero-based index specifying the new location of the items</param>
+        /// <param name="count">The number of items to move</param>
         public void MoveRange(int oldStartIndex, int newStartIndex, int count)
         {
             if (oldStartIndex != newStartIndex && count > 0)
@@ -68,33 +125,27 @@ namespace Gear.Components
             }
         }
 
+        /// <summary>
+        /// Raises the <see cref="INotifyCollectionChanged.CollectionChanged"/> event with the provided arguments
+        /// </summary>
+        /// <param name="e">Arguments of the event being raised</param>
         protected override void OnCollectionChanged(NotifyCollectionChangedEventArgs e)
         {
             base.OnCollectionChanged(e);
-            switch (e.Action)
-            {
-                case NotifyCollectionChangedAction.Add:
-                    OnGenericCollectionChanged(new NotifyGenericCollectionChangedEventArgs<T>(NotifyCollectionChangedAction.Add, e.NewItems.Cast<T>().ToImmutableArray(), e.NewStartingIndex));
-                    break;
-                case NotifyCollectionChangedAction.Move:
-                    OnGenericCollectionChanged(new NotifyGenericCollectionChangedEventArgs<T>(NotifyCollectionChangedAction.Move, (e.NewItems ?? e.OldItems).Cast<T>().ToImmutableArray(), e.NewStartingIndex, e.OldStartingIndex));
-                    break;
-                case NotifyCollectionChangedAction.Remove:
-                    OnGenericCollectionChanged(new NotifyGenericCollectionChangedEventArgs<T>(NotifyCollectionChangedAction.Remove, e.OldItems.Cast<T>().ToImmutableArray(), e.OldStartingIndex));
-                    break;
-                case NotifyCollectionChangedAction.Replace:
-                    OnGenericCollectionChanged(new NotifyGenericCollectionChangedEventArgs<T>(NotifyCollectionChangedAction.Replace, e.NewItems.Cast<T>().ToImmutableArray(), e.OldItems.Cast<T>().ToImmutableArray(), e.NewStartingIndex));
-                    break;
-                case NotifyCollectionChangedAction.Reset:
-                    OnGenericCollectionChanged(new NotifyGenericCollectionChangedEventArgs<T>(NotifyCollectionChangedAction.Reset));
-                    break;
-                default:
-                    throw new NotSupportedException();
-            }
+            OnGenericCollectionChanged((NotifyGenericCollectionChangedEventArgs<T>)e);
         }
 
+        /// <summary>
+        /// Raises the <see cref="INotifyGenericCollectionChanged{T}.GenericCollectionChanged"/> event with the provided arguments
+        /// </summary>
+        /// <param name="e">Arguments of the event being raised</param>
         protected virtual void OnGenericCollectionChanged(NotifyGenericCollectionChangedEventArgs<T> e) => GenericCollectionChanged?.Invoke(this, e);
 
+        /// <summary>
+        /// Removes all object from the <see cref="RangeObservableCollection{T}"/> that satisfy the <paramref name="predicate"/>
+        /// </summary>
+        /// <param name="predicate">A predicate used to determine whether to remove an object from the <see cref="RangeObservableCollection{T}"/></param>
+        /// <returns>The number of items that were removed</returns>
         public int RemoveAll(Func<T, bool> predicate)
         {
             var removed = 0;
@@ -114,8 +165,14 @@ namespace Gear.Components
             return removed;
         }
 
-        public void RemoveRange(IEnumerable<T> items)
+        /// <summary>
+        /// Removes the specified items from the <see cref="RangeObservableCollection{T}"/>
+        /// </summary>
+        /// <param name="items">The items to be removed</param>
+        /// <returns>The number of items that were removed</returns>
+        public int RemoveRange(IEnumerable<T> items)
         {
+            var removed = 0;
             foreach (var item in items)
             {
                 var index = Items.IndexOf(item);
@@ -124,12 +181,24 @@ namespace Gear.Components
                     Items.RemoveAt(index);
                     OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, item, index));
                     OnPropertyChanged(new PropertyChangedEventArgs(nameof(Count)));
+                    ++removed;
                 }
             }
+            return removed;
         }
 
-        public void RemoveRange(IList<T> items) => RemoveRange((IEnumerable<T>)items);
+        /// <summary>
+        /// Removes the specified items from the <see cref="RangeObservableCollection{T}"/>
+        /// </summary>
+        /// <param name="items">The items to be removed</param>
+        /// <returns>The number of items that were removed</returns>
+        public int RemoveRange(IList<T> items) => RemoveRange((IEnumerable<T>)items);
 
+        /// <summary>
+        /// Removes the specified range of items from the <see cref="RangeObservableCollection{T}"/>
+        /// </summary>
+        /// <param name="index">The index of the first item in the range</param>
+        /// <param name="count">The number of items in the range</param>
         public void RemoveRange(int index, int count)
         {
             if (count > 0)
@@ -145,6 +214,12 @@ namespace Gear.Components
             }
         }
 
+        /// <summary>
+        /// Replaces the item with the specified index with a specified item
+        /// </summary>
+        /// <param name="index">The index of the item to be replaced</param>
+        /// <param name="item">The replacement item</param>
+        /// <returns>The item that was replaced</returns>
         public T Replace(int index, T item)
         {
             var replacedItem = Items[index];
@@ -153,13 +228,17 @@ namespace Gear.Components
             return replacedItem;
         }
 
-        public void ReplaceAll(IEnumerable<T> collection)
+        /// <summary>
+        /// Replace all items in the <see cref="RangeObservableCollection{T}"/> with the items in the specified collection
+        /// </summary>
+        /// <param name="items">The collection of replacement items</param>
+        public void ReplaceAll(IEnumerable<T> items)
         {
             var oldItems = new T[Items.Count];
             Items.CopyTo(oldItems, 0);
             Items.Clear();
             var list = new List<T>();
-            foreach (var element in collection)
+            foreach (var element in items)
             {
                 Items.Add(element);
                 list.Add(element);
@@ -169,8 +248,19 @@ namespace Gear.Components
                 OnPropertyChanged(new PropertyChangedEventArgs(nameof(Count)));
         }
 
-        public void ReplaceAll(IList<T> list) => ReplaceAll((IEnumerable<T>)list);
+        /// <summary>
+        /// Replace all items in the <see cref="RangeObservableCollection{T}"/> with the items in the specified collection
+        /// </summary>
+        /// <param name="items">The collection of replacement items</param>
+        public void ReplaceAll(IList<T> items) => ReplaceAll((IEnumerable<T>)items);
 
+        /// <summary>
+        /// Replaces the specified range of items from the <see cref="RangeObservableCollection{T}"/> with the items in the specified collection
+        /// </summary>
+        /// <param name="index">The index of the first item in the range</param>
+        /// <param name="count">The number of items in the range</param>
+        /// <param name="collection">The collection of replacement items</param>
+        /// <returns>The items that were replaced</returns>
         public IReadOnlyList<T> ReplaceRange(int index, int count, IEnumerable<T> collection = null)
         {
             var originalIndex = index;
@@ -197,8 +287,19 @@ namespace Gear.Components
             return oldItems.ToImmutableArray();
         }
 
+        /// <summary>
+        /// Replaces the specified range of items from the <see cref="RangeObservableCollection{T}"/> with the items in the specified list
+        /// </summary>
+        /// <param name="index">The index of the first item in the range</param>
+        /// <param name="count">The number of items in the range</param>
+        /// <param name="list">The list of replacement items</param>
+        /// <returns>The items that were replaced</returns>
         public IReadOnlyList<T> ReplaceRange(int index, int count, IList<T> list) => ReplaceRange(index, count, (IEnumerable<T>)list);
 
+        /// <summary>
+        /// Resets the <see cref="RangeObservableCollection{T}"/> with the specified collection of items
+        /// </summary>
+        /// <param name="newCollection">The collection of items</param>
         public void Reset(IEnumerable<T> newCollection)
         {
             var previousCount = Items.Count;
