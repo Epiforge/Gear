@@ -48,6 +48,9 @@ namespace Gear.ActiveExpressions
         /// </summary>
         public static ActiveExpressionOptions Default { get; }
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ActiveExpressionOptions"/> class
+        /// </summary>
         public ActiveExpressionOptions()
         {
             DisposeConstructedObjects = true;
@@ -135,10 +138,19 @@ namespace Gear.ActiveExpressions
             return AddMethodReturnValueDisposal(property.GetMethod);
         }
 
+        /// <summary>
+        /// Determines whether the specified object is equal to the current object
+        /// </summary>
+        /// <param name="obj">The object to compare with the current object</param>
+        /// <returns><c>true</c> if the specified object is equal to the current object; otherwise, <c>false</c></returns>
         public override bool Equals(object obj) => obj is ActiveExpressionOptions other && this == other;
 
         internal void Freeze() => isFrozen = true;
 
+        /// <summary>
+        /// Gets the hash code for this <see cref="ActiveExpressionOptions"/> instance
+        /// </summary>
+        /// <returns>The hash code for this active expression</returns>
         public override int GetHashCode()
         {
             if (ReferenceEquals(this, Default))
@@ -156,7 +168,7 @@ namespace Gear.ActiveExpressions
         /// Gets whether active expressions using these options should dispose of objects they have created of the specified type and using constructor arguments of the specified types when the objects are replaced or otherwise discarded
         /// </summary>
         /// <param name="type">The type of object created</param>
-        /// <param name="constuctorParameterTypes">The types of the arguments passed to the constructor, in order</param>
+        /// <param name="constructorParameterTypes">The types of the arguments passed to the constructor, in order</param>
         /// <returns><c>true</c> if objects from this source should be disposed; otherwise, <c>false</c></returns>
         public bool IsConstructedTypeDisposed(Type type, params Type[] constructorParameterTypes) => DisposeConstructedObjects || IsConstructedTypeDisposed(type, new EquatableList<Type>(constructorParameterTypes));
 

@@ -2,7 +2,6 @@ using Gear.Components;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.ComponentModel;
 using System.Linq;
 using System.Linq.Expressions;
@@ -14,11 +13,7 @@ namespace Gear.ActiveExpressions
     /// <summary>
     /// Provides the base class from which the classes that represent active expression tree nodes are derived; use <see cref="Create{TResult}(LambdaExpression, object[])"/> or one of its overloads to create an active expression
     /// </summary>
-#pragma warning disable CS0660 // we can't override Equals in a meaningful way in this class, and besides, inheriting classes should be doing it anyway
-#pragma warning disable CS0661 // we can't override GetHashCode in a meaningful way in this class, and besides, inheriting classes should be doing it anyway
     public abstract class ActiveExpression : OverridableSyncDisposablePropertyChangeNotifier
-#pragma warning restore CS0660
-#pragma warning restore CS0661
     {
         static readonly ConcurrentDictionary<MethodInfo, FastMethodInfo> compiledMethods = new ConcurrentDictionary<MethodInfo, FastMethodInfo>();
         static readonly ConcurrentDictionary<MethodInfo, PropertyInfo> propertyGetMethodToProperty = new ConcurrentDictionary<MethodInfo, PropertyInfo>();
@@ -69,6 +64,11 @@ namespace Gear.ActiveExpressions
 
         static FastMethodInfo CreateFastMethodInfo(MethodInfo key) => new FastMethodInfo(key);
 
+        /// <summary>
+        /// Gets a <see cref="FastMethodInfo"/> for a specified <see cref="MethodInfo"/>
+        /// </summary>
+        /// <param name="methodInfo">The <see cref="MethodInfo"/></param>
+        /// <returns>The <see cref="FastMethodInfo"/></returns>
         protected static FastMethodInfo GetFastMethodInfo(MethodInfo methodInfo) => compiledMethods.GetOrAdd(methodInfo, CreateFastMethodInfo);
 
         /// <summary>
@@ -175,7 +175,6 @@ namespace Gear.ActiveExpressions
         /// <summary>
         /// Creates an active expression using a specified strongly-typed lambda expression with no arguments
         /// </summary>
-        /// <typeparam name="TArg">The type of the argument.</typeparam>
         /// <typeparam name="TResult">The type that <paramref name="expression"/> returns</typeparam>
         /// <param name="expression">The strongly-typed lambda expression</param>
         /// <param name="options">Active expression options to use instead of <see cref="ActiveExpressionOptions.Default"/></param>
@@ -237,7 +236,14 @@ namespace Gear.ActiveExpressions
             return ActiveExpression<TArg1, TArg2, TArg3, TResult>.Create(expression, arg1, arg2, arg3, options);
         }
 
-        protected static string GetValueLiteral(Exception fault, bool deferred, object value)
+        /// <summary>
+        /// Gets the string representation for the value of a node
+        /// </summary>
+        /// <param name="fault">The fault for the node</param>
+        /// <param name="deferred"><c>true</c> if evaluation of the node has been deferred; otherwise, <c>false</c></param>
+        /// <param name="value">The value for the node</param>
+        /// <returns>The string representation of the node's value</returns>
+        protected static string GetValueString(Exception fault, bool deferred, object value)
         {
             if (fault != null)
                 return $"[{fault.GetType().Name}: {fault.Message}]";
@@ -435,10 +441,28 @@ namespace Gear.ActiveExpressions
         bool deferringEvaluation;
         readonly object deferringEvaluationLock = new object();
         Exception fault;
-        protected readonly ActiveExpressionOptions options;
         object val;
         readonly FastEqualityComparer valueEqualityComparer;
 
+        /// <summary>
+        /// The <see cref="ActiveExpressionOptions"/> instance for this node
+        /// </summary>
+        protected readonly ActiveExpressionOptions options;
+
+        /// <summary>
+        /// Throws a <see cref="NotSupportedException"/> because deriving classes should be overriding this method
+        /// </summary>
+        /// <param name="obj">The object to compare with the current object</param>
+        public override bool Equals(object obj) => throw new NotSupportedException();
+
+        /// <summary>
+        /// Throws a <see cref="NotSupportedException"/> because deriving classes should be overriding this method
+        /// </summary>
+        public override int GetHashCode() => throw new NotSupportedException();
+
+        /// <summary>
+        /// Evaluates the current node
+        /// </summary>
         [ExcludeFromCodeCoverage]
         protected virtual void Evaluate()
         {
@@ -456,6 +480,9 @@ namespace Gear.ActiveExpressions
             }
         }
 
+        /// <summary>
+        /// Evaluates this node if its evaluation is not deferred
+        /// </summary>
         protected void EvaluateIfNotDeferred()
         {
             lock (deferringEvaluationLock)
@@ -465,6 +492,11 @@ namespace Gear.ActiveExpressions
             }
         }
 
+        /// <summary>
+        /// Attempts to get this node's value if its evaluation is not deferred
+        /// </summary>
+        /// <param name="value">The value if evaluation is not deferred</param>
+        /// <returns><c>true</c> if evaluation is not deferred and <paramref name="value"/> has been set to the value; otherwise, <c>false</c></returns>
         protected bool TryGetUndeferredValue(out object value)
         {
             lock (deferringEvaluationLock)
@@ -479,10 +511,19 @@ namespace Gear.ActiveExpressions
             return true;
         }
 
+        /// <summary>
+        /// Gets the currently applicable instance of <see cref="ActiveExpressionOptions"/> for this node
+        /// </summary>
         protected ActiveExpressionOptions ApplicableOptions => options ?? ActiveExpressionOptions.Default;
 
-        protected string ToStringSuffix => $"/* {GetValueLiteral(fault, !TryGetUndeferredValue(out var value), value)} */";
+        /// <summary>
+        /// Gets the suffix of the string representation of this node
+        /// </summary>
+        protected string ToStringSuffix => $"/* {GetValueString(fault, !TryGetUndeferredValue(out var value), value)} */";
 
+        /// <summary>
+        /// Gets/sets the current fault for this node
+        /// </summary>
         public Exception Fault
         {
             get
@@ -497,10 +538,19 @@ namespace Gear.ActiveExpressions
             }
         }
 
+        /// <summary>
+        /// Gets the <see cref="ExpressionType"/> for this node
+        /// </summary>
         public ExpressionType NodeType { get; }
 
+        /// <summary>
+        /// Gets the <see cref="System.Type"/> for possible values of this node
+        /// </summary>
         public Type Type { get; }
 
+        /// <summary>
+        /// Gets/sets the current value for this node
+        /// </summary>
         public object Value
         {
             get
@@ -579,6 +629,11 @@ namespace Gear.ActiveExpressions
         Exception fault;
         TResult val;
 
+        /// <summary>
+        /// Frees, releases, or resets unmanaged resources
+        /// </summary>
+        /// <param name="disposing"><c>false</c> if invoked by the finalizer because the object is being garbage collected; otherwise, <c>true</c></param>
+        /// <returns><c>true</c> if disposal completed; otherwise, <c>false</c></returns>
         protected override bool Dispose(bool disposing)
         {
             lock (instanceManagementLock)
@@ -592,6 +647,11 @@ namespace Gear.ActiveExpressions
             return true;
         }
 
+        /// <summary>
+        /// Determines whether the specified object is equal to the current object
+        /// </summary>
+        /// <param name="obj">The object to compare with the current object</param>
+        /// <returns><c>true</c> if the specified object is equal to the current object; otherwise, <c>false</c></returns>
         public override bool Equals(object obj) => obj is ActiveExpression<TResult> other && activeExpression.Equals(other.activeExpression);
 
         void ExpressionPropertyChanged(object sender, PropertyChangedEventArgs e)
@@ -602,8 +662,16 @@ namespace Gear.ActiveExpressions
                 Value = activeExpression.Value is TResult typedValue ? typedValue : default;
         }
 
+        /// <summary>
+        /// Gets the hash code for this active expression
+        /// </summary>
+        /// <returns>The hash code for this active expression</returns>
         public override int GetHashCode() => HashCodes.CombineObjects(typeof(ActiveExpression<TResult>), activeExpression);
 
+        /// <summary>
+        /// Returns a string that represents this active expression
+        /// </summary>
+        /// <returns>A string that represents this active expression</returns>
         public override string ToString() => activeExpression.ToString();
 
         /// <summary>
@@ -692,6 +760,11 @@ namespace Gear.ActiveExpressions
         Exception fault;
         TResult val;
 
+        /// <summary>
+        /// Frees, releases, or resets unmanaged resources
+        /// </summary>
+        /// <param name="disposing"><c>false</c> if invoked by the finalizer because the object is being garbage collected; otherwise, <c>true</c></param>
+        /// <returns><c>true</c> if disposal completed; otherwise, <c>false</c></returns>
         protected override bool Dispose(bool disposing)
         {
             lock (instanceManagementLock)
@@ -705,6 +778,11 @@ namespace Gear.ActiveExpressions
             return true;
         }
 
+        /// <summary>
+        /// Determines whether the specified object is equal to the current object
+        /// </summary>
+        /// <param name="obj">The object to compare with the current object</param>
+        /// <returns><c>true</c> if the specified object is equal to the current object; otherwise, <c>false</c></returns>
         public override bool Equals(object obj) => obj is ActiveExpression<TArg, TResult> other && activeExpression.Equals(other.activeExpression);
 
         void ExpressionPropertyChanged(object sender, PropertyChangedEventArgs e)
@@ -715,8 +793,16 @@ namespace Gear.ActiveExpressions
                 Value = activeExpression.Value is TResult typedValue ? typedValue : default;
         }
 
+        /// <summary>
+        /// Gets the hash code for this active expression
+        /// </summary>
+        /// <returns>The hash code for this active expression</returns>
         public override int GetHashCode() => HashCodes.CombineObjects(typeof(ActiveExpression<TArg, TResult>), activeExpression);
 
+        /// <summary>
+        /// Returns a string that represents this active expression
+        /// </summary>
+        /// <returns>A string that represents this active expression</returns>
         public override string ToString() => activeExpression.ToString();
 
         /// <summary>
@@ -807,6 +893,11 @@ namespace Gear.ActiveExpressions
         Exception fault;
         TResult val;
 
+        /// <summary>
+        /// Frees, releases, or resets unmanaged resources
+        /// </summary>
+        /// <param name="disposing"><c>false</c> if invoked by the finalizer because the object is being garbage collected; otherwise, <c>true</c></param>
+        /// <returns><c>true</c> if disposal completed; otherwise, <c>false</c></returns>
         protected override bool Dispose(bool disposing)
         {
             lock (instanceManagementLock)
@@ -820,6 +911,11 @@ namespace Gear.ActiveExpressions
             return true;
         }
 
+        /// <summary>
+        /// Determines whether the specified object is equal to the current object
+        /// </summary>
+        /// <param name="obj">The object to compare with the current object</param>
+        /// <returns><c>true</c> if the specified object is equal to the current object; otherwise, <c>false</c></returns>
         public override bool Equals(object obj) => obj is ActiveExpression<TArg1, TArg2, TResult> other && activeExpression.Equals(other.activeExpression);
 
         void ExpressionPropertyChanged(object sender, PropertyChangedEventArgs e)
@@ -830,8 +926,16 @@ namespace Gear.ActiveExpressions
                 Value = activeExpression.Value is TResult typedValue ? typedValue : default;
         }
 
+        /// <summary>
+        /// Gets the hash code for this active expression
+        /// </summary>
+        /// <returns>The hash code for this active expression</returns>
         public override int GetHashCode() => HashCodes.CombineObjects(typeof(ActiveExpression<TArg1, TArg2, TResult>), activeExpression);
 
+        /// <summary>
+        /// Returns a string that represents this active expression
+        /// </summary>
+        /// <returns>A string that represents this active expression</returns>
         public override string ToString() => activeExpression.ToString();
 
         /// <summary>
@@ -929,6 +1033,11 @@ namespace Gear.ActiveExpressions
         Exception fault;
         TResult val;
 
+        /// <summary>
+        /// Frees, releases, or resets unmanaged resources
+        /// </summary>
+        /// <param name="disposing"><c>false</c> if invoked by the finalizer because the object is being garbage collected; otherwise, <c>true</c></param>
+        /// <returns><c>true</c> if disposal completed; otherwise, <c>false</c></returns>
         protected override bool Dispose(bool disposing)
         {
             lock (instanceManagementLock)
@@ -942,6 +1051,11 @@ namespace Gear.ActiveExpressions
             return true;
         }
 
+        /// <summary>
+        /// Determines whether the specified object is equal to the current object
+        /// </summary>
+        /// <param name="obj">The object to compare with the current object</param>
+        /// <returns><c>true</c> if the specified object is equal to the current object; otherwise, <c>false</c></returns>
         public override bool Equals(object obj) => obj is ActiveExpression<TArg1, TArg2, TArg3, TResult> other && activeExpression.Equals(other.activeExpression);
 
         void ExpressionPropertyChanged(object sender, PropertyChangedEventArgs e)
@@ -952,8 +1066,16 @@ namespace Gear.ActiveExpressions
                 Value = activeExpression.Value is TResult typedValue ? typedValue : default;
         }
 
+        /// <summary>
+        /// Gets the hash code for this active expression
+        /// </summary>
+        /// <returns>The hash code for this active expression</returns>
         public override int GetHashCode() => HashCodes.CombineObjects(typeof(ActiveExpression<TArg1, TArg2, TArg3, TResult>), activeExpression);
 
+        /// <summary>
+        /// Returns a string that represents this active expression
+        /// </summary>
+        /// <returns>A string that represents this active expression</returns>
         public override string ToString() => activeExpression.ToString();
 
         /// <summary>

@@ -6,8 +6,16 @@ using System.Linq.Expressions;
 
 namespace Gear.ActiveExpressions
 {
+    /// <summary>
+    /// Represents a visitor for expression trees that compares them to other expression trees
+    /// </summary>
     public class ExpressionEqualityComparisonVisitor : ExpressionVisitor
     {
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ExpressionEqualityComparisonVisitor"/> class using the specified <see cref="Expression"/> to serve as the basis for comparisons
+        /// </summary>
+        /// <param name="basis">The <see cref="Expression"/> to serve as the basis for comparisons</param>
+        /// <param name="visit">The <see cref="Expression"/> against which to immediately perform a comparison</param>
         public ExpressionEqualityComparisonVisitor(Expression basis, Expression visit = null) : base()
         {
             this.basis = basis;
@@ -39,6 +47,11 @@ namespace Gear.ActiveExpressions
 
         void PushBasis(params Expression[] expressions) => PushBasis((IEnumerable<Expression>)expressions);
 
+        /// <summary>
+        /// Dispatches the expression to one of the more specialized visit methods in this class
+        /// </summary>
+        /// <param name="node">The expression to visit</param>
+        /// <returns><paramref name="node"/></returns>
         public override Expression Visit(Expression node)
         {
             Expression basis = null;
@@ -99,6 +112,11 @@ namespace Gear.ActiveExpressions
             return result;
         }
 
+        /// <summary>
+        /// Visits the children of the <see cref="BinaryExpression"/>
+        /// </summary>
+        /// <param name="node">The expression to visit</param>
+        /// <returns><paramref name="node"/></returns>
         protected override Expression VisitBinary(BinaryExpression node)
         {
             try
@@ -118,6 +136,11 @@ namespace Gear.ActiveExpressions
             }
         }
 
+        /// <summary>
+        /// Visits the children of the <see cref="ConditionalExpression"/>
+        /// </summary>
+        /// <param name="node">The expression to visit</param>
+        /// <returns><paramref name="node"/></returns>
         protected override Expression VisitConditional(ConditionalExpression node)
         {
             try
@@ -132,6 +155,11 @@ namespace Gear.ActiveExpressions
             }
         }
 
+        /// <summary>
+        /// Visits the <see cref="ConstantExpression"/>
+        /// </summary>
+        /// <param name="node">The expression to visit</param>
+        /// <returns><paramref name="node"/></returns>
         protected override Expression VisitConstant(ConstantExpression node)
         {
             try
@@ -146,6 +174,11 @@ namespace Gear.ActiveExpressions
             }
         }
 
+        /// <summary>
+        /// Visits the children of the <see cref="IndexExpression"/>
+        /// </summary>
+        /// <param name="node">The expression to visit</param>
+        /// <returns><paramref name="node"/></returns>
         protected override Expression VisitIndex(IndexExpression node)
         {
             try
@@ -163,6 +196,11 @@ namespace Gear.ActiveExpressions
             }
         }
 
+        /// <summary>
+        /// Visits the children of the <see cref="Expression{T}"/>
+        /// </summary>
+        /// <param name="node">The expression to visit</param>
+        /// <returns><paramref name="node"/></returns>
         protected override Expression VisitLambda<T>(Expression<T> node)
         {
             try
@@ -182,6 +220,11 @@ namespace Gear.ActiveExpressions
             }
         }
 
+        /// <summary>
+        /// Visits the children of the <see cref="MemberExpression"/>
+        /// </summary>
+        /// <param name="node">The expression to visit</param>
+        /// <returns><paramref name="node"/></returns>
         protected override Expression VisitMember(MemberExpression node)
         {
             try
@@ -198,6 +241,11 @@ namespace Gear.ActiveExpressions
             }
         }
 
+        /// <summary>
+        /// Visits the children of the <see cref="MethodCallExpression"/>
+        /// </summary>
+        /// <param name="node">The expression to visit</param>
+        /// <returns><paramref name="node"/></returns>
         protected override Expression VisitMethodCall(MethodCallExpression node)
         {
             try
@@ -215,6 +263,11 @@ namespace Gear.ActiveExpressions
             }
         }
 
+        /// <summary>
+        /// Visits the children of the <see cref="NewExpression"/>
+        /// </summary>
+        /// <param name="node">The expression to visit</param>
+        /// <returns><paramref name="node"/></returns>
         protected override Expression VisitNew(NewExpression node)
         {
             try
@@ -231,6 +284,11 @@ namespace Gear.ActiveExpressions
             }
         }
 
+        /// <summary>
+        /// Visits the children of the <see cref="ParameterExpression"/>
+        /// </summary>
+        /// <param name="node">The expression to visit</param>
+        /// <returns><paramref name="node"/></returns>
         protected override Expression VisitParameter(ParameterExpression node)
         {
             try
@@ -246,6 +304,11 @@ namespace Gear.ActiveExpressions
             }
         }
 
+        /// <summary>
+        /// Visits the children of the <see cref="UnaryExpression"/>
+        /// </summary>
+        /// <param name="node">The expression to visit</param>
+        /// <returns><paramref name="node"/></returns>
         protected override Expression VisitUnary(UnaryExpression node)
         {
             try
@@ -262,6 +325,9 @@ namespace Gear.ActiveExpressions
             }
         }
 
+        /// <summary>
+        /// Gets whether the last expression visited is equivalent to the basis expression
+        /// </summary>
         public bool IsLastVisitedEqual { get; private set; }
     }
 }
