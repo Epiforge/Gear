@@ -14,7 +14,7 @@ namespace Gear.ActiveQuery.MSTest.Enumerable
             var argumentOutOfRangeThrown = false;
             try
             {
-                ((IEnumerable)new object[0]).ActiveSelect(obj => obj.GetHashCode(), indexingStrategy: IndexingStrategy.SelfBalancingBinarySearchTree);
+                ((IEnumerable)new object[0]).ActiveSelect(obj => obj.GetHashCode(), IndexingStrategy.SelfBalancingBinarySearchTree);
             }
             catch (ArgumentOutOfRangeException)
             {
@@ -54,7 +54,7 @@ namespace Gear.ActiveQuery.MSTest.Enumerable
         public void EnumerableSourceManipulationUnindexed()
         {
             var people = TestPerson.CreatePeopleCollection();
-            using (var expr = ((IEnumerable)people).ActiveSelect(person => (person as TestPerson).Name.Length, indexingStrategy: IndexingStrategy.NoneOrInherit))
+            using (var expr = ((IEnumerable)people).ActiveSelect(person => (person as TestPerson).Name.Length, IndexingStrategy.NoneOrInherit))
             {
                 void checkValues(params int[] values) => Assert.IsTrue(values.SequenceEqual(expr));
                 checkValues(4, 5, 7, 4, 5, 6, 3, 5, 7, 7, 6, 5, 5, 5);
@@ -100,7 +100,7 @@ namespace Gear.ActiveQuery.MSTest.Enumerable
         public void SourceManipulationSorted()
         {
             var people = TestPerson.CreatePeopleCollection();
-            using (var expr = people.ActiveSelect(person => person.Name.Length, indexingStrategy: IndexingStrategy.SelfBalancingBinarySearchTree))
+            using (var expr = people.ActiveSelect(person => person.Name.Length, IndexingStrategy.SelfBalancingBinarySearchTree))
             {
                 void checkValues(params int[] values) => Assert.IsTrue(values.SequenceEqual(expr));
                 checkValues(4, 5, 7, 4, 5, 6, 3, 5, 7, 7, 6, 5, 5, 5);
@@ -127,7 +127,7 @@ namespace Gear.ActiveQuery.MSTest.Enumerable
         public void SourceManipulationUnindexed()
         {
             var people = TestPerson.CreatePeopleCollection();
-            using (var expr = people.ActiveSelect(person => person.Name.Length, indexingStrategy: IndexingStrategy.NoneOrInherit))
+            using (var expr = people.ActiveSelect(person => person.Name.Length, IndexingStrategy.NoneOrInherit))
             {
                 void checkValues(params int[] values) => Assert.IsTrue(values.SequenceEqual(expr));
                 checkValues(4, 5, 7, 4, 5, 6, 3, 5, 7, 7, 6, 5, 5, 5);

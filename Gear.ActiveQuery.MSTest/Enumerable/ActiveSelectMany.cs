@@ -15,7 +15,7 @@ namespace Gear.ActiveQuery.MSTest.Enumerable
             var argumentOutOfRangeThrown = false;
             try
             {
-                words.ActiveSelectMany(word => word.ToCharArray(), indexingStrategy: IndexingStrategy.NoneOrInherit);
+                words.ActiveSelectMany(word => word.ToCharArray(), IndexingStrategy.NoneOrInherit);
             }
             catch (ArgumentOutOfRangeException)
             {
@@ -142,7 +142,7 @@ namespace Gear.ActiveQuery.MSTest.Enumerable
         public void SourceManipulationSorted()
         {
             var teams = new SynchronizedRangeObservableCollection<TestTeam>();
-            using (var expr = teams.ActiveSelectMany(team => team.People, indexingStrategy: IndexingStrategy.SelfBalancingBinarySearchTree))
+            using (var expr = teams.ActiveSelectMany(team => team.People, IndexingStrategy.SelfBalancingBinarySearchTree))
             {
                 void checkMergedNames(string against) => Assert.AreEqual(against, string.Join(string.Empty, expr.Select(person => person.Name)));
                 checkMergedNames(string.Empty);

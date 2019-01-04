@@ -12,7 +12,7 @@ namespace Gear.ActiveQuery.MSTest.Enumerable
         {
             var people = TestPerson.CreatePeopleCollection();
             using (var groupsExpr = people.ActiveGroupBy(person => person.Name.Length))
-            using (var orderedGroupMembersExpr = groupsExpr.ActiveSelect(group => Tuple.Create(group.Key, group.ActiveOrderBy(person => person.Name, null, false))))
+            using (var orderedGroupMembersExpr = groupsExpr.ActiveSelect(group => Tuple.Create(group.Key, group.ActiveOrderBy(person => person.Name))))
             using (var orderedGroupsExpr = orderedGroupMembersExpr.ActiveOrderBy(group => group.Item1))
             {
                 void checkMergedNames(string against) => Assert.AreEqual(against, string.Join(";", orderedGroupsExpr.Select(group => $"{group.Item1}:{string.Join(",", group.Item2.Select(person => person.Name))}")));
@@ -34,8 +34,8 @@ namespace Gear.ActiveQuery.MSTest.Enumerable
         public void SourceManipulationSorted()
         {
             var people = TestPerson.CreatePeopleCollection();
-            using (var groupsExpr = people.ActiveGroupBy(person => person.Name.Length, indexingStrategy: IndexingStrategy.SelfBalancingBinarySearchTree))
-            using (var orderedGroupMembersExpr = groupsExpr.ActiveSelect(group => Tuple.Create(group.Key, group.ActiveOrderBy(person => person.Name, null, false))))
+            using (var groupsExpr = people.ActiveGroupBy(person => person.Name.Length, IndexingStrategy.SelfBalancingBinarySearchTree))
+            using (var orderedGroupMembersExpr = groupsExpr.ActiveSelect(group => Tuple.Create(group.Key, group.ActiveOrderBy(person => person.Name))))
             using (var orderedGroupsExpr = orderedGroupMembersExpr.ActiveOrderBy(group => group.Item1))
             {
                 void checkMergedNames(string against) => Assert.AreEqual(against, string.Join(";", orderedGroupsExpr.Select(group => $"{group.Item1}:{string.Join(",", group.Item2.Select(person => person.Name))}")));
@@ -60,7 +60,7 @@ namespace Gear.ActiveQuery.MSTest.Enumerable
             var people = TestPerson.CreatePeopleCollection();
             try
             {
-                using (var groupsExpr = people.ActiveGroupBy(person => person.Name.Length, indexingStrategy: IndexingStrategy.NoneOrInherit))
+                using (var groupsExpr = people.ActiveGroupBy(person => person.Name.Length, IndexingStrategy.NoneOrInherit))
                 {
                 }
             }

@@ -16,7 +16,10 @@ namespace Gear.ActiveQuery
     {
         #region All
 
-        public static ActiveValue<bool> ActiveAll<TSource>(this IEnumerable<TSource> source, Expression<Func<TSource, bool>> predicate, ActiveExpressionOptions predicateOptions = null)
+        public static ActiveValue<bool> ActiveAll<TSource>(this IEnumerable<TSource> source, Expression<Func<TSource, bool>> predicate) =>
+            ActiveAll(source, predicate, null);
+
+        public static ActiveValue<bool> ActiveAll<TSource>(this IEnumerable<TSource> source, Expression<Func<TSource, bool>> predicate, ActiveExpressionOptions predicateOptions)
         {
             var readOnlySource = source as IReadOnlyCollection<TSource>;
             var changeNotifyingSource = source as INotifyCollectionChanged;
@@ -72,7 +75,10 @@ namespace Gear.ActiveQuery
             }
         }
 
-        public static ActiveValue<bool> ActiveAny<TSource>(this IEnumerable<TSource> source, Expression<Func<TSource, bool>> predicate, ActiveExpressionOptions predicateOptions = null)
+        public static ActiveValue<bool> ActiveAny<TSource>(this IEnumerable<TSource> source, Expression<Func<TSource, bool>> predicate) =>
+            ActiveAny(source, predicate, null);
+
+        public static ActiveValue<bool> ActiveAny<TSource>(this IEnumerable<TSource> source, Expression<Func<TSource, bool>> predicate, ActiveExpressionOptions predicateOptions)
         {
             ActiveEnumerable<TSource> where;
             Action<bool> setValue = null;
@@ -99,7 +105,10 @@ namespace Gear.ActiveQuery
         public static ActiveValue<TSource> ActiveAverage<TSource>(this IEnumerable<TSource> source) =>
             ActiveAverage(source, element => element);
 
-        public static ActiveValue<TResult> ActiveAverage<TSource, TResult>(this IEnumerable<TSource> source, Expression<Func<TSource, TResult>> selector, ActiveExpressionOptions selectorOptions = null)
+        public static ActiveValue<TResult> ActiveAverage<TSource, TResult>(this IEnumerable<TSource> source, Expression<Func<TSource, TResult>> selector) =>
+            ActiveAverage(source, selector, null);
+
+        public static ActiveValue<TResult> ActiveAverage<TSource, TResult>(this IEnumerable<TSource> source, Expression<Func<TSource, TResult>> selector, ActiveExpressionOptions selectorOptions)
         {
             ActiveQueryOptions.Optimize(ref selector);
 
@@ -150,7 +159,16 @@ namespace Gear.ActiveQuery
 
         #region Cast
 
-        public static ActiveEnumerable<TResult> ActiveCast<TResult>(this IEnumerable source, ActiveExpressionOptions castOptions = null, IndexingStrategy indexingStrategy = IndexingStrategy.HashTable) =>
+        public static ActiveEnumerable<TResult> ActiveCast<TResult>(this IEnumerable source) =>
+            ActiveCast<TResult>(source, null);
+
+        public static ActiveEnumerable<TResult> ActiveCast<TResult>(this IEnumerable source, ActiveExpressionOptions castOptions) =>
+            ActiveCast<TResult>(source, castOptions, IndexingStrategy.HashTable);
+
+        public static ActiveEnumerable<TResult> ActiveCast<TResult>(this IEnumerable source, IndexingStrategy indexingStrategy) =>
+            ActiveCast<TResult>(source, null, indexingStrategy);
+
+        public static ActiveEnumerable<TResult> ActiveCast<TResult>(this IEnumerable source, ActiveExpressionOptions castOptions, IndexingStrategy indexingStrategy) =>
             ActiveSelect(source, element => (TResult)element, castOptions, indexingStrategy);
 
         #endregion
@@ -320,7 +338,10 @@ namespace Gear.ActiveQuery
 
         #region Distinct
 
-        public static ActiveEnumerable<TSource> ActiveDistinct<TSource>(this IReadOnlyList<TSource> source)
+        public static ActiveEnumerable<TSource> ActiveDistinct<TSource>(this IReadOnlyList<TSource> source) =>
+            ActiveDistinct(source, EqualityComparer<TSource>.Default);
+
+        public static ActiveEnumerable<TSource> ActiveDistinct<TSource>(this IReadOnlyList<TSource> source, IEqualityComparer<TSource> comparer)
         {
             var changingSource = source as INotifyCollectionChanged;
             var synchronizedSource = source as ISynchronized;
@@ -332,7 +353,7 @@ namespace Gear.ActiveQuery
                 {
                     if (e.Action == NotifyCollectionChangedAction.Reset)
                     {
-                        distinctCounts = new Dictionary<TSource, int>();
+                        distinctCounts = new Dictionary<TSource, int>(comparer);
                         var distinctValues = new List<TSource>();
                         foreach (var element in source)
                         {
@@ -388,7 +409,7 @@ namespace Gear.ActiveQuery
                 if (changingSource != null)
                     changingSource.CollectionChanged += collectionChanged;
 
-                distinctCounts = new Dictionary<TSource, int>();
+                distinctCounts = new Dictionary<TSource, int>(comparer);
                 foreach (var element in source)
                 {
                     if (distinctCounts.TryGetValue(element, out var distinctCount))
@@ -591,7 +612,10 @@ namespace Gear.ActiveQuery
             }
         }
 
-        public static ActiveValue<TSource> ActiveFirst<TSource>(this IReadOnlyList<TSource> source, Expression<Func<TSource, bool>> predicate, ActiveExpressionOptions predicateOptions = null)
+        public static ActiveValue<TSource> ActiveFirst<TSource>(this IReadOnlyList<TSource> source, Expression<Func<TSource, bool>> predicate) =>
+            ActiveFirst(source, predicate, null);
+
+        public static ActiveValue<TSource> ActiveFirst<TSource>(this IReadOnlyList<TSource> source, Expression<Func<TSource, bool>> predicate, ActiveExpressionOptions predicateOptions)
         {
             ActiveEnumerable<TSource> where;
             Action<TSource> setValue = null;
@@ -650,7 +674,10 @@ namespace Gear.ActiveQuery
             return new ActiveValue<TSource>(source.FirstOrDefault(), elementFaultChangeNotifier: elementFaultChangeNotifier);
         }
 
-        public static ActiveValue<TSource> ActiveFirstOrDefault<TSource>(this IReadOnlyList<TSource> source, Expression<Func<TSource, bool>> predicate, ActiveExpressionOptions predicateOptions = null)
+        public static ActiveValue<TSource> ActiveFirstOrDefault<TSource>(this IReadOnlyList<TSource> source, Expression<Func<TSource, bool>> predicate) =>
+            ActiveFirstOrDefault(source, predicate, null);
+
+        public static ActiveValue<TSource> ActiveFirstOrDefault<TSource>(this IReadOnlyList<TSource> source, Expression<Func<TSource, bool>> predicate, ActiveExpressionOptions predicateOptions)
         {
             ActiveEnumerable<TSource> where;
             Action<TSource> setValue = null;
@@ -674,7 +701,16 @@ namespace Gear.ActiveQuery
 
         #region GroupBy
 
-        public static ActiveEnumerable<ActiveGrouping<TKey, TSource>> ActiveGroupBy<TKey, TSource>(this IReadOnlyList<TSource> source, Expression<Func<TSource, TKey>> keySelector, ActiveExpressionOptions keySelectorOptions = null, IndexingStrategy indexingStrategy = IndexingStrategy.HashTable)
+        public static ActiveEnumerable<ActiveGrouping<TKey, TSource>> ActiveGroupBy<TKey, TSource>(this IReadOnlyList<TSource> source, Expression<Func<TSource, TKey>> keySelector) =>
+            ActiveGroupBy(source, keySelector, null);
+
+        public static ActiveEnumerable<ActiveGrouping<TKey, TSource>> ActiveGroupBy<TKey, TSource>(this IReadOnlyList<TSource> source, Expression<Func<TSource, TKey>> keySelector, ActiveExpressionOptions keySelectorOptions) =>
+            ActiveGroupBy(source, keySelector, keySelectorOptions, IndexingStrategy.HashTable);
+
+        public static ActiveEnumerable<ActiveGrouping<TKey, TSource>> ActiveGroupBy<TKey, TSource>(this IReadOnlyList<TSource> source, Expression<Func<TSource, TKey>> keySelector, IndexingStrategy indexingStrategy) =>
+            ActiveGroupBy(source, keySelector, null, indexingStrategy);
+
+        public static ActiveEnumerable<ActiveGrouping<TKey, TSource>> ActiveGroupBy<TKey, TSource>(this IReadOnlyList<TSource> source, Expression<Func<TSource, TKey>> keySelector, ActiveExpressionOptions keySelectorOptions, IndexingStrategy indexingStrategy)
         {
             ActiveQueryOptions.Optimize(ref keySelector);
 
@@ -830,7 +866,10 @@ namespace Gear.ActiveQuery
             }
         }
 
-        public static ActiveValue<TSource> ActiveLast<TSource>(this IReadOnlyList<TSource> source, Expression<Func<TSource, bool>> predicate, ActiveExpressionOptions predicateOptions = null)
+        public static ActiveValue<TSource> ActiveLast<TSource>(this IReadOnlyList<TSource> source, Expression<Func<TSource, bool>> predicate) =>
+            ActiveLast(source, predicate, null);
+
+        public static ActiveValue<TSource> ActiveLast<TSource>(this IReadOnlyList<TSource> source, Expression<Func<TSource, bool>> predicate, ActiveExpressionOptions predicateOptions)
         {
             ActiveEnumerable<TSource> where;
             Action<TSource> setValue = null;
@@ -889,7 +928,10 @@ namespace Gear.ActiveQuery
             return new ActiveValue<TSource>(source.LastOrDefault(), elementFaultChangeNotifier: elementFaultChangeNotifier);
         }
 
-        public static ActiveValue<TSource> ActiveLastOrDefault<TSource>(this IReadOnlyList<TSource> source, Expression<Func<TSource, bool>> predicate, ActiveExpressionOptions predicateOptions = null)
+        public static ActiveValue<TSource> ActiveLastOrDefault<TSource>(this IReadOnlyList<TSource> source, Expression<Func<TSource, bool>> predicate) =>
+            ActiveLastOrDefault(source, predicate, null);
+
+        public static ActiveValue<TSource> ActiveLastOrDefault<TSource>(this IReadOnlyList<TSource> source, Expression<Func<TSource, bool>> predicate, ActiveExpressionOptions predicateOptions)
         {
             ActiveEnumerable<TSource> where;
             Action<TSource> setValue = null;
@@ -916,7 +958,10 @@ namespace Gear.ActiveQuery
         public static ActiveValue<TSource> ActiveMax<TSource>(this IEnumerable<TSource> source) =>
             ActiveMax(source, element => element);
 
-        public static ActiveValue<TResult> ActiveMax<TSource, TResult>(this IEnumerable<TSource> source, Expression<Func<TSource, TResult>> selector, ActiveExpressionOptions selectorOptions = null)
+        public static ActiveValue<TResult> ActiveMax<TSource, TResult>(this IEnumerable<TSource> source, Expression<Func<TSource, TResult>> selector) =>
+            ActiveMax(source, selector, null);
+
+        public static ActiveValue<TResult> ActiveMax<TSource, TResult>(this IEnumerable<TSource> source, Expression<Func<TSource, TResult>> selector, ActiveExpressionOptions selectorOptions)
         {
             ActiveQueryOptions.Optimize(ref selector);
 
@@ -1015,7 +1060,10 @@ namespace Gear.ActiveQuery
         public static ActiveValue<TSource> ActiveMin<TSource>(this IEnumerable<TSource> source) =>
             ActiveMin(source, element => element);
 
-        public static ActiveValue<TResult> ActiveMin<TSource, TResult>(this IEnumerable<TSource> source, Expression<Func<TSource, TResult>> selector, ActiveExpressionOptions selectorOptions = null)
+        public static ActiveValue<TResult> ActiveMin<TSource, TResult>(this IEnumerable<TSource> source, Expression<Func<TSource, TResult>> selector) =>
+            ActiveMin(source, selector, null);
+
+        public static ActiveValue<TResult> ActiveMin<TSource, TResult>(this IEnumerable<TSource> source, Expression<Func<TSource, TResult>> selector, ActiveExpressionOptions selectorOptions)
         {
             ActiveQueryOptions.Optimize(ref selector);
 
@@ -1111,7 +1159,16 @@ namespace Gear.ActiveQuery
 
         #region OrderBy
 
-        public static ActiveEnumerable<TSource> ActiveOrderBy<TSource>(this IEnumerable<TSource> source, Expression<Func<TSource, IComparable>> expression, ActiveExpressionOptions expressionOptions = null, bool isDescending = false) =>
+        public static ActiveEnumerable<TSource> ActiveOrderBy<TSource>(this IEnumerable<TSource> source, Expression<Func<TSource, IComparable>> expression) =>
+            ActiveOrderBy(source, expression, null, false);
+
+        public static ActiveEnumerable<TSource> ActiveOrderBy<TSource>(this IEnumerable<TSource> source, Expression<Func<TSource, IComparable>> expression, ActiveExpressionOptions expressionOptions) =>
+            ActiveOrderBy(source, expression, expressionOptions, false);
+
+        public static ActiveEnumerable<TSource> ActiveOrderBy<TSource>(this IEnumerable<TSource> source, Expression<Func<TSource, IComparable>> expression, bool isDescending) =>
+            ActiveOrderBy(source, expression, null, isDescending);
+
+        public static ActiveEnumerable<TSource> ActiveOrderBy<TSource>(this IEnumerable<TSource> source, Expression<Func<TSource, IComparable>> expression, ActiveExpressionOptions expressionOptions, bool isDescending) =>
             ActiveOrderBy(source, (expression, expressionOptions, isDescending));
 
         public static ActiveEnumerable<TSource> ActiveOrderBy<TSource>(this IEnumerable<TSource> source, params Expression<Func<TSource, IComparable>>[] expressions) =>
@@ -1126,7 +1183,16 @@ namespace Gear.ActiveQuery
         public static ActiveEnumerable<TSource> ActiveOrderBy<TSource>(this IEnumerable<TSource> source, params (Expression<Func<TSource, IComparable>> expression, ActiveExpressionOptions expressionOptions, bool isDescending)[] selectors) =>
             ActiveOrderBy(source, IndexingStrategy.HashTable, selectors);
 
-        public static ActiveEnumerable<TSource> ActiveOrderBy<TSource>(this IEnumerable<TSource> source, IndexingStrategy indexingStrategy, Expression<Func<TSource, IComparable>> expression, ActiveExpressionOptions expressionOptions = null, bool isDescending = false) =>
+        public static ActiveEnumerable<TSource> ActiveOrderBy<TSource>(this IEnumerable<TSource> source, IndexingStrategy indexingStrategy, Expression<Func<TSource, IComparable>> expression) =>
+            ActiveOrderBy(source, indexingStrategy, expression, null, false);
+
+        public static ActiveEnumerable<TSource> ActiveOrderBy<TSource>(this IEnumerable<TSource> source, IndexingStrategy indexingStrategy, Expression<Func<TSource, IComparable>> expression, ActiveExpressionOptions expressionOptions) =>
+            ActiveOrderBy(source, indexingStrategy, expression, expressionOptions, false);
+
+        public static ActiveEnumerable<TSource> ActiveOrderBy<TSource>(this IEnumerable<TSource> source, IndexingStrategy indexingStrategy, Expression<Func<TSource, IComparable>> expression, bool isDescending) =>
+            ActiveOrderBy(source, indexingStrategy, expression, null, isDescending);
+
+        public static ActiveEnumerable<TSource> ActiveOrderBy<TSource>(this IEnumerable<TSource> source, IndexingStrategy indexingStrategy, Expression<Func<TSource, IComparable>> expression, ActiveExpressionOptions expressionOptions, bool isDescending) =>
             ActiveOrderBy(source, indexingStrategy, (expression, expressionOptions, isDescending));
 
         public static ActiveEnumerable<TSource> ActiveOrderBy<TSource>(this IEnumerable<TSource> source, IndexingStrategy indexingStrategy, params Expression<Func<TSource, IComparable>>[] expressions) =>
@@ -1357,7 +1423,16 @@ namespace Gear.ActiveQuery
 
         #region Select
 
-        public static ActiveEnumerable<TResult> ActiveSelect<TResult>(this IEnumerable source, Expression<Func<object, TResult>> selector, ActiveExpressionOptions selectorOptions = null, IndexingStrategy indexingStrategy = IndexingStrategy.HashTable)
+        public static ActiveEnumerable<TResult> ActiveSelect<TResult>(this IEnumerable source, Expression<Func<object, TResult>> selector) =>
+            ActiveSelect(source, selector, null);
+
+        public static ActiveEnumerable<TResult> ActiveSelect<TResult>(this IEnumerable source, Expression<Func<object, TResult>> selector, ActiveExpressionOptions selectorOptions) =>
+            ActiveSelect(source, selector, selectorOptions, IndexingStrategy.HashTable);
+
+        public static ActiveEnumerable<TResult> ActiveSelect<TResult>(this IEnumerable source, Expression<Func<object, TResult>> selector, IndexingStrategy indexingStrategy) =>
+            ActiveSelect(source, selector, null, indexingStrategy);
+
+        public static ActiveEnumerable<TResult> ActiveSelect<TResult>(this IEnumerable source, Expression<Func<object, TResult>> selector, ActiveExpressionOptions selectorOptions, IndexingStrategy indexingStrategy)
         {
             ActiveQueryOptions.Optimize(ref selector);
 
@@ -1538,7 +1613,16 @@ namespace Gear.ActiveQuery
             });
         }
 
-        public static ActiveEnumerable<TResult> ActiveSelect<TSource, TResult>(this IEnumerable<TSource> source, Expression<Func<TSource, TResult>> selector, ActiveExpressionOptions predicateOptions = null, IndexingStrategy indexingStrategy = IndexingStrategy.HashTable)
+        public static ActiveEnumerable<TResult> ActiveSelect<TSource, TResult>(this IEnumerable<TSource> source, Expression<Func<TSource, TResult>> selector) =>
+            ActiveSelect(source, selector, null);
+
+        public static ActiveEnumerable<TResult> ActiveSelect<TSource, TResult>(this IEnumerable<TSource> source, Expression<Func<TSource, TResult>> selector, ActiveExpressionOptions predicateOptions) =>
+            ActiveSelect(source, selector, predicateOptions, IndexingStrategy.HashTable);
+
+        public static ActiveEnumerable<TResult> ActiveSelect<TSource, TResult>(this IEnumerable<TSource> source, Expression<Func<TSource, TResult>> selector, IndexingStrategy indexingStrategy) =>
+            ActiveSelect(source, selector, null, indexingStrategy);
+
+        public static ActiveEnumerable<TResult> ActiveSelect<TSource, TResult>(this IEnumerable<TSource> source, Expression<Func<TSource, TResult>> selector, ActiveExpressionOptions predicateOptions, IndexingStrategy indexingStrategy)
         {
             ActiveQueryOptions.Optimize(ref selector);
 
@@ -1723,7 +1807,16 @@ namespace Gear.ActiveQuery
 
         #region SelectMany
 
-        public static ActiveEnumerable<TResult> ActiveSelectMany<TSource, TResult>(this IEnumerable<TSource> source, Expression<Func<TSource, IEnumerable<TResult>>> selector, ActiveExpressionOptions selectorOptions = null, IndexingStrategy indexingStrategy = IndexingStrategy.HashTable)
+        public static ActiveEnumerable<TResult> ActiveSelectMany<TSource, TResult>(this IEnumerable<TSource> source, Expression<Func<TSource, IEnumerable<TResult>>> selector) =>
+            ActiveSelectMany(source, selector, null);
+
+        public static ActiveEnumerable<TResult> ActiveSelectMany<TSource, TResult>(this IEnumerable<TSource> source, Expression<Func<TSource, IEnumerable<TResult>>> selector, ActiveExpressionOptions selectorOptions) =>
+            ActiveSelectMany(source, selector, selectorOptions, IndexingStrategy.HashTable);
+
+        public static ActiveEnumerable<TResult> ActiveSelectMany<TSource, TResult>(this IEnumerable<TSource> source, Expression<Func<TSource, IEnumerable<TResult>>> selector, IndexingStrategy indexingStrategy) =>
+            ActiveSelectMany(source, selector, null, indexingStrategy);
+
+        public static ActiveEnumerable<TResult> ActiveSelectMany<TSource, TResult>(this IEnumerable<TSource> source, Expression<Func<TSource, IEnumerable<TResult>>> selector, ActiveExpressionOptions selectorOptions, IndexingStrategy indexingStrategy)
         {
             ActiveQueryOptions.Optimize(ref selector);
 
@@ -2135,7 +2228,10 @@ namespace Gear.ActiveQuery
             }
         }
 
-        public static ActiveValue<TSource> ActiveSingle<TSource>(this IReadOnlyList<TSource> source, Expression<Func<TSource, bool>> predicate, ActiveExpressionOptions predicateOptions = null)
+        public static ActiveValue<TSource> ActiveSingle<TSource>(this IReadOnlyList<TSource> source, Expression<Func<TSource, bool>> predicate) =>
+            ActiveSingle(source, predicate, null);
+
+        public static ActiveValue<TSource> ActiveSingle<TSource>(this IReadOnlyList<TSource> source, Expression<Func<TSource, bool>> predicate, ActiveExpressionOptions predicateOptions)
         {
             ActiveEnumerable<TSource> where;
             Action<TSource> setValue = null;
@@ -2240,7 +2336,10 @@ namespace Gear.ActiveQuery
             }
         }
 
-        public static ActiveValue<TSource> ActiveSingleOrDefault<TSource>(this IReadOnlyList<TSource> source, Expression<Func<TSource, bool>> predicate, ActiveExpressionOptions predicateOptions = null)
+        public static ActiveValue<TSource> ActiveSingleOrDefault<TSource>(this IReadOnlyList<TSource> source, Expression<Func<TSource, bool>> predicate) =>
+            ActiveSingleOrDefault(source, predicate, null);
+
+        public static ActiveValue<TSource> ActiveSingleOrDefault<TSource>(this IReadOnlyList<TSource> source, Expression<Func<TSource, bool>> predicate, ActiveExpressionOptions predicateOptions)
         {
             ActiveEnumerable<TSource> where;
             Action<TSource> setValue = null;
@@ -2283,7 +2382,10 @@ namespace Gear.ActiveQuery
         public static ActiveValue<TSource> ActiveSum<TSource>(this IEnumerable<TSource> source) =>
             ActiveSum(source, element => element);
 
-        public static ActiveValue<TResult> ActiveSum<TSource, TResult>(this IEnumerable<TSource> source, Expression<Func<TSource, TResult>> selector, ActiveExpressionOptions selectorOptions = null)
+        public static ActiveValue<TResult> ActiveSum<TSource, TResult>(this IEnumerable<TSource> source, Expression<Func<TSource, TResult>> selector) =>
+            ActiveSum(source, selector, null);
+
+        public static ActiveValue<TResult> ActiveSum<TSource, TResult>(this IEnumerable<TSource> source, Expression<Func<TSource, TResult>> selector, ActiveExpressionOptions selectorOptions)
         {
             ActiveQueryOptions.Optimize(ref selector);
 
@@ -2360,9 +2462,11 @@ namespace Gear.ActiveQuery
 
         #region SwitchContext
 
-        public static ActiveEnumerable<object> SwitchContext(this IEnumerable source, SynchronizationContext synchronizationContext = null)
+        public static ActiveEnumerable<object> SwitchContext(this IEnumerable source) =>
+            SwitchContext(source, SynchronizationContext.Current);
+
+        public static ActiveEnumerable<object> SwitchContext(this IEnumerable source, SynchronizationContext synchronizationContext)
         {
-            synchronizationContext = synchronizationContext ?? SynchronizationContext.Current;
             SynchronizedRangeObservableCollection<object> rangeObservableCollection = null;
 
             async void collectionChanged(object sender, NotifyCollectionChangedEventArgs e)
@@ -2408,9 +2512,11 @@ namespace Gear.ActiveQuery
             });
         }
 
-        public static ActiveEnumerable<TElement> SwitchContext<TElement>(this IEnumerable<TElement> source, SynchronizationContext synchronizationContext = null)
+        public static ActiveEnumerable<TElement> SwitchContext<TElement>(this IEnumerable<TElement> source) =>
+            SwitchContext(source, SynchronizationContext.Current);
+
+        public static ActiveEnumerable<TElement> SwitchContext<TElement>(this IEnumerable<TElement> source, SynchronizationContext synchronizationContext)
         {
-            synchronizationContext = synchronizationContext ?? SynchronizationContext.Current;
             SynchronizedRangeObservableCollection<TElement> rangeObservableCollection = null;
 
             async void collectionChanged(object sender, NotifyCollectionChangedEventArgs e)
@@ -2544,7 +2650,28 @@ namespace Gear.ActiveQuery
 
         #region ToActiveLookup
 
-        public static ActiveLookup<TKey, TValue> ToActiveLookup<TSource, TKey, TValue>(this IEnumerable<TSource> source, Expression<Func<TSource, KeyValuePair<TKey, TValue>>> selector, ActiveExpressionOptions selectorOptions = null, IndexingStrategy indexingStategy = IndexingStrategy.HashTable, IComparer<TKey> keyComparer = null, IEqualityComparer<TKey> keyEqualityComparer = null)
+        public static ActiveLookup<TKey, TValue> ToActiveLookup<TSource, TKey, TValue>(this IEnumerable<TSource> source, Expression<Func<TSource, KeyValuePair<TKey, TValue>>> selector) =>
+            ToActiveLookup(source, selector, null, IndexingStrategy.HashTable, null, null);
+
+        public static ActiveLookup<TKey, TValue> ToActiveLookup<TSource, TKey, TValue>(this IEnumerable<TSource> source, Expression<Func<TSource, KeyValuePair<TKey, TValue>>> selector, IndexingStrategy indexingStategy) =>
+            ToActiveLookup(source, selector, null, indexingStategy, null, null);
+
+        public static ActiveLookup<TKey, TValue> ToActiveLookup<TSource, TKey, TValue>(this IEnumerable<TSource> source, Expression<Func<TSource, KeyValuePair<TKey, TValue>>> selector, IEqualityComparer<TKey> keyEqualityComparer) =>
+            ToActiveLookup(source, selector, null, IndexingStrategy.HashTable, keyEqualityComparer, null);
+
+        public static ActiveLookup<TKey, TValue> ToActiveLookup<TSource, TKey, TValue>(this IEnumerable<TSource> source, Expression<Func<TSource, KeyValuePair<TKey, TValue>>> selector, IComparer<TKey> keyComparer) =>
+            ToActiveLookup(source, selector, null, IndexingStrategy.SelfBalancingBinarySearchTree, null, keyComparer);
+
+        public static ActiveLookup<TKey, TValue> ToActiveLookup<TSource, TKey, TValue>(this IEnumerable<TSource> source, Expression<Func<TSource, KeyValuePair<TKey, TValue>>> selector, ActiveExpressionOptions selectorOptions, IndexingStrategy indexingStategy) =>
+            ToActiveLookup(source, selector, selectorOptions, indexingStategy, null, null);
+
+        public static ActiveLookup<TKey, TValue> ToActiveLookup<TSource, TKey, TValue>(this IEnumerable<TSource> source, Expression<Func<TSource, KeyValuePair<TKey, TValue>>> selector, ActiveExpressionOptions selectorOptions, IEqualityComparer<TKey> keyEqualityComparer) =>
+            ToActiveLookup(source, selector, selectorOptions, IndexingStrategy.HashTable, keyEqualityComparer, null);
+
+        public static ActiveLookup<TKey, TValue> ToActiveLookup<TSource, TKey, TValue>(this IEnumerable<TSource> source, Expression<Func<TSource, KeyValuePair<TKey, TValue>>> selector, ActiveExpressionOptions selectorOptions, IComparer<TKey> keyComparer) =>
+            ToActiveLookup(source, selector, selectorOptions, IndexingStrategy.SelfBalancingBinarySearchTree, null, keyComparer);
+
+        static ActiveLookup<TKey, TValue> ToActiveLookup<TSource, TKey, TValue>(IEnumerable<TSource> source, Expression<Func<TSource, KeyValuePair<TKey, TValue>>> selector, ActiveExpressionOptions selectorOptions, IndexingStrategy indexingStategy, IEqualityComparer<TKey> keyEqualityComparer, IComparer<TKey> keyComparer)
         {
             ActiveQueryOptions.Optimize(ref selector);
 
@@ -2739,7 +2866,10 @@ namespace Gear.ActiveQuery
 
         #region Where
 
-        public static ActiveEnumerable<TSource> ActiveWhere<TSource>(this IEnumerable<TSource> source, Expression<Func<TSource, bool>> predicate, ActiveExpressionOptions predicateOptions = null)
+        public static ActiveEnumerable<TSource> ActiveWhere<TSource>(this IEnumerable<TSource> source, Expression<Func<TSource, bool>> predicate) =>
+            ActiveWhere(source, predicate, null);
+
+        public static ActiveEnumerable<TSource> ActiveWhere<TSource>(this IEnumerable<TSource> source, Expression<Func<TSource, bool>> predicate, ActiveExpressionOptions predicateOptions)
         {
             ActiveQueryOptions.Optimize(ref predicate);
 
