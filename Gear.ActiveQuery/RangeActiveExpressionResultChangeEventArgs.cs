@@ -2,7 +2,7 @@ using System;
 
 namespace Gear.ActiveQuery
 {
-    public class RangeActiveExpressionResultChangeEventArgs<TElement, TResult> : EventArgs
+    class RangeActiveExpressionResultChangeEventArgs<TElement, TResult> : EventArgs
     {
         public RangeActiveExpressionResultChangeEventArgs(TElement element, TResult result)
         {

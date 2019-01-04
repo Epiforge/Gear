@@ -15,7 +15,6 @@ namespace Gear.ActiveQuery
     /// <summary>
     /// Represents the sequence of results derived from creating an active expression for each element in a sequence
     /// </summary>
-    /// <typeparam name="TElement">The type of the elements in the sequence</typeparam>
     /// <typeparam name="TResult">The type of the result of the active expression</typeparam>
     class EnumerableRangeActiveExpression<TResult> : OverridableSyncDisposablePropertyChangeNotifier, INotifyElementFaultChanges, INotifyGenericCollectionChanged<(object element, TResult result)>
     {

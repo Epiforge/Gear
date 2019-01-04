@@ -4,9 +4,13 @@ using System.Collections.Generic;
 
 namespace Gear.ActiveQuery
 {
+    /// <summary>
+    /// Represents the scalar result of an active query
+    /// </summary>
+    /// <typeparam name="TValue">The type of the scalar result</typeparam>
     public class ActiveValue<TValue> : SyncDisposablePropertyChangeNotifier, INotifyElementFaultChanges
     {
-        public ActiveValue(TValue value, Exception operationFault = null, INotifyElementFaultChanges elementFaultChangeNotifier = null)
+        internal ActiveValue(TValue value, Exception operationFault = null, INotifyElementFaultChanges elementFaultChangeNotifier = null)
         {
             this.value = value;
             this.operationFault = operationFault;
@@ -14,28 +18,28 @@ namespace Gear.ActiveQuery
             InitializeFaultNotification();
         }
 
-        public ActiveValue(out Action<TValue> setValue, INotifyElementFaultChanges elementFaultChangeNotifier = null, Action onDispose = null) : this(default, out setValue, null, elementFaultChangeNotifier, onDispose)
+        internal ActiveValue(out Action<TValue> setValue, INotifyElementFaultChanges elementFaultChangeNotifier = null, Action onDispose = null) : this(default, out setValue, null, elementFaultChangeNotifier, onDispose)
         {
         }
 
-        public ActiveValue(out Action<TValue> setValue, out Action<Exception> setOperationFault, INotifyElementFaultChanges elementFaultChangeNotifier = null, Action onDispose = null) : this(default, out setValue, null, out setOperationFault, elementFaultChangeNotifier, onDispose)
+        internal ActiveValue(out Action<TValue> setValue, out Action<Exception> setOperationFault, INotifyElementFaultChanges elementFaultChangeNotifier = null, Action onDispose = null) : this(default, out setValue, null, out setOperationFault, elementFaultChangeNotifier, onDispose)
         {
         }
 
-        public ActiveValue(out Action<TValue> setValue, Exception operationFault, INotifyElementFaultChanges elementFaultChangeNotifier = null, Action onDispose = null) : this(default, out setValue, operationFault, elementFaultChangeNotifier, onDispose)
+        internal ActiveValue(out Action<TValue> setValue, Exception operationFault, INotifyElementFaultChanges elementFaultChangeNotifier = null, Action onDispose = null) : this(default, out setValue, operationFault, elementFaultChangeNotifier, onDispose)
         {
         }
 
-        public ActiveValue(TValue value, out Action<TValue> setValue, Exception operationFault = null, INotifyElementFaultChanges elementFaultChangeNotifier = null, Action onDispose = null) : this(value, operationFault, elementFaultChangeNotifier)
+        internal ActiveValue(TValue value, out Action<TValue> setValue, Exception operationFault = null, INotifyElementFaultChanges elementFaultChangeNotifier = null, Action onDispose = null) : this(value, operationFault, elementFaultChangeNotifier)
         {
             setValue = SetValue;
             this.onDispose = onDispose;
         }
 
-        public ActiveValue(TValue value, out Action<TValue> setValue, out Action<Exception> setOperationFault, INotifyElementFaultChanges elementFaultChangeNotifier = null, Action onDispose = null) : this(value, out setValue, null, elementFaultChangeNotifier, onDispose) =>
+        internal ActiveValue(TValue value, out Action<TValue> setValue, out Action<Exception> setOperationFault, INotifyElementFaultChanges elementFaultChangeNotifier = null, Action onDispose = null) : this(value, out setValue, null, elementFaultChangeNotifier, onDispose) =>
             setOperationFault = SetOperationFault;
 
-        public ActiveValue(TValue value, out Action<TValue> setValue, Exception operationFault, out Action<Exception> setOperationFault, INotifyElementFaultChanges elementFaultChangeNotifier = null, Action onDispose = null) : this(value, out setValue, operationFault, elementFaultChangeNotifier, onDispose) =>
+        internal ActiveValue(TValue value, out Action<TValue> setValue, Exception operationFault, out Action<Exception> setOperationFault, INotifyElementFaultChanges elementFaultChangeNotifier = null, Action onDispose = null) : this(value, out setValue, operationFault, elementFaultChangeNotifier, onDispose) =>
             setOperationFault = SetOperationFault;
 
         readonly INotifyElementFaultChanges elementFaultChangeNotifier;
@@ -43,9 +47,20 @@ namespace Gear.ActiveQuery
         Exception operationFault;
         TValue value;
 
+        /// <summary>
+        /// Occurs when the fault for an element has changed
+        /// </summary>
         public event EventHandler<ElementFaultChangeEventArgs> ElementFaultChanged;
+
+        /// <summary>
+        /// Occurs when the fault for an element is changing
+        /// </summary>
         public event EventHandler<ElementFaultChangeEventArgs> ElementFaultChanging;
 
+        /// <summary>
+        /// Frees, releases, or resets unmanaged resources
+        /// </summary>
+        /// <param name="disposing"><c>false</c> if invoked by the finalizer because the object is being garbage collected; otherwise, <c>true</c></param>
         protected override void Dispose(bool disposing)
         {
             onDispose?.Invoke();
@@ -60,6 +75,10 @@ namespace Gear.ActiveQuery
 
         void ElementFaultChangeNotifierElementFaultChanging(object sender, ElementFaultChangeEventArgs e) => ElementFaultChanging?.Invoke(this, e);
 
+        /// <summary>
+        /// Gets a list of all faulted elements
+        /// </summary>
+        /// <returns>The list</returns>
         public IReadOnlyList<(object element, Exception fault)> GetElementFaults() => elementFaultChangeNotifier?.GetElementFaults();
 
         void InitializeFaultNotification()
@@ -75,12 +94,18 @@ namespace Gear.ActiveQuery
 
         void SetValue(TValue value) => Value = value;
 
+        /// <summary>
+        /// Gets the exception that occured the most recent time the query updated
+        /// </summary>
         public Exception OperationFault
         {
             get => operationFault;
             private set => SetBackedProperty(ref operationFault, in value);
         }
 
+        /// <summary>
+        /// Gets the value from the most recent time the query updated
+        /// </summary>
         public TValue Value
         {
             get => value;

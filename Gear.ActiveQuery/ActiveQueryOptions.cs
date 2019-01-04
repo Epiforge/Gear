@@ -3,6 +3,9 @@ using System.Linq.Expressions;
 
 namespace Gear.ActiveQuery
 {
+    /// <summary>
+    /// Represents certain options governing the behavior of active query extensions
+    /// </summary>
     public static class ActiveQueryOptions
     {
         internal static Expression<Func<TSource, TResult>> Optimize<TSource, TResult>(Expression<Func<TSource, TResult>> expr) => (Expression<Func<TSource, TResult>>)(Optimizer?.Invoke(expr) ?? expr);

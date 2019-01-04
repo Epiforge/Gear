@@ -9,7 +9,11 @@ using System.Threading;
 
 namespace Gear.ActiveQuery
 {
-    public class ActiveEnumerable<TElement> : SyncDisposablePropertyChangeNotifier, INotifyCollectionChanged, INotifyElementFaultChanges, IReadOnlyList<TElement>, ISynchronized
+    /// <summary>
+    /// Represents a read-only collection of elements that is the result of an active query
+    /// </summary>
+    /// <typeparam name="TElement">The type of the elements in the sequence</typeparam>
+    public class ActiveEnumerable<TElement> : SyncDisposablePropertyChangeNotifier, INotifyCollectionChanged, INotifyElementFaultChanges, INotifyGenericCollectionChanged<TElement>, IReadOnlyList<TElement>, ISynchronized
     {
         internal ActiveEnumerable(IReadOnlyList<TElement> readOnlyList, INotifyElementFaultChanges faultNotifier = null, Action onDispose = null)
         {
@@ -26,6 +30,8 @@ namespace Gear.ActiveQuery
                 this.readOnlyList = readOnlyList;
             if (this.readOnlyList is INotifyCollectionChanged collectionNotifier)
                 collectionNotifier.CollectionChanged += CollectionChangedHandler;
+            if (this.readOnlyList is INotifyGenericCollectionChanged<TElement> genericCollectionNotifier)
+                genericCollectionNotifier.GenericCollectionChanged += GenericCollectionChangedHandler;
             this.onDispose = onDispose;
         }
 
@@ -38,12 +44,34 @@ namespace Gear.ActiveQuery
         readonly IReadOnlyList<TElement> readOnlyList;
         readonly ISynchronized synchronized;
 
+        /// <summary>
+        /// Occurs when the collection changes
+        /// </summary>
         public event NotifyCollectionChangedEventHandler CollectionChanged;
+
+        /// <summary>
+        /// Occurs when the fault for an element has changed
+        /// </summary>
         public event EventHandler<ElementFaultChangeEventArgs> ElementFaultChanged;
+
+        /// <summary>
+        /// Occurs when the fault for an element is changing
+        /// </summary>
         public event EventHandler<ElementFaultChangeEventArgs> ElementFaultChanging;
+
+        /// <summary>
+        /// Occurs when the collection changes
+        /// </summary>
+        public event EventHandler<NotifyGenericCollectionChangedEventArgs<TElement>> GenericCollectionChanged;
 
         void CollectionChangedHandler(object sender, NotifyCollectionChangedEventArgs e) => CollectionChanged?.Invoke(this, e);
 
+        void GenericCollectionChangedHandler(object sender, NotifyGenericCollectionChangedEventArgs<TElement> e) => GenericCollectionChanged?.Invoke(this, e);
+
+        /// <summary>
+        /// Frees, releases, or resets unmanaged resources
+        /// </summary>
+        /// <param name="disposing"><c>false</c> if invoked by the finalizer because the object is being garbage collected; otherwise, <c>true</c></param>
         protected override void Dispose(bool disposing)
         {
             if (disposing)
@@ -56,6 +84,8 @@ namespace Gear.ActiveQuery
                 }
                 if (readOnlyList is INotifyCollectionChanged collectionNotifier)
                     collectionNotifier.CollectionChanged -= CollectionChangedHandler;
+                if (readOnlyList is INotifyGenericCollectionChanged<TElement> genericCollectionNotifier)
+                    genericCollectionNotifier.GenericCollectionChanged -= GenericCollectionChangedHandler;
             }
         }
 
@@ -65,14 +95,33 @@ namespace Gear.ActiveQuery
 
         IEnumerator IEnumerable.GetEnumerator() => readOnlyList.GetEnumerator();
 
+        /// <summary>
+        /// Returns an enumerator that iterates through the collection
+        /// </summary>
+        /// <returns>An enumerator that can be used to iterate through the collection</returns>
         public IEnumerator<TElement> GetEnumerator() => readOnlyList.GetEnumerator();
 
+        /// <summary>
+        /// Gets a list of all faulted elements
+        /// </summary>
+        /// <returns>The list</returns>
         public IReadOnlyList<(object element, Exception fault)> GetElementFaults() => faultNotifier?.GetElementFaults() ?? Enumerable.Empty<(object element, Exception fault)>().ToImmutableArray();
 
+        /// <summary>
+        /// Gets the element at the specified index in the read-only list
+        /// </summary>
+        /// <param name="index">The zero-based index of the element to get</param>
+        /// <returns>The element at the specified index in the read-only list</returns>
         public TElement this[int index] => readOnlyList[index];
 
+        /// <summary>
+        /// Gets the number of elements in the collection
+        /// </summary>
         public int Count => readOnlyList.Count;
 
+        /// <summary>
+        /// Gets the <see cref="System.Threading.SynchronizationContext"/> on which this object's operations occur
+        /// </summary>
         public SynchronizationContext SynchronizationContext => synchronized.SynchronizationContext;
     }
 }

@@ -7,7 +7,7 @@ using System.Linq.Expressions;
 
 namespace Gear.ActiveQuery
 {
-    public class CachedRangeActiveExpressionKeyEqualityComparer<TResult> : IEqualityComparer<(IEnumerable source, Expression<Func<object, TResult>> expression, ActiveExpressionOptions options)>, IEqualityComparer<(IDictionary source, Expression<Func<object, object, TResult>> expression, ActiveExpressionOptions options)>
+    class CachedRangeActiveExpressionKeyEqualityComparer<TResult> : IEqualityComparer<(IEnumerable source, Expression<Func<object, TResult>> expression, ActiveExpressionOptions options)>, IEqualityComparer<(IDictionary source, Expression<Func<object, object, TResult>> expression, ActiveExpressionOptions options)>
     {
         public static CachedRangeActiveExpressionKeyEqualityComparer<TResult> Default { get; } = new CachedRangeActiveExpressionKeyEqualityComparer<TResult>();
 
@@ -24,7 +24,7 @@ namespace Gear.ActiveQuery
             HashCodes.CombineHashCodes(obj.source?.GetHashCode() ?? 0, ExpressionEqualityComparer.Default.GetHashCode(obj.expression), obj.options?.GetHashCode() ?? 0);
     }
 
-    public class CachedRangeActiveExpressionKeyEqualityComparer<TElement, TResult> : IEqualityComparer<(IEnumerable<TElement> source, Expression<Func<TElement, TResult>> expression, ActiveExpressionOptions options)>
+    class CachedRangeActiveExpressionKeyEqualityComparer<TElement, TResult> : IEqualityComparer<(IEnumerable<TElement> source, Expression<Func<TElement, TResult>> expression, ActiveExpressionOptions options)>
     {
         public static CachedRangeActiveExpressionKeyEqualityComparer<TElement, TResult> Default { get; } = new CachedRangeActiveExpressionKeyEqualityComparer<TElement, TResult>();
 
@@ -35,7 +35,7 @@ namespace Gear.ActiveQuery
             HashCodes.CombineHashCodes(obj.source?.GetHashCode() ?? 0, ExpressionEqualityComparer.Default.GetHashCode(obj.expression), obj.options?.GetHashCode() ?? 0);
     }
 
-    public class CachedRangeActiveExpressionKeyEqualityComparer<TKey, TValue, TResult> : IEqualityComparer<(IDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, TResult>> expression, ActiveExpressionOptions options)>, IEqualityComparer<(IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, TResult>> expression, ActiveExpressionOptions options)>
+    class CachedRangeActiveExpressionKeyEqualityComparer<TKey, TValue, TResult> : IEqualityComparer<(IDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, TResult>> expression, ActiveExpressionOptions options)>, IEqualityComparer<(IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, TResult>> expression, ActiveExpressionOptions options)>
     {
         public static CachedRangeActiveExpressionKeyEqualityComparer<TKey, TValue, TResult> Default { get; } = new CachedRangeActiveExpressionKeyEqualityComparer<TKey, TValue, TResult>();
 
