@@ -102,7 +102,7 @@ namespace Gear.ActiveQuery
         /// Actively determines whether any element of a sequence satisfies a condition
         /// </summary>
         /// <typeparam name="TSource">The type of the elements of <paramref name="source"/></typeparam>
-        /// <param name="source">An <see cref="IEnumerable{T}"/> whose elements to apply the predicate to</param>
+        /// <param name="source">An <see cref="IEnumerable{T}"/> that contains elements to apply the predicate to</param>
         /// <param name="predicate">A function to test each element for a condition</param>
         /// <returns>An <see cref="ActiveValue{TValue}"/> the <see cref="ActiveValue{TValue}.Value"/> of which is <c>true</c> if any elements in the source sequence pass the test in the specified predicate; otherwise, <c>false</c></returns>
         public static ActiveValue<bool> ActiveAny<TSource>(this IEnumerable<TSource> source, Expression<Func<TSource, bool>> predicate) =>
@@ -112,7 +112,7 @@ namespace Gear.ActiveQuery
         /// Actively determines whether any element of a sequence satisfies a condition
         /// </summary>
         /// <typeparam name="TSource">The type of the elements of <paramref name="source"/></typeparam>
-        /// <param name="source">An <see cref="IEnumerable{T}"/> whose elements to apply the predicate to</param>
+        /// <param name="source">An <see cref="IEnumerable{T}"/> that contains elements to apply the predicate to</param>
         /// <param name="predicate">A function to test each element for a condition</param>
         /// <param name="predicateOptions">Options governing the behavior of active expressions created using <paramref name="predicate"/></param>
         /// <returns>An <see cref="ActiveValue{TValue}"/> the <see cref="ActiveValue{TValue}.Value"/> of which is <c>true</c> if any elements in the source sequence pass the test in the specified predicate; otherwise, <c>false</c></returns>
