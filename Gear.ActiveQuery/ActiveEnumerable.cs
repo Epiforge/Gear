@@ -29,9 +29,15 @@ namespace Gear.ActiveQuery
             else
                 this.readOnlyList = readOnlyList;
             if (this.readOnlyList is INotifyCollectionChanged collectionNotifier)
+            {
+                isCollectionNotifier = true;
                 collectionNotifier.CollectionChanged += CollectionChangedHandler;
+            }
             if (this.readOnlyList is INotifyGenericCollectionChanged<TElement> genericCollectionNotifier)
+            {
+                isGenericCollectionNotifier = true;
                 genericCollectionNotifier.GenericCollectionChanged += GenericCollectionChangedHandler;
+            }
             this.onDispose = onDispose;
         }
 
@@ -40,6 +46,8 @@ namespace Gear.ActiveQuery
         }
 
         readonly INotifyElementFaultChanges faultNotifier;
+        readonly bool isCollectionNotifier;
+        readonly bool isGenericCollectionNotifier;
         readonly Action onDispose;
         readonly IReadOnlyList<TElement> readOnlyList;
         readonly ISynchronized synchronized;
@@ -64,9 +72,19 @@ namespace Gear.ActiveQuery
         /// </summary>
         public event EventHandler<NotifyGenericCollectionChangedEventArgs<TElement>> GenericCollectionChanged;
 
-        void CollectionChangedHandler(object sender, NotifyCollectionChangedEventArgs e) => CollectionChanged?.Invoke(this, e);
+        void CollectionChangedHandler(object sender, NotifyCollectionChangedEventArgs e)
+        {
+            CollectionChanged?.Invoke(this, e);
+            if (!isGenericCollectionNotifier)
+                GenericCollectionChanged?.Invoke(this, (NotifyGenericCollectionChangedEventArgs<TElement>)e);
+        }
 
-        void GenericCollectionChangedHandler(object sender, NotifyGenericCollectionChangedEventArgs<TElement> e) => GenericCollectionChanged?.Invoke(this, e);
+        void GenericCollectionChangedHandler(object sender, NotifyGenericCollectionChangedEventArgs<TElement> e)
+        {
+            if (!isCollectionNotifier)
+                CollectionChanged?.Invoke(this, e);
+            GenericCollectionChanged?.Invoke(this, e);
+        }
 
         /// <summary>
         /// Frees, releases, or resets unmanaged resources
