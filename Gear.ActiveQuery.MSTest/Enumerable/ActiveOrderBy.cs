@@ -2,7 +2,6 @@ using Gear.ActiveExpressions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Linq;
-using System.Linq.Expressions;
 
 namespace Gear.ActiveQuery.MSTest.Enumerable
 {
@@ -13,7 +12,7 @@ namespace Gear.ActiveQuery.MSTest.Enumerable
         public void NoSelectors()
         {
             var people = TestPerson.CreatePeopleCollection();
-            using (var expr = people.ActiveOrderBy(new Expression<Func<TestPerson, IComparable>>[0]))
+            using (var expr = people.ActiveOrderBy())
             {
                 void checkMergedNames(string against) => Assert.AreEqual(against, string.Join(string.Empty, expr.Select(person => person.Name)));
                 checkMergedNames("JohnEmilyCharlesErinCliffHunterBenCraigBridgetNanetteGeorgeBryanJamesSteve");
@@ -24,7 +23,7 @@ namespace Gear.ActiveQuery.MSTest.Enumerable
         public void SelectorsDirections()
         {
             var people = TestPerson.CreatePeopleCollection();
-            using (var expr = people.ActiveOrderBy((person => person.Name.Length, true), (person => person.Name, false)))
+            using (var expr = people.ActiveOrderBy(new ActiveOrderingKeySelector<TestPerson>(person => person.Name.Length, true), new ActiveOrderingKeySelector<TestPerson>(person => person.Name)))
             {
                 void checkMergedNames(string against) => Assert.AreEqual(against, string.Join(string.Empty, expr.Select(person => person.Name)));
                 checkMergedNames("BridgetCharlesNanetteGeorgeHunterBryanCliffCraigEmilyJamesSteveErinJohnBen");
@@ -36,7 +35,7 @@ namespace Gear.ActiveQuery.MSTest.Enumerable
         {
             var people = TestPerson.CreatePeopleCollection();
             var options = new ActiveExpressionOptions();
-            using (var expr = people.ActiveOrderBy((person => person.Name.Length, options), (person => person.Name, options)))
+            using (var expr = people.ActiveOrderBy(new ActiveOrderingKeySelector<TestPerson>(person => person.Name.Length, options), new ActiveOrderingKeySelector<TestPerson>(person => person.Name, options)))
             {
                 void checkMergedNames(string against) => Assert.AreEqual(against, string.Join(string.Empty, expr.Select(person => person.Name)));
                 checkMergedNames("BenErinJohnBryanCliffCraigEmilyJamesSteveGeorgeHunterBridgetCharlesNanette");
@@ -79,7 +78,7 @@ namespace Gear.ActiveQuery.MSTest.Enumerable
         public void SourceManipulationMultipleSelectors()
         {
             var people = TestPerson.CreatePeopleCollection();
-            using (var expr = people.ActiveOrderBy(person => person.Name.Length, person => person.Name))
+            using (var expr = people.ActiveOrderBy(new ActiveOrderingKeySelector<TestPerson>(person => person.Name.Length), new ActiveOrderingKeySelector<TestPerson>(person => person.Name)))
             {
                 void checkMergedNames(string against) => Assert.AreEqual(against, string.Join(string.Empty, expr.Select(person => person.Name)));
                 checkMergedNames("BenErinJohnBryanCliffCraigEmilyJamesSteveGeorgeHunterBridgetCharlesNanette");
@@ -173,7 +172,7 @@ namespace Gear.ActiveQuery.MSTest.Enumerable
         {
             var people = TestPerson.CreatePeopleCollection();
             var options = new ActiveExpressionOptions();
-            using (var expr = people.ActiveOrderBy(IndexingStrategy.NoneOrInherit, person => person.Name.Length, person => person.Name))
+            using (var expr = people.ActiveOrderBy(IndexingStrategy.NoneOrInherit, new ActiveOrderingKeySelector<TestPerson>(person => person.Name.Length), new ActiveOrderingKeySelector<TestPerson>(person => person.Name)))
             {
                 void checkMergedNames(string against) => Assert.AreEqual(against, string.Join(string.Empty, expr.Select(person => person.Name)));
                 checkMergedNames("BenErinJohnBryanCliffCraigEmilyJamesSteveGeorgeHunterBridgetCharlesNanette");
@@ -184,7 +183,7 @@ namespace Gear.ActiveQuery.MSTest.Enumerable
         public void UnindexedSelectorsDirections()
         {
             var people = TestPerson.CreatePeopleCollection();
-            using (var expr = people.ActiveOrderBy(IndexingStrategy.NoneOrInherit, (person => person.Name.Length, true), (person => person.Name, false)))
+            using (var expr = people.ActiveOrderBy(IndexingStrategy.NoneOrInherit, new ActiveOrderingKeySelector<TestPerson>(person => person.Name.Length, true), new ActiveOrderingKeySelector<TestPerson>(person => person.Name, false)))
             {
                 void checkMergedNames(string against) => Assert.AreEqual(against, string.Join(string.Empty, expr.Select(person => person.Name)));
                 checkMergedNames("BridgetCharlesNanetteGeorgeHunterBryanCliffCraigEmilyJamesSteveErinJohnBen");
@@ -196,7 +195,7 @@ namespace Gear.ActiveQuery.MSTest.Enumerable
         {
             var people = TestPerson.CreatePeopleCollection();
             var options = new ActiveExpressionOptions();
-            using (var expr = people.ActiveOrderBy(IndexingStrategy.NoneOrInherit, (person => person.Name.Length, options), (person => person.Name, options)))
+            using (var expr = people.ActiveOrderBy(IndexingStrategy.NoneOrInherit, new ActiveOrderingKeySelector<TestPerson>(person => person.Name.Length, options), new ActiveOrderingKeySelector<TestPerson>(person => person.Name, options)))
             {
                 void checkMergedNames(string against) => Assert.AreEqual(against, string.Join(string.Empty, expr.Select(person => person.Name)));
                 checkMergedNames("BenErinJohnBryanCliffCraigEmilyJamesSteveGeorgeHunterBridgetCharlesNanette");
