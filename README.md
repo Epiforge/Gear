@@ -195,7 +195,7 @@ Task.Run(() =>
 })
 ```
 
-Or, if you call `SwitchContext` when you know you're already running in the UI's context, it will assume you want to switch to that.
+Or, if you call `SwitchContext` without any arguments but when you know you're already running in the UI's context, it will assume you want to switch to that.
 
 ```csharp
 SynchronizedObservableCollection<Note> notes;
