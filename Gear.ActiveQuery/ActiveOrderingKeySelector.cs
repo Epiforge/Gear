@@ -61,7 +61,7 @@ namespace Gear.ActiveQuery
         public Expression<Func<T, IComparable>> Expression { get; }
 
         /// <summary>
-        /// Gets options governing the behavior of active expressions created using <paramref name="Expression"/>
+        /// Gets options governing the behavior of active expressions created using <see cref="Expression"/>
         /// </summary>
         public ActiveExpressionOptions ExpressionOptions { get; }
 
