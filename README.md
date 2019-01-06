@@ -218,7 +218,7 @@ void Page_Unload(object sender, EventArgs e)
 }
 ```
 
-Ahh, but what about exceptions, bruh?
+Ahh, but what about exceptions?
 Well, active expressions expose a `Fault` property and raise `PropertyChanged` events for it, but... you don't really see those active expressions as an Active Query caller, do ya?
 For that reason, Active Query introduces the `INotifyElementFaultChanges` interface, which is implemented by `ActiveEnumerable<T>`, `ActiveLookup<TKey, TValue>`, and `ActiveValue<T>`.
 You may subscribe to its `ElementFaultChanging` and `ElementFaultChanged` events to be notified when an active expression runs into a problem.
