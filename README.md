@@ -142,7 +142,7 @@ But... what could cause those updates?
 * a reference enclosed by a selector or a predicate passed to the extension method implements `INotifyCollectionChanged`, `Gear.Components.INotifyDictionaryChanged<TKey, TValue>`, or `INotifyPropertyChanged` and raises one of their events
 
 That last one might be a little surprising, but this is because all selectors and predicates passed to Active Query extension methods become active expressions (see above).
-This means that you will not be able to pass one that the Active Expressions library doesn't support (e.g. a lambda expression can't be converted to an expression tree or that contains nodes that Active Expressions doesn't deal with).
+This means that you will not be able to pass one that the Active Expressions library doesn't support (e.g. a lambda expression that can't be converted to an expression tree or that contains nodes that Active Expressions doesn't deal with).
 But, in exchange for this, you get all kinds of notification plumbing that's just handled for you behind the scenes.
 
 Suppose, for example, you're working on an app that displays a list of notes and you want the notes to be shown in descending order of when they were last edited.
@@ -154,7 +154,7 @@ var orderedNotes = notes.ActiveOrderBy(note => note.LastEdited, isDescending: tr
 notesViewControl.ItemsSource = orderedNotes;
 ```
 
-From then on, as you add `Note`s to the `notes` observable collection, the `ActiveEnumerable<Note>` named `orderedNotes` will be kept ordered so that UI control displays them in the preferred order.
+From then on, as you add `Note`s to the `notes` observable collection, the `ActiveEnumerable<Note>` named `orderedNotes` will be kept ordered so that `notesViewControl` displays them in the preferred order.
 
 Since the `ActiveEnumerable<T>` is automatically subscribing to events for you, you do need to call `Dispose` on it when you don't need it any more.
 
@@ -174,7 +174,7 @@ ActiveEnumerable<Note> orderedNotes;
 Task.Run(() =>
 {
     notes = new SynchronizedObservableCollection<Note>();
-    orderedNotes = otes.ActiveOrderBy(note => note.LastEdited, isDescending: true);
+    orderedNotes = notes.ActiveOrderBy(note => note.LastEdited, isDescending: true);
 })
 ```
 
@@ -206,6 +206,16 @@ Task.Run(() =>
     orderedNotes = notes.ActiveOrderBy(note => note.LastEdited, isDescending: true);
 })
 var notesForBinding = orderedNotes.SwitchContext();
+```
+
+But, keep in mind that no Active Query extension methods mutate the objects for which they are called, which means now you have two things to dispose, and in the right order!
+
+```csharp
+void Page_Unload(object sender, EventArgs e)
+{
+    notesForBinding.Dispose();
+    orderedNotes.Dispose();
+}
 ```
 
 As with the Active Expressions library, you can use the static property `Optimizer` to specify an optimization method to invoke automatically during the active expression creation process.
