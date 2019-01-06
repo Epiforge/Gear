@@ -131,7 +131,7 @@ var expr = ActiveExpression.Create<bool>(lambda, false, false);
 
 [![Gear.ActiveQuery Nuget](https://img.shields.io/nuget/v/Gear.ActiveQuery.svg)](https://www.nuget.org/packages/Gear.ActiveQuery)
 
-This library provides re-implementations of extension methods you know and love from `System.Linq.Enumerable`, but instead of returning `Enumerable<T>`'s and simple values, these return `ActiveEnumerable<T>`'s, `ActiveLookup<TKey, TValue>`'s, and `ActiveValue<T>`'s.
+This library provides re-implementations of extension methods you know and love from `System.Linq.Enumerable`, but instead of returning `Enumerable<T>`s and simple values, these return `ActiveEnumerable<T>`s, `ActiveLookup<TKey, TValue>`s, and `ActiveValue<T>`s.
 This is because, unlike traditional LINQ extension methods, these extension methods continuously update their results into those results are disposed.
 
 But... what could cause those updates?
