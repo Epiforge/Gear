@@ -1521,6 +1521,51 @@ namespace Gear.ActiveQuery
 
         #endregion Min
 
+        #region OfType
+
+        /// <summary>
+        /// Actively filters the elements of an <see cref="IEnumerable"/> based on a specified type
+        /// </summary>
+        /// <typeparam name="TResult">The type to filter the elements of the sequence on</typeparam>
+        /// <param name="source">The <see cref="IEnumerable"/> the elements of which to filter</param>
+        /// <returns>An <see cref="IEnumerable{T}"/> that contains elements from the input sequence of type <typeparamref name="TResult"/></returns>
+        public static ActiveEnumerable<TResult> ActiveOfType<TResult>(this IEnumerable source)
+        {
+            var synchronizedSource = source as ISynchronized;
+            var notifyingSource = source as INotifyCollectionChanged;
+            SynchronizedRangeObservableCollection<TResult> rangeObservableCollection;
+
+            void collectionChanged(object sender, NotifyCollectionChangedEventArgs e) =>
+                synchronizedSource.SequentialExecute(() =>
+                {
+                    if (e.Action == NotifyCollectionChangedAction.Reset)
+                        rangeObservableCollection.Reset(source.OfType<TResult>());
+                    else if (e.Action != NotifyCollectionChangedAction.Move)
+                    {
+                        if (e.OldItems != null)
+                            rangeObservableCollection.RemoveRange(e.OldItems.OfType<TResult>());
+                        if (e.NewItems != null)
+                            rangeObservableCollection.AddRange(e.NewItems.OfType<TResult>());
+                    }
+                });
+
+            return synchronizedSource.SequentialExecute(() =>
+            {
+                rangeObservableCollection = new SynchronizedRangeObservableCollection<TResult>(source.OfType<TResult>());
+
+                if (notifyingSource != null)
+                    notifyingSource.CollectionChanged += collectionChanged;
+
+                return new ActiveEnumerable<TResult>(rangeObservableCollection, source as INotifyElementFaultChanges, () =>
+                {
+                    if (notifyingSource != null)
+                        notifyingSource.CollectionChanged -= collectionChanged;
+                });
+            });
+        }
+
+        #endregion OfType
+
         #region OrderBy
 
         /// <summary>

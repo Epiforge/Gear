@@ -1148,6 +1148,65 @@ namespace Gear.ActiveQuery
 
         #endregion Min
 
+        #region OfType
+
+        static IEnumerable<KeyValuePair<TKey, TResult>> OfType<TKey, TValue, TResult>(IEnumerable<KeyValuePair<TKey, TValue>> keyValuePairs) =>
+            keyValuePairs.Select(kv => kv.Value is TResult result ? (key: kv.Key, value: kv.Value, isResult: true, result) : (key: kv.Key, value: kv.Value, isResult: false, result: default(TResult))).Where(t => t.isResult).Select(t => new KeyValuePair<TKey, TResult>(t.key, t.result));
+
+        /// <summary>
+        /// Actively filters the values of a <see cref="IReadOnlyDictionary{TKey, TValue}"/> based on a specified type
+        /// </summary>
+        /// <typeparam name="TKey">The type of the keys in <paramref name="source"/></typeparam>
+        /// <typeparam name="TValue">The type of the values in <paramref name="source"/></typeparam>
+        /// <typeparam name="TResult">The type to filter the values of the dictionary on</typeparam>
+        /// <param name="source">The <see cref="IReadOnlyDictionary{TKey, TValue}"/> the values of which to filter</param>
+        /// <returns>An <see cref="IReadOnlyDictionary{TKey, TValue}"/> that contains values from the input dictionary of type <typeparamref name="TResult"/></returns>
+        public static ActiveLookup<TKey, TResult> ActiveOfType<TKey, TValue, TResult>(this IReadOnlyDictionary<TKey, TValue> source)
+        {
+            var synchronizedSource = source as ISynchronized;
+            var notifyingSource = source as INotifyDictionaryChanged<TKey, TValue>;
+            ISynchronizedObservableRangeDictionary<TKey, TResult> rangeObservableDictionary;
+
+            void dictionaryChanged(object sender, NotifyDictionaryChangedEventArgs<TKey, TValue> e) =>
+                synchronizedSource.SequentialExecute(() =>
+                {
+                    switch (e.Action)
+                    {
+                        case NotifyDictionaryChangedAction.Add:
+                            rangeObservableDictionary.AddRange(OfType<TKey, TValue, TResult>(e.NewItems));
+                            break;
+                        case NotifyDictionaryChangedAction.Remove:
+                            rangeObservableDictionary.RemoveRange(e.OldItems.Select(kv => kv.Key));
+                            break;
+                        case NotifyDictionaryChangedAction.Replace:
+                            rangeObservableDictionary.ReplaceRange(e.OldItems.Select(kv => kv.Key), OfType<TKey, TValue, TResult>(e.NewItems));
+                            break;
+                        case NotifyDictionaryChangedAction.Reset:
+                            var replacementDictionary = source.GetIndexingStrategy() == IndexingStrategy.SelfBalancingBinarySearchTree ? (IRangeDictionary<TKey, TResult>)new ObservableSortedDictionary<TKey, TResult>(source.GetKeyComparer()) : new ObservableDictionary<TKey, TResult>(source.GetKeyEqualityComparer());
+                            replacementDictionary.AddRange(OfType<TKey, TValue, TResult>(source));
+                            rangeObservableDictionary.Reset(replacementDictionary);
+                            break;
+                    }
+                });
+
+            return synchronizedSource.SequentialExecute(() =>
+            {
+                rangeObservableDictionary = source.GetIndexingStrategy() == IndexingStrategy.SelfBalancingBinarySearchTree ? (ISynchronizedObservableRangeDictionary<TKey, TResult>)new SynchronizedObservableSortedDictionary<TKey, TResult>(source.GetKeyComparer()) : new SynchronizedObservableDictionary<TKey, TResult>(source.GetKeyEqualityComparer());
+                rangeObservableDictionary.AddRange(OfType<TKey, TValue, TResult>(source));
+
+                if (notifyingSource != null)
+                    notifyingSource.DictionaryChanged += dictionaryChanged;
+
+                return new ActiveLookup<TKey, TResult>(rangeObservableDictionary, source as INotifyElementFaultChanges, () =>
+                {
+                    if (notifyingSource != null)
+                        notifyingSource.DictionaryChanged -= dictionaryChanged;
+                });
+            });
+        }
+
+        #endregion OfType
+
         #region Select
 
         /// <summary>
