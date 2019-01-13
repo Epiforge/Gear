@@ -11,11 +11,58 @@ namespace Gear.Components
     public abstract class OverridableAsyncDisposable : IAsyncDisposable
     {
         /// <summary>
+        /// Initializes a new instance of the <see cref="OverridableAsyncDisposable"/> class
+        /// </summary>
+        public OverridableAsyncDisposable()
+        {
+            disposalOverridden = new WeakEventHandler<DisposalNotificationEventArgs>(this);
+            disposed = new WeakEventHandler<DisposalNotificationEventArgs>(this);
+            disposing = new WeakEventHandler<DisposalNotificationEventArgs>(this);
+        }
+
+        /// <summary>
         /// Finalizes this object
         /// </summary>
-        ~OverridableAsyncDisposable() => DisposeAsync(false).Wait();
+        ~OverridableAsyncDisposable()
+        {
+            var e = new DisposalNotificationEventArgs(true);
+            OnDisposing(e);
+            DisposeAsync(false).Wait();
+            IsDisposed = true;
+            OnDisposed(e);
+        }
 
         readonly AsyncLock disposalAccess = new AsyncLock();
+        readonly WeakEventHandler<DisposalNotificationEventArgs> disposalOverridden;
+        readonly WeakEventHandler<DisposalNotificationEventArgs> disposed;
+        readonly WeakEventHandler<DisposalNotificationEventArgs> disposing;
+
+        /// <summary>
+        /// Occurs when this object's disposal has been overridden
+        /// </summary>
+        public event EventHandler<DisposalNotificationEventArgs> DisposalOverridden
+        {
+            add => disposalOverridden.Subscribe(value);
+            remove => disposalOverridden.Unsubscribe(value);
+        }
+
+        /// <summary>
+        /// Occurs when this object has been disposed
+        /// </summary>
+        public event EventHandler<DisposalNotificationEventArgs> Disposed
+        {
+            add => disposed.Subscribe(value);
+            remove => disposed.Unsubscribe(value);
+        }
+
+        /// <summary>
+        /// Occurs when this object is being disposed
+        /// </summary>
+        public event EventHandler<DisposalNotificationEventArgs> Disposing
+        {
+            add => disposing.Subscribe(value);
+            remove => disposing.Unsubscribe(value);
+        }
 
         /// <summary>
         /// Performs application-defined tasks associated with freeing, releasing, or resetting unmanaged resources
@@ -25,8 +72,21 @@ namespace Gear.Components
         public async Task DisposeAsync(CancellationToken cancellationToken = default)
         {
             using (await disposalAccess.LockAsync(cancellationToken).ConfigureAwait(false))
-                if (!IsDisposed && (IsDisposed = await DisposeAsync(true, cancellationToken).ConfigureAwait(false)))
-                    GC.SuppressFinalize(this);
+                if (!IsDisposed)
+                {
+                    var e = new DisposalNotificationEventArgs(false);
+                    OnDisposing(e);
+                    if (IsDisposed = await DisposeAsync(true, cancellationToken).ConfigureAwait(false))
+                    {
+                        OnDisposed(e);
+                        disposalOverridden.Clear();
+                        disposing.Clear();
+                        disposed.Clear();
+                        GC.SuppressFinalize(this);
+                    }
+                    else
+                        OnDisposalOverridden(e);
+                }
         }
 
         /// <summary>
@@ -36,6 +96,24 @@ namespace Gear.Components
         /// <param name="cancellationToken">A token that can be used to attempt to cancel disposal</param>
         /// <returns>true if disposal completed; otherwise, false</returns>
         protected abstract Task<bool> DisposeAsync(bool disposing, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Raises the <see cref="DisposalOverridden"/> event with the specified arguments
+        /// </summary>
+        /// <param name="e">The event arguments</param>
+        protected virtual void OnDisposalOverridden(DisposalNotificationEventArgs e) => disposalOverridden.Raise(e);
+
+        /// <summary>
+        /// Raises the <see cref="Disposed"/> event with the specified arguments
+        /// </summary>
+        /// <param name="e">The event arguments</param>
+        protected virtual void OnDisposed(DisposalNotificationEventArgs e) => disposed.Raise(e);
+
+        /// <summary>
+        /// Raises the <see cref="Disposing"/> event with the specified arguments
+        /// </summary>
+        /// <param name="e">The event arguments</param>
+        protected virtual void OnDisposing(DisposalNotificationEventArgs e) => disposing.Raise(e);
 
         /// <summary>
         /// Ensure the object has not been disposed

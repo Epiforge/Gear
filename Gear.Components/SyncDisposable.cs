@@ -5,14 +5,50 @@ namespace Gear.Components
     /// <summary>
     /// Provides a mechanism for releasing unmanaged resources synchronously
     /// </summary>
-    public abstract class SyncDisposable : IDisposable
+    public abstract class SyncDisposable : IDisposable, INotifyDisposed, INotifyDisposing
     {
+        /// <summary>
+        /// Initializes a new instance of the <see cref="SyncDisposable"/> class
+        /// </summary>
+        public SyncDisposable()
+        {
+            disposed = new WeakEventHandler<DisposalNotificationEventArgs>(this);
+            disposing = new WeakEventHandler<DisposalNotificationEventArgs>(this);
+        }
+
         /// <summary>
         /// Finalizes this object
         /// </summary>
-		~SyncDisposable() => Dispose(false);
+		~SyncDisposable()
+        {
+            var e = new DisposalNotificationEventArgs(true);
+            OnDisposing(e);
+            Dispose(false);
+            IsDisposed = true;
+            OnDisposed(e);
+        }
 
         readonly object disposalAccess = new object();
+        readonly WeakEventHandler<DisposalNotificationEventArgs> disposed;
+        readonly WeakEventHandler<DisposalNotificationEventArgs> disposing;
+
+        /// <summary>
+        /// Occurs when this object has been disposed
+        /// </summary>
+        public event EventHandler<DisposalNotificationEventArgs> Disposed
+        {
+            add => disposed.Subscribe(value);
+            remove => disposed.Unsubscribe(value);
+        }
+
+        /// <summary>
+        /// Occurs when this object is being disposed
+        /// </summary>
+        public event EventHandler<DisposalNotificationEventArgs> Disposing
+        {
+            add => disposing.Subscribe(value);
+            remove => disposing.Unsubscribe(value);
+        }
 
         /// <summary>
         /// Performs application-defined tasks associated with freeing, releasing, or resetting unmanaged resources
@@ -22,8 +58,13 @@ namespace Gear.Components
             lock (disposalAccess)
                 if (!IsDisposed)
                 {
+                    var e = new DisposalNotificationEventArgs(false);
+                    OnDisposing(e);
                     Dispose(true);
                     IsDisposed = true;
+                    OnDisposed(e);
+                    disposing.Clear();
+                    disposed.Clear();
                     GC.SuppressFinalize(this);
                 }
         }
@@ -33,6 +74,18 @@ namespace Gear.Components
         /// </summary>
         /// <param name="disposing">false if invoked by the finalizer because the object is being garbage collected; otherwise, true</param>
         protected abstract void Dispose(bool disposing);
+
+        /// <summary>
+        /// Raises the <see cref="Disposed"/> event with the specified arguments
+        /// </summary>
+        /// <param name="e">The event arguments</param>
+        protected virtual void OnDisposed(DisposalNotificationEventArgs e) => disposed.Raise(e);
+
+        /// <summary>
+        /// Raises the <see cref="Disposing"/> event with the specified arguments
+        /// </summary>
+        /// <param name="e">The event arguments</param>
+        protected virtual void OnDisposing(DisposalNotificationEventArgs e) => disposing.Raise(e);
 
         /// <summary>
         /// Ensure the object has not been disposed
