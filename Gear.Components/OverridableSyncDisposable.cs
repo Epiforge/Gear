@@ -5,7 +5,7 @@ namespace Gear.Components
     /// <summary>
     /// Provides an overridable mechanism for releasing unmanaged resources synchronously
     /// </summary>
-    public abstract class OverridableSyncDisposable : IDisposable
+    public abstract class OverridableSyncDisposable : IDisposable, INotifyDisposalOverridden, INotifyDisposed, INotifyDisposing
     {
         /// <summary>
         /// Initializes a new instance of the <see cref="OverridableSyncDisposable"/> class
