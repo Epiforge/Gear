@@ -65,9 +65,9 @@ namespace Gear.Components
         /// <param name="notifyingCollection">The notifying collection</param>
         /// <param name="onGenericCollectionChanged">The handler</param>
         /// <returns>An action that will unsubscribe the handler from the <see cref="INotifyGenericCollectionChanged{T}.GenericCollectionChanged"/> event</returns>
-        public static Action OnGenericCollectionChanged<T>(this INotifyGenericCollectionChanged<T> notifyingCollection, Action<NotifyGenericCollectionChangedEventArgs<T>> onGenericCollectionChanged)
+        public static Action OnGenericCollectionChanged<T>(this INotifyGenericCollectionChanged<T> notifyingCollection, Action<INotifyGenericCollectionChangedEventArgs<T>> onGenericCollectionChanged)
         {
-            void genericCollectionChanged(object sender, NotifyGenericCollectionChangedEventArgs<T> e) => onGenericCollectionChanged(e);
+            void genericCollectionChanged(object sender, INotifyGenericCollectionChangedEventArgs<T> e) => onGenericCollectionChanged(e);
             notifyingCollection.GenericCollectionChanged += genericCollectionChanged;
             return () => notifyingCollection.GenericCollectionChanged -= genericCollectionChanged;
         }

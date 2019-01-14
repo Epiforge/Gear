@@ -104,7 +104,7 @@ namespace Gear.Components
         /// <summary>
         /// Occurs when the collection changes
         /// </summary>
-        public event EventHandler<NotifyGenericCollectionChangedEventArgs<KeyValuePair<TKey, TValue>>> GenericCollectionChanged;
+        public event NotifyGenericCollectionChangedEventHandler<KeyValuePair<TKey, TValue>> GenericCollectionChanged;
 
         /// <summary>
         /// Adds the specified key and value to the dictionary

@@ -10,7 +10,7 @@ namespace Gear.Components
     /// Provides data for the <see cref="INotifyGenericCollectionChanged{T}.GenericCollectionChanged"/> event
     /// </summary>
     /// <typeparam name="T">The type of elements in the collection</typeparam>
-    public class NotifyGenericCollectionChangedEventArgs<T> : EventArgs
+    public class NotifyGenericCollectionChangedEventArgs<T> : EventArgs, INotifyGenericCollectionChangedEventArgs<T>
     {
         /// <summary>
         /// Defines an explicit conversion of a <see cref="NotifyCollectionChangedEventArgs"/> to a <see cref="NotifyGenericCollectionChangedEventArgs{T}"/>

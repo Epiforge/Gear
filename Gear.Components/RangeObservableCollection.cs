@@ -32,7 +32,7 @@ namespace Gear.Components
         /// <summary>
         /// Occurs when the collection changes
         /// </summary>
-        public event EventHandler<NotifyGenericCollectionChangedEventArgs<T>> GenericCollectionChanged;
+        public event NotifyGenericCollectionChangedEventHandler<T> GenericCollectionChanged;
 
         /// <summary>
         /// Adds objects to the end of the <see cref="RangeObservableCollection{T}"/>
