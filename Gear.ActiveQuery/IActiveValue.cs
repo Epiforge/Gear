@@ -1,3 +1,4 @@
+using Gear.Components;
 using System;
 using System.ComponentModel;
 
@@ -7,7 +8,7 @@ namespace Gear.ActiveQuery
     /// Represents the scalar result of an active query
     /// </summary>
     /// <typeparam name="TValue">The type of the scalar result</typeparam>
-    public interface IActiveValue<out TValue> : IDisposable, INotifyElementFaultChanges, INotifyPropertyChanged, INotifyPropertyChanging
+    public interface IActiveValue<out TValue> : IDisposable, IDisposeStatus, INotifyDisposed, INotifyDisposing, INotifyElementFaultChanges, INotifyPropertyChanged, INotifyPropertyChanging
     {
         /// <summary>
         /// Gets the exception that occured the most recent time the query updated

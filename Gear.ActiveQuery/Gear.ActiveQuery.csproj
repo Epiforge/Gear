@@ -40,8 +40,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Gear.ActiveExpressions" Version="1.0.45" />
-    <PackageReference Include="Gear.Components" Version="1.0.99" />
+    <PackageReference Include="Gear.ActiveExpressions" Version="1.0.46" />
+    <PackageReference Include="Gear.Components" Version="1.0.100" />
     <PackageReference Include="System.ValueTuple" Version="4.5.0" />
   </ItemGroup>
 

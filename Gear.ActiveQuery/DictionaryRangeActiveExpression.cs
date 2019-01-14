@@ -57,10 +57,10 @@ namespace Gear.ActiveQuery
             this.source = source;
             this.expression = expression;
             Options = options;
-            activeExpressions = this.source.CreateSimilarDictionary<TKey, TValue, ActiveExpression<TKey, TValue, TResult>>();
+            activeExpressions = this.source.CreateSimilarDictionary<TKey, TValue, IActiveExpression<TKey, TValue, TResult>>();
         }
 
-        readonly IDictionary<TKey, ActiveExpression<TKey, TValue, TResult>> activeExpressions;
+        readonly IDictionary<TKey, IActiveExpression<TKey, TValue, TResult>> activeExpressions;
         readonly ReaderWriterLockSlim activeExpressionsAccess = new ReaderWriterLockSlim();
         int disposalCount;
         readonly Expression<Func<TKey, TValue, TResult>> expression;
@@ -74,8 +74,8 @@ namespace Gear.ActiveQuery
 
         void ActiveExpressionPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
-            var activeExpression = (ActiveExpression<TKey, TValue, TResult>)sender;
-            if (e.PropertyName == nameof(ActiveExpression<TKey, TValue, TResult>.Fault))
+            var activeExpression = (IActiveExpression<TKey, TValue, TResult>)sender;
+            if (e.PropertyName == nameof(IActiveExpression<TKey, TValue, TResult>.Fault))
             {
                 activeExpressionsAccess.EnterReadLock();
                 try
@@ -87,7 +87,7 @@ namespace Gear.ActiveQuery
                     activeExpressionsAccess.ExitReadLock();
                 }
             }
-            else if (e.PropertyName == nameof(ActiveExpression<TKey, TValue, TResult>.Value))
+            else if (e.PropertyName == nameof(IActiveExpression<TKey, TValue, TResult>.Value))
             {
                 activeExpressionsAccess.EnterReadLock();
                 try
@@ -103,8 +103,8 @@ namespace Gear.ActiveQuery
 
         void ActiveExpressionPropertyChanging(object sender, PropertyChangingEventArgs e)
         {
-            var activeExpression = (ActiveExpression<TKey, TValue, TResult>)sender;
-            if (e.PropertyName == nameof(ActiveExpression<TKey, TValue, TResult>.Fault))
+            var activeExpression = (IActiveExpression<TKey, TValue, TResult>)sender;
+            if (e.PropertyName == nameof(IActiveExpression<TKey, TValue, TResult>.Fault))
             {
                 activeExpressionsAccess.EnterReadLock();
                 try
@@ -116,7 +116,7 @@ namespace Gear.ActiveQuery
                     activeExpressionsAccess.ExitReadLock();
                 }
             }
-            else if (e.PropertyName == nameof(ActiveExpression<TKey, TValue, TResult>.Value))
+            else if (e.PropertyName == nameof(IActiveExpression<TKey, TValue, TResult>.Value))
             {
                 activeExpressionsAccess.EnterReadLock();
                 try
@@ -134,7 +134,7 @@ namespace Gear.ActiveQuery
         {
             if (keyValuePairs.Any())
             {
-                List<ActiveExpression<TKey, TValue, TResult>> addedActiveExpressions;
+                List<IActiveExpression<TKey, TValue, TResult>> addedActiveExpressions;
                 activeExpressionsAccess.EnterWriteLock();
                 OnPropertyChanging(nameof(Count));
                 try
@@ -151,9 +151,9 @@ namespace Gear.ActiveQuery
             return null;
         }
 
-        private List<ActiveExpression<TKey, TValue, TResult>> AddActiveExpressionsUnderLock(IEnumerable<KeyValuePair<TKey, TValue>> keyValuePairs)
+        private List<IActiveExpression<TKey, TValue, TResult>> AddActiveExpressionsUnderLock(IEnumerable<KeyValuePair<TKey, TValue>> keyValuePairs)
         {
-            var addedActiveExpressions = new List<ActiveExpression<TKey, TValue, TResult>>();
+            var addedActiveExpressions = new List<IActiveExpression<TKey, TValue, TResult>>();
             foreach (var keyValuePair in keyValuePairs)
             {
                 var activeExpression = ActiveExpression.Create(expression, keyValuePair.Key, keyValuePair.Value, Options);
@@ -428,10 +428,10 @@ namespace Gear.ActiveQuery
             this.source = source;
             this.expression = expression;
             Options = options;
-            activeExpressions = this.source.CreateSimilarDictionary<TKey, TValue, ActiveExpression<TKey, TValue, TResult>>();
+            activeExpressions = this.source.CreateSimilarDictionary<TKey, TValue, IActiveExpression<TKey, TValue, TResult>>();
         }
 
-        readonly IDictionary<TKey, ActiveExpression<TKey, TValue, TResult>> activeExpressions;
+        readonly IDictionary<TKey, IActiveExpression<TKey, TValue, TResult>> activeExpressions;
         readonly ReaderWriterLockSlim activeExpressionsAccess = new ReaderWriterLockSlim();
         int disposalCount;
         readonly Expression<Func<TKey, TValue, TResult>> expression;
@@ -445,8 +445,8 @@ namespace Gear.ActiveQuery
 
         void ActiveExpressionPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
-            var activeExpression = (ActiveExpression<TKey, TValue, TResult>)sender;
-            if (e.PropertyName == nameof(ActiveExpression<TKey, TValue, TResult>.Fault))
+            var activeExpression = (IActiveExpression<TKey, TValue, TResult>)sender;
+            if (e.PropertyName == nameof(IActiveExpression<TKey, TValue, TResult>.Fault))
             {
                 activeExpressionsAccess.EnterReadLock();
                 try
@@ -458,7 +458,7 @@ namespace Gear.ActiveQuery
                     activeExpressionsAccess.ExitReadLock();
                 }
             }
-            else if (e.PropertyName == nameof(ActiveExpression<TKey, TValue, TResult>.Value))
+            else if (e.PropertyName == nameof(IActiveExpression<TKey, TValue, TResult>.Value))
             {
                 activeExpressionsAccess.EnterReadLock();
                 try
@@ -474,8 +474,8 @@ namespace Gear.ActiveQuery
 
         void ActiveExpressionPropertyChanging(object sender, PropertyChangingEventArgs e)
         {
-            var activeExpression = (ActiveExpression<TKey, TValue, TResult>)sender;
-            if (e.PropertyName == nameof(ActiveExpression<TKey, TValue, TResult>.Fault))
+            var activeExpression = (IActiveExpression<TKey, TValue, TResult>)sender;
+            if (e.PropertyName == nameof(IActiveExpression<TKey, TValue, TResult>.Fault))
             {
                 activeExpressionsAccess.EnterReadLock();
                 try
@@ -487,7 +487,7 @@ namespace Gear.ActiveQuery
                     activeExpressionsAccess.ExitReadLock();
                 }
             }
-            else if (e.PropertyName == nameof(ActiveExpression<TKey, TValue, TResult>.Value))
+            else if (e.PropertyName == nameof(IActiveExpression<TKey, TValue, TResult>.Value))
             {
                 activeExpressionsAccess.EnterReadLock();
                 try
@@ -505,7 +505,7 @@ namespace Gear.ActiveQuery
         {
             if (keyValuePairs.Any())
             {
-                List<ActiveExpression<TKey, TValue, TResult>> addedActiveExpressions;
+                List<IActiveExpression<TKey, TValue, TResult>> addedActiveExpressions;
                 activeExpressionsAccess.EnterWriteLock();
                 OnPropertyChanging(nameof(Count));
                 try
@@ -522,9 +522,9 @@ namespace Gear.ActiveQuery
             return null;
         }
 
-        private List<ActiveExpression<TKey, TValue, TResult>> AddActiveExpressionsUnderLock(IEnumerable<KeyValuePair<TKey, TValue>> keyValuePairs)
+        private List<IActiveExpression<TKey, TValue, TResult>> AddActiveExpressionsUnderLock(IEnumerable<KeyValuePair<TKey, TValue>> keyValuePairs)
         {
-            var addedActiveExpressions = new List<ActiveExpression<TKey, TValue, TResult>>();
+            var addedActiveExpressions = new List<IActiveExpression<TKey, TValue, TResult>>();
             foreach (var keyValuePair in keyValuePairs)
             {
                 var activeExpression = ActiveExpression.Create(expression, keyValuePair.Key, keyValuePair.Value, Options);

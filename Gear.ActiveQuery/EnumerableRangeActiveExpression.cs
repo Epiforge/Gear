@@ -59,8 +59,8 @@ namespace Gear.ActiveQuery
             Options = options;
         }
 
-        readonly Dictionary<ActiveExpression<object, TResult>, int> activeExpressionCounts = new Dictionary<ActiveExpression<object, TResult>, int>();
-        readonly List<(object element, ActiveExpression<object, TResult> activeExpression)> activeExpressions = new List<(object element, ActiveExpression<object, TResult> activeExpression)>();
+        readonly Dictionary<IActiveExpression<object, TResult>, int> activeExpressionCounts = new Dictionary<IActiveExpression<object, TResult>, int>();
+        readonly List<(object element, IActiveExpression<object, TResult> activeExpression)> activeExpressions = new List<(object element, IActiveExpression<object, TResult> activeExpression)>();
         readonly ReaderWriterLockSlim activeExpressionsAccess = new ReaderWriterLockSlim();
         int disposalCount;
         readonly Expression<Func<object, TResult>> expression;
@@ -74,8 +74,8 @@ namespace Gear.ActiveQuery
 
         void ActiveExpressionPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
-            var activeExpression = (ActiveExpression<object, TResult>)sender;
-            if (e.PropertyName == nameof(ActiveExpression<object, TResult>.Fault))
+            var activeExpression = (IActiveExpression<object, TResult>)sender;
+            if (e.PropertyName == nameof(IActiveExpression<object, TResult>.Fault))
             {
                 activeExpressionsAccess.EnterReadLock();
                 try
@@ -87,7 +87,7 @@ namespace Gear.ActiveQuery
                     activeExpressionsAccess.ExitReadLock();
                 }
             }
-            else if (e.PropertyName == nameof(ActiveExpression<object, TResult>.Value))
+            else if (e.PropertyName == nameof(IActiveExpression<object, TResult>.Value))
             {
                 activeExpressionsAccess.EnterReadLock();
                 try
@@ -103,8 +103,8 @@ namespace Gear.ActiveQuery
 
         void ActiveExpressionPropertyChanging(object sender, PropertyChangingEventArgs e)
         {
-            var activeExpression = (ActiveExpression<object, TResult>)sender;
-            if (e.PropertyName == nameof(ActiveExpression<object, TResult>.Fault))
+            var activeExpression = (IActiveExpression<object, TResult>)sender;
+            if (e.PropertyName == nameof(IActiveExpression<object, TResult>.Fault))
             {
                 activeExpressionsAccess.EnterReadLock();
                 try
@@ -116,7 +116,7 @@ namespace Gear.ActiveQuery
                     activeExpressionsAccess.ExitReadLock();
                 }
             }
-            else if (e.PropertyName == nameof(ActiveExpression<object, TResult>.Value))
+            else if (e.PropertyName == nameof(IActiveExpression<object, TResult>.Value))
             {
                 activeExpressionsAccess.EnterReadLock();
                 try
@@ -134,7 +134,7 @@ namespace Gear.ActiveQuery
         {
             if (elements.Any())
             {
-                List<ActiveExpression<object, TResult>> addedActiveExpressions;
+                List<IActiveExpression<object, TResult>> addedActiveExpressions;
                 activeExpressionsAccess.EnterWriteLock();
                 OnPropertyChanging(nameof(Count));
                 try
@@ -151,9 +151,9 @@ namespace Gear.ActiveQuery
             return null;
         }
 
-        List<ActiveExpression<object, TResult>> AddActiveExpressionsUnderLock(int index, IEnumerable<object> elements)
+        List<IActiveExpression<object, TResult>> AddActiveExpressionsUnderLock(int index, IEnumerable<object> elements)
         {
-            var addedActiveExpressions = new List<ActiveExpression<object, TResult>>();
+            var addedActiveExpressions = new List<IActiveExpression<object, TResult>>();
             activeExpressions.InsertRange(index, elements.Select(element =>
             {
                 var activeExpression = ActiveExpression.Create(expression, element, Options);
@@ -180,7 +180,7 @@ namespace Gear.ActiveQuery
                     break;
                 case NotifyCollectionChangedAction.Move:
                     activeExpressionsAccess.EnterWriteLock();
-                    List<(object element, ActiveExpression<object, TResult> activeExpression)> moving;
+                    List<(object element, IActiveExpression<object, TResult> activeExpression)> moving;
                     try
                     {
                         moving = activeExpressions.GetRange(e.OldStartingIndex, e.OldItems.Count);
@@ -468,8 +468,8 @@ namespace Gear.ActiveQuery
             Options = options;
         }
 
-        readonly Dictionary<ActiveExpression<TElement, TResult>, int> activeExpressionCounts = new Dictionary<ActiveExpression<TElement, TResult>, int>();
-        readonly List<(TElement element, ActiveExpression<TElement, TResult> activeExpression)> activeExpressions = new List<(TElement element, ActiveExpression<TElement, TResult> activeExpression)>();
+        readonly Dictionary<IActiveExpression<TElement, TResult>, int> activeExpressionCounts = new Dictionary<IActiveExpression<TElement, TResult>, int>();
+        readonly List<(TElement element, IActiveExpression<TElement, TResult> activeExpression)> activeExpressions = new List<(TElement element, IActiveExpression<TElement, TResult> activeExpression)>();
         readonly ReaderWriterLockSlim activeExpressionsAccess = new ReaderWriterLockSlim();
         int disposalCount;
         readonly Expression<Func<TElement, TResult>> expression;
@@ -483,8 +483,8 @@ namespace Gear.ActiveQuery
 
         void ActiveExpressionPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
-            var activeExpression = (ActiveExpression<TElement, TResult>)sender;
-            if (e.PropertyName == nameof(ActiveExpression<TElement, TResult>.Fault))
+            var activeExpression = (IActiveExpression<TElement, TResult>)sender;
+            if (e.PropertyName == nameof(IActiveExpression<TElement, TResult>.Fault))
             {
                 activeExpressionsAccess.EnterReadLock();
                 try
@@ -496,7 +496,7 @@ namespace Gear.ActiveQuery
                     activeExpressionsAccess.ExitReadLock();
                 }
             }
-            else if (e.PropertyName == nameof(ActiveExpression<TElement, TResult>.Value))
+            else if (e.PropertyName == nameof(IActiveExpression<TElement, TResult>.Value))
             {
                 activeExpressionsAccess.EnterReadLock();
                 try
@@ -512,8 +512,8 @@ namespace Gear.ActiveQuery
 
         void ActiveExpressionPropertyChanging(object sender, PropertyChangingEventArgs e)
         {
-            var activeExpression = (ActiveExpression<TElement, TResult>)sender;
-            if (e.PropertyName == nameof(ActiveExpression<TElement, TResult>.Fault))
+            var activeExpression = (IActiveExpression<TElement, TResult>)sender;
+            if (e.PropertyName == nameof(IActiveExpression<TElement, TResult>.Fault))
             {
                 activeExpressionsAccess.EnterReadLock();
                 try
@@ -525,7 +525,7 @@ namespace Gear.ActiveQuery
                     activeExpressionsAccess.ExitReadLock();
                 }
             }
-            else if (e.PropertyName == nameof(ActiveExpression<TElement, TResult>.Value))
+            else if (e.PropertyName == nameof(IActiveExpression<TElement, TResult>.Value))
             {
                 activeExpressionsAccess.EnterReadLock();
                 try
@@ -543,7 +543,7 @@ namespace Gear.ActiveQuery
         {
             if (elements.Any())
             {
-                List<ActiveExpression<TElement, TResult>> addedActiveExpressions;
+                List<IActiveExpression<TElement, TResult>> addedActiveExpressions;
                 activeExpressionsAccess.EnterWriteLock();
                 OnPropertyChanging(nameof(Count));
                 try
@@ -560,9 +560,9 @@ namespace Gear.ActiveQuery
             return null;
         }
 
-        List<ActiveExpression<TElement, TResult>> AddActiveExpressionsUnderLock(int index, IEnumerable<TElement> elements)
+        List<IActiveExpression<TElement, TResult>> AddActiveExpressionsUnderLock(int index, IEnumerable<TElement> elements)
         {
-            var addedActiveExpressions = new List<ActiveExpression<TElement, TResult>>();
+            var addedActiveExpressions = new List<IActiveExpression<TElement, TResult>>();
             activeExpressions.InsertRange(index, elements.Select(element =>
             {
                 var activeExpression = ActiveExpression.Create(expression, element, Options);
@@ -589,7 +589,7 @@ namespace Gear.ActiveQuery
                     break;
                 case NotifyCollectionChangedAction.Move:
                     activeExpressionsAccess.EnterWriteLock();
-                    List<(TElement element, ActiveExpression<TElement, TResult> activeExpression)> moving;
+                    List<(TElement element, IActiveExpression<TElement, TResult> activeExpression)> moving;
                     try
                     {
                         moving = activeExpressions.GetRange(e.OldStartingIndex, e.OldItems.Count);
