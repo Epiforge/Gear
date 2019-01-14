@@ -8,7 +8,7 @@ namespace Gear.Components
     /// <summary>
     /// Provides a mechanism for releasing unmanaged resources asynchronously or synchronously and notifying about property changes
     /// </summary>
-    public abstract class DisposablePropertyChangeNotifier : PropertyChangeNotifier, IDisposable, IAsyncDisposable
+    public abstract class DisposablePropertyChangeNotifier : PropertyChangeNotifier, IDisposable, IAsyncDisposable, IDisposeStatus, INotifyDisposed, INotifyDisposing
     {
         /// <summary>
         /// Finalizes this object

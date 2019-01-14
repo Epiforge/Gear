@@ -8,7 +8,7 @@ namespace Gear.Components
     /// <summary>
     /// Provides a mechanism for releasing unmanaged resources asynchronously or synchronously
     /// </summary>
-    public abstract class Disposable : IDisposable, IAsyncDisposable, INotifyDisposed, INotifyDisposing
+    public abstract class Disposable : IDisposable, IAsyncDisposable, IDisposeStatus, INotifyDisposed, INotifyDisposing
     {
         /// <summary>
         /// Finalizes this object
