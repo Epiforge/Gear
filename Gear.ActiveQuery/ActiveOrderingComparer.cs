@@ -120,7 +120,7 @@ namespace Gear.ActiveQuery
                     comparables[e.Element][rangeActiveExpressionIndicies[(EnumerableRangeActiveExpression<TElement, IComparable>)sender]] = e.Result;
         }
 
-        void RangeActiveExpressionGenericCollectionChanged(object sender, NotifyGenericCollectionChangedEventArgs<(TElement element, IComparable comparable)> e)
+        void RangeActiveExpressionGenericCollectionChanged(object sender, INotifyGenericCollectionChangedEventArgs<(TElement element, IComparable comparable)> e)
         {
             lock (comparablesAccess)
             {

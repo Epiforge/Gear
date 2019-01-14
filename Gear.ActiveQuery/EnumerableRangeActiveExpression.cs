@@ -70,7 +70,7 @@ namespace Gear.ActiveQuery
         public event EventHandler<ElementFaultChangeEventArgs> ElementFaultChanging;
         public event EventHandler<RangeActiveExpressionResultChangeEventArgs<object, TResult>> ElementResultChanged;
         public event EventHandler<RangeActiveExpressionResultChangeEventArgs<object, TResult>> ElementResultChanging;
-        public event EventHandler<NotifyGenericCollectionChangedEventArgs<(object element, TResult result)>> GenericCollectionChanged;
+        public event NotifyGenericCollectionChangedEventHandler<(object element, TResult result)> GenericCollectionChanged;
 
         void ActiveExpressionPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
@@ -479,7 +479,7 @@ namespace Gear.ActiveQuery
         public event EventHandler<ElementFaultChangeEventArgs> ElementFaultChanging;
         public event EventHandler<RangeActiveExpressionResultChangeEventArgs<TElement, TResult>> ElementResultChanged;
         public event EventHandler<RangeActiveExpressionResultChangeEventArgs<TElement, TResult>> ElementResultChanging;
-        public event EventHandler<NotifyGenericCollectionChangedEventArgs<(TElement element, TResult result)>> GenericCollectionChanged;
+        public event NotifyGenericCollectionChangedEventHandler<(TElement element, TResult result)> GenericCollectionChanged;
 
         void ActiveExpressionPropertyChanged(object sender, PropertyChangedEventArgs e)
         {

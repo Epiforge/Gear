@@ -23,8 +23,8 @@ namespace Gear.ActiveQuery
         /// <typeparam name="TValue">The type of the values in <paramref name="source"/></typeparam>
         /// <param name="source">A <see cref="IReadOnlyDictionary{TKey, TValue}"/> that contains the key/value pairs to apply the predicate to</param>
         /// <param name="predicate">A function to test each key/value pair for a condition</param>
-        /// <returns>An <see cref="ActiveValue{TValue}"/> the <see cref="ActiveValue{TValue}.Value"/> of which is <c>true</c> when every key/value pair of the source dictionary passes the test in the specified predicate, or if the dictionary is empty; otherwise, <c>false</c></returns>
-        public static ActiveValue<bool> ActiveAll<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, bool>> predicate) =>
+        /// <returns>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is <c>true</c> when every key/value pair of the source dictionary passes the test in the specified predicate, or if the dictionary is empty; otherwise, <c>false</c></returns>
+        public static IActiveValue<bool> ActiveAll<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, bool>> predicate) =>
             ActiveAll(source, predicate, null);
 
         /// <summary>
@@ -35,8 +35,8 @@ namespace Gear.ActiveQuery
         /// <param name="source">A <see cref="IReadOnlyDictionary{TKey, TValue}"/> that contains the key/value pairs to apply the predicate to</param>
         /// <param name="predicate">A function to test each key/value pair for a condition</param>
         /// <param name="predicateOptions">Options governing the behavior of active expressions created using <paramref name="predicate"/></param>
-        /// <returns>An <see cref="ActiveValue{TValue}"/> the <see cref="ActiveValue{TValue}.Value"/> of which is <c>true</c> when every key/value pair of the source dictionary passes the test in the specified predicate, or if the dictionary is empty; otherwise, <c>false</c></returns>
-        public static ActiveValue<bool> ActiveAll<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, bool>> predicate, ActiveExpressionOptions predicateOptions)
+        /// <returns>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is <c>true</c> when every key/value pair of the source dictionary passes the test in the specified predicate, or if the dictionary is empty; otherwise, <c>false</c></returns>
+        public static IActiveValue<bool> ActiveAll<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, bool>> predicate, ActiveExpressionOptions predicateOptions)
         {
             var changeNotifyingSource = source as INotifyDictionaryChanged<TKey, TValue>;
             ActiveLookup<TKey, TValue> where;
@@ -71,8 +71,8 @@ namespace Gear.ActiveQuery
         /// <typeparam name="TKey">The type of the keys in <paramref name="source"/></typeparam>
         /// <typeparam name="TValue">The type of the values in <paramref name="source"/></typeparam>
         /// <param name="source">The <see cref="IReadOnlyDictionary{TKey, TValue}"/> to check for emptiness</param>
-        /// <returns>>An <see cref="ActiveValue{TValue}"/> the <see cref="ActiveValue{TValue}.Value"/> of which is <c>true</c> if the source dictionary contains any key/value pairs; otherwise, <c>false</c></returns>
-        public static ActiveValue<bool> ActiveAny<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source)
+        /// <returns>>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is <c>true</c> if the source dictionary contains any key/value pairs; otherwise, <c>false</c></returns>
+        public static IActiveValue<bool> ActiveAny<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source)
         {
             var elementFaultChangeNotifier = source as INotifyElementFaultChanges;
             if (source is INotifyDictionaryChanged<TKey, TValue> changeNotifyingSource)
@@ -105,8 +105,8 @@ namespace Gear.ActiveQuery
         /// <typeparam name="TValue">The type of the values in <paramref name="source"/></typeparam>
         /// <param name="source">A <see cref="IReadOnlyDictionary{TKey, TValue}"/> that contains the key/value pairs to apply the predicate to</param>
         /// <param name="predicate">A function to test each key/value pair for a condition</param>
-        /// <returns>An <see cref="ActiveValue{TValue}"/> the <see cref="ActiveValue{TValue}.Value"/> of which is <c>true</c> if any key/value pairs in the source dictionary pass the test in the specified predicate; otherwise, <c>false</c></returns>
-        public static ActiveValue<bool> ActiveAny<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, bool>> predicate) =>
+        /// <returns>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is <c>true</c> if any key/value pairs in the source dictionary pass the test in the specified predicate; otherwise, <c>false</c></returns>
+        public static IActiveValue<bool> ActiveAny<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, bool>> predicate) =>
             ActiveAny(source, predicate, null);
 
         /// <summary>
@@ -117,8 +117,8 @@ namespace Gear.ActiveQuery
         /// <param name="source">A <see cref="IReadOnlyDictionary{TKey, TValue}"/> that contains the key/value pairs to apply the predicate to</param>
         /// <param name="predicate">A function to test each key/value pair for a condition</param>
         /// <param name="predicateOptions">Options governing the behavior of active expressions created using <paramref name="predicate"/></param>
-        /// <returns>An <see cref="ActiveValue{TValue}"/> the <see cref="ActiveValue{TValue}.Value"/> of which is <c>true</c> if any key/value pairs in the source dictionary pass the test in the specified predicate; otherwise, <c>false</c></returns>
-        public static ActiveValue<bool> ActiveAny<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, bool>> predicate, ActiveExpressionOptions predicateOptions)
+        /// <returns>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is <c>true</c> if any key/value pairs in the source dictionary pass the test in the specified predicate; otherwise, <c>false</c></returns>
+        public static IActiveValue<bool> ActiveAny<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, bool>> predicate, ActiveExpressionOptions predicateOptions)
         {
             var changeNotifyingSource = source as INotifyDictionaryChanged<TKey, TValue>;
             ActiveLookup<TKey, TValue> where;
@@ -149,8 +149,8 @@ namespace Gear.ActiveQuery
         /// <typeparam name="TKey">The type of the keys in <paramref name="source"/></typeparam>
         /// <typeparam name="TValue">The type of the values in <paramref name="source"/></typeparam>
         /// <param name="source">A dictionary that values of which to calculate the average</param>
-        /// <returns>An <see cref="ActiveValue{TValue}"/> the <see cref="ActiveValue{TValue}.Value"/> of which is the average of the values</returns>
-        public static ActiveValue<TValue> ActiveAverage<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source) =>
+        /// <returns>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is the average of the values</returns>
+        public static IActiveValue<TValue> ActiveAverage<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source) =>
             ActiveAverage(source, (key, value) => value);
 
         /// <summary>
@@ -161,8 +161,8 @@ namespace Gear.ActiveQuery
         /// <typeparam name="TResult">The type of the values being averaged</typeparam>
         /// <param name="source">A dictionary that values of which to calculate the average</param>
         /// <param name="selector">A transform function to apply to each key/value pair</param>
-        /// <returns>An <see cref="ActiveValue{TValue}"/> the <see cref="ActiveValue{TValue}.Value"/> of which is the average of the values</returns>
-        public static ActiveValue<TResult> ActiveAverage<TKey, TValue, TResult>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, TResult>> selector) =>
+        /// <returns>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is the average of the values</returns>
+        public static IActiveValue<TResult> ActiveAverage<TKey, TValue, TResult>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, TResult>> selector) =>
             ActiveAverage(source, selector, null);
 
         /// <summary>
@@ -174,15 +174,15 @@ namespace Gear.ActiveQuery
         /// <param name="source">A dictionary that values of which to calculate the average</param>
         /// <param name="selector">A transform function to apply to each key/value pair</param>
         /// <param name="selectorOptions">Options governing the behavior of active expressions created using <paramref name="selector"/></param>
-        /// <returns>An <see cref="ActiveValue{TValue}"/> the <see cref="ActiveValue{TValue}.Value"/> of which is the average of the values</returns>
-        public static ActiveValue<TResult> ActiveAverage<TKey, TValue, TResult>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, TResult>> selector, ActiveExpressionOptions selectorOptions)
+        /// <returns>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is the average of the values</returns>
+        public static IActiveValue<TResult> ActiveAverage<TKey, TValue, TResult>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, TResult>> selector, ActiveExpressionOptions selectorOptions)
         {
             ActiveQueryOptions.Optimize(ref selector);
 
             var convertCount = CountConversion.GetConverter(typeof(TResult));
             var operations = new GenericOperations<TResult>();
             var synchronizedSource = source as ISynchronized;
-            ActiveValue<TResult> sum;
+            IActiveValue<TResult> sum;
             Action<TResult> setValue = null;
             Action<Exception> setOperationFault = null;
 
@@ -229,8 +229,8 @@ namespace Gear.ActiveQuery
         /// <typeparam name="TKey">The type of the keys in <paramref name="source"/></typeparam>
         /// <typeparam name="TValue">The type of the values in <paramref name="source"/></typeparam>
         /// <param name="source">The <see cref="IReadOnlyDictionary{TKey, TValue}"/> to return the first key/value pair from</param>
-        /// <returns>An <see cref="ActiveValue{TValue}"/> the <see cref="ActiveValue{TValue}.Value"/> of which is the first key/value pair in the dictionary</returns>
-        public static ActiveValue<KeyValuePair<TKey, TValue>> ActiveFirst<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source) =>
+        /// <returns>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is the first key/value pair in the dictionary</returns>
+        public static IActiveValue<KeyValuePair<TKey, TValue>> ActiveFirst<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source) =>
             ActiveFirst(source, source.GetKeyComparer() ?? Comparer<TKey>.Default);
 
         /// <summary>
@@ -240,8 +240,8 @@ namespace Gear.ActiveQuery
         /// <typeparam name="TValue">The type of the values in <paramref name="source"/></typeparam>
         /// <param name="source">The <see cref="IReadOnlyDictionary{TKey, TValue}"/> to return the first key/value pair from</param>
         /// <param name="keyComparer">A comparer to compare keys in <paramref name="source"/></param>
-        /// <returns>An <see cref="ActiveValue{TValue}"/> the <see cref="ActiveValue{TValue}.Value"/> of which is the first key/value pair in the dictionary</returns>
-        public static ActiveValue<KeyValuePair<TKey, TValue>> ActiveFirst<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, IComparer<TKey> keyComparer)
+        /// <returns>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is the first key/value pair in the dictionary</returns>
+        public static IActiveValue<KeyValuePair<TKey, TValue>> ActiveFirst<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, IComparer<TKey> keyComparer)
         {
             var elementFaultChangeNotifier = source as INotifyElementFaultChanges;
             if (source is INotifyDictionaryChanged<TKey, TValue> changingSource)
@@ -325,8 +325,8 @@ namespace Gear.ActiveQuery
         /// <typeparam name="TValue">The type of the values in <paramref name="source"/></typeparam>
         /// <param name="source">The <see cref="IReadOnlyDictionary{TKey, TValue}"/> to return the first key/value pair from</param>
         /// <param name="predicate">A function to test each key/value pair for a condition</param>
-        /// <returns>An <see cref="ActiveValue{TValue}"/> the <see cref="ActiveValue{TValue}.Value"/> of which is the first key/value pair in the dictionary that passes the test in the predicate function</returns>
-        public static ActiveValue<KeyValuePair<TKey, TValue>> ActiveFirst<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, bool>> predicate) =>
+        /// <returns>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is the first key/value pair in the dictionary that passes the test in the predicate function</returns>
+        public static IActiveValue<KeyValuePair<TKey, TValue>> ActiveFirst<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, bool>> predicate) =>
             ActiveFirst(source, predicate, null, source.GetKeyComparer() ?? Comparer<TKey>.Default);
 
         /// <summary>
@@ -337,8 +337,8 @@ namespace Gear.ActiveQuery
         /// <param name="source">The <see cref="IReadOnlyDictionary{TKey, TValue}"/> to return the first key/value pair from</param>
         /// <param name="predicate">A function to test each key/value pair for a condition</param>
         /// <param name="keyComparer">A comparer to compare keys in <paramref name="source"/></param>
-        /// <returns>An <see cref="ActiveValue{TValue}"/> the <see cref="ActiveValue{TValue}.Value"/> of which is the first key/value pair in the dictionary that passes the test in the predicate function</returns>
-        public static ActiveValue<KeyValuePair<TKey, TValue>> ActiveFirst<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, bool>> predicate, IComparer<TKey> keyComparer) =>
+        /// <returns>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is the first key/value pair in the dictionary that passes the test in the predicate function</returns>
+        public static IActiveValue<KeyValuePair<TKey, TValue>> ActiveFirst<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, bool>> predicate, IComparer<TKey> keyComparer) =>
             ActiveFirst(source, predicate, null, keyComparer);
 
         /// <summary>
@@ -349,8 +349,8 @@ namespace Gear.ActiveQuery
         /// <param name="source">The <see cref="IReadOnlyDictionary{TKey, TValue}"/> to return the first key/value pair from</param>
         /// <param name="predicate">A function to test each key/value pair for a condition</param>
         /// <param name="predicateOptions">Options governing the behavior of active expressions created using <paramref name="predicate"/></param>
-        /// <returns>An <see cref="ActiveValue{TValue}"/> the <see cref="ActiveValue{TValue}.Value"/> of which is the first key/value pair in the dictionary that passes the test in the predicate function</returns>
-        public static ActiveValue<KeyValuePair<TKey, TValue>> ActiveFirst<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, bool>> predicate, ActiveExpressionOptions predicateOptions) =>
+        /// <returns>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is the first key/value pair in the dictionary that passes the test in the predicate function</returns>
+        public static IActiveValue<KeyValuePair<TKey, TValue>> ActiveFirst<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, bool>> predicate, ActiveExpressionOptions predicateOptions) =>
             ActiveFirst(source, predicate, predicateOptions, source.GetKeyComparer() ?? Comparer<TKey>.Default);
 
         /// <summary>
@@ -362,8 +362,8 @@ namespace Gear.ActiveQuery
         /// <param name="predicate">A function to test each key/value pair for a condition</param>
         /// <param name="predicateOptions">Options governing the behavior of active expressions created using <paramref name="predicate"/></param>
         /// <param name="keyComparer">A comparer to compare keys in <paramref name="source"/></param>
-        /// <returns>An <see cref="ActiveValue{TValue}"/> the <see cref="ActiveValue{TValue}.Value"/> of which is the first key/value pair in the dictionary that passes the test in the predicate function</returns>
-        public static ActiveValue<KeyValuePair<TKey, TValue>> ActiveFirst<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, bool>> predicate, ActiveExpressionOptions predicateOptions, IComparer<TKey> keyComparer)
+        /// <returns>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is the first key/value pair in the dictionary that passes the test in the predicate function</returns>
+        public static IActiveValue<KeyValuePair<TKey, TValue>> ActiveFirst<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, bool>> predicate, ActiveExpressionOptions predicateOptions, IComparer<TKey> keyComparer)
         {
             ActiveLookup<TKey, TValue> where;
             Action<KeyValuePair<TKey, TValue>> setValue = null;
@@ -409,8 +409,8 @@ namespace Gear.ActiveQuery
         /// <typeparam name="TKey">The type of the keys in <paramref name="source"/></typeparam>
         /// <typeparam name="TValue">The type of the values in <paramref name="source"/></typeparam>
         /// <param name="source">The <see cref="IReadOnlyDictionary{TKey, TValue}"/> to return the first key/value pair from</param>
-        /// <returns>An <see cref="ActiveValue{TValue}"/> the <see cref="ActiveValue{TValue}.Value"/> of which is the first key/value pair in the dictionary</returns>
-        public static ActiveValue<KeyValuePair<TKey, TValue>> ActiveFirstOrDefault<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source) =>
+        /// <returns>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is the first key/value pair in the dictionary</returns>
+        public static IActiveValue<KeyValuePair<TKey, TValue>> ActiveFirstOrDefault<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source) =>
             ActiveFirstOrDefault(source, source.GetKeyComparer() ?? Comparer<TKey>.Default);
 
         /// <summary>
@@ -420,8 +420,8 @@ namespace Gear.ActiveQuery
         /// <typeparam name="TValue">The type of the values in <paramref name="source"/></typeparam>
         /// <param name="source">The <see cref="IReadOnlyDictionary{TKey, TValue}"/> to return the first key/value pair from</param>
         /// <param name="keyComparer">A comparer to compare keys in <paramref name="source"/></param>
-        /// <returns>An <see cref="ActiveValue{TValue}"/> the <see cref="ActiveValue{TValue}.Value"/> of which is the first key/value pair in the dictionary</returns>
-        public static ActiveValue<KeyValuePair<TKey, TValue>> ActiveFirstOrDefault<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, IComparer<TKey> keyComparer)
+        /// <returns>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is the first key/value pair in the dictionary</returns>
+        public static IActiveValue<KeyValuePair<TKey, TValue>> ActiveFirstOrDefault<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, IComparer<TKey> keyComparer)
         {
             var elementFaultChangeNotifier = source as INotifyElementFaultChanges;
             if (source is INotifyDictionaryChanged<TKey, TValue> changingSource)
@@ -496,8 +496,8 @@ namespace Gear.ActiveQuery
         /// <typeparam name="TValue">The type of the values in <paramref name="source"/></typeparam>
         /// <param name="source">The <see cref="IReadOnlyDictionary{TKey, TValue}"/> to return the first key/value pair from</param>
         /// <param name="predicate">A function to test each key/value pair for a condition</param>
-        /// <returns>An <see cref="ActiveValue{TValue}"/> the <see cref="ActiveValue{TValue}.Value"/> of which is the first key/value pair in the dictionary that passes the test in the predicate function</returns>
-        public static ActiveValue<KeyValuePair<TKey, TValue>> ActiveFirstOrDefault<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, bool>> predicate) =>
+        /// <returns>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is the first key/value pair in the dictionary that passes the test in the predicate function</returns>
+        public static IActiveValue<KeyValuePair<TKey, TValue>> ActiveFirstOrDefault<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, bool>> predicate) =>
             ActiveFirstOrDefault(source, predicate, null, source.GetKeyComparer() ?? Comparer<TKey>.Default);
 
         /// <summary>
@@ -508,8 +508,8 @@ namespace Gear.ActiveQuery
         /// <param name="source">The <see cref="IReadOnlyDictionary{TKey, TValue}"/> to return the first key/value pair from</param>
         /// <param name="predicate">A function to test each key/value pair for a condition</param>
         /// <param name="keyComparer">A comparer to compare keys in <paramref name="source"/></param>
-        /// <returns>An <see cref="ActiveValue{TValue}"/> the <see cref="ActiveValue{TValue}.Value"/> of which is the first key/value pair in the dictionary that passes the test in the predicate function</returns>
-        public static ActiveValue<KeyValuePair<TKey, TValue>> ActiveFirstOrDefault<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, bool>> predicate, IComparer<TKey> keyComparer) =>
+        /// <returns>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is the first key/value pair in the dictionary that passes the test in the predicate function</returns>
+        public static IActiveValue<KeyValuePair<TKey, TValue>> ActiveFirstOrDefault<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, bool>> predicate, IComparer<TKey> keyComparer) =>
             ActiveFirstOrDefault(source, predicate, null, keyComparer);
 
         /// <summary>
@@ -520,8 +520,8 @@ namespace Gear.ActiveQuery
         /// <param name="source">The <see cref="IReadOnlyDictionary{TKey, TValue}"/> to return the first key/value pair from</param>
         /// <param name="predicate">A function to test each key/value pair for a condition</param>
         /// <param name="predicateOptions">Options governing the behavior of active expressions created using <paramref name="predicate"/></param>
-        /// <returns>An <see cref="ActiveValue{TValue}"/> the <see cref="ActiveValue{TValue}.Value"/> of which is the first key/value pair in the dictionary that passes the test in the predicate function</returns>
-        public static ActiveValue<KeyValuePair<TKey, TValue>> ActiveFirstOrDefault<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, bool>> predicate, ActiveExpressionOptions predicateOptions) =>
+        /// <returns>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is the first key/value pair in the dictionary that passes the test in the predicate function</returns>
+        public static IActiveValue<KeyValuePair<TKey, TValue>> ActiveFirstOrDefault<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, bool>> predicate, ActiveExpressionOptions predicateOptions) =>
             ActiveFirstOrDefault(source, predicate, predicateOptions, source.GetKeyComparer() ?? Comparer<TKey>.Default);
 
         /// <summary>
@@ -533,8 +533,8 @@ namespace Gear.ActiveQuery
         /// <param name="predicate">A function to test each key/value pair for a condition</param>
         /// <param name="predicateOptions">Options governing the behavior of active expressions created using <paramref name="predicate"/></param>
         /// <param name="keyComparer">A comparer to compare keys in <paramref name="source"/></param>
-        /// <returns>An <see cref="ActiveValue{TValue}"/> the <see cref="ActiveValue{TValue}.Value"/> of which is the first key/value pair in the dictionary that passes the test in the predicate function</returns>
-        public static ActiveValue<KeyValuePair<TKey, TValue>> ActiveFirstOrDefault<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, bool>> predicate, ActiveExpressionOptions predicateOptions, IComparer<TKey> keyComparer)
+        /// <returns>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is the first key/value pair in the dictionary that passes the test in the predicate function</returns>
+        public static IActiveValue<KeyValuePair<TKey, TValue>> ActiveFirstOrDefault<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, bool>> predicate, ActiveExpressionOptions predicateOptions, IComparer<TKey> keyComparer)
         {
             ActiveLookup<TKey, TValue> where;
             Action<KeyValuePair<TKey, TValue>> setValue = null;
@@ -564,8 +564,8 @@ namespace Gear.ActiveQuery
         /// <typeparam name="TKey">The type of the keys in <paramref name="source"/></typeparam>
         /// <typeparam name="TValue">The type of the values in <paramref name="source"/></typeparam>
         /// <param name="source">The <see cref="IReadOnlyDictionary{TKey, TValue}"/> to return the last key/value pair from</param>
-        /// <returns>An <see cref="ActiveValue{TValue}"/> the <see cref="ActiveValue{TValue}.Value"/> of which is the last key/value pair in the dictionary</returns>
-        public static ActiveValue<KeyValuePair<TKey, TValue>> ActiveLast<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source) =>
+        /// <returns>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is the last key/value pair in the dictionary</returns>
+        public static IActiveValue<KeyValuePair<TKey, TValue>> ActiveLast<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source) =>
             ActiveLast(source, source.GetKeyComparer() ?? Comparer<TKey>.Default);
 
         /// <summary>
@@ -575,8 +575,8 @@ namespace Gear.ActiveQuery
         /// <typeparam name="TValue">The type of the values in <paramref name="source"/></typeparam>
         /// <param name="source">The <see cref="IReadOnlyDictionary{TKey, TValue}"/> to return the last key/value pair from</param>
         /// <param name="keyComparer">A comparer to compare keys in <paramref name="source"/></param>
-        /// <returns>An <see cref="ActiveValue{TValue}"/> the <see cref="ActiveValue{TValue}.Value"/> of which is the last key/value pair in the dictionary</returns>
-        public static ActiveValue<KeyValuePair<TKey, TValue>> ActiveLast<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, IComparer<TKey> keyComparer)
+        /// <returns>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is the last key/value pair in the dictionary</returns>
+        public static IActiveValue<KeyValuePair<TKey, TValue>> ActiveLast<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, IComparer<TKey> keyComparer)
         {
             var elementFaultChangeNotifier = source as INotifyElementFaultChanges;
             if (source is INotifyDictionaryChanged<TKey, TValue> changingSource)
@@ -659,8 +659,8 @@ namespace Gear.ActiveQuery
         /// <typeparam name="TValue">The type of the values in <paramref name="source"/></typeparam>
         /// <param name="source">The <see cref="IReadOnlyDictionary{TKey, TValue}"/> to return the last key/value pair from</param>
         /// <param name="predicate">A function to test each key/value pair for a condition</param>
-        /// <returns>An <see cref="ActiveValue{TValue}"/> the <see cref="ActiveValue{TValue}.Value"/> of which is the last key/value pair in the dictionary that passes the test in the predicate function</returns>
-        public static ActiveValue<KeyValuePair<TKey, TValue>> ActiveLast<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, bool>> predicate) =>
+        /// <returns>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is the last key/value pair in the dictionary that passes the test in the predicate function</returns>
+        public static IActiveValue<KeyValuePair<TKey, TValue>> ActiveLast<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, bool>> predicate) =>
             ActiveLast(source, predicate, null, source.GetKeyComparer() ?? Comparer<TKey>.Default);
 
         /// <summary>
@@ -671,8 +671,8 @@ namespace Gear.ActiveQuery
         /// <param name="source">The <see cref="IReadOnlyDictionary{TKey, TValue}"/> to return the last key/value pair from</param>
         /// <param name="predicate">A function to test each key/value pair for a condition</param>
         /// <param name="keyComparer">A comparer to compare keys in <paramref name="source"/></param>
-        /// <returns>An <see cref="ActiveValue{TValue}"/> the <see cref="ActiveValue{TValue}.Value"/> of which is the last key/value pair in the dictionary that passes the test in the predicate function</returns>
-        public static ActiveValue<KeyValuePair<TKey, TValue>> ActiveLast<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, bool>> predicate, IComparer<TKey> keyComparer) =>
+        /// <returns>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is the last key/value pair in the dictionary that passes the test in the predicate function</returns>
+        public static IActiveValue<KeyValuePair<TKey, TValue>> ActiveLast<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, bool>> predicate, IComparer<TKey> keyComparer) =>
             ActiveLast(source, predicate, null, keyComparer);
 
         /// <summary>
@@ -683,8 +683,8 @@ namespace Gear.ActiveQuery
         /// <param name="source">The <see cref="IReadOnlyDictionary{TKey, TValue}"/> to return the last key/value pair from</param>
         /// <param name="predicate">A function to test each key/value pair for a condition</param>
         /// <param name="predicateOptions">Options governing the behavior of active expressions created using <paramref name="predicate"/></param>
-        /// <returns>An <see cref="ActiveValue{TValue}"/> the <see cref="ActiveValue{TValue}.Value"/> of which is the last key/value pair in the dictionary that passes the test in the predicate function</returns>
-        public static ActiveValue<KeyValuePair<TKey, TValue>> ActiveLast<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, bool>> predicate, ActiveExpressionOptions predicateOptions) =>
+        /// <returns>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is the last key/value pair in the dictionary that passes the test in the predicate function</returns>
+        public static IActiveValue<KeyValuePair<TKey, TValue>> ActiveLast<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, bool>> predicate, ActiveExpressionOptions predicateOptions) =>
             ActiveLast(source, predicate, predicateOptions, source.GetKeyComparer() ?? Comparer<TKey>.Default);
 
         /// <summary>
@@ -696,8 +696,8 @@ namespace Gear.ActiveQuery
         /// <param name="predicate">A function to test each key/value pair for a condition</param>
         /// <param name="predicateOptions">Options governing the behavior of active expressions created using <paramref name="predicate"/></param>
         /// <param name="keyComparer">A comparer to compare keys in <paramref name="source"/></param>
-        /// <returns>An <see cref="ActiveValue{TValue}"/> the <see cref="ActiveValue{TValue}.Value"/> of which is the last key/value pair in the dictionary that passes the test in the predicate function</returns>
-        public static ActiveValue<KeyValuePair<TKey, TValue>> ActiveLast<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, bool>> predicate, ActiveExpressionOptions predicateOptions, IComparer<TKey> keyComparer)
+        /// <returns>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is the last key/value pair in the dictionary that passes the test in the predicate function</returns>
+        public static IActiveValue<KeyValuePair<TKey, TValue>> ActiveLast<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, bool>> predicate, ActiveExpressionOptions predicateOptions, IComparer<TKey> keyComparer)
         {
             ActiveLookup<TKey, TValue> where;
             Action<KeyValuePair<TKey, TValue>> setValue = null;
@@ -742,8 +742,8 @@ namespace Gear.ActiveQuery
         /// <typeparam name="TKey">The type of the keys in <paramref name="source"/></typeparam>
         /// <typeparam name="TValue">The type of the values in <paramref name="source"/></typeparam>
         /// <param name="source">The <see cref="IReadOnlyDictionary{TKey, TValue}"/> to return the last key/value pair from</param>
-        /// <returns>An <see cref="ActiveValue{TValue}"/> the <see cref="ActiveValue{TValue}.Value"/> of which is the last key/value pair in the dictionary</returns>
-        public static ActiveValue<KeyValuePair<TKey, TValue>> ActiveLastOrDefault<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source) =>
+        /// <returns>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is the last key/value pair in the dictionary</returns>
+        public static IActiveValue<KeyValuePair<TKey, TValue>> ActiveLastOrDefault<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source) =>
             ActiveLastOrDefault(source, source.GetKeyComparer() ?? Comparer<TKey>.Default);
 
         /// <summary>
@@ -753,8 +753,8 @@ namespace Gear.ActiveQuery
         /// <typeparam name="TValue">The type of the values in <paramref name="source"/></typeparam>
         /// <param name="source">The <see cref="IReadOnlyDictionary{TKey, TValue}"/> to return the last key/value pair from</param>
         /// <param name="keyComparer">A comparer to compare keys in <paramref name="source"/></param>
-        /// <returns>An <see cref="ActiveValue{TValue}"/> the <see cref="ActiveValue{TValue}.Value"/> of which is the last key/value pair in the dictionary</returns>
-        public static ActiveValue<KeyValuePair<TKey, TValue>> ActiveLastOrDefault<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, IComparer<TKey> keyComparer)
+        /// <returns>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is the last key/value pair in the dictionary</returns>
+        public static IActiveValue<KeyValuePair<TKey, TValue>> ActiveLastOrDefault<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, IComparer<TKey> keyComparer)
         {
             var elementFaultChangeNotifier = source as INotifyElementFaultChanges;
             if (source is INotifyDictionaryChanged<TKey, TValue> changingSource)
@@ -832,8 +832,8 @@ namespace Gear.ActiveQuery
         /// <typeparam name="TValue">The type of the values in <paramref name="source"/></typeparam>
         /// <param name="source">The <see cref="IReadOnlyDictionary{TKey, TValue}"/> to return the last key/value pair from</param>
         /// <param name="predicate">A function to test each key/value pair for a condition</param>
-        /// <returns>An <see cref="ActiveValue{TValue}"/> the <see cref="ActiveValue{TValue}.Value"/> of which is the last key/value pair in the dictionary that passes the test in the predicate function</returns>
-        public static ActiveValue<KeyValuePair<TKey, TValue>> ActiveLastOrDefault<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, bool>> predicate) =>
+        /// <returns>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is the last key/value pair in the dictionary that passes the test in the predicate function</returns>
+        public static IActiveValue<KeyValuePair<TKey, TValue>> ActiveLastOrDefault<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, bool>> predicate) =>
             ActiveLastOrDefault(source, predicate, null, source.GetKeyComparer() ?? Comparer<TKey>.Default);
 
         /// <summary>
@@ -844,8 +844,8 @@ namespace Gear.ActiveQuery
         /// <param name="source">The <see cref="IReadOnlyDictionary{TKey, TValue}"/> to return the last key/value pair from</param>
         /// <param name="predicate">A function to test each key/value pair for a condition</param>
         /// <param name="keyComparer">A comparer to compare keys in <paramref name="source"/></param>
-        /// <returns>An <see cref="ActiveValue{TValue}"/> the <see cref="ActiveValue{TValue}.Value"/> of which is the last key/value pair in the dictionary that passes the test in the predicate function</returns>
-        public static ActiveValue<KeyValuePair<TKey, TValue>> ActiveLastOrDefault<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, bool>> predicate, IComparer<TKey> keyComparer) =>
+        /// <returns>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is the last key/value pair in the dictionary that passes the test in the predicate function</returns>
+        public static IActiveValue<KeyValuePair<TKey, TValue>> ActiveLastOrDefault<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, bool>> predicate, IComparer<TKey> keyComparer) =>
             ActiveLastOrDefault(source, predicate, null, keyComparer);
 
         /// <summary>
@@ -856,8 +856,8 @@ namespace Gear.ActiveQuery
         /// <param name="source">The <see cref="IReadOnlyDictionary{TKey, TValue}"/> to return the last key/value pair from</param>
         /// <param name="predicate">A function to test each key/value pair for a condition</param>
         /// <param name="predicateOptions">Options governing the behavior of active expressions created using <paramref name="predicate"/></param>
-        /// <returns>An <see cref="ActiveValue{TValue}"/> the <see cref="ActiveValue{TValue}.Value"/> of which is the last key/value pair in the dictionary that passes the test in the predicate function</returns>
-        public static ActiveValue<KeyValuePair<TKey, TValue>> ActiveLastOrDefault<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, bool>> predicate, ActiveExpressionOptions predicateOptions) =>
+        /// <returns>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is the last key/value pair in the dictionary that passes the test in the predicate function</returns>
+        public static IActiveValue<KeyValuePair<TKey, TValue>> ActiveLastOrDefault<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, bool>> predicate, ActiveExpressionOptions predicateOptions) =>
             ActiveLastOrDefault(source, predicate, predicateOptions, source.GetKeyComparer() ?? Comparer<TKey>.Default);
 
         /// <summary>
@@ -869,8 +869,8 @@ namespace Gear.ActiveQuery
         /// <param name="predicate">A function to test each key/value pair for a condition</param>
         /// <param name="predicateOptions">Options governing the behavior of active expressions created using <paramref name="predicate"/></param>
         /// <param name="keyComparer">A comparer to compare keys in <paramref name="source"/></param>
-        /// <returns>An <see cref="ActiveValue{TValue}"/> the <see cref="ActiveValue{TValue}.Value"/> of which is the last key/value pair in the dictionary that passes the test in the predicate function</returns>
-        public static ActiveValue<KeyValuePair<TKey, TValue>> ActiveLastOrDefault<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, bool>> predicate, ActiveExpressionOptions predicateOptions, IComparer<TKey> keyComparer)
+        /// <returns>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is the last key/value pair in the dictionary that passes the test in the predicate function</returns>
+        public static IActiveValue<KeyValuePair<TKey, TValue>> ActiveLastOrDefault<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, bool>> predicate, ActiveExpressionOptions predicateOptions, IComparer<TKey> keyComparer)
         {
             ActiveLookup<TKey, TValue> where;
             Action<KeyValuePair<TKey, TValue>> setValue = null;
@@ -900,8 +900,8 @@ namespace Gear.ActiveQuery
         /// <typeparam name="TKey">The type of the keys in <paramref name="source"/></typeparam>
         /// <typeparam name="TValue">The type of the values in <paramref name="source"/></typeparam>
         /// <param name="source">A dictionary of key/value pairs to determine the maximum value of</param>
-        /// <returns>An <see cref="ActiveValue{TValue}"/> the <see cref="ActiveValue{TValue}.Value"/> of which is the maximum value in the dictionary</returns>
-        public static ActiveValue<TValue> ActiveMax<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source) =>
+        /// <returns>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is the maximum value in the dictionary</returns>
+        public static IActiveValue<TValue> ActiveMax<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source) =>
             ActiveMax(source, (key, value) => value);
 
         /// <summary>
@@ -912,8 +912,8 @@ namespace Gear.ActiveQuery
         /// <typeparam name="TResult">The type of the maximum value</typeparam>
         /// <param name="source">A dictionary of key/value pairs to determine the maximum value of</param>
         /// <param name="selector">A transform function to apply to each key/value pair</param>
-        /// <returns>An <see cref="ActiveValue{TValue}"/> the <see cref="ActiveValue{TValue}.Value"/> of which is the maximum value in the dictionary</returns>
-        public static ActiveValue<TResult> ActiveMax<TKey, TValue, TResult>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, TResult>> selector) =>
+        /// <returns>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is the maximum value in the dictionary</returns>
+        public static IActiveValue<TResult> ActiveMax<TKey, TValue, TResult>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, TResult>> selector) =>
             ActiveMax(source, selector, null);
 
         /// <summary>
@@ -925,8 +925,8 @@ namespace Gear.ActiveQuery
         /// <param name="source">A dictionary of key/value pairs to determine the maximum value of</param>
         /// <param name="selector">A transform function to apply to each key/value pair</param>
         /// <param name="selectorOptions">Options governing the behavior of active expressions created using <paramref name="selector"/></param>
-        /// <returns>An <see cref="ActiveValue{TValue}"/> the <see cref="ActiveValue{TValue}.Value"/> of which is the maximum value in the dictionary</returns>
-        public static ActiveValue<TResult> ActiveMax<TKey, TValue, TResult>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, TResult>> selector, ActiveExpressionOptions selectorOptions)
+        /// <returns>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is the maximum value in the dictionary</returns>
+        public static IActiveValue<TResult> ActiveMax<TKey, TValue, TResult>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, TResult>> selector, ActiveExpressionOptions selectorOptions)
         {
             ActiveQueryOptions.Optimize(ref selector);
 
@@ -1028,8 +1028,8 @@ namespace Gear.ActiveQuery
         /// <typeparam name="TKey">The type of the keys in <paramref name="source"/></typeparam>
         /// <typeparam name="TValue">The type of the values in <paramref name="source"/></typeparam>
         /// <param name="source">A dictionary of key/value pairs to determine the maximum value of</param>
-        /// <returns>An <see cref="ActiveValue{TValue}"/> the <see cref="ActiveValue{TValue}.Value"/> of which is the minimum value in the dictionary</returns>
-        public static ActiveValue<TValue> ActiveMin<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source) =>
+        /// <returns>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is the minimum value in the dictionary</returns>
+        public static IActiveValue<TValue> ActiveMin<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source) =>
             ActiveMin(source, (key, value) => value);
 
         /// <summary>
@@ -1040,8 +1040,8 @@ namespace Gear.ActiveQuery
         /// <typeparam name="TResult">The type of the minimum value</typeparam>
         /// <param name="source">A dictionary of key/value pairs to determine the maximum value of</param>
         /// <param name="selector">A transform function to apply to each key/value pair</param>
-        /// <returns>An <see cref="ActiveValue{TValue}"/> the <see cref="ActiveValue{TValue}.Value"/> of which is the minimum value in the dictionary</returns>
-        public static ActiveValue<TResult> ActiveMin<TKey, TValue, TResult>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, TResult>> selector) =>
+        /// <returns>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is the minimum value in the dictionary</returns>
+        public static IActiveValue<TResult> ActiveMin<TKey, TValue, TResult>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, TResult>> selector) =>
             ActiveMin(source, selector, null);
 
         /// <summary>
@@ -1053,8 +1053,8 @@ namespace Gear.ActiveQuery
         /// <param name="source">A dictionary of key/value pairs to determine the maximum value of</param>
         /// <param name="selector">A transform function to apply to each key/value pair</param>
         /// <param name="selectorOptions">Options governing the behavior of active expressions created using <paramref name="selector"/></param>
-        /// <returns>An <see cref="ActiveValue{TValue}"/> the <see cref="ActiveValue{TValue}.Value"/> of which is the minimum value in the dictionary</returns>
-        public static ActiveValue<TResult> ActiveMin<TKey, TValue, TResult>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, TResult>> selector, ActiveExpressionOptions selectorOptions)
+        /// <returns>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is the minimum value in the dictionary</returns>
+        public static IActiveValue<TResult> ActiveMin<TKey, TValue, TResult>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, TResult>> selector, ActiveExpressionOptions selectorOptions)
         {
             ActiveQueryOptions.Optimize(ref selector);
 
@@ -1217,8 +1217,8 @@ namespace Gear.ActiveQuery
         /// <typeparam name="TResult">The type of the value returned by <paramref name="selector"/></typeparam>
         /// <param name="source">A dictionary of key/value pairs to invoke a transform function on</param>
         /// <param name="selector">A transform function to apply to each key/value pair</param>
-        /// <returns>An <see cref="ActiveEnumerable{TElement}"/> the elements of which are the result of invoking the transform function on each key/value pair of <paramref name="source"/></returns>
-        public static ActiveEnumerable<TResult> ActiveSelect<TKey, TValue, TResult>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, TResult>> selector) =>
+        /// <returns>An <see cref="IActiveEnumerable{TElement}"/> the elements of which are the result of invoking the transform function on each key/value pair of <paramref name="source"/></returns>
+        public static IActiveEnumerable<TResult> ActiveSelect<TKey, TValue, TResult>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, TResult>> selector) =>
             ActiveSelect(source, selector, null);
 
         /// <summary>
@@ -1230,8 +1230,8 @@ namespace Gear.ActiveQuery
         /// <param name="source">A dictionary of key/value pairs to invoke a transform function on</param>
         /// <param name="selector">A transform function to apply to each key/value pair</param>
         /// <param name="selectorOptions">Options governing the behavior of active expressions created using <paramref name="selector"/></param>
-        /// <returns>An <see cref="ActiveEnumerable{TElement}"/> the elements of which are the result of invoking the transform function on each key/value pair of <paramref name="source"/></returns>
-        public static ActiveEnumerable<TResult> ActiveSelect<TKey, TValue, TResult>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, TResult>> selector, ActiveExpressionOptions selectorOptions)
+        /// <returns>An <see cref="IActiveEnumerable{TElement}"/> the elements of which are the result of invoking the transform function on each key/value pair of <paramref name="source"/></returns>
+        public static IActiveEnumerable<TResult> ActiveSelect<TKey, TValue, TResult>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, TResult>> selector, ActiveExpressionOptions selectorOptions)
         {
             ActiveQueryOptions.Optimize(ref selector);
 
@@ -1336,8 +1336,8 @@ namespace Gear.ActiveQuery
         /// <typeparam name="TKey">The type of the keys in <paramref name="source"/></typeparam>
         /// <typeparam name="TValue">The type of the values in <paramref name="source"/></typeparam>
         /// <param name="source">An <see cref="IReadOnlyDictionary{TKey, TValue}"/> to return the single key/value pair of</param>
-        /// <returns>An <see cref="ActiveValue{TValue}"/> the <see cref="ActiveValue{TValue}.Value"/> of which is the single key/value pair of the input dictionary</returns>
-        public static ActiveValue<KeyValuePair<TKey, TValue>> ActiveSingle<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source)
+        /// <returns>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is the single key/value pair of the input dictionary</returns>
+        public static IActiveValue<KeyValuePair<TKey, TValue>> ActiveSingle<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source)
         {
             var elementFaultChangeNotifier = source as INotifyElementFaultChanges;
             if (source is INotifyDictionaryChanged<TKey, TValue> changingSource)
@@ -1410,8 +1410,8 @@ namespace Gear.ActiveQuery
         /// <typeparam name="TValue">The type of the values in <paramref name="source"/></typeparam>
         /// <param name="source">An <see cref="IReadOnlyDictionary{TKey, TValue}"/> to return the single key/value pair of</param>
         /// <param name="predicate">A function to test a key/value pair for a condition</param>
-        /// <returns>An <see cref="ActiveValue{TValue}"/> the <see cref="ActiveValue{TValue}.Value"/> of which is the single key/value pair of the input dictionary that satisfies a condition</returns>
-        public static ActiveValue<KeyValuePair<TKey, TValue>> ActiveSingle<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, bool>> predicate) =>
+        /// <returns>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is the single key/value pair of the input dictionary that satisfies a condition</returns>
+        public static IActiveValue<KeyValuePair<TKey, TValue>> ActiveSingle<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, bool>> predicate) =>
             ActiveSingle(source, predicate, null);
 
         /// <summary>
@@ -1422,8 +1422,8 @@ namespace Gear.ActiveQuery
         /// <param name="source">An <see cref="IReadOnlyDictionary{TKey, TValue}"/> to return the single key/value pair of</param>
         /// <param name="predicate">A function to test a key/value pair for a condition</param>
         /// <param name="predicateOptions">Options governing the behavior of active expressions created using <paramref name="predicate"/></param>
-        /// <returns>An <see cref="ActiveValue{TValue}"/> the <see cref="ActiveValue{TValue}.Value"/> of which is the single key/value pair of the input dictionary that satisfies a condition</returns>
-        public static ActiveValue<KeyValuePair<TKey, TValue>> ActiveSingle<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, bool>> predicate, ActiveExpressionOptions predicateOptions)
+        /// <returns>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is the single key/value pair of the input dictionary that satisfies a condition</returns>
+        public static IActiveValue<KeyValuePair<TKey, TValue>> ActiveSingle<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, bool>> predicate, ActiveExpressionOptions predicateOptions)
         {
             ActiveLookup<TKey, TValue> where;
             Action<KeyValuePair<TKey, TValue>> setValue = null;
@@ -1486,8 +1486,8 @@ namespace Gear.ActiveQuery
         /// <typeparam name="TKey">The type of the keys in <paramref name="source"/></typeparam>
         /// <typeparam name="TValue">The type of the values in <paramref name="source"/></typeparam>
         /// <param name="source">An <see cref="IReadOnlyDictionary{TKey, TValue}"/> to return the single key/value pair of</param>
-        /// <returns>An <see cref="ActiveValue{TValue}"/> the <see cref="ActiveValue{TValue}.Value"/> of which is the single key/value pair of the input dictionary, or <c>default</c>(<c>KeyValuePair&lt;</c><typeparamref name="TKey"/>, <typeparamref name="TValue"/><c>%gt;</c>) if the dictionary contains no key/value pairs</returns>
-        public static ActiveValue<KeyValuePair<TKey, TValue>> ActiveSingleOrDefault<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source)
+        /// <returns>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is the single key/value pair of the input dictionary, or <c>default</c>(<c>KeyValuePair&lt;</c><typeparamref name="TKey"/>, <typeparamref name="TValue"/><c>%gt;</c>) if the dictionary contains no key/value pairs</returns>
+        public static IActiveValue<KeyValuePair<TKey, TValue>> ActiveSingleOrDefault<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source)
         {
             var elementFaultChangeNotifier = source as INotifyElementFaultChanges;
             if (source is INotifyDictionaryChanged<TKey, TValue> changingSource)
@@ -1551,8 +1551,8 @@ namespace Gear.ActiveQuery
         /// <typeparam name="TValue">The type of the values in <paramref name="source"/></typeparam>
         /// <param name="source">An <see cref="IReadOnlyDictionary{TKey, TValue}"/> to return the single key/value pair of</param>
         /// <param name="predicate">A function to test a key/value pair for a condition</param>
-        /// <returns>An <see cref="ActiveValue{TValue}"/> the <see cref="ActiveValue{TValue}.Value"/> of which is the single key/value pair of the input dictionary that satisfies a condition, or <c>default</c>(<c>KeyValuePair&lt;</c><typeparamref name="TKey"/>, <typeparamref name="TValue"/><c>%gt;</c>) if no such key/value pair is found</returns>
-        public static ActiveValue<KeyValuePair<TKey, TValue>> ActiveSingleOrDefault<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, bool>> predicate) =>
+        /// <returns>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is the single key/value pair of the input dictionary that satisfies a condition, or <c>default</c>(<c>KeyValuePair&lt;</c><typeparamref name="TKey"/>, <typeparamref name="TValue"/><c>%gt;</c>) if no such key/value pair is found</returns>
+        public static IActiveValue<KeyValuePair<TKey, TValue>> ActiveSingleOrDefault<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, bool>> predicate) =>
             ActiveSingleOrDefault(source, predicate, null);
 
         /// <summary>
@@ -1563,8 +1563,8 @@ namespace Gear.ActiveQuery
         /// <param name="source">An <see cref="IReadOnlyDictionary{TKey, TValue}"/> to return the single key/value pair of</param>
         /// <param name="predicate">A function to test a key/value pair for a condition</param>
         /// <param name="predicateOptions">Options governing the behavior of active expressions created using <paramref name="predicate"/></param>
-        /// <returns>An <see cref="ActiveValue{TValue}"/> the <see cref="ActiveValue{TValue}.Value"/> of which is the single key/value pair of the input dictionary that satisfies a condition, or <c>default</c>(<c>KeyValuePair&lt;</c><typeparamref name="TKey"/>, <typeparamref name="TValue"/><c>%gt;</c>) if no such key/value pair is found</returns>
-        public static ActiveValue<KeyValuePair<TKey, TValue>> ActiveSingleOrDefault<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, bool>> predicate, ActiveExpressionOptions predicateOptions)
+        /// <returns>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is the single key/value pair of the input dictionary that satisfies a condition, or <c>default</c>(<c>KeyValuePair&lt;</c><typeparamref name="TKey"/>, <typeparamref name="TValue"/><c>%gt;</c>) if no such key/value pair is found</returns>
+        public static IActiveValue<KeyValuePair<TKey, TValue>> ActiveSingleOrDefault<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, bool>> predicate, ActiveExpressionOptions predicateOptions)
         {
             ActiveLookup<TKey, TValue> where;
             Action<KeyValuePair<TKey, TValue>> setValue = null;
@@ -1610,8 +1610,8 @@ namespace Gear.ActiveQuery
         /// <typeparam name="TKey">The type of the keys in <paramref name="source"/></typeparam>
         /// <typeparam name="TValue">The type of the values in <paramref name="source"/></typeparam>
         /// <param name="source">A dictionary that is used to calculate a sum</param>
-        /// <returns>An <see cref="ActiveValue{TValue}"/> the <see cref="ActiveValue{TValue}.Value"/> of which is the sum of the values in the dictionary</returns>
-        public static ActiveValue<TValue> ActiveSum<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source) =>
+        /// <returns>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is the sum of the values in the dictionary</returns>
+        public static IActiveValue<TValue> ActiveSum<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source) =>
             ActiveSum(source, (key, value) => value);
 
         /// <summary>
@@ -1622,8 +1622,8 @@ namespace Gear.ActiveQuery
         /// <typeparam name="TResult">The type of the values being summed</typeparam>
         /// <param name="source">A dictionary that is used to calculate a sum</param>
         /// <param name="selector">A transform function to apply to each key/value pair</param>
-        /// <returns>An <see cref="ActiveValue{TValue}"/> the <see cref="ActiveValue{TValue}.Value"/> of which is the sum of the projected values</returns>
-        public static ActiveValue<TResult> ActiveSum<TKey, TValue, TResult>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, TResult>> selector) =>
+        /// <returns>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is the sum of the projected values</returns>
+        public static IActiveValue<TResult> ActiveSum<TKey, TValue, TResult>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, TResult>> selector) =>
             ActiveSum(source, selector, null);
 
         /// <summary>
@@ -1635,8 +1635,8 @@ namespace Gear.ActiveQuery
         /// <param name="source">A dictionary that is used to calculate a sum</param>
         /// <param name="selector">A transform function to apply to each key/value pair</param>
         /// <param name="selectorOptions">Options governing the behavior of active expressions created using <paramref name="selector"/></param>
-        /// <returns>An <see cref="ActiveValue{TValue}"/> the <see cref="ActiveValue{TValue}.Value"/> of which is the sum of the projected values</returns>
-        public static ActiveValue<TResult> ActiveSum<TKey, TValue, TResult>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, TResult>> selector, ActiveExpressionOptions selectorOptions)
+        /// <returns>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is the sum of the projected values</returns>
+        public static IActiveValue<TResult> ActiveSum<TKey, TValue, TResult>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, TResult>> selector, ActiveExpressionOptions selectorOptions)
         {
             ActiveQueryOptions.Optimize(ref selector);
 
@@ -1801,13 +1801,13 @@ namespace Gear.ActiveQuery
         #region ToActiveEnumerable
 
         /// <summary>
-        /// Converts the values of an <see cref="IReadOnlyDictionary{TKey, TValue}"/> into an <see cref="ActiveEnumerable{TElement}"/>
+        /// Converts the values of an <see cref="IReadOnlyDictionary{TKey, TValue}"/> into an <see cref="IActiveEnumerable{TElement}"/>
         /// </summary>
         /// <typeparam name="TKey">The type of the keys in <paramref name="source"/></typeparam>
         /// <typeparam name="TValue">The type of the values in <paramref name="source"/></typeparam>
         /// <param name="source">An <see cref="IReadOnlyDictionary{TKey, TValue}"/> to convert</param>
-        /// <returns>An <see cref="ActiveEnumerable{TElement}"/> equivalent to the values of <paramref name="source"/> (and mutates with it so long as <paramref name="source"/> implements <see cref="INotifyDictionaryChanged{TKey, TValue}"/>)</returns>
-        public static ActiveEnumerable<TValue> ToActiveEnumerable<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source) =>
+        /// <returns>An <see cref="IActiveEnumerable{TElement}"/> equivalent to the values of <paramref name="source"/> (and mutates with it so long as <paramref name="source"/> implements <see cref="INotifyDictionaryChanged{TKey, TValue}"/>)</returns>
+        public static IActiveEnumerable<TValue> ToActiveEnumerable<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source) =>
             ActiveSelect(source, (key, value) => value);
 
         #endregion ToActiveEnumerable
@@ -2128,8 +2128,8 @@ namespace Gear.ActiveQuery
         /// <typeparam name="TValue">The type of the values in <paramref name="source"/></typeparam>
         /// <param name="source">>An <see cref="IReadOnlyDictionary{TKey, TValue}"/> to return a value from</param>
         /// <param name="key">The key of the value to retrieve</param>
-        /// <returns>>An <see cref="ActiveValue{TValue}"/> the <see cref="ActiveValue{TValue}.Value"/> of which is the value for the specified key in the source dictionary</returns>
-        public static ActiveValue<TValue> ActiveValueFor<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, TKey key)
+        /// <returns>>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is the value for the specified key in the source dictionary</returns>
+        public static IActiveValue<TValue> ActiveValueFor<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, TKey key)
         {
             var elementFaultChangeNotifier = source as INotifyElementFaultChanges;
             if (source is INotifyDictionaryChanged<TKey, TValue> changingSource)
@@ -2218,8 +2218,8 @@ namespace Gear.ActiveQuery
         /// <typeparam name="TValue">The type of the values in <paramref name="source"/></typeparam>
         /// <param name="source">>An <see cref="IReadOnlyDictionary{TKey, TValue}"/> to return a value from</param>
         /// <param name="key">The key of the value to retrieve</param>
-        /// <returns>>An <see cref="ActiveValue{TValue}"/> the <see cref="ActiveValue{TValue}.Value"/> of which is <c>default</c>(<typeparamref name="TValue"/>) if the key is not in the source dictionary; otherwise, the value for the specified key in the source dictionary</returns>
-        public static ActiveValue<TValue> ActiveValueForOrDefault<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, TKey key)
+        /// <returns>>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is <c>default</c>(<typeparamref name="TValue"/>) if the key is not in the source dictionary; otherwise, the value for the specified key in the source dictionary</returns>
+        public static IActiveValue<TValue> ActiveValueForOrDefault<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, TKey key)
         {
             var elementFaultChangeNotifier = source as INotifyElementFaultChanges;
             if (source is INotifyDictionaryChanged<TKey, TValue> changingSource)

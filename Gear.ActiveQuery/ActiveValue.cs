@@ -8,7 +8,7 @@ namespace Gear.ActiveQuery
     /// Represents the scalar result of an active query
     /// </summary>
     /// <typeparam name="TValue">The type of the scalar result</typeparam>
-    public class ActiveValue<TValue> : SyncDisposablePropertyChangeNotifier, INotifyElementFaultChanges
+    public class ActiveValue<TValue> : SyncDisposablePropertyChangeNotifier, IActiveValue<TValue>
     {
         internal ActiveValue(TValue value, Exception operationFault = null, INotifyElementFaultChanges elementFaultChangeNotifier = null)
         {

@@ -25,8 +25,8 @@ namespace Gear.ActiveQuery
         /// <typeparam name="TSource">The type of the elements of <paramref name="source"/></typeparam>
         /// <param name="source">An <see cref="IEnumerable{T}"/> that contains the elements to apply the predicate to</param>
         /// <param name="predicate">A function to test each element for a condition</param>
-        /// <returns>An <see cref="ActiveValue{TValue}"/> the <see cref="ActiveValue{TValue}.Value"/> of which is <c>true</c> when every element of the source sequence passes the test in the specified predicate, or if the sequence is empty; otherwise, <c>false</c></returns>
-        public static ActiveValue<bool> ActiveAll<TSource>(this IEnumerable<TSource> source, Expression<Func<TSource, bool>> predicate) =>
+        /// <returns>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is <c>true</c> when every element of the source sequence passes the test in the specified predicate, or if the sequence is empty; otherwise, <c>false</c></returns>
+        public static IActiveValue<bool> ActiveAll<TSource>(this IEnumerable<TSource> source, Expression<Func<TSource, bool>> predicate) =>
             ActiveAll(source, predicate, null);
 
         /// <summary>
@@ -36,12 +36,12 @@ namespace Gear.ActiveQuery
         /// <param name="source">An <see cref="IEnumerable{T}"/> that contains the elements to apply the predicate to</param>
         /// <param name="predicate">A function to test each element for a condition</param>
         /// <param name="predicateOptions">Options governing the behavior of active expressions created using <paramref name="predicate"/></param>
-        /// <returns>An <see cref="ActiveValue{TValue}"/> the <see cref="ActiveValue{TValue}.Value"/> of which is <c>true</c> when every element of the source sequence passes the test in the specified predicate, or if the sequence is empty; otherwise, <c>false</c></returns>
-        public static ActiveValue<bool> ActiveAll<TSource>(this IEnumerable<TSource> source, Expression<Func<TSource, bool>> predicate, ActiveExpressionOptions predicateOptions)
+        /// <returns>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is <c>true</c> when every element of the source sequence passes the test in the specified predicate, or if the sequence is empty; otherwise, <c>false</c></returns>
+        public static IActiveValue<bool> ActiveAll<TSource>(this IEnumerable<TSource> source, Expression<Func<TSource, bool>> predicate, ActiveExpressionOptions predicateOptions)
         {
             var readOnlySource = source as IReadOnlyCollection<TSource>;
             var changeNotifyingSource = source as INotifyCollectionChanged;
-            ActiveEnumerable<TSource> where;
+            IActiveEnumerable<TSource> where;
             Action<bool> setValue = null;
 
             void collectionChanged(object sender, NotifyCollectionChangedEventArgs e) => setValue(where.Count == (readOnlySource?.Count ?? source.Count()));
@@ -71,8 +71,8 @@ namespace Gear.ActiveQuery
         /// Actively determines whether a sequence contains any elements
         /// </summary>
         /// <param name="source">The <see cref="IEnumerable"/> to check for emptiness</param>
-        /// <returns>>An <see cref="ActiveValue{TValue}"/> the <see cref="ActiveValue{TValue}.Value"/> of which is <c>true</c> if the source sequence contains any elements; otherwise, <c>false</c></returns>
-        public static ActiveValue<bool> ActiveAny(this IEnumerable source)
+        /// <returns>>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is <c>true</c> if the source sequence contains any elements; otherwise, <c>false</c></returns>
+        public static IActiveValue<bool> ActiveAny(this IEnumerable source)
         {
             var elementFaultChangeNotifier = source as INotifyElementFaultChanges;
             if (source is INotifyCollectionChanged changeNotifyingSource)
@@ -104,8 +104,8 @@ namespace Gear.ActiveQuery
         /// <typeparam name="TSource">The type of the elements of <paramref name="source"/></typeparam>
         /// <param name="source">An <see cref="IEnumerable{T}"/> that contains elements to apply the predicate to</param>
         /// <param name="predicate">A function to test each element for a condition</param>
-        /// <returns>An <see cref="ActiveValue{TValue}"/> the <see cref="ActiveValue{TValue}.Value"/> of which is <c>true</c> if any elements in the source sequence pass the test in the specified predicate; otherwise, <c>false</c></returns>
-        public static ActiveValue<bool> ActiveAny<TSource>(this IEnumerable<TSource> source, Expression<Func<TSource, bool>> predicate) =>
+        /// <returns>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is <c>true</c> if any elements in the source sequence pass the test in the specified predicate; otherwise, <c>false</c></returns>
+        public static IActiveValue<bool> ActiveAny<TSource>(this IEnumerable<TSource> source, Expression<Func<TSource, bool>> predicate) =>
             ActiveAny(source, predicate, null);
 
         /// <summary>
@@ -115,10 +115,10 @@ namespace Gear.ActiveQuery
         /// <param name="source">An <see cref="IEnumerable{T}"/> that contains elements to apply the predicate to</param>
         /// <param name="predicate">A function to test each element for a condition</param>
         /// <param name="predicateOptions">Options governing the behavior of active expressions created using <paramref name="predicate"/></param>
-        /// <returns>An <see cref="ActiveValue{TValue}"/> the <see cref="ActiveValue{TValue}.Value"/> of which is <c>true</c> if any elements in the source sequence pass the test in the specified predicate; otherwise, <c>false</c></returns>
-        public static ActiveValue<bool> ActiveAny<TSource>(this IEnumerable<TSource> source, Expression<Func<TSource, bool>> predicate, ActiveExpressionOptions predicateOptions)
+        /// <returns>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is <c>true</c> if any elements in the source sequence pass the test in the specified predicate; otherwise, <c>false</c></returns>
+        public static IActiveValue<bool> ActiveAny<TSource>(this IEnumerable<TSource> source, Expression<Func<TSource, bool>> predicate, ActiveExpressionOptions predicateOptions)
         {
-            ActiveEnumerable<TSource> where;
+            IActiveEnumerable<TSource> where;
             Action<bool> setValue = null;
 
             void collectionChanged(object sender, NotifyCollectionChangedEventArgs e) => setValue(where.Count > 0);
@@ -145,8 +145,8 @@ namespace Gear.ActiveQuery
         /// </summary>
         /// <typeparam name="TSource">The type of the values</typeparam>
         /// <param name="source">A sequence of values to calculate the average of</param>
-        /// <returns>An <see cref="ActiveValue{TValue}"/> the <see cref="ActiveValue{TValue}.Value"/> of which is the average of the sequence of values</returns>
-        public static ActiveValue<TSource> ActiveAverage<TSource>(this IEnumerable<TSource> source) =>
+        /// <returns>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is the average of the sequence of values</returns>
+        public static IActiveValue<TSource> ActiveAverage<TSource>(this IEnumerable<TSource> source) =>
             ActiveAverage(source, element => element);
 
         /// <summary>
@@ -156,8 +156,8 @@ namespace Gear.ActiveQuery
         /// <typeparam name="TResult">The type of the values being averaged</typeparam>
         /// <param name="source">A sequence of values to calculate the average of</param>
         /// <param name="selector">A transform function to apply to each element</param>
-        /// <returns>An <see cref="ActiveValue{TValue}"/> the <see cref="ActiveValue{TValue}.Value"/> of which is the average of the sequence of values</returns>
-        public static ActiveValue<TResult> ActiveAverage<TSource, TResult>(this IEnumerable<TSource> source, Expression<Func<TSource, TResult>> selector) =>
+        /// <returns>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is the average of the sequence of values</returns>
+        public static IActiveValue<TResult> ActiveAverage<TSource, TResult>(this IEnumerable<TSource> source, Expression<Func<TSource, TResult>> selector) =>
             ActiveAverage(source, selector, null);
 
         /// <summary>
@@ -168,8 +168,8 @@ namespace Gear.ActiveQuery
         /// <param name="source">A sequence of values to calculate the average of</param>
         /// <param name="selector">A transform function to apply to each element</param>
         /// <param name="selectorOptions">Options governing the behavior of active expressions created using <paramref name="selector"/></param>
-        /// <returns>An <see cref="ActiveValue{TValue}"/> the <see cref="ActiveValue{TValue}.Value"/> of which is the average of the sequence of values</returns>
-        public static ActiveValue<TResult> ActiveAverage<TSource, TResult>(this IEnumerable<TSource> source, Expression<Func<TSource, TResult>> selector, ActiveExpressionOptions selectorOptions)
+        /// <returns>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is the average of the sequence of values</returns>
+        public static IActiveValue<TResult> ActiveAverage<TSource, TResult>(this IEnumerable<TSource> source, Expression<Func<TSource, TResult>> selector, ActiveExpressionOptions selectorOptions)
         {
             ActiveQueryOptions.Optimize(ref selector);
 
@@ -177,7 +177,7 @@ namespace Gear.ActiveQuery
             var synchronizedSource = source as ISynchronized;
             var convertCount = CountConversion.GetConverter(typeof(TResult));
             var operations = new GenericOperations<TResult>();
-            ActiveValue<TResult> sum;
+            IActiveValue<TResult> sum;
             Action<TResult> setValue = null;
             Action<Exception> setOperationFault = null;
 
@@ -225,8 +225,8 @@ namespace Gear.ActiveQuery
         /// </summary>
         /// <typeparam name="TResult">The type to cast the elements of <paramref name="source"/> to</typeparam>
         /// <param name="source">The <see cref="IEnumerable"/> that contains the elements to be cast to type <typeparamref name="TResult"/></param>
-        /// <returns>An <see cref="ActiveEnumerable{TElement}"/> that contains each element of the source sequence cast to the specified type</returns>
-        public static ActiveEnumerable<TResult> ActiveCast<TResult>(this IEnumerable source) =>
+        /// <returns>An <see cref="IActiveEnumerable{TElement}"/> that contains each element of the source sequence cast to the specified type</returns>
+        public static IActiveEnumerable<TResult> ActiveCast<TResult>(this IEnumerable source) =>
             ActiveCast<TResult>(source, null);
 
         /// <summary>
@@ -235,8 +235,8 @@ namespace Gear.ActiveQuery
         /// <typeparam name="TResult">The type to cast the elements of <paramref name="source"/> to</typeparam>
         /// <param name="source">The <see cref="IEnumerable"/> that contains the elements to be cast to type <typeparamref name="TResult"/></param>
         /// <param name="castOptions">Options governing the behavior of active expressions created to perform the cast</param>
-        /// <returns>An <see cref="ActiveEnumerable{TElement}"/> that contains each element of the source sequence cast to the specified type</returns>
-        public static ActiveEnumerable<TResult> ActiveCast<TResult>(this IEnumerable source, ActiveExpressionOptions castOptions) =>
+        /// <returns>An <see cref="IActiveEnumerable{TElement}"/> that contains each element of the source sequence cast to the specified type</returns>
+        public static IActiveEnumerable<TResult> ActiveCast<TResult>(this IEnumerable source, ActiveExpressionOptions castOptions) =>
             ActiveCast<TResult>(source, castOptions, IndexingStrategy.HashTable);
 
         /// <summary>
@@ -245,8 +245,8 @@ namespace Gear.ActiveQuery
         /// <typeparam name="TResult">The type to cast the elements of <paramref name="source"/> to</typeparam>
         /// <param name="source">The <see cref="IEnumerable"/> that contains the elements to be cast to type <typeparamref name="TResult"/></param>
         /// <param name="indexingStrategy">The strategy used to find the index within <paramref name="source"/> of elements that change</param>
-        /// <returns>An <see cref="ActiveEnumerable{TElement}"/> that contains each element of the source sequence cast to the specified type</returns>
-        public static ActiveEnumerable<TResult> ActiveCast<TResult>(this IEnumerable source, IndexingStrategy indexingStrategy) =>
+        /// <returns>An <see cref="IActiveEnumerable{TElement}"/> that contains each element of the source sequence cast to the specified type</returns>
+        public static IActiveEnumerable<TResult> ActiveCast<TResult>(this IEnumerable source, IndexingStrategy indexingStrategy) =>
             ActiveCast<TResult>(source, null, indexingStrategy);
 
         /// <summary>
@@ -256,8 +256,8 @@ namespace Gear.ActiveQuery
         /// <param name="source">The <see cref="IEnumerable"/> that contains the elements to be cast to type <typeparamref name="TResult"/></param>
         /// <param name="castOptions">Options governing the behavior of active expressions created to perform the cast</param>
         /// <param name="indexingStrategy">The strategy used to find the index within <paramref name="source"/> of elements that change</param>
-        /// <returns>An <see cref="ActiveEnumerable{TElement}"/> that contains each element of the source sequence cast to the specified type</returns>
-        public static ActiveEnumerable<TResult> ActiveCast<TResult>(this IEnumerable source, ActiveExpressionOptions castOptions, IndexingStrategy indexingStrategy) =>
+        /// <returns>An <see cref="IActiveEnumerable{TElement}"/> that contains each element of the source sequence cast to the specified type</returns>
+        public static IActiveEnumerable<TResult> ActiveCast<TResult>(this IEnumerable source, ActiveExpressionOptions castOptions, IndexingStrategy indexingStrategy) =>
             ActiveSelect(source, element => (TResult)element, castOptions, indexingStrategy);
 
         #endregion
@@ -270,8 +270,8 @@ namespace Gear.ActiveQuery
         /// <typeparam name="TSource">The type of the elements of the input sequences</typeparam>
         /// <param name="first">The first sequence to concatenate</param>
         /// <param name="second">The sequence to concatenate to the first sequence</param>
-        /// <returns>An <see cref="ActiveEnumerable{TElement}"/> that contains the concatenated elements of the two input sequences</returns>
-        public static ActiveEnumerable<TSource> ActiveConcat<TSource>(this IEnumerable<TSource> first, IEnumerable<TSource> second)
+        /// <returns>An <see cref="IActiveEnumerable{TElement}"/> that contains the concatenated elements of the two input sequences</returns>
+        public static IActiveEnumerable<TSource> ActiveConcat<TSource>(this IEnumerable<TSource> first, IEnumerable<TSource> second)
         {
             var synchronizedFirst = first as ISynchronized;
             var synchronizedSecond = second as ISynchronized;
@@ -282,8 +282,8 @@ namespace Gear.ActiveQuery
             var synchronizationContext = synchronizedFirst?.SynchronizationContext ?? synchronizedSecond?.SynchronizationContext ?? Synchronization.DefaultSynchronizationContext;
 
             SynchronizedRangeObservableCollection<TSource> rangeObservableCollection = null;
-            ActiveEnumerable<TSource> firstEnumerable;
-            ActiveEnumerable<TSource> secondEnumerable;
+            IActiveEnumerable<TSource> firstEnumerable;
+            IActiveEnumerable<TSource> secondEnumerable;
 
             void firstCollectionChanged(object sender, NotifyCollectionChangedEventArgs e) =>
                 synchronizationContext.Execute(() =>
@@ -360,15 +360,15 @@ namespace Gear.ActiveQuery
         /// <param name="first">The first sequence to concatenate</param>
         /// <param name="second">The sequence to concatenate to the first sequence</param>
         /// <param name="synchronizationContext">The <see cref="SynchronizationContext"/> on which to perform operations</param>
-        /// <returns>An <see cref="ActiveEnumerable{TElement}"/> that contains the concatenated elements of the two input sequences</returns>
-        public static ActiveEnumerable<TSource> ActiveConcat<TSource>(this IEnumerable<TSource> first, IEnumerable<TSource> second, SynchronizationContext synchronizationContext)
+        /// <returns>An <see cref="IActiveEnumerable{TElement}"/> that contains the concatenated elements of the two input sequences</returns>
+        public static IActiveEnumerable<TSource> ActiveConcat<TSource>(this IEnumerable<TSource> first, IEnumerable<TSource> second, SynchronizationContext synchronizationContext)
         {
             if (synchronizationContext == null)
                 throw new ArgumentNullException(nameof(synchronizationContext));
 
             SynchronizedRangeObservableCollection<TSource> rangeObservableCollection = null;
-            ActiveEnumerable<TSource> firstEnumerable;
-            ActiveEnumerable<TSource> secondEnumerable;
+            IActiveEnumerable<TSource> firstEnumerable;
+            IActiveEnumerable<TSource> secondEnumerable;
 
             void firstCollectionChanged(object sender, NotifyCollectionChangedEventArgs e) =>
                 synchronizationContext.Execute(() =>
@@ -447,8 +447,8 @@ namespace Gear.ActiveQuery
         /// </summary>
         /// <typeparam name="TSource">The type of the elements of <paramref name="source"/></typeparam>
         /// <param name="source">The sequence to remove duplicate elements from</param>
-        /// <returns>An <see cref="ActiveEnumerable{TElement}"/> that contains distinct elements from the source sequence</returns>
-        public static ActiveEnumerable<TSource> ActiveDistinct<TSource>(this IReadOnlyList<TSource> source) =>
+        /// <returns>An <see cref="IActiveEnumerable{TElement}"/> that contains distinct elements from the source sequence</returns>
+        public static IActiveEnumerable<TSource> ActiveDistinct<TSource>(this IReadOnlyList<TSource> source) =>
             ActiveDistinct(source, EqualityComparer<TSource>.Default);
 
         /// <summary>
@@ -457,8 +457,8 @@ namespace Gear.ActiveQuery
         /// <typeparam name="TSource">The type of the elements of <paramref name="source"/></typeparam>
         /// <param name="source">The sequence to remove duplicate elements from</param>
         /// <param name="comparer">An <see cref="IEqualityComparer{T}"/> to compare values</param>
-        /// <returns>An <see cref="ActiveEnumerable{TElement}"/> that contains distinct elements from the source sequence</returns>
-        public static ActiveEnumerable<TSource> ActiveDistinct<TSource>(this IReadOnlyList<TSource> source, IEqualityComparer<TSource> comparer)
+        /// <returns>An <see cref="IActiveEnumerable{TElement}"/> that contains distinct elements from the source sequence</returns>
+        public static IActiveEnumerable<TSource> ActiveDistinct<TSource>(this IReadOnlyList<TSource> source, IEqualityComparer<TSource> comparer)
         {
             var changingSource = source as INotifyCollectionChanged;
             var synchronizedSource = source as ISynchronized;
@@ -556,8 +556,8 @@ namespace Gear.ActiveQuery
         /// <typeparam name="TSource">The type of the elements of <paramref name="source"/></typeparam>
         /// <param name="source">An <see cref="IEnumerable{T}"/> to return an element from</param>
         /// <param name="index">The zero-based index of the element to retrieve</param>
-        /// <returns>>An <see cref="ActiveValue{TValue}"/> the <see cref="ActiveValue{TValue}.Value"/> of which is the element at the specified position in the source sequence</returns>
-        public static ActiveValue<TSource> ActiveElementAt<TSource>(this IEnumerable<TSource> source, int index)
+        /// <returns>>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is the element at the specified position in the source sequence</returns>
+        public static IActiveValue<TSource> ActiveElementAt<TSource>(this IEnumerable<TSource> source, int index)
         {
             var elementFaultChangeNotifier = source as INotifyElementFaultChanges;
             if (source is INotifyCollectionChanged changingSource)
@@ -611,10 +611,10 @@ namespace Gear.ActiveQuery
         /// <typeparam name="TSource">The type of the elements of <paramref name="source"/></typeparam>
         /// <param name="source">An <see cref="IEnumerable{T}"/> to return an element from</param>
         /// <param name="index">The zero-based index of the element to retrieve</param>
-        /// <returns>>An <see cref="ActiveValue{TValue}"/> the <see cref="ActiveValue{TValue}.Value"/> of which is the element at the specified position in the source sequence</returns>
-        public static ActiveValue<TSource> ActiveElementAt<TSource>(this IReadOnlyList<TSource> source, int index)
+        /// <returns>>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is the element at the specified position in the source sequence</returns>
+        public static IActiveValue<TSource> ActiveElementAt<TSource>(this IReadOnlyList<TSource> source, int index)
         {
-            ActiveEnumerable<TSource> activeEnumerable;
+            IActiveEnumerable<TSource> activeEnumerable;
             Action<TSource> setValue = null;
             Action<Exception> setOperationFault = null;
             var indexOutOfRange = false;
@@ -658,8 +658,8 @@ namespace Gear.ActiveQuery
         /// <typeparam name="TSource">The type of the elements of <paramref name="source"/></typeparam>
         /// <param name="source">An <see cref="IEnumerable{T}"/> to return an element from</param>
         /// <param name="index">The zero-based index of the element to retrieve</param>
-        /// <returns>An <see cref="ActiveValue{TValue}"/> the <see cref="ActiveValue{TValue}.Value"/> of which is <c>default</c>(<typeparamref name="TSource"/>) if the index is outside the bounds of the source sequence; otherwise, the element at the specified position in the source sequence</returns>
-        public static ActiveValue<TSource> ActiveElementAtOrDefault<TSource>(this IEnumerable<TSource> source, int index)
+        /// <returns>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is <c>default</c>(<typeparamref name="TSource"/>) if the index is outside the bounds of the source sequence; otherwise, the element at the specified position in the source sequence</returns>
+        public static IActiveValue<TSource> ActiveElementAtOrDefault<TSource>(this IEnumerable<TSource> source, int index)
         {
             var elementFaultChangeNotifier = source as INotifyElementFaultChanges;
             if (source is INotifyCollectionChanged changingSource)
@@ -684,10 +684,10 @@ namespace Gear.ActiveQuery
         /// <typeparam name="TSource">The type of the elements of <paramref name="source"/></typeparam>
         /// <param name="source">An <see cref="IEnumerable{T}"/> to return an element from</param>
         /// <param name="index">The zero-based index of the element to retrieve</param>
-        /// <returns>An <see cref="ActiveValue{TValue}"/> the <see cref="ActiveValue{TValue}.Value"/> of which is <c>default</c>(<typeparamref name="TSource"/>) if the index is outside the bounds of the source sequence; otherwise, the element at the specified position in the source sequence</returns>
-        public static ActiveValue<TSource> ActiveElementAtOrDefault<TSource>(this IReadOnlyList<TSource> source, int index)
+        /// <returns>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is <c>default</c>(<typeparamref name="TSource"/>) if the index is outside the bounds of the source sequence; otherwise, the element at the specified position in the source sequence</returns>
+        public static IActiveValue<TSource> ActiveElementAtOrDefault<TSource>(this IReadOnlyList<TSource> source, int index)
         {
-            ActiveEnumerable<TSource> activeEnumerable;
+            IActiveEnumerable<TSource> activeEnumerable;
             Action<TSource> setValue = null;
 
             void collectionChanged(object sender, NotifyCollectionChangedEventArgs e) => setValue(index >= 0 && index < activeEnumerable.Count ? activeEnumerable[index] : default);
@@ -714,8 +714,8 @@ namespace Gear.ActiveQuery
         /// </summary>
         /// <typeparam name="TSource">The type of the elements of <paramref name="source"/></typeparam>
         /// <param name="source">The <see cref="IEnumerable{T}"/> to return the first element of</param>
-        /// <returns>An <see cref="ActiveValue{TValue}"/> the <see cref="ActiveValue{TValue}.Value"/> of which is the first element in the specified sequence</returns>
-        public static ActiveValue<TSource> ActiveFirst<TSource>(this IEnumerable<TSource> source)
+        /// <returns>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is the first element in the specified sequence</returns>
+        public static IActiveValue<TSource> ActiveFirst<TSource>(this IEnumerable<TSource> source)
         {
             var elementFaultChangeNotifier = source as INotifyElementFaultChanges;
             if (source is INotifyCollectionChanged changingSource)
@@ -769,8 +769,8 @@ namespace Gear.ActiveQuery
         /// <typeparam name="TSource">The type of the elements of <paramref name="source"/></typeparam>
         /// <param name="source">An <see cref="IEnumerable{T}"/> to return an element from</param>
         /// <param name="predicate">A function to test each element for a condition</param>
-        /// <returns>An <see cref="ActiveValue{TValue}"/> the <see cref="ActiveValue{TValue}.Value"/> of which is the first element in the sequence that passes the test in the spredicate function</returns>
-        public static ActiveValue<TSource> ActiveFirst<TSource>(this IReadOnlyList<TSource> source, Expression<Func<TSource, bool>> predicate) =>
+        /// <returns>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is the first element in the sequence that passes the test in the spredicate function</returns>
+        public static IActiveValue<TSource> ActiveFirst<TSource>(this IReadOnlyList<TSource> source, Expression<Func<TSource, bool>> predicate) =>
             ActiveFirst(source, predicate, null);
 
         /// <summary>
@@ -780,10 +780,10 @@ namespace Gear.ActiveQuery
         /// <param name="source">An <see cref="IEnumerable{T}"/> to return an element from</param>
         /// <param name="predicate">A function to test each element for a condition</param>
         /// <param name="predicateOptions">Options governing the behavior of active expressions created using <paramref name="predicate"/></param>
-        /// <returns>An <see cref="ActiveValue{TValue}"/> the <see cref="ActiveValue{TValue}.Value"/> of which is the first element in the sequence that passes the test in the spredicate function</returns>
-        public static ActiveValue<TSource> ActiveFirst<TSource>(this IReadOnlyList<TSource> source, Expression<Func<TSource, bool>> predicate, ActiveExpressionOptions predicateOptions)
+        /// <returns>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is the first element in the sequence that passes the test in the spredicate function</returns>
+        public static IActiveValue<TSource> ActiveFirst<TSource>(this IReadOnlyList<TSource> source, Expression<Func<TSource, bool>> predicate, ActiveExpressionOptions predicateOptions)
         {
-            ActiveEnumerable<TSource> where;
+            IActiveEnumerable<TSource> where;
             Action<TSource> setValue = null;
             Action<Exception> setOperationFault = null;
             var none = false;
@@ -826,8 +826,8 @@ namespace Gear.ActiveQuery
         /// </summary>
         /// <typeparam name="TSource">The type of the elements of <paramref name="source"/></typeparam>
         /// <param name="source">The <see cref="IEnumerable{T}"/> to return the first element of</param>
-        /// <returns>An <see cref="ActiveValue{TValue}"/> the <see cref="ActiveValue{TValue}.Value"/> of which is <c>default</c>(<typeparamref name="TSource"/>) if <paramref name="source"/> is empty; otherwise, the first element in <paramref name="source"/></returns>
-        public static ActiveValue<TSource> ActiveFirstOrDefault<TSource>(this IEnumerable<TSource> source)
+        /// <returns>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is <c>default</c>(<typeparamref name="TSource"/>) if <paramref name="source"/> is empty; otherwise, the first element in <paramref name="source"/></returns>
+        public static IActiveValue<TSource> ActiveFirstOrDefault<TSource>(this IEnumerable<TSource> source)
         {
             var elementFaultChangeNotifier = source as INotifyElementFaultChanges;
             if (source is INotifyCollectionChanged changingSource)
@@ -852,8 +852,8 @@ namespace Gear.ActiveQuery
         /// <typeparam name="TSource">The type of the elements of <paramref name="source"/></typeparam>
         /// <param name="source">The <see cref="IEnumerable{T}"/> to return the first element of</param>
         /// <param name="predicate">A function to test each element for a condition</param>
-        /// <returns>An <see cref="ActiveValue{TValue}"/> the <see cref="ActiveValue{TValue}.Value"/> of which is <c>default</c>(<typeparamref name="TSource"/>) if <paramref name="source"/> is empty or if no element passes the test specified by <paramref name="predicate"/>; otherwise, the first element in <paramref name="source"/> that passes the test specified by <paramref name="predicate"/></returns>
-        public static ActiveValue<TSource> ActiveFirstOrDefault<TSource>(this IReadOnlyList<TSource> source, Expression<Func<TSource, bool>> predicate) =>
+        /// <returns>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is <c>default</c>(<typeparamref name="TSource"/>) if <paramref name="source"/> is empty or if no element passes the test specified by <paramref name="predicate"/>; otherwise, the first element in <paramref name="source"/> that passes the test specified by <paramref name="predicate"/></returns>
+        public static IActiveValue<TSource> ActiveFirstOrDefault<TSource>(this IReadOnlyList<TSource> source, Expression<Func<TSource, bool>> predicate) =>
             ActiveFirstOrDefault(source, predicate, null);
 
         /// <summary>
@@ -863,10 +863,10 @@ namespace Gear.ActiveQuery
         /// <param name="source">The <see cref="IEnumerable{T}"/> to return the first element of</param>
         /// <param name="predicate">A function to test each element for a condition</param>
         /// <param name="predicateOptions">Options governing the behavior of active expressions created using <paramref name="predicate"/></param>
-        /// <returns>An <see cref="ActiveValue{TValue}"/> the <see cref="ActiveValue{TValue}.Value"/> of which is <c>default</c>(<typeparamref name="TSource"/>) if <paramref name="source"/> is empty or if no element passes the test specified by <paramref name="predicate"/>; otherwise, the first element in <paramref name="source"/> that passes the test specified by <paramref name="predicate"/></returns>
-        public static ActiveValue<TSource> ActiveFirstOrDefault<TSource>(this IReadOnlyList<TSource> source, Expression<Func<TSource, bool>> predicate, ActiveExpressionOptions predicateOptions)
+        /// <returns>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is <c>default</c>(<typeparamref name="TSource"/>) if <paramref name="source"/> is empty or if no element passes the test specified by <paramref name="predicate"/>; otherwise, the first element in <paramref name="source"/> that passes the test specified by <paramref name="predicate"/></returns>
+        public static IActiveValue<TSource> ActiveFirstOrDefault<TSource>(this IReadOnlyList<TSource> source, Expression<Func<TSource, bool>> predicate, ActiveExpressionOptions predicateOptions)
         {
-            ActiveEnumerable<TSource> where;
+            IActiveEnumerable<TSource> where;
             Action<TSource> setValue = null;
 
             void collectionChanged(object sender, NotifyCollectionChangedEventArgs e) => setValue(where.Count > 0 ? where[0] : default);
@@ -895,8 +895,8 @@ namespace Gear.ActiveQuery
         /// <typeparam name="TKey">The type of the key returned by <paramref name="keySelector"/></typeparam>
         /// <param name="source">An <see cref="IEnumerable{T}"/> whose elements to group</param>
         /// <param name="keySelector">A function to extract the key for each element</param>
-        /// <returns>An <see cref="ActiveEnumerable{TElement}"/> where each element is an <see cref="ActiveGrouping{TKey, TElement}"/> object contains a sequence of objects and a key</returns>
-        public static ActiveEnumerable<ActiveGrouping<TKey, TSource>> ActiveGroupBy<TSource, TKey>(this IReadOnlyList<TSource> source, Expression<Func<TSource, TKey>> keySelector) =>
+        /// <returns>An <see cref="IActiveEnumerable{TElement}"/> where each element is an <see cref="ActiveGrouping{TKey, TElement}"/> object contains a sequence of objects and a key</returns>
+        public static IActiveEnumerable<ActiveGrouping<TKey, TSource>> ActiveGroupBy<TSource, TKey>(this IReadOnlyList<TSource> source, Expression<Func<TSource, TKey>> keySelector) =>
             ActiveGroupBy(source, keySelector, IndexingStrategy.HashTable);
 
         /// <summary>
@@ -907,8 +907,8 @@ namespace Gear.ActiveQuery
         /// <param name="source">An <see cref="IEnumerable{T}"/> whose elements to group</param>
         /// <param name="keySelector">A function to extract the key for each element</param>
         /// <param name="indexingStrategy">The indexing strategy to use when grouping</param>
-        /// <returns>An <see cref="ActiveEnumerable{TElement}"/> where each element is an <see cref="ActiveGrouping{TKey, TElement}"/> object contains a sequence of objects and a key</returns>
-        public static ActiveEnumerable<ActiveGrouping<TKey, TSource>> ActiveGroupBy<TSource, TKey>(this IReadOnlyList<TSource> source, Expression<Func<TSource, TKey>> keySelector, IndexingStrategy indexingStrategy) =>
+        /// <returns>An <see cref="IActiveEnumerable{TElement}"/> where each element is an <see cref="ActiveGrouping{TKey, TElement}"/> object contains a sequence of objects and a key</returns>
+        public static IActiveEnumerable<ActiveGrouping<TKey, TSource>> ActiveGroupBy<TSource, TKey>(this IReadOnlyList<TSource> source, Expression<Func<TSource, TKey>> keySelector, IndexingStrategy indexingStrategy) =>
             ActiveGroupBy(source, keySelector, null, indexingStrategy, null, null);
 
         /// <summary>
@@ -919,8 +919,8 @@ namespace Gear.ActiveQuery
         /// <param name="source">An <see cref="IEnumerable{T}"/> whose elements to group</param>
         /// <param name="keySelector">A function to extract the key for each element</param>
         /// <param name="equalityComparer">An <see cref="IEqualityComparer{T}"/> to compare keys</param>
-        /// <returns>An <see cref="ActiveEnumerable{TElement}"/> where each element is an <see cref="ActiveGrouping{TKey, TElement}"/> object contains a sequence of objects and a key</returns>
-        public static ActiveEnumerable<ActiveGrouping<TKey, TSource>> ActiveGroupBy<TSource, TKey>(this IReadOnlyList<TSource> source, Expression<Func<TSource, TKey>> keySelector, IEqualityComparer<TKey> equalityComparer) =>
+        /// <returns>An <see cref="IActiveEnumerable{TElement}"/> where each element is an <see cref="ActiveGrouping{TKey, TElement}"/> object contains a sequence of objects and a key</returns>
+        public static IActiveEnumerable<ActiveGrouping<TKey, TSource>> ActiveGroupBy<TSource, TKey>(this IReadOnlyList<TSource> source, Expression<Func<TSource, TKey>> keySelector, IEqualityComparer<TKey> equalityComparer) =>
             ActiveGroupBy(source, keySelector, null, IndexingStrategy.HashTable, equalityComparer, null);
 
         /// <summary>
@@ -931,8 +931,8 @@ namespace Gear.ActiveQuery
         /// <param name="source">An <see cref="IEnumerable{T}"/> whose elements to group</param>
         /// <param name="keySelector">A function to extract the key for each element</param>
         /// <param name="comparer">An <see cref="IComparer{T}"/> to compare keys</param>
-        /// <returns>An <see cref="ActiveEnumerable{TElement}"/> where each element is an <see cref="ActiveGrouping{TKey, TElement}"/> object contains a sequence of objects and a key</returns>
-        public static ActiveEnumerable<ActiveGrouping<TKey, TSource>> ActiveGroupBy<TSource, TKey>(this IReadOnlyList<TSource> source, Expression<Func<TSource, TKey>> keySelector, IComparer<TKey> comparer) =>
+        /// <returns>An <see cref="IActiveEnumerable{TElement}"/> where each element is an <see cref="ActiveGrouping{TKey, TElement}"/> object contains a sequence of objects and a key</returns>
+        public static IActiveEnumerable<ActiveGrouping<TKey, TSource>> ActiveGroupBy<TSource, TKey>(this IReadOnlyList<TSource> source, Expression<Func<TSource, TKey>> keySelector, IComparer<TKey> comparer) =>
             ActiveGroupBy(source, keySelector, null, IndexingStrategy.SelfBalancingBinarySearchTree, null, comparer);
 
         /// <summary>
@@ -943,8 +943,8 @@ namespace Gear.ActiveQuery
         /// <param name="source">An <see cref="IEnumerable{T}"/> whose elements to group</param>
         /// <param name="keySelector">A function to extract the key for each element</param>
         /// <param name="keySelectorOptions">Options governing the behavior of active expressions created using <paramref name="keySelector"/></param>
-        /// <returns>An <see cref="ActiveEnumerable{TElement}"/> where each element is an <see cref="ActiveGrouping{TKey, TElement}"/> object contains a sequence of objects and a key</returns>
-        public static ActiveEnumerable<ActiveGrouping<TKey, TSource>> ActiveGroupBy<TSource, TKey>(this IReadOnlyList<TSource> source, Expression<Func<TSource, TKey>> keySelector, ActiveExpressionOptions keySelectorOptions) =>
+        /// <returns>An <see cref="IActiveEnumerable{TElement}"/> where each element is an <see cref="ActiveGrouping{TKey, TElement}"/> object contains a sequence of objects and a key</returns>
+        public static IActiveEnumerable<ActiveGrouping<TKey, TSource>> ActiveGroupBy<TSource, TKey>(this IReadOnlyList<TSource> source, Expression<Func<TSource, TKey>> keySelector, ActiveExpressionOptions keySelectorOptions) =>
             ActiveGroupBy(source, keySelector, keySelectorOptions, IndexingStrategy.HashTable, null, null);
 
         /// <summary>
@@ -956,8 +956,8 @@ namespace Gear.ActiveQuery
         /// <param name="keySelector">A function to extract the key for each element</param>
         /// <param name="keySelectorOptions">Options governing the behavior of active expressions created using <paramref name="keySelector"/></param>
         /// <param name="indexingStrategy">The indexing strategy to use when grouping</param>
-        /// <returns>An <see cref="ActiveEnumerable{TElement}"/> where each element is an <see cref="ActiveGrouping{TKey, TElement}"/> object contains a sequence of objects and a key</returns>
-        public static ActiveEnumerable<ActiveGrouping<TKey, TSource>> ActiveGroupBy<TSource, TKey>(this IReadOnlyList<TSource> source, Expression<Func<TSource, TKey>> keySelector, ActiveExpressionOptions keySelectorOptions, IndexingStrategy indexingStrategy) =>
+        /// <returns>An <see cref="IActiveEnumerable{TElement}"/> where each element is an <see cref="ActiveGrouping{TKey, TElement}"/> object contains a sequence of objects and a key</returns>
+        public static IActiveEnumerable<ActiveGrouping<TKey, TSource>> ActiveGroupBy<TSource, TKey>(this IReadOnlyList<TSource> source, Expression<Func<TSource, TKey>> keySelector, ActiveExpressionOptions keySelectorOptions, IndexingStrategy indexingStrategy) =>
             ActiveGroupBy(source, keySelector, keySelectorOptions, indexingStrategy, null, null);
 
         /// <summary>
@@ -969,8 +969,8 @@ namespace Gear.ActiveQuery
         /// <param name="keySelector">A function to extract the key for each element</param>
         /// <param name="keySelectorOptions">Options governing the behavior of active expressions created using <paramref name="keySelector"/></param>
         /// <param name="equalityComparer">An <see cref="IEqualityComparer{T}"/> to compare keys</param>
-        /// <returns>An <see cref="ActiveEnumerable{TElement}"/> where each element is an <see cref="ActiveGrouping{TKey, TElement}"/> object contains a sequence of objects and a key</returns>
-        public static ActiveEnumerable<ActiveGrouping<TKey, TSource>> ActiveGroupBy<TSource, TKey>(this IReadOnlyList<TSource> source, Expression<Func<TSource, TKey>> keySelector, ActiveExpressionOptions keySelectorOptions, IEqualityComparer<TKey> equalityComparer) =>
+        /// <returns>An <see cref="IActiveEnumerable{TElement}"/> where each element is an <see cref="ActiveGrouping{TKey, TElement}"/> object contains a sequence of objects and a key</returns>
+        public static IActiveEnumerable<ActiveGrouping<TKey, TSource>> ActiveGroupBy<TSource, TKey>(this IReadOnlyList<TSource> source, Expression<Func<TSource, TKey>> keySelector, ActiveExpressionOptions keySelectorOptions, IEqualityComparer<TKey> equalityComparer) =>
             ActiveGroupBy(source, keySelector, keySelectorOptions, IndexingStrategy.HashTable, equalityComparer, null);
 
         /// <summary>
@@ -982,11 +982,11 @@ namespace Gear.ActiveQuery
         /// <param name="keySelector">A function to extract the key for each element</param>
         /// <param name="keySelectorOptions">Options governing the behavior of active expressions created using <paramref name="keySelector"/></param>
         /// <param name="comparer">An <see cref="IComparer{T}"/> to compare keys</param>
-        /// <returns>An <see cref="ActiveEnumerable{TElement}"/> where each element is an <see cref="ActiveGrouping{TKey, TElement}"/> object contains a sequence of objects and a key</returns>
-        public static ActiveEnumerable<ActiveGrouping<TKey, TSource>> ActiveGroupBy<TSource, TKey>(this IReadOnlyList<TSource> source, Expression<Func<TSource, TKey>> keySelector, ActiveExpressionOptions keySelectorOptions, IComparer<TKey> comparer) =>
+        /// <returns>An <see cref="IActiveEnumerable{TElement}"/> where each element is an <see cref="ActiveGrouping{TKey, TElement}"/> object contains a sequence of objects and a key</returns>
+        public static IActiveEnumerable<ActiveGrouping<TKey, TSource>> ActiveGroupBy<TSource, TKey>(this IReadOnlyList<TSource> source, Expression<Func<TSource, TKey>> keySelector, ActiveExpressionOptions keySelectorOptions, IComparer<TKey> comparer) =>
             ActiveGroupBy(source, keySelector, keySelectorOptions, IndexingStrategy.SelfBalancingBinarySearchTree, null, comparer);
 
-        static ActiveEnumerable<ActiveGrouping<TKey, TSource>> ActiveGroupBy<TSource, TKey>(IReadOnlyList<TSource> source, Expression<Func<TSource, TKey>> keySelector, ActiveExpressionOptions keySelectorOptions, IndexingStrategy indexingStrategy, IEqualityComparer<TKey> equalityComparer, IComparer<TKey> comparer)
+        static IActiveEnumerable<ActiveGrouping<TKey, TSource>> ActiveGroupBy<TSource, TKey>(IReadOnlyList<TSource> source, Expression<Func<TSource, TKey>> keySelector, ActiveExpressionOptions keySelectorOptions, IndexingStrategy indexingStrategy, IEqualityComparer<TKey> equalityComparer, IComparer<TKey> comparer)
         {
             ActiveQueryOptions.Optimize(ref keySelector);
 
@@ -1026,7 +1026,7 @@ namespace Gear.ActiveQuery
 
             void elementResultChanging(object sender, RangeActiveExpressionResultChangeEventArgs<TSource, TKey> e) => synchronizedSource.SequentialExecute(() => removeElement(e.Element, e.Result, e.Count));
 
-            void genericCollectionChanged(object sender, NotifyGenericCollectionChangedEventArgs<(TSource element, TKey key)> e) =>
+            void genericCollectionChanged(object sender, INotifyGenericCollectionChangedEventArgs<(TSource element, TKey key)> e) =>
                 synchronizedSource.SequentialExecute(() =>
                 {
                     if (e.Action == NotifyCollectionChangedAction.Reset)
@@ -1099,8 +1099,8 @@ namespace Gear.ActiveQuery
         /// </summary>
         /// <typeparam name="TSource">The type of the elements of <paramref name="source"/></typeparam>
         /// <param name="source">An <see cref="IEnumerable{T}"/> to return the last element of</param>
-        /// <returns>An <see cref="ActiveValue{TValue}"/> the <see cref="ActiveValue{TValue}.Value"/> of which is the value at the last position in the source sequence</returns>
-        public static ActiveValue<TSource> ActiveLast<TSource>(this IEnumerable<TSource> source)
+        /// <returns>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is the value at the last position in the source sequence</returns>
+        public static IActiveValue<TSource> ActiveLast<TSource>(this IEnumerable<TSource> source)
         {
             var elementFaultChangeNotifier = source as INotifyElementFaultChanges;
             if (source is INotifyCollectionChanged changingSource)
@@ -1154,8 +1154,8 @@ namespace Gear.ActiveQuery
         /// <typeparam name="TSource">The type of the elements of <paramref name="source"/></typeparam>
         /// <param name="source">An <see cref="IEnumerable{T}"/> to return the last element of</param>
         /// <param name="predicate">A function to test each element for a condition</param>
-        /// <returns>An <see cref="ActiveValue{TValue}"/> the <see cref="ActiveValue{TValue}.Value"/> of which is the last element in the sequence that passes the test in the spredicate function</returns>
-        public static ActiveValue<TSource> ActiveLast<TSource>(this IReadOnlyList<TSource> source, Expression<Func<TSource, bool>> predicate) =>
+        /// <returns>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is the last element in the sequence that passes the test in the spredicate function</returns>
+        public static IActiveValue<TSource> ActiveLast<TSource>(this IReadOnlyList<TSource> source, Expression<Func<TSource, bool>> predicate) =>
             ActiveLast(source, predicate, null);
 
         /// <summary>
@@ -1165,10 +1165,10 @@ namespace Gear.ActiveQuery
         /// <param name="source">An <see cref="IEnumerable{T}"/> to return the last element of</param>
         /// <param name="predicate">A function to test each element for a condition</param>
         /// <param name="predicateOptions">Options governing the behavior of active expressions created using <paramref name="predicate"/></param>
-        /// <returns>An <see cref="ActiveValue{TValue}"/> the <see cref="ActiveValue{TValue}.Value"/> of which is the last element in the sequence that passes the test in the spredicate function</returns>
-        public static ActiveValue<TSource> ActiveLast<TSource>(this IReadOnlyList<TSource> source, Expression<Func<TSource, bool>> predicate, ActiveExpressionOptions predicateOptions)
+        /// <returns>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is the last element in the sequence that passes the test in the spredicate function</returns>
+        public static IActiveValue<TSource> ActiveLast<TSource>(this IReadOnlyList<TSource> source, Expression<Func<TSource, bool>> predicate, ActiveExpressionOptions predicateOptions)
         {
-            ActiveEnumerable<TSource> where;
+            IActiveEnumerable<TSource> where;
             Action<TSource> setValue = null;
             Action<Exception> setOperationFault = null;
             var none = false;
@@ -1211,8 +1211,8 @@ namespace Gear.ActiveQuery
         /// </summary>
         /// <typeparam name="TSource">The type of the elements of <paramref name="source"/></typeparam>
         /// <param name="source">An <see cref="IEnumerable{T}"/> to return the last element of</param>
-        /// <returns>An <see cref="ActiveValue{TValue}"/> the <see cref="ActiveValue{TValue}.Value"/> of which is <c>default</c>(<typeparamref name="TSource"/>) if the source sequence is empty; otherwise, the last element in the <see cref="IEnumerable{T}"/></returns>
-        public static ActiveValue<TSource> ActiveLastOrDefault<TSource>(this IEnumerable<TSource> source)
+        /// <returns>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is <c>default</c>(<typeparamref name="TSource"/>) if the source sequence is empty; otherwise, the last element in the <see cref="IEnumerable{T}"/></returns>
+        public static IActiveValue<TSource> ActiveLastOrDefault<TSource>(this IEnumerable<TSource> source)
         {
             var elementFaultChangeNotifier = source as INotifyElementFaultChanges;
             if (source is INotifyCollectionChanged changingSource)
@@ -1237,8 +1237,8 @@ namespace Gear.ActiveQuery
         /// <typeparam name="TSource">The type of the elements of <paramref name="source"/></typeparam>
         /// <param name="source">An <see cref="IEnumerable{T}"/> to return an element from</param>
         /// <param name="predicate">A function to test each element for a condition</param>
-        /// <returns>An <see cref="ActiveValue{TValue}"/> the <see cref="ActiveValue{TValue}.Value"/> of which is <c>default</c>(<typeparamref name="TSource"/>) if the sequence is empty or if no elements pass the test in the predicate function; otherwise, the last element that passes the test in the predicate function</returns>
-        public static ActiveValue<TSource> ActiveLastOrDefault<TSource>(this IReadOnlyList<TSource> source, Expression<Func<TSource, bool>> predicate) =>
+        /// <returns>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is <c>default</c>(<typeparamref name="TSource"/>) if the sequence is empty or if no elements pass the test in the predicate function; otherwise, the last element that passes the test in the predicate function</returns>
+        public static IActiveValue<TSource> ActiveLastOrDefault<TSource>(this IReadOnlyList<TSource> source, Expression<Func<TSource, bool>> predicate) =>
             ActiveLastOrDefault(source, predicate, null);
 
         /// <summary>
@@ -1248,10 +1248,10 @@ namespace Gear.ActiveQuery
         /// <param name="source">An <see cref="IEnumerable{T}"/> to return an element from</param>
         /// <param name="predicate">A function to test each element for a condition</param>
         /// <param name="predicateOptions">Options governing the behavior of active expressions created using <paramref name="predicate"/></param>
-        /// <returns>An <see cref="ActiveValue{TValue}"/> the <see cref="ActiveValue{TValue}.Value"/> of which is <c>default</c>(<typeparamref name="TSource"/>) if the sequence is empty or if no elements pass the test in the predicate function; otherwise, the last element that passes the test in the predicate function</returns>
-        public static ActiveValue<TSource> ActiveLastOrDefault<TSource>(this IReadOnlyList<TSource> source, Expression<Func<TSource, bool>> predicate, ActiveExpressionOptions predicateOptions)
+        /// <returns>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is <c>default</c>(<typeparamref name="TSource"/>) if the sequence is empty or if no elements pass the test in the predicate function; otherwise, the last element that passes the test in the predicate function</returns>
+        public static IActiveValue<TSource> ActiveLastOrDefault<TSource>(this IReadOnlyList<TSource> source, Expression<Func<TSource, bool>> predicate, ActiveExpressionOptions predicateOptions)
         {
-            ActiveEnumerable<TSource> where;
+            IActiveEnumerable<TSource> where;
             Action<TSource> setValue = null;
 
             void collectionChanged(object sender, NotifyCollectionChangedEventArgs e) => setValue(where.Count > 0 ? where[where.Count - 1] : default);
@@ -1278,8 +1278,8 @@ namespace Gear.ActiveQuery
         /// </summary>
         /// <typeparam name="TSource">The type of the elements of <paramref name="source"/></typeparam>
         /// <param name="source">A sequence of values to determine the maximum value of</param>
-        /// <returns>An <see cref="ActiveValue{TValue}"/> the <see cref="ActiveValue{TValue}.Value"/> of which is the maximum value in the sequence</returns>
-        public static ActiveValue<TSource> ActiveMax<TSource>(this IEnumerable<TSource> source) =>
+        /// <returns>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is the maximum value in the sequence</returns>
+        public static IActiveValue<TSource> ActiveMax<TSource>(this IEnumerable<TSource> source) =>
             ActiveMax(source, element => element);
 
         /// <summary>
@@ -1289,8 +1289,8 @@ namespace Gear.ActiveQuery
         /// <typeparam name="TResult">The type of the maximum value</typeparam>
         /// <param name="source">A sequence of values to determine the maximum value of</param>
         /// <param name="selector">A transform function to apply to each element</param>
-        /// <returns>An <see cref="ActiveValue{TValue}"/> the <see cref="ActiveValue{TValue}.Value"/> of which is the maximum value in the sequence</returns>
-        public static ActiveValue<TResult> ActiveMax<TSource, TResult>(this IEnumerable<TSource> source, Expression<Func<TSource, TResult>> selector) =>
+        /// <returns>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is the maximum value in the sequence</returns>
+        public static IActiveValue<TResult> ActiveMax<TSource, TResult>(this IEnumerable<TSource> source, Expression<Func<TSource, TResult>> selector) =>
             ActiveMax(source, selector, null);
 
         /// <summary>
@@ -1301,8 +1301,8 @@ namespace Gear.ActiveQuery
         /// <param name="source">A sequence of values to determine the maximum value of</param>
         /// <param name="selector">A transform function to apply to each element</param>
         /// <param name="selectorOptions">Options governing the behavior of active expressions created using <paramref name="selector"/></param>
-        /// <returns>An <see cref="ActiveValue{TValue}"/> the <see cref="ActiveValue{TValue}.Value"/> of which is the maximum value in the sequence</returns>
-        public static ActiveValue<TResult> ActiveMax<TSource, TResult>(this IEnumerable<TSource> source, Expression<Func<TSource, TResult>> selector, ActiveExpressionOptions selectorOptions)
+        /// <returns>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is the maximum value in the sequence</returns>
+        public static IActiveValue<TResult> ActiveMax<TSource, TResult>(this IEnumerable<TSource> source, Expression<Func<TSource, TResult>> selector, ActiveExpressionOptions selectorOptions)
         {
             ActiveQueryOptions.Optimize(ref selector);
 
@@ -1330,7 +1330,7 @@ namespace Gear.ActiveQuery
                         setValue(rangeActiveExpression.GetResultsUnderLock().Max(er => er.result));
                 });
 
-            void genericCollectionChanged(object sender, NotifyGenericCollectionChangedEventArgs<(TSource element, TResult result)> e) =>
+            void genericCollectionChanged(object sender, INotifyGenericCollectionChangedEventArgs<(TSource element, TResult result)> e) =>
                 synchronizedSource.SequentialExecute(() =>
                 {
                     if (e.Action == NotifyCollectionChangedAction.Reset)
@@ -1403,8 +1403,8 @@ namespace Gear.ActiveQuery
         /// </summary>
         /// <typeparam name="TSource">The type of the elements of <paramref name="source"/></typeparam>
         /// <param name="source">A sequence of values to determine the minimum value of</param>
-        /// <returns>An <see cref="ActiveValue{TValue}"/> the <see cref="ActiveValue{TValue}.Value"/> of which is the minimum value in the sequence</returns>
-        public static ActiveValue<TSource> ActiveMin<TSource>(this IEnumerable<TSource> source) =>
+        /// <returns>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is the minimum value in the sequence</returns>
+        public static IActiveValue<TSource> ActiveMin<TSource>(this IEnumerable<TSource> source) =>
             ActiveMin(source, element => element);
 
         /// <summary>
@@ -1414,8 +1414,8 @@ namespace Gear.ActiveQuery
         /// <typeparam name="TResult">The type of the minimum value</typeparam>
         /// <param name="source">A sequence of values to determine the minimum value of</param>
         /// <param name="selector">A transform function to apply to each element</param>
-        /// <returns>An <see cref="ActiveValue{TValue}"/> the <see cref="ActiveValue{TValue}.Value"/> of which is the minimum value in the sequence</returns>
-        public static ActiveValue<TResult> ActiveMin<TSource, TResult>(this IEnumerable<TSource> source, Expression<Func<TSource, TResult>> selector) =>
+        /// <returns>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is the minimum value in the sequence</returns>
+        public static IActiveValue<TResult> ActiveMin<TSource, TResult>(this IEnumerable<TSource> source, Expression<Func<TSource, TResult>> selector) =>
             ActiveMin(source, selector, null);
 
         /// <summary>
@@ -1426,8 +1426,8 @@ namespace Gear.ActiveQuery
         /// <param name="source">A sequence of values to determine the minimum value of</param>
         /// <param name="selector">A transform function to apply to each element</param>
         /// <param name="selectorOptions">Options governing the behavior of active expressions created using <paramref name="selector"/></param>
-        /// <returns>An <see cref="ActiveValue{TValue}"/> the <see cref="ActiveValue{TValue}.Value"/> of which is the minimum value in the sequence</returns>
-        public static ActiveValue<TResult> ActiveMin<TSource, TResult>(this IEnumerable<TSource> source, Expression<Func<TSource, TResult>> selector, ActiveExpressionOptions selectorOptions)
+        /// <returns>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is the minimum value in the sequence</returns>
+        public static IActiveValue<TResult> ActiveMin<TSource, TResult>(this IEnumerable<TSource> source, Expression<Func<TSource, TResult>> selector, ActiveExpressionOptions selectorOptions)
         {
             ActiveQueryOptions.Optimize(ref selector);
 
@@ -1455,7 +1455,7 @@ namespace Gear.ActiveQuery
                         setValue(rangeActiveExpression.GetResultsUnderLock().Min(er => er.result));
                 });
 
-            void genericCollectionChanged(object sender, NotifyGenericCollectionChangedEventArgs<(TSource element, TResult result)> e) =>
+            void genericCollectionChanged(object sender, INotifyGenericCollectionChangedEventArgs<(TSource element, TResult result)> e) =>
                 synchronizedSource.SequentialExecute(() =>
                 {
                     if (e.Action == NotifyCollectionChangedAction.Reset)
@@ -1528,8 +1528,8 @@ namespace Gear.ActiveQuery
         /// </summary>
         /// <typeparam name="TResult">The type to filter the elements of the sequence on</typeparam>
         /// <param name="source">The <see cref="IEnumerable"/> the elements of which to filter</param>
-        /// <returns>An <see cref="IEnumerable{T}"/> that contains elements from the input sequence of type <typeparamref name="TResult"/></returns>
-        public static ActiveEnumerable<TResult> ActiveOfType<TResult>(this IEnumerable source)
+        /// <returns>An <see cref="IActiveEnumerable{TElement}"/> that contains elements from the input sequence of type <typeparamref name="TResult"/></returns>
+        public static IActiveEnumerable<TResult> ActiveOfType<TResult>(this IEnumerable source)
         {
             var synchronizedSource = source as ISynchronized;
             var notifyingSource = source as INotifyCollectionChanged;
@@ -1574,8 +1574,8 @@ namespace Gear.ActiveQuery
         /// <typeparam name="TSource">The type of the elements of <paramref name="source"/></typeparam>
         /// <param name="source">A sequence of values to order</param>
         /// <param name="keySelectorExpression">An expression to extract a key from an element</param>
-        /// <returns>An <see cref="ActiveEnumerable{TElement}"/> whose elements are sorted according to a key</returns>
-        public static ActiveEnumerable<TSource> ActiveOrderBy<TSource>(this IEnumerable<TSource> source, Expression<Func<TSource, IComparable>> keySelectorExpression) =>
+        /// <returns>An <see cref="IActiveEnumerable{TElement}"/> whose elements are sorted according to a key</returns>
+        public static IActiveEnumerable<TSource> ActiveOrderBy<TSource>(this IEnumerable<TSource> source, Expression<Func<TSource, IComparable>> keySelectorExpression) =>
             ActiveOrderBy(source, keySelectorExpression, false);
 
         /// <summary>
@@ -1585,8 +1585,8 @@ namespace Gear.ActiveQuery
         /// <param name="source">A sequence of values to order</param>
         /// <param name="keySelectorExpression">An expression to extract a key from an element</param>
         /// <param name="isDescending"><c>true</c> to sort in descending order; otherwise, sort in ascending order</param>
-        /// <returns>An <see cref="ActiveEnumerable{TElement}"/> whose elements are sorted according to a key</returns>
-        public static ActiveEnumerable<TSource> ActiveOrderBy<TSource>(this IEnumerable<TSource> source, Expression<Func<TSource, IComparable>> keySelectorExpression, bool isDescending) =>
+        /// <returns>An <see cref="IActiveEnumerable{TElement}"/> whose elements are sorted according to a key</returns>
+        public static IActiveEnumerable<TSource> ActiveOrderBy<TSource>(this IEnumerable<TSource> source, Expression<Func<TSource, IComparable>> keySelectorExpression, bool isDescending) =>
             ActiveOrderBy(source, keySelectorExpression, null, isDescending);
 
         /// <summary>
@@ -1596,8 +1596,8 @@ namespace Gear.ActiveQuery
         /// <param name="source">A sequence of values to order</param>
         /// <param name="keySelectorExpression">An expression to extract a key from an element</param>
         /// <param name="keySelectorExpressionOptions">Options governing the behavior of active expressions created using <paramref name="keySelectorExpression"/></param>
-        /// <returns>An <see cref="ActiveEnumerable{TElement}"/> whose elements are sorted according to a key</returns>
-        public static ActiveEnumerable<TSource> ActiveOrderBy<TSource>(this IEnumerable<TSource> source, Expression<Func<TSource, IComparable>> keySelectorExpression, ActiveExpressionOptions keySelectorExpressionOptions) =>
+        /// <returns>An <see cref="IActiveEnumerable{TElement}"/> whose elements are sorted according to a key</returns>
+        public static IActiveEnumerable<TSource> ActiveOrderBy<TSource>(this IEnumerable<TSource> source, Expression<Func<TSource, IComparable>> keySelectorExpression, ActiveExpressionOptions keySelectorExpressionOptions) =>
             ActiveOrderBy(source, keySelectorExpression, keySelectorExpressionOptions, false);
 
         /// <summary>
@@ -1608,8 +1608,8 @@ namespace Gear.ActiveQuery
         /// <param name="keySelectorExpression">An expression to extract a key from an element</param>
         /// <param name="keySelectorExpressionOptions">Options governing the behavior of active expressions created using <paramref name="keySelectorExpression"/></param>
         /// <param name="isDescending"><c>true</c> to sort in descending order; otherwise, sort in ascending order</param>
-        /// <returns>An <see cref="ActiveEnumerable{TElement}"/> whose elements are sorted according to a key</returns>
-        public static ActiveEnumerable<TSource> ActiveOrderBy<TSource>(this IEnumerable<TSource> source, Expression<Func<TSource, IComparable>> keySelectorExpression, ActiveExpressionOptions keySelectorExpressionOptions, bool isDescending) =>
+        /// <returns>An <see cref="IActiveEnumerable{TElement}"/> whose elements are sorted according to a key</returns>
+        public static IActiveEnumerable<TSource> ActiveOrderBy<TSource>(this IEnumerable<TSource> source, Expression<Func<TSource, IComparable>> keySelectorExpression, ActiveExpressionOptions keySelectorExpressionOptions, bool isDescending) =>
             ActiveOrderBy(source, new ActiveOrderingKeySelector<TSource>(keySelectorExpression, keySelectorExpressionOptions, isDescending));
 
         /// <summary>
@@ -1618,8 +1618,8 @@ namespace Gear.ActiveQuery
         /// <typeparam name="TSource">The type of the elements of <paramref name="source"/></typeparam>
         /// <param name="source">A sequence of values to order</param>
         /// <param name="keySelectors">A series of <see cref="ActiveOrderingKeySelector{T}"/>, the position of each determining its ordering priority</param>
-        /// <returns>An <see cref="ActiveEnumerable{TElement}"/> whose elements are sorted according to keys</returns>
-        public static ActiveEnumerable<TSource> ActiveOrderBy<TSource>(this IEnumerable<TSource> source, params ActiveOrderingKeySelector<TSource>[] keySelectors) =>
+        /// <returns>An <see cref="IActiveEnumerable{TElement}"/> whose elements are sorted according to keys</returns>
+        public static IActiveEnumerable<TSource> ActiveOrderBy<TSource>(this IEnumerable<TSource> source, params ActiveOrderingKeySelector<TSource>[] keySelectors) =>
             ActiveOrderBy(source, IndexingStrategy.HashTable, keySelectors);
 
         /// <summary>
@@ -1629,8 +1629,8 @@ namespace Gear.ActiveQuery
         /// <param name="source">A sequence of values to order</param>
         /// <param name="indexingStrategy">The indexing strategy to use</param>
         /// <param name="keySelectorExpression">An expression to extract a key from an element</param>
-        /// <returns>An <see cref="ActiveEnumerable{TElement}"/> whose elements are sorted according to a key</returns>
-        public static ActiveEnumerable<TSource> ActiveOrderBy<TSource>(this IEnumerable<TSource> source, IndexingStrategy indexingStrategy, Expression<Func<TSource, IComparable>> keySelectorExpression) =>
+        /// <returns>An <see cref="IActiveEnumerable{TElement}"/> whose elements are sorted according to a key</returns>
+        public static IActiveEnumerable<TSource> ActiveOrderBy<TSource>(this IEnumerable<TSource> source, IndexingStrategy indexingStrategy, Expression<Func<TSource, IComparable>> keySelectorExpression) =>
             ActiveOrderBy(source, indexingStrategy, keySelectorExpression, false);
 
         /// <summary>
@@ -1641,8 +1641,8 @@ namespace Gear.ActiveQuery
         /// <param name="indexingStrategy">The indexing strategy to use</param>
         /// <param name="keySelectorExpression">An expression to extract a key from an element</param>
         /// <param name="isDescending"><c>true</c> to sort in descending order; otherwise, sort in ascending order</param>
-        /// <returns>An <see cref="ActiveEnumerable{TElement}"/> whose elements are sorted according to a key</returns>
-        public static ActiveEnumerable<TSource> ActiveOrderBy<TSource>(this IEnumerable<TSource> source, IndexingStrategy indexingStrategy, Expression<Func<TSource, IComparable>> keySelectorExpression, bool isDescending) =>
+        /// <returns>An <see cref="IActiveEnumerable{TElement}"/> whose elements are sorted according to a key</returns>
+        public static IActiveEnumerable<TSource> ActiveOrderBy<TSource>(this IEnumerable<TSource> source, IndexingStrategy indexingStrategy, Expression<Func<TSource, IComparable>> keySelectorExpression, bool isDescending) =>
             ActiveOrderBy(source, indexingStrategy, keySelectorExpression, null, isDescending);
 
         /// <summary>
@@ -1653,8 +1653,8 @@ namespace Gear.ActiveQuery
         /// <param name="indexingStrategy">The indexing strategy to use</param>
         /// <param name="keySelectorExpression">An expression to extract a key from an element</param>
         /// <param name="keySelectorExpressionOptions">Options governing the behavior of active expressions created using <paramref name="keySelectorExpression"/></param>
-        /// <returns>An <see cref="ActiveEnumerable{TElement}"/> whose elements are sorted according to a key</returns>
-        public static ActiveEnumerable<TSource> ActiveOrderBy<TSource>(this IEnumerable<TSource> source, IndexingStrategy indexingStrategy, Expression<Func<TSource, IComparable>> keySelectorExpression, ActiveExpressionOptions keySelectorExpressionOptions) =>
+        /// <returns>An <see cref="IActiveEnumerable{TElement}"/> whose elements are sorted according to a key</returns>
+        public static IActiveEnumerable<TSource> ActiveOrderBy<TSource>(this IEnumerable<TSource> source, IndexingStrategy indexingStrategy, Expression<Func<TSource, IComparable>> keySelectorExpression, ActiveExpressionOptions keySelectorExpressionOptions) =>
             ActiveOrderBy(source, indexingStrategy, keySelectorExpression, keySelectorExpressionOptions, false);
 
         /// <summary>
@@ -1666,8 +1666,8 @@ namespace Gear.ActiveQuery
         /// <param name="keySelectorExpression">An expression to extract a key from an element</param>
         /// <param name="keySelectorExpressionOptions">Options governing the behavior of active expressions created using <paramref name="keySelectorExpression"/></param>
         /// <param name="isDescending"><c>true</c> to sort in descending order; otherwise, sort in ascending order</param>
-        /// <returns>An <see cref="ActiveEnumerable{TElement}"/> whose elements are sorted according to a key</returns>
-        public static ActiveEnumerable<TSource> ActiveOrderBy<TSource>(this IEnumerable<TSource> source, IndexingStrategy indexingStrategy, Expression<Func<TSource, IComparable>> keySelectorExpression, ActiveExpressionOptions keySelectorExpressionOptions, bool isDescending) =>
+        /// <returns>An <see cref="IActiveEnumerable{TElement}"/> whose elements are sorted according to a key</returns>
+        public static IActiveEnumerable<TSource> ActiveOrderBy<TSource>(this IEnumerable<TSource> source, IndexingStrategy indexingStrategy, Expression<Func<TSource, IComparable>> keySelectorExpression, ActiveExpressionOptions keySelectorExpressionOptions, bool isDescending) =>
             ActiveOrderBy(source, indexingStrategy, new ActiveOrderingKeySelector<TSource>(keySelectorExpression, keySelectorExpressionOptions, isDescending));
 
         /// <summary>
@@ -1677,8 +1677,8 @@ namespace Gear.ActiveQuery
         /// <param name="source">A sequence of values to order</param>
         /// <param name="indexingStrategy">The indexing strategy to use</param>
         /// <param name="keySelectors">A series of <see cref="ActiveOrderingKeySelector{T}"/>, the position of each determining its ordering priority</param>
-        /// <returns>An <see cref="ActiveEnumerable{TElement}"/> whose elements are sorted according to keys</returns>
-        public static ActiveEnumerable<TSource> ActiveOrderBy<TSource>(this IEnumerable<TSource> source, IndexingStrategy indexingStrategy, params ActiveOrderingKeySelector<TSource>[] keySelectors)
+        /// <returns>An <see cref="IActiveEnumerable{TElement}"/> whose elements are sorted according to keys</returns>
+        public static IActiveEnumerable<TSource> ActiveOrderBy<TSource>(this IEnumerable<TSource> source, IndexingStrategy indexingStrategy, params ActiveOrderingKeySelector<TSource>[] keySelectors)
         {
             if (keySelectors.Length == 0)
                 return ToActiveEnumerable(source);
@@ -1778,7 +1778,7 @@ namespace Gear.ActiveQuery
 
             void elementResultChanged(object sender, RangeActiveExpressionResultChangeEventArgs<TSource, IComparable> e) => synchronizedSource.SequentialExecute(() => repositionElement(e.Element));
 
-            void genericCollectionChanged(object sender, NotifyGenericCollectionChangedEventArgs<(TSource element, IComparable comparable)> e) =>
+            void genericCollectionChanged(object sender, INotifyGenericCollectionChangedEventArgs<(TSource element, IComparable comparable)> e) =>
                 synchronizedSource.SequentialExecute(() =>
                 {
                     if (e.Action == NotifyCollectionChangedAction.Reset)
@@ -1903,8 +1903,8 @@ namespace Gear.ActiveQuery
         /// <typeparam name="TResult">The type of the value returned by <paramref name="selector"/></typeparam>
         /// <param name="source">A sequence of values to invoke a transform function on</param>
         /// <param name="selector">A transform function to apply to each element</param>
-        /// <returns>An <see cref="ActiveEnumerable{TElement}"/> the elements of which are the result of invoking the transform function on each element of <paramref name="source"/></returns>
-        public static ActiveEnumerable<TResult> ActiveSelect<TResult>(this IEnumerable source, Expression<Func<object, TResult>> selector) =>
+        /// <returns>An <see cref="IActiveEnumerable{TElement}"/> the elements of which are the result of invoking the transform function on each element of <paramref name="source"/></returns>
+        public static IActiveEnumerable<TResult> ActiveSelect<TResult>(this IEnumerable source, Expression<Func<object, TResult>> selector) =>
             ActiveSelect(source, selector, null);
 
         /// <summary>
@@ -1914,8 +1914,8 @@ namespace Gear.ActiveQuery
         /// <param name="source">A sequence of values to invoke a transform function on</param>
         /// <param name="selector">A transform function to apply to each element</param>
         /// <param name="selectorOptions">Options governing the behavior of active expressions created using <paramref name="selector"/></param>
-        /// <returns>An <see cref="ActiveEnumerable{TElement}"/> the elements of which are the result of invoking the transform function on each element of <paramref name="source"/></returns>
-        public static ActiveEnumerable<TResult> ActiveSelect<TResult>(this IEnumerable source, Expression<Func<object, TResult>> selector, ActiveExpressionOptions selectorOptions) =>
+        /// <returns>An <see cref="IActiveEnumerable{TElement}"/> the elements of which are the result of invoking the transform function on each element of <paramref name="source"/></returns>
+        public static IActiveEnumerable<TResult> ActiveSelect<TResult>(this IEnumerable source, Expression<Func<object, TResult>> selector, ActiveExpressionOptions selectorOptions) =>
             ActiveSelect(source, selector, selectorOptions, IndexingStrategy.HashTable);
 
         /// <summary>
@@ -1925,8 +1925,8 @@ namespace Gear.ActiveQuery
         /// <param name="source">A sequence of values to invoke a transform function on</param>
         /// <param name="selector">A transform function to apply to each element</param>
         /// <param name="indexingStrategy">The indexing strategy to use</param>
-        /// <returns>An <see cref="ActiveEnumerable{TElement}"/> the elements of which are the result of invoking the transform function on each element of <paramref name="source"/></returns>
-        public static ActiveEnumerable<TResult> ActiveSelect<TResult>(this IEnumerable source, Expression<Func<object, TResult>> selector, IndexingStrategy indexingStrategy) =>
+        /// <returns>An <see cref="IActiveEnumerable{TElement}"/> the elements of which are the result of invoking the transform function on each element of <paramref name="source"/></returns>
+        public static IActiveEnumerable<TResult> ActiveSelect<TResult>(this IEnumerable source, Expression<Func<object, TResult>> selector, IndexingStrategy indexingStrategy) =>
             ActiveSelect(source, selector, null, indexingStrategy);
 
         /// <summary>
@@ -1937,8 +1937,8 @@ namespace Gear.ActiveQuery
         /// <param name="selector">A transform function to apply to each element</param>
         /// <param name="selectorOptions">Options governing the behavior of active expressions created using <paramref name="selector"/></param>
         /// <param name="indexingStrategy">The indexing strategy to use</param>
-        /// <returns>An <see cref="ActiveEnumerable{TElement}"/> the elements of which are the result of invoking the transform function on each element of <paramref name="source"/></returns>
-        public static ActiveEnumerable<TResult> ActiveSelect<TResult>(this IEnumerable source, Expression<Func<object, TResult>> selector, ActiveExpressionOptions selectorOptions, IndexingStrategy indexingStrategy)
+        /// <returns>An <see cref="IActiveEnumerable{TElement}"/> the elements of which are the result of invoking the transform function on each element of <paramref name="source"/></returns>
+        public static IActiveEnumerable<TResult> ActiveSelect<TResult>(this IEnumerable source, Expression<Func<object, TResult>> selector, ActiveExpressionOptions selectorOptions, IndexingStrategy indexingStrategy)
         {
             ActiveQueryOptions.Optimize(ref selector);
 
@@ -1970,7 +1970,7 @@ namespace Gear.ActiveQuery
                         rangeObservableCollection[remainingIndex] = newResultElement;
                 });
 
-            void genericCollectionChanged(object sender, NotifyGenericCollectionChangedEventArgs<(object element, TResult result)> e) =>
+            void genericCollectionChanged(object sender, INotifyGenericCollectionChangedEventArgs<(object element, TResult result)> e) =>
                 synchronizedSource.SequentialExecute(() =>
                 {
                     switch (e.Action)
@@ -2126,8 +2126,8 @@ namespace Gear.ActiveQuery
         /// <typeparam name="TResult">The type of the value returned by <paramref name="selector"/></typeparam>
         /// <param name="source">A sequence of values to invoke a transform function on</param>
         /// <param name="selector">A transform function to apply to each element</param>
-        /// <returns>An <see cref="ActiveEnumerable{TElement}"/> the elements of which are the result of invoking the transform function on each element of <paramref name="source"/></returns>
-        public static ActiveEnumerable<TResult> ActiveSelect<TSource, TResult>(this IEnumerable<TSource> source, Expression<Func<TSource, TResult>> selector) =>
+        /// <returns>An <see cref="IActiveEnumerable{TElement}"/> the elements of which are the result of invoking the transform function on each element of <paramref name="source"/></returns>
+        public static IActiveEnumerable<TResult> ActiveSelect<TSource, TResult>(this IEnumerable<TSource> source, Expression<Func<TSource, TResult>> selector) =>
             ActiveSelect(source, selector, null);
 
         /// <summary>
@@ -2138,8 +2138,8 @@ namespace Gear.ActiveQuery
         /// <param name="source">A sequence of values to invoke a transform function on</param>
         /// <param name="selector">A transform function to apply to each element</param>
         /// <param name="selectorOptions">Options governing the behavior of active expressions created using <paramref name="selector"/></param>
-        /// <returns>An <see cref="ActiveEnumerable{TElement}"/> the elements of which are the result of invoking the transform function on each element of <paramref name="source"/></returns>
-        public static ActiveEnumerable<TResult> ActiveSelect<TSource, TResult>(this IEnumerable<TSource> source, Expression<Func<TSource, TResult>> selector, ActiveExpressionOptions selectorOptions) =>
+        /// <returns>An <see cref="IActiveEnumerable{TElement}"/> the elements of which are the result of invoking the transform function on each element of <paramref name="source"/></returns>
+        public static IActiveEnumerable<TResult> ActiveSelect<TSource, TResult>(this IEnumerable<TSource> source, Expression<Func<TSource, TResult>> selector, ActiveExpressionOptions selectorOptions) =>
             ActiveSelect(source, selector, selectorOptions, IndexingStrategy.HashTable);
 
         /// <summary>
@@ -2150,8 +2150,8 @@ namespace Gear.ActiveQuery
         /// <param name="source">A sequence of values to invoke a transform function on</param>
         /// <param name="selector">A transform function to apply to each element</param>
         /// <param name="indexingStrategy">The indexing strategy to use</param>
-        /// <returns>An <see cref="ActiveEnumerable{TElement}"/> the elements of which are the result of invoking the transform function on each element of <paramref name="source"/></returns>
-        public static ActiveEnumerable<TResult> ActiveSelect<TSource, TResult>(this IEnumerable<TSource> source, Expression<Func<TSource, TResult>> selector, IndexingStrategy indexingStrategy) =>
+        /// <returns>An <see cref="IActiveEnumerable{TElement}"/> the elements of which are the result of invoking the transform function on each element of <paramref name="source"/></returns>
+        public static IActiveEnumerable<TResult> ActiveSelect<TSource, TResult>(this IEnumerable<TSource> source, Expression<Func<TSource, TResult>> selector, IndexingStrategy indexingStrategy) =>
             ActiveSelect(source, selector, null, indexingStrategy);
 
         /// <summary>
@@ -2163,8 +2163,8 @@ namespace Gear.ActiveQuery
         /// <param name="selector">A transform function to apply to each element</param>
         /// <param name="selectorOptions">Options governing the behavior of active expressions created using <paramref name="selector"/></param>
         /// <param name="indexingStrategy">The indexing strategy to use</param>
-        /// <returns>An <see cref="ActiveEnumerable{TElement}"/> the elements of which are the result of invoking the transform function on each element of <paramref name="source"/></returns>
-        public static ActiveEnumerable<TResult> ActiveSelect<TSource, TResult>(this IEnumerable<TSource> source, Expression<Func<TSource, TResult>> selector, ActiveExpressionOptions selectorOptions, IndexingStrategy indexingStrategy)
+        /// <returns>An <see cref="IActiveEnumerable{TElement}"/> the elements of which are the result of invoking the transform function on each element of <paramref name="source"/></returns>
+        public static IActiveEnumerable<TResult> ActiveSelect<TSource, TResult>(this IEnumerable<TSource> source, Expression<Func<TSource, TResult>> selector, ActiveExpressionOptions selectorOptions, IndexingStrategy indexingStrategy)
         {
             ActiveQueryOptions.Optimize(ref selector);
 
@@ -2197,7 +2197,7 @@ namespace Gear.ActiveQuery
                         rangeObservableCollection[remainingIndex] = newResultElement;
                 });
 
-            void genericCollectionChanged(object sender, NotifyGenericCollectionChangedEventArgs<(TSource element, TResult result)> e) =>
+            void genericCollectionChanged(object sender, INotifyGenericCollectionChangedEventArgs<(TSource element, TResult result)> e) =>
                 synchronizedSource.SequentialExecute(() =>
                 {
                     switch (e.Action)
@@ -2356,8 +2356,8 @@ namespace Gear.ActiveQuery
         /// <typeparam name="TResult">The type of the value returned by <paramref name="selector"/></typeparam>
         /// <param name="source">A sequence of values to project</param>
         /// <param name="selector">A transform function to apply to each element</param>
-        /// <returns>An <see cref="ActiveEnumerable{TElement}"/> the elements of which are the result of invoking the one-to-many transform function on each element of the input sequence</returns>
-        public static ActiveEnumerable<TResult> ActiveSelectMany<TSource, TResult>(this IEnumerable<TSource> source, Expression<Func<TSource, IEnumerable<TResult>>> selector) =>
+        /// <returns>An <see cref="IActiveEnumerable{TElement}"/> the elements of which are the result of invoking the one-to-many transform function on each element of the input sequence</returns>
+        public static IActiveEnumerable<TResult> ActiveSelectMany<TSource, TResult>(this IEnumerable<TSource> source, Expression<Func<TSource, IEnumerable<TResult>>> selector) =>
             ActiveSelectMany(source, selector, null);
 
         /// <summary>
@@ -2368,8 +2368,8 @@ namespace Gear.ActiveQuery
         /// <param name="source">A sequence of values to project</param>
         /// <param name="selector">A transform function to apply to each element</param>
         /// <param name="selectorOptions">Options governing the behavior of active expressions created using <paramref name="selector"/></param>
-        /// <returns>An <see cref="ActiveEnumerable{TElement}"/> the elements of which are the result of invoking the one-to-many transform function on each element of the input sequence</returns>
-        public static ActiveEnumerable<TResult> ActiveSelectMany<TSource, TResult>(this IEnumerable<TSource> source, Expression<Func<TSource, IEnumerable<TResult>>> selector, ActiveExpressionOptions selectorOptions) =>
+        /// <returns>An <see cref="IActiveEnumerable{TElement}"/> the elements of which are the result of invoking the one-to-many transform function on each element of the input sequence</returns>
+        public static IActiveEnumerable<TResult> ActiveSelectMany<TSource, TResult>(this IEnumerable<TSource> source, Expression<Func<TSource, IEnumerable<TResult>>> selector, ActiveExpressionOptions selectorOptions) =>
             ActiveSelectMany(source, selector, selectorOptions, IndexingStrategy.HashTable);
 
         /// <summary>
@@ -2380,8 +2380,8 @@ namespace Gear.ActiveQuery
         /// <param name="source">A sequence of values to project</param>
         /// <param name="selector">A transform function to apply to each element</param>
         /// <param name="indexingStrategy">The indexing strategy to use</param>
-        /// <returns>An <see cref="ActiveEnumerable{TElement}"/> the elements of which are the result of invoking the one-to-many transform function on each element of the input sequence</returns>
-        public static ActiveEnumerable<TResult> ActiveSelectMany<TSource, TResult>(this IEnumerable<TSource> source, Expression<Func<TSource, IEnumerable<TResult>>> selector, IndexingStrategy indexingStrategy) =>
+        /// <returns>An <see cref="IActiveEnumerable{TElement}"/> the elements of which are the result of invoking the one-to-many transform function on each element of the input sequence</returns>
+        public static IActiveEnumerable<TResult> ActiveSelectMany<TSource, TResult>(this IEnumerable<TSource> source, Expression<Func<TSource, IEnumerable<TResult>>> selector, IndexingStrategy indexingStrategy) =>
             ActiveSelectMany(source, selector, null, indexingStrategy);
 
         /// <summary>
@@ -2393,8 +2393,8 @@ namespace Gear.ActiveQuery
         /// <param name="selector">A transform function to apply to each element</param>
         /// <param name="selectorOptions">Options governing the behavior of active expressions created using <paramref name="selector"/></param>
         /// <param name="indexingStrategy">The indexing strategy to use</param>
-        /// <returns>An <see cref="ActiveEnumerable{TElement}"/> the elements of which are the result of invoking the one-to-many transform function on each element of the input sequence</returns>
-        public static ActiveEnumerable<TResult> ActiveSelectMany<TSource, TResult>(this IEnumerable<TSource> source, Expression<Func<TSource, IEnumerable<TResult>>> selector, ActiveExpressionOptions selectorOptions, IndexingStrategy indexingStrategy)
+        /// <returns>An <see cref="IActiveEnumerable{TElement}"/> the elements of which are the result of invoking the one-to-many transform function on each element of the input sequence</returns>
+        public static IActiveEnumerable<TResult> ActiveSelectMany<TSource, TResult>(this IEnumerable<TSource> source, Expression<Func<TSource, IEnumerable<TResult>>> selector, ActiveExpressionOptions selectorOptions, IndexingStrategy indexingStrategy)
         {
             ActiveQueryOptions.Optimize(ref selector);
 
@@ -2533,7 +2533,7 @@ namespace Gear.ActiveQuery
                     }
                 });
 
-            void genericCollectionChanged(object sender, NotifyGenericCollectionChangedEventArgs<(TSource element, IEnumerable<TResult> results)> e) =>
+            void genericCollectionChanged(object sender, INotifyGenericCollectionChangedEventArgs<(TSource element, IEnumerable<TResult> results)> e) =>
                 synchronizableSource.SequentialExecute(() =>
                 {
                     switch (e.Action)
@@ -2763,8 +2763,8 @@ namespace Gear.ActiveQuery
         /// </summary>
         /// <typeparam name="TSource">The type of the elements of <paramref name="source"/></typeparam>
         /// <param name="source">An <see cref="IEnumerable{T}"/> to return the single element of</param>
-        /// <returns>An <see cref="ActiveValue{TValue}"/> the <see cref="ActiveValue{TValue}.Value"/> of which is the single element of the input sequence</returns>
-        public static ActiveValue<TSource> ActiveSingle<TSource>(this IEnumerable<TSource> source)
+        /// <returns>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is the single element of the input sequence</returns>
+        public static IActiveValue<TSource> ActiveSingle<TSource>(this IEnumerable<TSource> source)
         {
             var elementFaultChangeNotifier = source as INotifyElementFaultChanges;
             if (source is INotifyCollectionChanged changingSource)
@@ -2818,8 +2818,8 @@ namespace Gear.ActiveQuery
         /// <typeparam name="TSource">The type of the elements of <paramref name="source"/></typeparam>
         /// <param name="source">An <see cref="IEnumerable{T}"/> to return the single element of</param>
         /// <param name="predicate">A function to test an element for a condition</param>
-        /// <returns>An <see cref="ActiveValue{TValue}"/> the <see cref="ActiveValue{TValue}.Value"/> of which is the single element of the input sequence that satisfies a condition</returns>
-        public static ActiveValue<TSource> ActiveSingle<TSource>(this IReadOnlyList<TSource> source, Expression<Func<TSource, bool>> predicate) =>
+        /// <returns>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is the single element of the input sequence that satisfies a condition</returns>
+        public static IActiveValue<TSource> ActiveSingle<TSource>(this IReadOnlyList<TSource> source, Expression<Func<TSource, bool>> predicate) =>
             ActiveSingle(source, predicate, null);
 
         /// <summary>
@@ -2829,10 +2829,10 @@ namespace Gear.ActiveQuery
         /// <param name="source">An <see cref="IEnumerable{T}"/> to return the single element of</param>
         /// <param name="predicate">A function to test an element for a condition</param>
         /// <param name="predicateOptions">Options governing the behavior of active expressions created using <paramref name="predicate"/></param>
-        /// <returns>An <see cref="ActiveValue{TValue}"/> the <see cref="ActiveValue{TValue}.Value"/> of which is the single element of the input sequence that satisfies a condition</returns>
-        public static ActiveValue<TSource> ActiveSingle<TSource>(this IReadOnlyList<TSource> source, Expression<Func<TSource, bool>> predicate, ActiveExpressionOptions predicateOptions)
+        /// <returns>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is the single element of the input sequence that satisfies a condition</returns>
+        public static IActiveValue<TSource> ActiveSingle<TSource>(this IReadOnlyList<TSource> source, Expression<Func<TSource, bool>> predicate, ActiveExpressionOptions predicateOptions)
         {
-            ActiveEnumerable<TSource> where;
+            IActiveEnumerable<TSource> where;
             Action<TSource> setValue = null;
             Action<Exception> setOperationFault = null;
             var none = false;
@@ -2892,8 +2892,8 @@ namespace Gear.ActiveQuery
         /// </summary>
         /// <typeparam name="TSource">The type of the elements of <paramref name="source"/></typeparam>
         /// <param name="source">An <see cref="IEnumerable{T}"/> to return the single element of</param>
-        /// <returns>An <see cref="ActiveValue{TValue}"/> the <see cref="ActiveValue{TValue}.Value"/> of which is the single element of the input sequence, or <c>default</c>(<typeparamref name="TSource"/>) if the sequence contains no elements</returns>
-        public static ActiveValue<TSource> ActiveSingleOrDefault<TSource>(this IEnumerable<TSource> source)
+        /// <returns>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is the single element of the input sequence, or <c>default</c>(<typeparamref name="TSource"/>) if the sequence contains no elements</returns>
+        public static IActiveValue<TSource> ActiveSingleOrDefault<TSource>(this IEnumerable<TSource> source)
         {
             var elementFaultChangeNotifier = source as INotifyElementFaultChanges;
             if (source is INotifyCollectionChanged changingSource)
@@ -2947,8 +2947,8 @@ namespace Gear.ActiveQuery
         /// <typeparam name="TSource">The type of the elements of <paramref name="source"/></typeparam>
         /// <param name="source">An <see cref="IEnumerable{T}"/> to return the single element of</param>
         /// <param name="predicate">A function to test an element for a condition</param>
-        /// <returns>The single element of the input sequence that satisfies the condition, or <c>default</c>(<typeparamref name="TSource"/>) if no such element is found</returns>
-        public static ActiveValue<TSource> ActiveSingleOrDefault<TSource>(this IReadOnlyList<TSource> source, Expression<Func<TSource, bool>> predicate) =>
+        /// <returns>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is the single element of the input sequence that satisfies the condition, or <c>default</c>(<typeparamref name="TSource"/>) if no such element is found</returns>
+        public static IActiveValue<TSource> ActiveSingleOrDefault<TSource>(this IReadOnlyList<TSource> source, Expression<Func<TSource, bool>> predicate) =>
             ActiveSingleOrDefault(source, predicate, null);
 
         /// <summary>
@@ -2958,10 +2958,10 @@ namespace Gear.ActiveQuery
         /// <param name="source">An <see cref="IEnumerable{T}"/> to return the single element of</param>
         /// <param name="predicate">A function to test an element for a condition</param>
         /// <param name="predicateOptions">Options governing the behavior of active expressions created using <paramref name="predicate"/></param>
-        /// <returns>The single element of the input sequence that satisfies the condition, or <c>default</c>(<typeparamref name="TSource"/>) if no such element is found</returns>
-        public static ActiveValue<TSource> ActiveSingleOrDefault<TSource>(this IReadOnlyList<TSource> source, Expression<Func<TSource, bool>> predicate, ActiveExpressionOptions predicateOptions)
+        /// <returns>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is the single element of the input sequence that satisfies the condition, or <c>default</c>(<typeparamref name="TSource"/>) if no such element is found</returns>
+        public static IActiveValue<TSource> ActiveSingleOrDefault<TSource>(this IReadOnlyList<TSource> source, Expression<Func<TSource, bool>> predicate, ActiveExpressionOptions predicateOptions)
         {
-            ActiveEnumerable<TSource> where;
+            IActiveEnumerable<TSource> where;
             Action<TSource> setValue = null;
             Action<Exception> setOperationFault = null;
             var moreThanOne = false;
@@ -3004,8 +3004,8 @@ namespace Gear.ActiveQuery
         /// </summary>
         /// <typeparam name="TSource">The type of the elements of <paramref name="source"/></typeparam>
         /// <param name="source">A sequence of values to calculate the sum of</param>
-        /// <returns>An <see cref="ActiveValue{TValue}"/> the <see cref="ActiveValue{TValue}.Value"/> of which is the sum of the values in the sequence</returns>
-        public static ActiveValue<TSource> ActiveSum<TSource>(this IEnumerable<TSource> source) =>
+        /// <returns>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is the sum of the values in the sequence</returns>
+        public static IActiveValue<TSource> ActiveSum<TSource>(this IEnumerable<TSource> source) =>
             ActiveSum(source, element => element);
 
         /// <summary>
@@ -3015,8 +3015,8 @@ namespace Gear.ActiveQuery
         /// <typeparam name="TResult">The type of the values being summed</typeparam>
         /// <param name="source">A sequence of values that are used to calculate a sum</param>
         /// <param name="selector">A transform function to apply to each element</param>
-        /// <returns>An <see cref="ActiveValue{TValue}"/> the <see cref="ActiveValue{TValue}.Value"/> of which is the sum of the projected values</returns>
-        public static ActiveValue<TResult> ActiveSum<TSource, TResult>(this IEnumerable<TSource> source, Expression<Func<TSource, TResult>> selector) =>
+        /// <returns>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is the sum of the projected values</returns>
+        public static IActiveValue<TResult> ActiveSum<TSource, TResult>(this IEnumerable<TSource> source, Expression<Func<TSource, TResult>> selector) =>
             ActiveSum(source, selector, null);
 
         /// <summary>
@@ -3027,8 +3027,8 @@ namespace Gear.ActiveQuery
         /// <param name="source">A sequence of values that are used to calculate a sum</param>
         /// <param name="selector">A transform function to apply to each element</param>
         /// <param name="selectorOptions">Options governing the behavior of active expressions created using <paramref name="selector"/></param>
-        /// <returns>An <see cref="ActiveValue{TValue}"/> the <see cref="ActiveValue{TValue}.Value"/> of which is the sum of the projected values</returns>
-        public static ActiveValue<TResult> ActiveSum<TSource, TResult>(this IEnumerable<TSource> source, Expression<Func<TSource, TResult>> selector, ActiveExpressionOptions selectorOptions)
+        /// <returns>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is the sum of the projected values</returns>
+        public static IActiveValue<TResult> ActiveSum<TSource, TResult>(this IEnumerable<TSource> source, Expression<Func<TSource, TResult>> selector, ActiveExpressionOptions selectorOptions)
         {
             ActiveQueryOptions.Optimize(ref selector);
 
@@ -3049,7 +3049,7 @@ namespace Gear.ActiveQuery
 
             void elementResultChanging(object sender, RangeActiveExpressionResultChangeEventArgs<TSource, TResult> e) => synchronizedSource.SequentialExecute(() => resultsChanging.Add(e.Element, (e.Result, e.Count)));
 
-            void genericCollectionChanged(object sender, NotifyGenericCollectionChangedEventArgs<(TSource element, TResult result)> e) =>
+            void genericCollectionChanged(object sender, INotifyGenericCollectionChangedEventArgs<(TSource element, TResult result)> e) =>
                 synchronizedSource.SequentialExecute(() =>
                 {
                     if (e.Action == NotifyCollectionChangedAction.Reset)
@@ -3106,20 +3106,20 @@ namespace Gear.ActiveQuery
         #region SwitchContext
 
         /// <summary>
-        /// Creates an <see cref="ActiveEnumerable{TElement}"/> that is kept consistent on the current thread's <see cref="SynchronizationContext"/> with a specified <see cref="IEnumerable"/> that implements <see cref="INotifyCollectionChanged"/> or <see cref="INotifyGenericCollectionChanged{T}"/>
+        /// Creates an <see cref="IActiveEnumerable{TElement}"/> that is kept consistent on the current thread's <see cref="SynchronizationContext"/> with a specified <see cref="IEnumerable"/> that implements <see cref="INotifyCollectionChanged"/> or <see cref="INotifyGenericCollectionChanged{T}"/>
         /// </summary>
         /// <param name="source">An <see cref="IEnumerable"/></param>
-        /// <returns>An <see cref="ActiveEnumerable{TElement}"/> that is kept consistent with <paramref name="source"/> on the current thread's <see cref="SynchronizationContext"/></returns>
-        public static ActiveEnumerable<object> SwitchContext(this IEnumerable source) =>
+        /// <returns>An <see cref="IActiveEnumerable{TElement}"/> that is kept consistent with <paramref name="source"/> on the current thread's <see cref="SynchronizationContext"/></returns>
+        public static IActiveEnumerable<object> SwitchContext(this IEnumerable source) =>
             SwitchContext(source, SynchronizationContext.Current);
 
         /// <summary>
-        /// Creates an <see cref="ActiveEnumerable{TElement}"/> that is kept consistent on a specified <see cref="SynchronizationContext"/> with a specified <see cref="IEnumerable"/> that implements <see cref="INotifyCollectionChanged"/> or <see cref="INotifyGenericCollectionChanged{T}"/>
+        /// Creates an <see cref="IActiveEnumerable{TElement}"/> that is kept consistent on a specified <see cref="SynchronizationContext"/> with a specified <see cref="IEnumerable"/> that implements <see cref="INotifyCollectionChanged"/> or <see cref="INotifyGenericCollectionChanged{T}"/>
         /// </summary>
         /// <param name="source">An <see cref="IEnumerable"/></param>
         /// <param name="synchronizationContext">The <see cref="SynchronizationContext"/> on which to perform consistency operations</param>
-        /// <returns>An <see cref="ActiveEnumerable{TElement}"/> that is kept consistent with <paramref name="source"/> on <paramref name="synchronizationContext"/></returns>
-        public static ActiveEnumerable<object> SwitchContext(this IEnumerable source, SynchronizationContext synchronizationContext)
+        /// <returns>An <see cref="IActiveEnumerable{TElement}"/> that is kept consistent with <paramref name="source"/> on <paramref name="synchronizationContext"/></returns>
+        public static IActiveEnumerable<object> SwitchContext(this IEnumerable source, SynchronizationContext synchronizationContext)
         {
             SynchronizedRangeObservableCollection<object> rangeObservableCollection = null;
 
@@ -3167,22 +3167,22 @@ namespace Gear.ActiveQuery
         }
 
         /// <summary>
-        /// Creates an <see cref="ActiveEnumerable{TElement}"/> that is kept consistent on the current thread's <see cref="SynchronizationContext"/> with a specified <see cref="IEnumerable{T}"/> that implements <see cref="INotifyCollectionChanged"/> or <see cref="INotifyGenericCollectionChanged{T}"/>
+        /// Creates an <see cref="IActiveEnumerable{TElement}"/> that is kept consistent on the current thread's <see cref="SynchronizationContext"/> with a specified <see cref="IEnumerable{T}"/> that implements <see cref="INotifyCollectionChanged"/> or <see cref="INotifyGenericCollectionChanged{T}"/>
         /// </summary>
         /// <typeparam name="TSource">The type of the elements of source</typeparam>
         /// <param name="source">An <see cref="IEnumerable{T}"/></param>
-        /// <returns>An <see cref="ActiveEnumerable{TElement}"/> that is kept consistent with <paramref name="source"/> on the current thread's <see cref="SynchronizationContext"/></returns>
-        public static ActiveEnumerable<TSource> SwitchContext<TSource>(this IEnumerable<TSource> source) =>
+        /// <returns>An <see cref="IActiveEnumerable{TElement}"/> that is kept consistent with <paramref name="source"/> on the current thread's <see cref="SynchronizationContext"/></returns>
+        public static IActiveEnumerable<TSource> SwitchContext<TSource>(this IEnumerable<TSource> source) =>
             SwitchContext(source, SynchronizationContext.Current);
 
         /// <summary>
-        /// Creates an <see cref="ActiveEnumerable{TElement}"/> that is kept consistent on a specified <see cref="SynchronizationContext"/> with a specified <see cref="IEnumerable{T}"/> that implements <see cref="INotifyCollectionChanged"/> or <see cref="INotifyGenericCollectionChanged{T}"/>
+        /// Creates an <see cref="IActiveEnumerable{TElement}"/> that is kept consistent on a specified <see cref="SynchronizationContext"/> with a specified <see cref="IEnumerable{T}"/> that implements <see cref="INotifyCollectionChanged"/> or <see cref="INotifyGenericCollectionChanged{T}"/>
         /// </summary>
         /// <typeparam name="TSource">The type of the elements of source</typeparam>
         /// <param name="source">An <see cref="IEnumerable{T}"/></param>
         /// <param name="synchronizationContext">The <see cref="SynchronizationContext"/> on which to perform consistency operations</param>
-        /// <returns>An <see cref="ActiveEnumerable{TElement}"/> that is kept consistent with <paramref name="source"/> on <paramref name="synchronizationContext"/></returns>
-        public static ActiveEnumerable<TSource> SwitchContext<TSource>(this IEnumerable<TSource> source, SynchronizationContext synchronizationContext)
+        /// <returns>An <see cref="IActiveEnumerable{TElement}"/> that is kept consistent with <paramref name="source"/> on <paramref name="synchronizationContext"/></returns>
+        public static IActiveEnumerable<TSource> SwitchContext<TSource>(this IEnumerable<TSource> source, SynchronizationContext synchronizationContext)
         {
             SynchronizedRangeObservableCollection<TSource> rangeObservableCollection = null;
 
@@ -3214,7 +3214,7 @@ namespace Gear.ActiveQuery
                 }).ConfigureAwait(false);
             }
 
-            async void genericCollectionChanged(object sender, NotifyGenericCollectionChangedEventArgs<TSource> e)
+            async void genericCollectionChanged(object sender, INotifyGenericCollectionChangedEventArgs<TSource> e)
             {
                 IReadOnlyList<TSource> resetValues = null;
                 if (e.Action == NotifyCollectionChangedAction.Reset)
@@ -3267,12 +3267,12 @@ namespace Gear.ActiveQuery
         #region ToActiveEnumerable
 
         /// <summary>
-        /// Converts an <see cref="IEnumerable{T}"/> into an <see cref="ActiveEnumerable{TElement}"/>
+        /// Converts an <see cref="IEnumerable{T}"/> into an <see cref="IActiveEnumerable{TElement}"/>
         /// </summary>
         /// <typeparam name="TSource">The type of the elements of <paramref name="source"/></typeparam>
         /// <param name="source">An <see cref="IEnumerable{T}"/> to convert</param>
-        /// <returns>An <see cref="ActiveEnumerable{TElement}"/> equivalent to <paramref name="source"/> (and mutates with it so long as <paramref name="source"/> implements <see cref="INotifyCollectionChanged"/> or <see cref="INotifyGenericCollectionChanged{T}"/>)</returns>
-        public static ActiveEnumerable<TSource> ToActiveEnumerable<TSource>(this IEnumerable<TSource> source)
+        /// <returns>An <see cref="IActiveEnumerable{TElement}"/> equivalent to <paramref name="source"/> (and mutates with it so long as <paramref name="source"/> implements <see cref="INotifyCollectionChanged"/> or <see cref="INotifyGenericCollectionChanged{T}"/>)</returns>
+        public static IActiveEnumerable<TSource> ToActiveEnumerable<TSource>(this IEnumerable<TSource> source)
         {
             if (source is IReadOnlyList<TSource> readOnlyList && source is ISynchronized)
                 return new ActiveEnumerable<TSource>(readOnlyList);
@@ -3513,7 +3513,7 @@ namespace Gear.ActiveQuery
                     checkOperationFault();
                 });
 
-            void genericCollectionChanged(object sender, NotifyGenericCollectionChangedEventArgs<(TSource element, KeyValuePair<TKey, TValue> keyValuePair)> e) =>
+            void genericCollectionChanged(object sender, INotifyGenericCollectionChangedEventArgs<(TSource element, KeyValuePair<TKey, TValue> keyValuePair)> e) =>
                 synchronizedSource.SequentialExecute(() =>
                 {
                     if (e.Action == NotifyCollectionChangedAction.Reset)
@@ -3630,8 +3630,8 @@ namespace Gear.ActiveQuery
         /// <typeparam name="TSource">The type of the elements of <paramref name="source"/></typeparam>
         /// <param name="source">An <see cref="IEnumerable{T}"/> to filter</param>
         /// <param name="predicate">A function to test each element for a condition</param>
-        /// <returns>An <see cref="ActiveEnumerable{TElement}"/> that contains elements from the input sequence that satisfy the condition</returns>
-        public static ActiveEnumerable<TSource> ActiveWhere<TSource>(this IEnumerable<TSource> source, Expression<Func<TSource, bool>> predicate) =>
+        /// <returns>An <see cref="IActiveEnumerable{TElement}"/> that contains elements from the input sequence that satisfy the condition</returns>
+        public static IActiveEnumerable<TSource> ActiveWhere<TSource>(this IEnumerable<TSource> source, Expression<Func<TSource, bool>> predicate) =>
             ActiveWhere(source, predicate, null);
 
         /// <summary>
@@ -3641,8 +3641,8 @@ namespace Gear.ActiveQuery
         /// <param name="source">An <see cref="IEnumerable{T}"/> to filter</param>
         /// <param name="predicate">A function to test each element for a condition</param>
         /// <param name="predicateOptions">Options governing the behavior of active expressions created using <paramref name="predicate"/></param>
-        /// <returns>An <see cref="ActiveEnumerable{TElement}"/> that contains elements from the input sequence that satisfy the condition</returns>
-        public static ActiveEnumerable<TSource> ActiveWhere<TSource>(this IEnumerable<TSource> source, Expression<Func<TSource, bool>> predicate, ActiveExpressionOptions predicateOptions)
+        /// <returns>An <see cref="IActiveEnumerable{TElement}"/> that contains elements from the input sequence that satisfy the condition</returns>
+        public static IActiveEnumerable<TSource> ActiveWhere<TSource>(this IEnumerable<TSource> source, Expression<Func<TSource, bool>> predicate, ActiveExpressionOptions predicateOptions)
         {
             ActiveQueryOptions.Optimize(ref predicate);
 
@@ -3662,7 +3662,7 @@ namespace Gear.ActiveQuery
                     }
                 });
 
-            void genericCollectionChanged(object sender, NotifyGenericCollectionChangedEventArgs<(TSource element, bool included)> e) =>
+            void genericCollectionChanged(object sender, INotifyGenericCollectionChangedEventArgs<(TSource element, bool included)> e) =>
                 synchronizedSource.SequentialExecute(() =>
                 {
                     if (e.Action == NotifyCollectionChangedAction.Reset)

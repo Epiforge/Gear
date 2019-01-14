@@ -13,7 +13,7 @@ namespace Gear.ActiveQuery
     /// Represents a read-only collection of elements that is the result of an active query
     /// </summary>
     /// <typeparam name="TElement">The type of the elements in the sequence</typeparam>
-    public class ActiveEnumerable<TElement> : SyncDisposablePropertyChangeNotifier, INotifyCollectionChanged, INotifyElementFaultChanges, INotifyGenericCollectionChanged<TElement>, IReadOnlyList<TElement>, ISynchronized
+    public class ActiveEnumerable<TElement> : SyncDisposablePropertyChangeNotifier, IActiveEnumerable<TElement>
     {
         internal ActiveEnumerable(IReadOnlyList<TElement> readOnlyList, INotifyElementFaultChanges faultNotifier = null, Action onDispose = null)
         {
@@ -70,7 +70,7 @@ namespace Gear.ActiveQuery
         /// <summary>
         /// Occurs when the collection changes
         /// </summary>
-        public event EventHandler<NotifyGenericCollectionChangedEventArgs<TElement>> GenericCollectionChanged;
+        public event NotifyGenericCollectionChangedEventHandler<TElement> GenericCollectionChanged;
 
         void CollectionChangedHandler(object sender, NotifyCollectionChangedEventArgs e)
         {
@@ -79,10 +79,10 @@ namespace Gear.ActiveQuery
                 GenericCollectionChanged?.Invoke(this, (NotifyGenericCollectionChangedEventArgs<TElement>)e);
         }
 
-        void GenericCollectionChangedHandler(object sender, NotifyGenericCollectionChangedEventArgs<TElement> e)
+        void GenericCollectionChangedHandler(object sender, INotifyGenericCollectionChangedEventArgs<TElement> e)
         {
             if (!isCollectionNotifier)
-                CollectionChanged?.Invoke(this, e);
+                CollectionChanged?.Invoke(this, (NotifyGenericCollectionChangedEventArgs<TElement>)e);
             GenericCollectionChanged?.Invoke(this, e);
         }
 
