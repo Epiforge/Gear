@@ -17,7 +17,26 @@ namespace Gear.Components
 
         static FastMethodInfo CreateFastGetter(PropertyInfo property) => new FastMethodInfo(property.GetMethod);
 
-        static PropertyInfo GetProperty((Type type, string name) propertyDetails) => propertyDetails.type.GetRuntimeProperty(propertyDetails.name);
+        static PropertyInfo GetProperty((Type type, string name) propertyDetails)
+        {
+            var (type, name) = propertyDetails;
+            var property = type.GetRuntimeProperty(name);
+            if (property == null)
+            {
+                var typeInfo = type.GetTypeInfo();
+                var baseType = typeInfo.BaseType;
+                if (baseType != null)
+                    property = properties.GetOrAdd((baseType, name), GetProperty);
+                if (property == null)
+                    foreach (var interfaceType in typeInfo.ImplementedInterfaces)
+                    {
+                        property = properties.GetOrAdd((interfaceType, name), GetProperty);
+                        if (property != null)
+                            break;
+                    }
+            }
+            return property;
+        }
 
         static string GetPropertyNameFromExpression<TInstance, TPropertyValue>(this TInstance obj, Expression<Func<TInstance, TPropertyValue>> propertyExpression)
         {
