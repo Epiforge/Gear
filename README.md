@@ -175,7 +175,7 @@ Task.Run(() =>
 {
     notes = new SynchronizedObservableCollection<Note>();
     orderedNotes = notes.ActiveOrderBy(note => note.LastEdited, isDescending: true);
-})
+});
 ```
 
 Since we called the `Gear.Components.SynchronizedObservableCollection` constructor in the context of a TPL `Task` and without specifying a `SynchronizationContext`, operations performed on it will not be in the context of our UI thread.
@@ -192,7 +192,7 @@ Task.Run(() =>
     notes = new SynchronizedObservableCollection<Note>();
     orderedNotes = notes.ActiveOrderBy(note => note.LastEdited, isDescending: true);
     notesForBinding = orderedNotes.SwitchContext(uiContext);
-})
+});
 ```
 
 Or, if you call `SwitchContext` without any arguments but when you know you're already running in the UI's context, it will assume you want to switch to that.
@@ -204,7 +204,7 @@ Task.Run(() =>
 {
     notes = new SynchronizedObservableCollection<Note>();
     orderedNotes = notes.ActiveOrderBy(note => note.LastEdited, isDescending: true);
-})
+});
 var notesForBinding = orderedNotes.SwitchContext();
 ```
 
