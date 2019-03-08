@@ -10,7 +10,7 @@
     <Owners>Epiforge</Owners>
     <PackageIconUrl>https://raw.githubusercontent.com/Epiforge/Gear/master/NuGet.jpg</PackageIconUrl>
     <PackageId>Gear.Parallel</PackageId>
-    <PackageLicenseUrl>https://raw.githubusercontent.com/Epiforge/Gear/master/LICENSE</PackageLicenseUrl>
+    <PackageLicense>https://raw.githubusercontent.com/Epiforge/Gear/master/LICENSE</PackageLicense>
     <PackageProjectUrl>https://github.com/Epiforge/Gear</PackageProjectUrl>
     <PackageTags>parallel dataflow multicore multithreading</PackageTags>
     <PackageVersion>1.0.0</PackageVersion>
