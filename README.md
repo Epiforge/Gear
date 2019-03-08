@@ -200,7 +200,7 @@ Or, if you call `SwitchContext` without any arguments but when you know you're a
 ```csharp
 SynchronizedObservableCollection<Note> notes;
 ActiveEnumerable<Note> orderedNotes;
-Task.Run(() =>
+await Task.Run(() =>
 {
     notes = new SynchronizedObservableCollection<Note>();
     orderedNotes = notes.ActiveOrderBy(note => note.LastEdited, isDescending: true);
