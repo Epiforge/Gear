@@ -24,7 +24,7 @@ namespace Gear.Components
 
         static IReadOnlyList<(string name, FastMethodInfo getter)> CreateFastPropertyGetters(Type type) =>
             type.GetRuntimeProperties()
-                .Where(p => !getExceptionDetailsIgnoredAdditionalPropertyDeclaringTypes.Contains(p.DeclaringType) && !getExceptionDetailsIgnoredAdditionalPropertyNames.Contains(p.Name))
+                .Where(p => !getExceptionDetailsIgnoredAdditionalPropertyDeclaringTypes.Contains(p.DeclaringType) && !getExceptionDetailsIgnoredAdditionalPropertyNames.Contains(p.Name) && p.GetMethod is MethodInfo getMethod && getMethod.IsPublic && !getMethod.IsStatic)
                 .Select(p => (name: $"{type.FullName}.{p.Name}", getter: new FastMethodInfo(p.GetMethod)))
                 .ToImmutableList();
 
