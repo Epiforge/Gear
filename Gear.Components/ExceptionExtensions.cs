@@ -137,18 +137,26 @@ namespace Gear.Components
                 json.WriteEndObject();
             }
             json.WriteEndArray();
-            if (ex.InnerException is Exception inner)
+            if (ex is ReflectionTypeLoadException reflectedTypeLoad && reflectedTypeLoad.LoaderExceptions?.Length > 0)
             {
-                json.WritePropertyName("innerException");
-                GetFullDetailsInJson(inner, json);
+                json.WritePropertyName("loaderExceptions");
+                json.WriteStartArray();
+                foreach (var loader in reflectedTypeLoad.LoaderExceptions)
+                    GetFullDetailsInJson(loader, json);
+                json.WriteEndArray();
             }
-            if (ex is AggregateException aggregate && aggregate.InnerExceptions.Count > 0)
+            else if (ex is AggregateException aggregate && aggregate.InnerExceptions?.Count > 0)
             {
                 json.WritePropertyName("innerExceptions");
                 json.WriteStartArray();
                 foreach (var aggregateInner in aggregate.InnerExceptions)
                     GetFullDetailsInJson(aggregateInner, json);
                 json.WriteEndArray();
+            }
+            else if (ex.InnerException is Exception inner)
+            {
+                json.WritePropertyName("innerException");
+                GetFullDetailsInJson(inner, json);
             }
             json.WriteEndObject();
         }
@@ -164,10 +172,16 @@ namespace Gear.Components
                     exceptionMessages.Add($"{indentation}{(top ? "-- " : "   ")}{ex.GetType().Name}: {ex.Message}".Replace($"{Environment.NewLine}", $"{Environment.NewLine}{indentation}"));
                 else
                     exceptionMessages.Add($"{indentation}{(top ? "-- " : "   ")}{ex.GetType().Name}: {ex.Message}{Environment.NewLine}{ex.StackTrace}".Replace($"{Environment.NewLine}", $"{Environment.NewLine}{indentation}"));
-                if (ex is AggregateException aggregateEx)
+                if (ex is ReflectionTypeLoadException reflectedTypeLoad && reflectedTypeLoad.LoaderExceptions?.Length > 0)
                 {
-                    foreach (var aggregatedEx in aggregateEx.InnerExceptions)
-                        exceptionMessages.Add(GetFullDetailsInPlainText(aggregatedEx, indent + 1));
+                    foreach (var loader in reflectedTypeLoad.LoaderExceptions)
+                        exceptionMessages.Add(GetFullDetailsInPlainText(loader, indent + 1));
+                    break;
+                }
+                else if (ex is AggregateException aggregate && aggregate.InnerExceptions?.Count > 0)
+                {
+                    foreach (var inner in aggregate.InnerExceptions)
+                        exceptionMessages.Add(GetFullDetailsInPlainText(inner, indent + 1));
                     break;
                 }
                 else
@@ -219,21 +233,32 @@ namespace Gear.Components
                 xml.WriteEndElement();
             }
             xml.WriteEndElement();
-            if (ex.InnerException is Exception inner)
+            if (ex is ReflectionTypeLoadException reflectedTypeLoad && reflectedTypeLoad.LoaderExceptions?.Length > 0)
+            {
+                xml.WriteStartElement("loaderExceptions");
+                foreach (var loader in reflectedTypeLoad.LoaderExceptions)
+                {
+                    xml.WriteStartElement("loaderException");
+                    GetFullDetailsInXml(loader, xml);
+                    xml.WriteEndElement();
+                }
+                xml.WriteEndElement();
+            }
+            else if (ex is AggregateException aggregate && aggregate.InnerExceptions?.Count > 0)
+            {
+                xml.WriteStartElement("innerExceptions");
+                foreach (var inner in aggregate.InnerExceptions)
+                {
+                    xml.WriteStartElement("innerException");
+                    GetFullDetailsInXml(inner, xml);
+                    xml.WriteEndElement();
+                }
+                xml.WriteEndElement();
+            }
+            else if (ex.InnerException is Exception inner)
             {
                 xml.WriteStartElement("innerException");
                 GetFullDetailsInXml(inner, xml);
-                xml.WriteEndElement();
-            }
-            if (ex is AggregateException aggregate && aggregate.InnerExceptions.Count > 0)
-            {
-                xml.WriteStartElement("innerExceptions");
-                foreach (var aggregateInner in aggregate.InnerExceptions)
-                {
-                    xml.WriteStartElement("innerException");
-                    GetFullDetailsInXml(aggregateInner, xml);
-                    xml.WriteEndElement();
-                }
                 xml.WriteEndElement();
             }
         }
