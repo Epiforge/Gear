@@ -160,8 +160,8 @@ namespace Gear.Components
             {
                 json.WritePropertyName("innerExceptions");
                 json.WriteStartArray();
-                foreach (var aggregateInner in aggregate.InnerExceptions)
-                    GetFullDetailsInJson(aggregateInner, json);
+                foreach (var inner in aggregate.InnerExceptions)
+                    GetFullDetailsInJson(inner, json);
                 json.WriteEndArray();
             }
             else if (ex.InnerException is Exception inner)
