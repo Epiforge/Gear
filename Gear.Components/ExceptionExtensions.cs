@@ -17,7 +17,7 @@ namespace Gear.Components
     public static class ExceptionExtensions
     {
         static readonly ConcurrentDictionary<Type, IReadOnlyList<(string name, FastMethodInfo getter)>> fastPropertyGetters = new ConcurrentDictionary<Type, IReadOnlyList<(string name, FastMethodInfo getter)>>();
-        static readonly HashSet<Type> getExceptionDetailsIgnoredAdditionalPropertyDeclaringTypes = new HashSet<Type>(new Type[] { typeof(Exception), typeof(AggregateException) });
+        static readonly HashSet<Type> getExceptionDetailsIgnoredAdditionalPropertyDeclaringTypes = new HashSet<Type>(new Type[] { typeof(Exception), typeof(ReflectionTypeLoadException), typeof(AggregateException) });
         static readonly HashSet<string> getExceptionDetailsIgnoredAdditionalPropertyNames = new HashSet<string>(new string[] { nameof(Exception.Data), nameof(Exception.HelpLink), nameof(Exception.Message), nameof(Exception.Source), nameof(Exception.StackTrace) });
 
         static FastMethodInfo CreateFastPropertyGetter(PropertyInfo propertyInfo) => new FastMethodInfo(propertyInfo.GetMethod);
@@ -137,13 +137,24 @@ namespace Gear.Components
                 json.WriteEndObject();
             }
             json.WriteEndArray();
-            if (ex is ReflectionTypeLoadException reflectedTypeLoad && reflectedTypeLoad.LoaderExceptions?.Length > 0)
+            if (ex is ReflectionTypeLoadException reflectedTypeLoad)
             {
-                json.WritePropertyName("loaderExceptions");
-                json.WriteStartArray();
-                foreach (var loader in reflectedTypeLoad.LoaderExceptions)
-                    GetFullDetailsInJson(loader, json);
-                json.WriteEndArray();
+                if (reflectedTypeLoad.LoaderExceptions?.Length > 0)
+                {
+                    json.WritePropertyName("loaderExceptions");
+                    json.WriteStartArray();
+                    foreach (var loader in reflectedTypeLoad.LoaderExceptions)
+                        GetFullDetailsInJson(loader, json);
+                    json.WriteEndArray();
+                }
+                if (reflectedTypeLoad.Types?.Length > 0)
+                {
+                    json.WritePropertyName("types");
+                    json.WriteStartArray();
+                    foreach (var reflectedTypeLoadType in reflectedTypeLoad.Types)
+                        json.WriteValue(reflectedTypeLoadType.FullName);
+                    json.WriteEndArray();
+                }
             }
             else if (ex is AggregateException aggregate && aggregate.InnerExceptions?.Count > 0)
             {
@@ -206,7 +217,6 @@ namespace Gear.Components
                 }
             var additionalProperties = GetAdditionalProperties(ex, type);
             if (additionalProperties.Any())
-            {
                 foreach (var (name, value) in additionalProperties)
                 {
                     xml.WriteStartElement("property");
@@ -214,7 +224,6 @@ namespace Gear.Components
                     xml.WriteAttributeString("value", value.ToString());
                     xml.WriteEndElement();
                 }
-            }
             var stackTrace = new StackTrace(ex, true);
             xml.WriteStartElement("stackTrace");
             foreach (var frame in stackTrace.GetFrames())
@@ -233,28 +242,26 @@ namespace Gear.Components
                 xml.WriteEndElement();
             }
             xml.WriteEndElement();
-            if (ex is ReflectionTypeLoadException reflectedTypeLoad && reflectedTypeLoad.LoaderExceptions?.Length > 0)
+            if (ex is ReflectionTypeLoadException reflectedTypeLoad)
             {
-                xml.WriteStartElement("loaderExceptions");
-                foreach (var loader in reflectedTypeLoad.LoaderExceptions)
-                {
-                    xml.WriteStartElement("loaderException");
-                    GetFullDetailsInXml(loader, xml);
-                    xml.WriteEndElement();
-                }
-                xml.WriteEndElement();
+                if (reflectedTypeLoad.LoaderExceptions?.Length > 0)
+                    foreach (var loader in reflectedTypeLoad.LoaderExceptions)
+                    {
+                        xml.WriteStartElement("loaderException");
+                        GetFullDetailsInXml(loader, xml);
+                        xml.WriteEndElement();
+                    }
+                if (reflectedTypeLoad.Types?.Length > 0)
+                    foreach (var reflectedTypeLoadType in reflectedTypeLoad.Types)
+                        xml.WriteElementString("type", reflectedTypeLoadType.FullName);
             }
             else if (ex is AggregateException aggregate && aggregate.InnerExceptions?.Count > 0)
-            {
-                xml.WriteStartElement("innerExceptions");
                 foreach (var inner in aggregate.InnerExceptions)
                 {
                     xml.WriteStartElement("innerException");
                     GetFullDetailsInXml(inner, xml);
                     xml.WriteEndElement();
                 }
-                xml.WriteEndElement();
-            }
             else if (ex.InnerException is Exception inner)
             {
                 xml.WriteStartElement("innerException");
