@@ -1,4 +1,6 @@
+using Gear.Components;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System;
 using System.Linq;
 
 namespace Gear.ActiveQuery.MSTest.Lookup
@@ -6,6 +8,13 @@ namespace Gear.ActiveQuery.MSTest.Lookup
     [TestClass]
     public class ToActiveEnumerable
     {
+        [TestMethod]
+        public void EmptySource()
+        {
+            using (var query = new ObservableDictionary<Guid, TestPerson>().ToActiveEnumerable())
+                Assert.AreEqual(0, query.Count);
+        }
+
         [TestMethod]
         public void SourceManipulation()
         {
