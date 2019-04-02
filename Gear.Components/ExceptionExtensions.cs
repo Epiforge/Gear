@@ -20,19 +20,14 @@ namespace Gear.Components
         static readonly HashSet<Type> getExceptionDetailsIgnoredAdditionalPropertyDeclaringTypes = new HashSet<Type>(new Type[] { typeof(Exception), typeof(ReflectionTypeLoadException), typeof(AggregateException) });
         static readonly HashSet<string> getExceptionDetailsIgnoredAdditionalPropertyNames = new HashSet<string>(new string[] { nameof(Exception.Data), nameof(Exception.HelpLink), nameof(Exception.Message), nameof(Exception.Source), nameof(Exception.StackTrace) });
 
-        static FastMethodInfo CreateFastPropertyGetter(PropertyInfo propertyInfo) => new FastMethodInfo(propertyInfo.GetMethod);
-
         static IReadOnlyList<(string name, FastMethodInfo getter)> CreateFastPropertyGetters(Type type) =>
             type.GetRuntimeProperties()
                 .Where(p => !getExceptionDetailsIgnoredAdditionalPropertyDeclaringTypes.Contains(p.DeclaringType) && !getExceptionDetailsIgnoredAdditionalPropertyNames.Contains(p.Name) && p.GetMethod is MethodInfo getMethod && getMethod.IsPublic && !getMethod.IsStatic)
                 .Select(p => (name: $"{type.FullName}.{p.Name}", getter: new FastMethodInfo(p.GetMethod)))
                 .ToImmutableList();
 
-        static IEnumerable<(string name, object value)> GetAdditionalProperties(Exception ex, Type type)
-        {
-            return fastPropertyGetters.GetOrAdd(type, CreateFastPropertyGetters)
-                .Select(nameAndGetter => (nameAndGetter.name, value: nameAndGetter.getter.Invoke(ex)));
-        }
+        static IEnumerable<(string name, object value)> GetAdditionalProperties(Exception ex, Type type) =>
+            fastPropertyGetters.GetOrAdd(type, CreateFastPropertyGetters).Select(nameAndGetter => (nameAndGetter.name, value: nameAndGetter.getter.Invoke(ex)));
 
         static IReadOnlyList<(string name, FastMethodInfo getter)> GetFastPropertyGetters(Type type) => fastPropertyGetters.GetOrAdd(type, CreateFastPropertyGetters);
 
