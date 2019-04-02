@@ -29,8 +29,6 @@ namespace Gear.Components
         static IEnumerable<(string name, object value)> GetAdditionalProperties(Exception ex, Type type) =>
             fastPropertyGetters.GetOrAdd(type, CreateFastPropertyGetters).Select(nameAndGetter => (nameAndGetter.name, value: nameAndGetter.getter.Invoke(ex)));
 
-        static IReadOnlyList<(string name, FastMethodInfo getter)> GetFastPropertyGetters(Type type) => fastPropertyGetters.GetOrAdd(type, CreateFastPropertyGetters);
-
         /// <summary>
         /// Creates a representation of an exception and all of its inner exceptions, including exception types, messages, and stack traces, and traversing multiple inner exceptions in the case of <see cref="AggregateException"/>
         /// </summary>
