@@ -38,7 +38,7 @@ namespace Gear.Components
             return property;
         }
 
-        static string GetPropertyNameFromExpression<TInstance, TPropertyValue>(this TInstance obj, Expression<Func<TInstance, TPropertyValue>> propertyExpression)
+        static string GetPropertyNameFromExpression<TInstance, TPropertyValue>(Expression<Func<TInstance, TPropertyValue>> propertyExpression)
         {
             if (propertyExpression.Body is MemberExpression memberExpression && memberExpression.Member is PropertyInfo property && memberExpression.Expression is ParameterExpression)
             {
@@ -115,7 +115,7 @@ namespace Gear.Components
         /// <param name="onPropertyChanged">The handler to execute when the property has changed</param>
         /// <returns>An action that will unsubscribe the handlers from the <see cref="INotifyPropertyChanging.PropertyChanging"/> and <see cref="INotifyPropertyChanged.PropertyChanged"/> events</returns>
         public static Action OnPropertyChange<TInstance, TPropertyValue>(this TInstance obj, Expression<Func<TInstance, TPropertyValue>> propertyExpression, Action<TPropertyValue> onPropertyChanging, Action<TPropertyValue> onPropertyChanged) where TInstance : INotifyPropertyChanged, INotifyPropertyChanging =>
-            OnPropertyChange(obj, GetPropertyNameFromExpression(obj, propertyExpression), onPropertyChanging, onPropertyChanged);
+            OnPropertyChange(obj, GetPropertyNameFromExpression(propertyExpression), onPropertyChanging, onPropertyChanged);
 
         /// <summary>
         /// Subscribes to the <see cref="INotifyPropertyChanged.PropertyChanged"/> event and executes the specified handler when the specified property has changed
@@ -150,7 +150,7 @@ namespace Gear.Components
         /// <param name="onPropertyChanged">The handler</param>
         /// <returns>An action that will unsubscribe the handler from the <see cref="INotifyPropertyChanged.PropertyChanged"/> event</returns>
         public static Action OnPropertyChanged<TInstance, TPropertyValue>(this TInstance obj, Expression<Func<TInstance, TPropertyValue>> propertyExpression, Action<TPropertyValue> onPropertyChanged) where TInstance : INotifyPropertyChanged =>
-            OnPropertyChanged(obj, GetPropertyNameFromExpression(obj, propertyExpression), onPropertyChanged);
+            OnPropertyChanged(obj, GetPropertyNameFromExpression(propertyExpression), onPropertyChanged);
 
         /// <summary>
         /// Subscribes to the <see cref="INotifyPropertyChanging.PropertyChanging"/> event and executes the specified handler when the specified property is changing
@@ -185,6 +185,6 @@ namespace Gear.Components
         /// <param name="onPropertyChanging">The handler</param>
         /// <returns>An action that will unsubscribe the handler from the <see cref="INotifyPropertyChanging.PropertyChanging"/> event</returns>
         public static Action OnPropertyChanging<TInstance, TPropertyValue>(this TInstance obj, Expression<Func<TInstance, TPropertyValue>> propertyExpression, Action<TPropertyValue> onPropertyChanging) where TInstance : INotifyPropertyChanging =>
-            OnPropertyChanging(obj, GetPropertyNameFromExpression(obj, propertyExpression), onPropertyChanging);
+            OnPropertyChanging(obj, GetPropertyNameFromExpression(propertyExpression), onPropertyChanging);
     }
 }

@@ -231,7 +231,7 @@ namespace Gear.ActiveExpressions
         public bool RemoveConstructedTypeDisposal(Type type, params Type[] constuctorParameterTypes)
         {
             RequireUnfrozen();
-            return disposeConstructedTypes.TryRemove((type, new EquatableList<Type>(constuctorParameterTypes)), out var discard);
+            return disposeConstructedTypes.TryRemove((type, new EquatableList<Type>(constuctorParameterTypes)), out _);
         }
 
         /// <summary>
@@ -283,7 +283,7 @@ namespace Gear.ActiveExpressions
         public bool RemoveMethodReturnValueDisposal(MethodInfo method)
         {
             RequireUnfrozen();
-            return disposeMethodReturnValues.TryRemove(method, out var discard);
+            return disposeMethodReturnValues.TryRemove(method, out _);
         }
 
         /// <summary>
