@@ -3321,115 +3321,115 @@ namespace Gear.ActiveQuery
 
         #endregion ToActiveEnumerable
 
-        #region ToActiveLookup
+        #region ToActiveDictionary
 
         /// <summary>
-        /// Generates an <see cref="ActiveLookup{TKey, TValue}"/> which actively projects each element of a sequence into a key/value pair
+        /// Generates an <see cref="ActiveDictionary{TKey, TValue}"/> which actively projects each element of a sequence into a key/value pair
         /// </summary>
         /// <typeparam name="TSource">The type of the elements of <paramref name="source"/></typeparam>
-        /// <typeparam name="TKey">The type of the keys in the <see cref="ActiveLookup{TKey, TValue}"/></typeparam>
-        /// <typeparam name="TValue">The type of the values in the <see cref="ActiveLookup{TKey, TValue}"/></typeparam>
+        /// <typeparam name="TKey">The type of the keys in the <see cref="ActiveDictionary{TKey, TValue}"/></typeparam>
+        /// <typeparam name="TValue">The type of the values in the <see cref="ActiveDictionary{TKey, TValue}"/></typeparam>
         /// <param name="source">A series of values to transform into key/value pairs</param>
         /// <param name="selector">A transform function to apply to each element</param>
-        /// <returns>An <see cref="ActiveLookup{TKey, TValue}"/> the key/value pairs of which are the result of invoking the transform function on each element of <paramref name="source"/></returns>
-        public static ActiveLookup<TKey, TValue> ToActiveLookup<TSource, TKey, TValue>(this IEnumerable<TSource> source, Expression<Func<TSource, KeyValuePair<TKey, TValue>>> selector) =>
-            ToActiveLookup(source, selector, null, IndexingStrategy.HashTable, null, null);
+        /// <returns>An <see cref="ActiveDictionary{TKey, TValue}"/> the key/value pairs of which are the result of invoking the transform function on each element of <paramref name="source"/></returns>
+        public static ActiveDictionary<TKey, TValue> ToActiveDictionary<TSource, TKey, TValue>(this IEnumerable<TSource> source, Expression<Func<TSource, KeyValuePair<TKey, TValue>>> selector) =>
+            ToActiveDictionary(source, selector, null, IndexingStrategy.HashTable, null, null);
 
         /// <summary>
-        /// Generates an <see cref="ActiveLookup{TKey, TValue}"/> which actively projects each element of a sequence into a key/value pair using the specified <see cref="IndexingStrategy"/>
+        /// Generates an <see cref="ActiveDictionary{TKey, TValue}"/> which actively projects each element of a sequence into a key/value pair using the specified <see cref="IndexingStrategy"/>
         /// </summary>
         /// <typeparam name="TSource">The type of the elements of <paramref name="source"/></typeparam>
-        /// <typeparam name="TKey">The type of the keys in the <see cref="ActiveLookup{TKey, TValue}"/></typeparam>
-        /// <typeparam name="TValue">The type of the values in the <see cref="ActiveLookup{TKey, TValue}"/></typeparam>
+        /// <typeparam name="TKey">The type of the keys in the <see cref="ActiveDictionary{TKey, TValue}"/></typeparam>
+        /// <typeparam name="TValue">The type of the values in the <see cref="ActiveDictionary{TKey, TValue}"/></typeparam>
         /// <param name="source">A series of values to transform into key/value pairs</param>
         /// <param name="selector">A transform function to apply to each element</param>
-        /// <param name="indexingStategy">The indexing strategy of the <see cref="ActiveLookup{TKey, TValue}"/></param>
-        /// <returns>An <see cref="ActiveLookup{TKey, TValue}"/> the key/value pairs of which are the result of invoking the transform function on each element of <paramref name="source"/></returns>
-        public static ActiveLookup<TKey, TValue> ToActiveLookup<TSource, TKey, TValue>(this IEnumerable<TSource> source, Expression<Func<TSource, KeyValuePair<TKey, TValue>>> selector, IndexingStrategy indexingStategy) =>
-            ToActiveLookup(source, selector, null, indexingStategy, null, null);
+        /// <param name="indexingStategy">The indexing strategy of the <see cref="ActiveDictionary{TKey, TValue}"/></param>
+        /// <returns>An <see cref="ActiveDictionary{TKey, TValue}"/> the key/value pairs of which are the result of invoking the transform function on each element of <paramref name="source"/></returns>
+        public static ActiveDictionary<TKey, TValue> ToActiveDictionary<TSource, TKey, TValue>(this IEnumerable<TSource> source, Expression<Func<TSource, KeyValuePair<TKey, TValue>>> selector, IndexingStrategy indexingStategy) =>
+            ToActiveDictionary(source, selector, null, indexingStategy, null, null);
 
         /// <summary>
-        /// Generates an <see cref="ActiveLookup{TKey, TValue}"/> which actively projects each element of a sequence into a key/value pair using the specified <see cref="IEqualityComparer{T}"/>
+        /// Generates an <see cref="ActiveDictionary{TKey, TValue}"/> which actively projects each element of a sequence into a key/value pair using the specified <see cref="IEqualityComparer{T}"/>
         /// </summary>
         /// <typeparam name="TSource">The type of the elements of <paramref name="source"/></typeparam>
-        /// <typeparam name="TKey">The type of the keys in the <see cref="ActiveLookup{TKey, TValue}"/></typeparam>
-        /// <typeparam name="TValue">The type of the values in the <see cref="ActiveLookup{TKey, TValue}"/></typeparam>
+        /// <typeparam name="TKey">The type of the keys in the <see cref="ActiveDictionary{TKey, TValue}"/></typeparam>
+        /// <typeparam name="TValue">The type of the values in the <see cref="ActiveDictionary{TKey, TValue}"/></typeparam>
         /// <param name="source">A series of values to transform into key/value pairs</param>
         /// <param name="selector">A transform function to apply to each element</param>
         /// <param name="keyEqualityComparer">An <see cref="IEqualityComparer{T}"/> to compare keys</param>
-        /// <returns>An <see cref="ActiveLookup{TKey, TValue}"/> the key/value pairs of which are the result of invoking the transform function on each element of <paramref name="source"/></returns>
-        public static ActiveLookup<TKey, TValue> ToActiveLookup<TSource, TKey, TValue>(this IEnumerable<TSource> source, Expression<Func<TSource, KeyValuePair<TKey, TValue>>> selector, IEqualityComparer<TKey> keyEqualityComparer) =>
-            ToActiveLookup(source, selector, null, IndexingStrategy.HashTable, keyEqualityComparer, null);
+        /// <returns>An <see cref="ActiveDictionary{TKey, TValue}"/> the key/value pairs of which are the result of invoking the transform function on each element of <paramref name="source"/></returns>
+        public static ActiveDictionary<TKey, TValue> ToActiveDictionary<TSource, TKey, TValue>(this IEnumerable<TSource> source, Expression<Func<TSource, KeyValuePair<TKey, TValue>>> selector, IEqualityComparer<TKey> keyEqualityComparer) =>
+            ToActiveDictionary(source, selector, null, IndexingStrategy.HashTable, keyEqualityComparer, null);
 
         /// <summary>
-        /// Generates an <see cref="ActiveLookup{TKey, TValue}"/> which actively projects each element of a sequence into a key/value pair using the specified <see cref="IComparer{T}"/>
+        /// Generates an <see cref="ActiveDictionary{TKey, TValue}"/> which actively projects each element of a sequence into a key/value pair using the specified <see cref="IComparer{T}"/>
         /// </summary>
         /// <typeparam name="TSource">The type of the elements of <paramref name="source"/></typeparam>
-        /// <typeparam name="TKey">The type of the keys in the <see cref="ActiveLookup{TKey, TValue}"/></typeparam>
-        /// <typeparam name="TValue">The type of the values in the <see cref="ActiveLookup{TKey, TValue}"/></typeparam>
+        /// <typeparam name="TKey">The type of the keys in the <see cref="ActiveDictionary{TKey, TValue}"/></typeparam>
+        /// <typeparam name="TValue">The type of the values in the <see cref="ActiveDictionary{TKey, TValue}"/></typeparam>
         /// <param name="source">A series of values to transform into key/value pairs</param>
         /// <param name="selector">A transform function to apply to each element</param>
         /// <param name="keyComparer">An <see cref="IComparer{T}"/> to compare keys</param>
-        /// <returns>An <see cref="ActiveLookup{TKey, TValue}"/> the key/value pairs of which are the result of invoking the transform function on each element of <paramref name="source"/></returns>
-        public static ActiveLookup<TKey, TValue> ToActiveLookup<TSource, TKey, TValue>(this IEnumerable<TSource> source, Expression<Func<TSource, KeyValuePair<TKey, TValue>>> selector, IComparer<TKey> keyComparer) =>
-            ToActiveLookup(source, selector, null, IndexingStrategy.SelfBalancingBinarySearchTree, null, keyComparer);
+        /// <returns>An <see cref="ActiveDictionary{TKey, TValue}"/> the key/value pairs of which are the result of invoking the transform function on each element of <paramref name="source"/></returns>
+        public static ActiveDictionary<TKey, TValue> ToActiveDictionary<TSource, TKey, TValue>(this IEnumerable<TSource> source, Expression<Func<TSource, KeyValuePair<TKey, TValue>>> selector, IComparer<TKey> keyComparer) =>
+            ToActiveDictionary(source, selector, null, IndexingStrategy.SelfBalancingBinarySearchTree, null, keyComparer);
 
         /// <summary>
-        /// Generates an <see cref="ActiveLookup{TKey, TValue}"/> which actively projects each element of a sequence into a key/value pair
+        /// Generates an <see cref="ActiveDictionary{TKey, TValue}"/> which actively projects each element of a sequence into a key/value pair
         /// </summary>
         /// <typeparam name="TSource">The type of the elements of <paramref name="source"/></typeparam>
-        /// <typeparam name="TKey">The type of the keys in the <see cref="ActiveLookup{TKey, TValue}"/></typeparam>
-        /// <typeparam name="TValue">The type of the values in the <see cref="ActiveLookup{TKey, TValue}"/></typeparam>
+        /// <typeparam name="TKey">The type of the keys in the <see cref="ActiveDictionary{TKey, TValue}"/></typeparam>
+        /// <typeparam name="TValue">The type of the values in the <see cref="ActiveDictionary{TKey, TValue}"/></typeparam>
         /// <param name="source">A series of values to transform into key/value pairs</param>
         /// <param name="selector">A transform function to apply to each element</param>
         /// <param name="selectorOptions">Options governing the behavior of active expressions created using <paramref name="selector"/></param>
-        /// <returns>An <see cref="ActiveLookup{TKey, TValue}"/> the key/value pairs of which are the result of invoking the transform function on each element of <paramref name="source"/></returns>
-        public static ActiveLookup<TKey, TValue> ToActiveLookup<TSource, TKey, TValue>(this IEnumerable<TSource> source, Expression<Func<TSource, KeyValuePair<TKey, TValue>>> selector, ActiveExpressionOptions selectorOptions) =>
-            ToActiveLookup(source, selector, selectorOptions, IndexingStrategy.HashTable, null, null);
+        /// <returns>An <see cref="ActiveDictionary{TKey, TValue}"/> the key/value pairs of which are the result of invoking the transform function on each element of <paramref name="source"/></returns>
+        public static ActiveDictionary<TKey, TValue> ToActiveDictionary<TSource, TKey, TValue>(this IEnumerable<TSource> source, Expression<Func<TSource, KeyValuePair<TKey, TValue>>> selector, ActiveExpressionOptions selectorOptions) =>
+            ToActiveDictionary(source, selector, selectorOptions, IndexingStrategy.HashTable, null, null);
 
         /// <summary>
-        /// Generates an <see cref="ActiveLookup{TKey, TValue}"/> which actively projects each element of a sequence into a key/value pair using the specified <see cref="IndexingStrategy"/>
+        /// Generates an <see cref="ActiveDictionary{TKey, TValue}"/> which actively projects each element of a sequence into a key/value pair using the specified <see cref="IndexingStrategy"/>
         /// </summary>
         /// <typeparam name="TSource">The type of the elements of <paramref name="source"/></typeparam>
-        /// <typeparam name="TKey">The type of the keys in the <see cref="ActiveLookup{TKey, TValue}"/></typeparam>
-        /// <typeparam name="TValue">The type of the values in the <see cref="ActiveLookup{TKey, TValue}"/></typeparam>
+        /// <typeparam name="TKey">The type of the keys in the <see cref="ActiveDictionary{TKey, TValue}"/></typeparam>
+        /// <typeparam name="TValue">The type of the values in the <see cref="ActiveDictionary{TKey, TValue}"/></typeparam>
         /// <param name="source">A series of values to transform into key/value pairs</param>
         /// <param name="selector">A transform function to apply to each element</param>
         /// <param name="selectorOptions">Options governing the behavior of active expressions created using <paramref name="selector"/></param>
-        /// <param name="indexingStategy">The indexing strategy of the <see cref="ActiveLookup{TKey, TValue}"/></param>
-        /// <returns>An <see cref="ActiveLookup{TKey, TValue}"/> the key/value pairs of which are the result of invoking the transform function on each element of <paramref name="source"/></returns>
-        public static ActiveLookup<TKey, TValue> ToActiveLookup<TSource, TKey, TValue>(this IEnumerable<TSource> source, Expression<Func<TSource, KeyValuePair<TKey, TValue>>> selector, ActiveExpressionOptions selectorOptions, IndexingStrategy indexingStategy) =>
-            ToActiveLookup(source, selector, selectorOptions, indexingStategy, null, null);
+        /// <param name="indexingStategy">The indexing strategy of the <see cref="ActiveDictionary{TKey, TValue}"/></param>
+        /// <returns>An <see cref="ActiveDictionary{TKey, TValue}"/> the key/value pairs of which are the result of invoking the transform function on each element of <paramref name="source"/></returns>
+        public static ActiveDictionary<TKey, TValue> ToActiveDictionary<TSource, TKey, TValue>(this IEnumerable<TSource> source, Expression<Func<TSource, KeyValuePair<TKey, TValue>>> selector, ActiveExpressionOptions selectorOptions, IndexingStrategy indexingStategy) =>
+            ToActiveDictionary(source, selector, selectorOptions, indexingStategy, null, null);
 
         /// <summary>
-        /// Generates an <see cref="ActiveLookup{TKey, TValue}"/> which actively projects each element of a sequence into a key/value pair using the specified <see cref="IEqualityComparer{T}"/>
+        /// Generates an <see cref="ActiveDictionary{TKey, TValue}"/> which actively projects each element of a sequence into a key/value pair using the specified <see cref="IEqualityComparer{T}"/>
         /// </summary>
         /// <typeparam name="TSource">The type of the elements of <paramref name="source"/></typeparam>
-        /// <typeparam name="TKey">The type of the keys in the <see cref="ActiveLookup{TKey, TValue}"/></typeparam>
-        /// <typeparam name="TValue">The type of the values in the <see cref="ActiveLookup{TKey, TValue}"/></typeparam>
+        /// <typeparam name="TKey">The type of the keys in the <see cref="ActiveDictionary{TKey, TValue}"/></typeparam>
+        /// <typeparam name="TValue">The type of the values in the <see cref="ActiveDictionary{TKey, TValue}"/></typeparam>
         /// <param name="source">A series of values to transform into key/value pairs</param>
         /// <param name="selector">A transform function to apply to each element</param>
         /// <param name="selectorOptions">Options governing the behavior of active expressions created using <paramref name="selector"/></param>
         /// <param name="keyEqualityComparer">An <see cref="IEqualityComparer{T}"/> to compare keys</param>
-        /// <returns>An <see cref="ActiveLookup{TKey, TValue}"/> the key/value pairs of which are the result of invoking the transform function on each element of <paramref name="source"/></returns>
-        public static ActiveLookup<TKey, TValue> ToActiveLookup<TSource, TKey, TValue>(this IEnumerable<TSource> source, Expression<Func<TSource, KeyValuePair<TKey, TValue>>> selector, ActiveExpressionOptions selectorOptions, IEqualityComparer<TKey> keyEqualityComparer) =>
-            ToActiveLookup(source, selector, selectorOptions, IndexingStrategy.HashTable, keyEqualityComparer, null);
+        /// <returns>An <see cref="ActiveDictionary{TKey, TValue}"/> the key/value pairs of which are the result of invoking the transform function on each element of <paramref name="source"/></returns>
+        public static ActiveDictionary<TKey, TValue> ToActiveDictionary<TSource, TKey, TValue>(this IEnumerable<TSource> source, Expression<Func<TSource, KeyValuePair<TKey, TValue>>> selector, ActiveExpressionOptions selectorOptions, IEqualityComparer<TKey> keyEqualityComparer) =>
+            ToActiveDictionary(source, selector, selectorOptions, IndexingStrategy.HashTable, keyEqualityComparer, null);
 
         /// <summary>
-        /// Generates an <see cref="ActiveLookup{TKey, TValue}"/> which actively projects each element of a sequence into a key/value pair using the specified <see cref="IComparer{T}"/>
+        /// Generates an <see cref="ActiveDictionary{TKey, TValue}"/> which actively projects each element of a sequence into a key/value pair using the specified <see cref="IComparer{T}"/>
         /// </summary>
         /// <typeparam name="TSource">The type of the elements of <paramref name="source"/></typeparam>
-        /// <typeparam name="TKey">The type of the keys in the <see cref="ActiveLookup{TKey, TValue}"/></typeparam>
-        /// <typeparam name="TValue">The type of the values in the <see cref="ActiveLookup{TKey, TValue}"/></typeparam>
+        /// <typeparam name="TKey">The type of the keys in the <see cref="ActiveDictionary{TKey, TValue}"/></typeparam>
+        /// <typeparam name="TValue">The type of the values in the <see cref="ActiveDictionary{TKey, TValue}"/></typeparam>
         /// <param name="source">A series of values to transform into key/value pairs</param>
         /// <param name="selector">A transform function to apply to each element</param>
         /// <param name="selectorOptions">Options governing the behavior of active expressions created using <paramref name="selector"/></param>
         /// <param name="keyComparer">An <see cref="IComparer{T}"/> to compare keys</param>
-        /// <returns>An <see cref="ActiveLookup{TKey, TValue}"/> the key/value pairs of which are the result of invoking the transform function on each element of <paramref name="source"/></returns>
-        public static ActiveLookup<TKey, TValue> ToActiveLookup<TSource, TKey, TValue>(this IEnumerable<TSource> source, Expression<Func<TSource, KeyValuePair<TKey, TValue>>> selector, ActiveExpressionOptions selectorOptions, IComparer<TKey> keyComparer) =>
-            ToActiveLookup(source, selector, selectorOptions, IndexingStrategy.SelfBalancingBinarySearchTree, null, keyComparer);
+        /// <returns>An <see cref="ActiveDictionary{TKey, TValue}"/> the key/value pairs of which are the result of invoking the transform function on each element of <paramref name="source"/></returns>
+        public static ActiveDictionary<TKey, TValue> ToActiveDictionary<TSource, TKey, TValue>(this IEnumerable<TSource> source, Expression<Func<TSource, KeyValuePair<TKey, TValue>>> selector, ActiveExpressionOptions selectorOptions, IComparer<TKey> keyComparer) =>
+            ToActiveDictionary(source, selector, selectorOptions, IndexingStrategy.SelfBalancingBinarySearchTree, null, keyComparer);
 
-        static ActiveLookup<TKey, TValue> ToActiveLookup<TSource, TKey, TValue>(IEnumerable<TSource> source, Expression<Func<TSource, KeyValuePair<TKey, TValue>>> selector, ActiveExpressionOptions selectorOptions, IndexingStrategy indexingStategy, IEqualityComparer<TKey> keyEqualityComparer, IComparer<TKey> keyComparer)
+        static ActiveDictionary<TKey, TValue> ToActiveDictionary<TSource, TKey, TValue>(IEnumerable<TSource> source, Expression<Func<TSource, KeyValuePair<TKey, TValue>>> selector, ActiveExpressionOptions selectorOptions, IndexingStrategy indexingStategy, IEqualityComparer<TKey> keyEqualityComparer, IComparer<TKey> keyComparer)
         {
             ActiveQueryOptions.Optimize(ref selector);
 
@@ -3607,7 +3607,7 @@ namespace Gear.ActiveQuery
                 rangeObservableDictionary.AddRange(distinctResultsFaultsAndCounts.Select(g => g.First().result));
                 foreach (var (key, duplicateCount) in distinctResultsFaultsAndCounts.Select(g => (key: g.Key, duplicateCount: g.Sum(rfc => rfc.count) - 1)).Where(kc => kc.duplicateCount > 0))
                     duplicateKeys.Add(key, duplicateCount);
-                var activeLookup = new ActiveLookup<TKey, TValue>(rangeObservableDictionary, out setOperationFault, rangeActiveExpression, () =>
+                var activeDictionary = new ActiveDictionary<TKey, TValue>(rangeObservableDictionary, out setOperationFault, rangeActiveExpression, () =>
                 {
                     rangeActiveExpression.ElementResultChanged -= elementResultChanged;
                     rangeActiveExpression.ElementResultChanging -= elementResultChanging;
@@ -3616,11 +3616,11 @@ namespace Gear.ActiveQuery
                 });
                 checkOperationFault();
 
-                return activeLookup;
+                return activeDictionary;
             });
         }
 
-        #endregion ToActiveLookup
+        #endregion ToActiveDictionary
 
         #region Where
 

@@ -5,12 +5,12 @@ using System.Collections.Generic;
 namespace Gear.ActiveQuery.MSTest.Enumerable
 {
     [TestClass]
-    public class ToActiveLookup
+    public class ToActiveDictionary
     {
         [TestMethod]
         public void DuplicateKeys()
         {
-            using (var query = System.Linq.Enumerable.Range(0, 10).ToActiveLookup(i => new KeyValuePair<int, int>(0, i)))
+            using (var query = System.Linq.Enumerable.Range(0, 10).ToActiveDictionary(i => new KeyValuePair<int, int>(0, i)))
                 Assert.IsNotNull(query.OperationFault);
         }
 
@@ -19,7 +19,7 @@ namespace Gear.ActiveQuery.MSTest.Enumerable
         {
             var john = new TestPerson(null);
             var people = new SynchronizedRangeObservableCollection<TestPerson>();
-            using (var query = people.ToActiveLookup(p => new KeyValuePair<string, TestPerson>(p.Name, p)))
+            using (var query = people.ToActiveDictionary(p => new KeyValuePair<string, TestPerson>(p.Name, p)))
             {
                 Assert.IsNull(query.OperationFault);
                 people.Add(john);
@@ -39,7 +39,7 @@ namespace Gear.ActiveQuery.MSTest.Enumerable
             foreach (var indexingStrategy in new IndexingStrategy[] { IndexingStrategy.HashTable, IndexingStrategy.SelfBalancingBinarySearchTree })
             {
                 var people = TestPerson.CreatePeopleCollection();
-                using (var query = people.ToActiveLookup(p => new KeyValuePair<string, string>(p.Name.Substring(0, 3), p.Name.Substring(3)), indexingStrategy))
+                using (var query = people.ToActiveDictionary(p => new KeyValuePair<string, string>(p.Name.Substring(0, 3), p.Name.Substring(3)), indexingStrategy))
                 {
                     Assert.IsNull(query.OperationFault);
                     Assert.AreEqual(string.Empty, query["Ben"]);

@@ -12,13 +12,13 @@ namespace Gear.ActiveQuery
     /// </summary>
     /// <typeparam name="TKey">The type of keys</typeparam>
     /// <typeparam name="TValue">The type of values</typeparam>
-    public class ActiveLookup<TKey, TValue> : SyncDisposablePropertyChangeNotifier, INotifyDictionaryChanged, INotifyDictionaryChanged<TKey, TValue>, INotifyElementFaultChanges, IReadOnlyDictionary<TKey, TValue>, ISynchronized
+    public class ActiveDictionary<TKey, TValue> : SyncDisposablePropertyChangeNotifier, INotifyDictionaryChanged, INotifyDictionaryChanged<TKey, TValue>, INotifyElementFaultChanges, IReadOnlyDictionary<TKey, TValue>, ISynchronized
     {
-        internal ActiveLookup(IReadOnlyDictionary<TKey, TValue> readOnlyDictionary, Action onDispose = null)
+        internal ActiveDictionary(IReadOnlyDictionary<TKey, TValue> readOnlyDictionary, Action onDispose = null)
         {
             synchronized = readOnlyDictionary as ISynchronized ?? throw new ArgumentException($"{nameof(readOnlyDictionary)} must implement {nameof(ISynchronized)}", nameof(readOnlyDictionary));
-            if (readOnlyDictionary is ActiveLookup<TKey, TValue> activeLookup)
-                this.readOnlyDictionary = activeLookup.readOnlyDictionary;
+            if (readOnlyDictionary is ActiveDictionary<TKey, TValue> activeDictionary)
+                this.readOnlyDictionary = activeDictionary.readOnlyDictionary;
             else
                 this.readOnlyDictionary = readOnlyDictionary;
             if (this.readOnlyDictionary is INotifyDictionaryChanged dictionaryNotifier)
@@ -32,7 +32,7 @@ namespace Gear.ActiveQuery
             this.onDispose = onDispose;
         }
 
-        internal ActiveLookup(IReadOnlyDictionary<TKey, TValue> readOnlyDictionary, INotifyElementFaultChanges faultNotifier, Action onDispose = null) : this(readOnlyDictionary, onDispose)
+        internal ActiveDictionary(IReadOnlyDictionary<TKey, TValue> readOnlyDictionary, INotifyElementFaultChanges faultNotifier, Action onDispose = null) : this(readOnlyDictionary, onDispose)
         {
             this.faultNotifier = faultNotifier ?? (readOnlyDictionary as INotifyElementFaultChanges);
             if (this.faultNotifier != null)
@@ -42,11 +42,11 @@ namespace Gear.ActiveQuery
             }
         }
 
-        internal ActiveLookup(IReadOnlyDictionary<TKey, TValue> readOnlyDictionary, out Action<Exception> setOperationFault, Action onDispose = null) : this(readOnlyDictionary, out setOperationFault, null, onDispose)
+        internal ActiveDictionary(IReadOnlyDictionary<TKey, TValue> readOnlyDictionary, out Action<Exception> setOperationFault, Action onDispose = null) : this(readOnlyDictionary, out setOperationFault, null, onDispose)
         {
         }
 
-        internal ActiveLookup(IReadOnlyDictionary<TKey, TValue> readOnlyDictionary, out Action<Exception> setOperationFault, INotifyElementFaultChanges faultNotifier = null, Action onDispose = null) : this(readOnlyDictionary, faultNotifier, onDispose) =>
+        internal ActiveDictionary(IReadOnlyDictionary<TKey, TValue> readOnlyDictionary, out Action<Exception> setOperationFault, INotifyElementFaultChanges faultNotifier = null, Action onDispose = null) : this(readOnlyDictionary, faultNotifier, onDispose) =>
             setOperationFault = SetOperationFault;
 
         readonly INotifyElementFaultChanges faultNotifier;
@@ -144,7 +144,7 @@ namespace Gear.ActiveQuery
         /// </summary>
         /// <param name="key">The key to locate</param>
         /// <param name="value">When this method returns, the value associated with the specified key, if the key is found; otherwise, the default value for the type of the <paramref name="value"/> parameter</param>
-        /// <returns><c>true</c> if the <see cref="ActiveLookup{TKey, TValue}"/> contains an element that has the specified key; otherwise, <c>false</c></returns>
+        /// <returns><c>true</c> if the <see cref="ActiveDictionary{TKey, TValue}"/> contains an element that has the specified key; otherwise, <c>false</c></returns>
         public bool TryGetValue(TKey key, out TValue value) => readOnlyDictionary.TryGetValue(key, out value);
 
         /// <summary>

@@ -3,18 +3,18 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace Gear.ActiveQuery.MSTest.Lookup
+namespace Gear.ActiveQuery.MSTest.Dictionary
 {
     [TestClass]
-    public class ActiveSingleOrDefault
+    public class ActiveSingle
     {
         [TestMethod]
         public void EmptySource()
         {
             var numbers = new ObservableDictionary<int, int>();
-            using (var expr = numbers.ActiveSingleOrDefault((key, value) => value % 3 == 0))
+            using (var expr = numbers.ActiveSingle((key, value) => value % 3 == 0))
             {
-                Assert.IsNull(expr.OperationFault);
+                Assert.IsNotNull(expr.OperationFault);
                 Assert.AreEqual(0, expr.Value.Value);
             }
         }
@@ -23,9 +23,9 @@ namespace Gear.ActiveQuery.MSTest.Lookup
         public void ExpressionlessEmptyNonNotifier()
         {
             var numbers = new Dictionary<int, int>();
-            using (var expr = numbers.ActiveSingleOrDefault())
+            using (var expr = numbers.ActiveSingle())
             {
-                Assert.IsNull(expr.OperationFault);
+                Assert.IsNotNull(expr.OperationFault);
                 Assert.AreEqual(0, expr.Value.Value);
             }
         }
@@ -34,9 +34,9 @@ namespace Gear.ActiveQuery.MSTest.Lookup
         public void ExpressionlessEmptySource()
         {
             var numbers = new ObservableDictionary<int, int>();
-            using (var expr = numbers.ActiveSingleOrDefault())
+            using (var expr = numbers.ActiveSingle())
             {
-                Assert.IsNull(expr.OperationFault);
+                Assert.IsNotNull(expr.OperationFault);
                 Assert.AreEqual(0, expr.Value.Value);
             }
         }
@@ -45,7 +45,7 @@ namespace Gear.ActiveQuery.MSTest.Lookup
         public void ExpressionlessMultiple()
         {
             var numbers = new ObservableDictionary<int, int>(System.Linq.Enumerable.Range(1, 2).ToDictionary(i => i));
-            using (var expr = numbers.ActiveSingleOrDefault())
+            using (var expr = numbers.ActiveSingle())
             {
                 Assert.IsNotNull(expr.OperationFault);
                 Assert.AreEqual(0, expr.Value.Value);
@@ -56,7 +56,7 @@ namespace Gear.ActiveQuery.MSTest.Lookup
         public void ExpressionlessNonNotifier()
         {
             var numbers = System.Linq.Enumerable.Range(1, 1).ToDictionary(i => i);
-            using (var expr = numbers.ActiveSingleOrDefault())
+            using (var expr = numbers.ActiveSingle())
             {
                 Assert.IsNull(expr.OperationFault);
                 Assert.AreEqual(1, expr.Value.Value);
@@ -67,7 +67,7 @@ namespace Gear.ActiveQuery.MSTest.Lookup
         public void ExpressionlessNonNotifierMultiple()
         {
             var numbers = System.Linq.Enumerable.Range(1, 2).ToDictionary(i => i);
-            using (var expr = numbers.ActiveSingleOrDefault())
+            using (var expr = numbers.ActiveSingle())
             {
                 Assert.IsNotNull(expr.OperationFault);
                 Assert.AreEqual(0, expr.Value.Value);
@@ -78,7 +78,7 @@ namespace Gear.ActiveQuery.MSTest.Lookup
         public void ExpressionlessSourceManipulation()
         {
             var numbers = new ObservableDictionary<int, int>(System.Linq.Enumerable.Range(1, 1).ToDictionary(i => i));
-            using (var expr = numbers.ActiveSingleOrDefault())
+            using (var expr = numbers.ActiveSingle())
             {
                 Assert.IsNull(expr.OperationFault);
                 Assert.AreEqual(1, expr.Value.Value);
@@ -89,7 +89,7 @@ namespace Gear.ActiveQuery.MSTest.Lookup
                 Assert.IsNull(expr.OperationFault);
                 Assert.AreEqual(2, expr.Value.Value);
                 numbers.Clear();
-                Assert.IsNull(expr.OperationFault);
+                Assert.IsNotNull(expr.OperationFault);
                 Assert.AreEqual(0, expr.Value.Value);
             }
         }
@@ -98,7 +98,7 @@ namespace Gear.ActiveQuery.MSTest.Lookup
         public void Multiple()
         {
             var numbers = new ObservableDictionary<int, int>(System.Linq.Enumerable.Range(1, 3).ToDictionary(i => i, i => i * 3));
-            using (var expr = numbers.ActiveSingleOrDefault((key, value) => value % 3 == 0))
+            using (var expr = numbers.ActiveSingle((key, value) => value % 3 == 0))
             {
                 Assert.IsNotNull(expr.OperationFault);
                 Assert.AreEqual(0, expr.Value.Value);
@@ -109,12 +109,12 @@ namespace Gear.ActiveQuery.MSTest.Lookup
         public void SourceManipulation()
         {
             var numbers = new ObservableDictionary<int, int>(System.Linq.Enumerable.Range(1, 3).ToDictionary(i => i));
-            using (var expr = numbers.ActiveSingleOrDefault((key, value) => value % 3 == 0))
+            using (var expr = numbers.ActiveSingle((key, value) => value % 3 == 0))
             {
                 Assert.IsNull(expr.OperationFault);
                 Assert.AreEqual(3, expr.Value.Value);
                 numbers.Remove(3);
-                Assert.IsNull(expr.OperationFault);
+                Assert.IsNotNull(expr.OperationFault);
                 Assert.AreEqual(0, expr.Value.Value);
                 numbers.Add(3, 3);
                 Assert.IsNull(expr.OperationFault);
@@ -126,8 +126,15 @@ namespace Gear.ActiveQuery.MSTest.Lookup
                 Assert.IsNotNull(expr.OperationFault);
                 Assert.AreEqual(0, expr.Value.Value);
                 numbers.Clear();
-                Assert.IsNull(expr.OperationFault);
+                Assert.IsNotNull(expr.OperationFault);
                 Assert.AreEqual(0, expr.Value.Value);
+                numbers.Add(3, 3);
+                numbers.Add(6, 6);
+                Assert.IsNotNull(expr.OperationFault);
+                Assert.AreEqual(0, expr.Value.Value);
+                numbers.Remove(3);
+                Assert.IsNull(expr.OperationFault);
+                Assert.AreEqual(6, expr.Value.Value);
             }
         }
     }

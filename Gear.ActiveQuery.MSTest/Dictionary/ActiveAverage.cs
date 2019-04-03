@@ -3,7 +3,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Linq;
 
-namespace Gear.ActiveQuery.MSTest.Lookup
+namespace Gear.ActiveQuery.MSTest.Dictionary
 {
     [TestClass]
     public class ActiveAverage

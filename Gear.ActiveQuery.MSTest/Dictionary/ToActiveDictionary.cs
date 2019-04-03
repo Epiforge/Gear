@@ -2,15 +2,15 @@ using Gear.Components;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Collections.Generic;
 
-namespace Gear.ActiveQuery.MSTest.Lookup
+namespace Gear.ActiveQuery.MSTest.Dictionary
 {
     [TestClass]
-    public class ToActiveLookup
+    public class ToActiveDictionary
     {
         [TestMethod]
         public void DuplicateKeys()
         {
-            using (var query = TestPerson.CreatePeopleDictionary().ToActiveLookup((key, value) => new KeyValuePair<int, TestPerson>(0, value)))
+            using (var query = TestPerson.CreatePeopleDictionary().ToActiveDictionary((key, value) => new KeyValuePair<int, TestPerson>(0, value)))
                 Assert.IsNotNull(query.OperationFault);
         }
 
@@ -19,7 +19,7 @@ namespace Gear.ActiveQuery.MSTest.Lookup
         {
             var john = new TestPerson(null);
             var people = new SynchronizedObservableDictionary<string, TestPerson>();
-            using (var query = people.ToActiveLookup((key, value) => new KeyValuePair<string, TestPerson>(value.Name, value)))
+            using (var query = people.ToActiveDictionary((key, value) => new KeyValuePair<string, TestPerson>(value.Name, value)))
             {
                 Assert.IsNull(query.OperationFault);
                 people.Add("John", john);
@@ -39,7 +39,7 @@ namespace Gear.ActiveQuery.MSTest.Lookup
             foreach (var indexingStrategy in new IndexingStrategy[] { IndexingStrategy.HashTable, IndexingStrategy.SelfBalancingBinarySearchTree })
             {
                 var people = TestPerson.CreatePeopleDictionary();
-                using (var query = people.ToActiveLookup((key, value) => new KeyValuePair<string, string>(value.Name.Substring(0, 3), value.Name.Substring(3))))
+                using (var query = people.ToActiveDictionary((key, value) => new KeyValuePair<string, string>(value.Name.Substring(0, 3), value.Name.Substring(3))))
                 {
                     Assert.IsNull(query.OperationFault);
                     Assert.AreEqual(string.Empty, query["Ben"]);

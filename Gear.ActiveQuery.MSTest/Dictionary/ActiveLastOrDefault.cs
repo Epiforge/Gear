@@ -2,16 +2,16 @@ using Gear.Components;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Linq;
 
-namespace Gear.ActiveQuery.MSTest.Lookup
+namespace Gear.ActiveQuery.MSTest.Dictionary
 {
     [TestClass]
-    public class ActiveFirstOrDefault
+    public class ActiveLastOrDefault
     {
         [TestMethod]
         public void ExpressionlessEmptySource()
         {
             var numbers = new ObservableDictionary<int, int>();
-            using (var query = numbers.ActiveFirstOrDefault())
+            using (var query = numbers.ActiveLastOrDefault())
             {
                 Assert.IsNull(query.OperationFault);
                 Assert.AreEqual(0, query.Value.Value);
@@ -22,10 +22,10 @@ namespace Gear.ActiveQuery.MSTest.Lookup
         public void ExpressionlessNonNotifier()
         {
             var numbers = System.Linq.Enumerable.Range(0, 10).ToDictionary(i => i);
-            using (var query = numbers.ActiveFirstOrDefault())
+            using (var query = numbers.ActiveLastOrDefault())
             {
                 Assert.IsNull(query.OperationFault);
-                Assert.AreEqual(0, query.Value.Value);
+                Assert.AreEqual(9, query.Value.Value);
             }
         }
 
@@ -33,12 +33,12 @@ namespace Gear.ActiveQuery.MSTest.Lookup
         public void ExpressionlessSourceManipulation()
         {
             var numbers = new ObservableDictionary<int, int>(System.Linq.Enumerable.Range(0, 10).ToDictionary(i => i));
-            using (var query = numbers.ActiveFirstOrDefault())
+            using (var query = numbers.ActiveLastOrDefault())
             {
                 Assert.IsNull(query.OperationFault);
-                Assert.AreEqual(0, query.Value.Value);
-                numbers.Remove(0);
-                Assert.AreEqual(1, query.Value.Value);
+                Assert.AreEqual(9, query.Value.Value);
+                numbers.Remove(9);
+                Assert.AreEqual(8, query.Value.Value);
                 numbers.Clear();
                 Assert.IsNull(query.OperationFault);
                 Assert.AreEqual(0, query.Value.Value);
@@ -52,12 +52,12 @@ namespace Gear.ActiveQuery.MSTest.Lookup
         public void SourceManipulation()
         {
             var numbers = new ObservableDictionary<int, int>(System.Linq.Enumerable.Range(0, 10).ToDictionary(i => i));
-            using (var query = numbers.ActiveFirstOrDefault((key, value) => value % 3 == 0))
+            using (var query = numbers.ActiveLastOrDefault((key, value) => value % 3 == 0))
             {
                 Assert.IsNull(query.OperationFault);
-                Assert.AreEqual(0, query.Value.Value);
-                numbers.Remove(0);
-                Assert.AreEqual(3, query.Value.Value);
+                Assert.AreEqual(9, query.Value.Value);
+                numbers.Remove(9);
+                Assert.AreEqual(6, query.Value.Value);
                 numbers.RemoveAll((key, value) => value % 3 == 0);
                 Assert.IsNull(query.OperationFault);
                 Assert.AreEqual(0, query.Value.Value);

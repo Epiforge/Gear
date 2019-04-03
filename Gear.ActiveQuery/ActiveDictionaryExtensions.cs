@@ -12,7 +12,7 @@ namespace Gear.ActiveQuery
     /// <summary>
     /// Provides a set of <c>static</c> (<c>Shared</c> in Visual Basic) methods for actively querying objects that implement <see cref="IReadOnlyDictionary{TKey, TValue}"/>
     /// </summary>
-    public static class ActiveLookupExtensions
+    public static class ActiveDictionaryExtensions
     {
         #region All
 
@@ -39,7 +39,7 @@ namespace Gear.ActiveQuery
         public static IActiveValue<bool> ActiveAll<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, bool>> predicate, ActiveExpressionOptions predicateOptions)
         {
             var changeNotifyingSource = source as INotifyDictionaryChanged<TKey, TValue>;
-            ActiveLookup<TKey, TValue> where;
+            ActiveDictionary<TKey, TValue> where;
             Action<bool> setValue = null;
 
             void dictionaryChanged(object sender, EventArgs e) => setValue(where.Count == source.Count);
@@ -121,7 +121,7 @@ namespace Gear.ActiveQuery
         public static IActiveValue<bool> ActiveAny<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, bool>> predicate, ActiveExpressionOptions predicateOptions)
         {
             var changeNotifyingSource = source as INotifyDictionaryChanged<TKey, TValue>;
-            ActiveLookup<TKey, TValue> where;
+            ActiveDictionary<TKey, TValue> where;
             Action<bool> setValue = null;
 
             void dictionaryChanged(object sender, EventArgs e) => setValue(where.Count > 0);
@@ -365,7 +365,7 @@ namespace Gear.ActiveQuery
         /// <returns>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is the first key/value pair in the dictionary that passes the test in the predicate function</returns>
         public static IActiveValue<KeyValuePair<TKey, TValue>> ActiveFirst<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, bool>> predicate, ActiveExpressionOptions predicateOptions, IComparer<TKey> keyComparer)
         {
-            ActiveLookup<TKey, TValue> where;
+            ActiveDictionary<TKey, TValue> where;
             Action<KeyValuePair<TKey, TValue>> setValue = null;
             Action<Exception> setOperationFault = null;
             var none = false;
@@ -536,7 +536,7 @@ namespace Gear.ActiveQuery
         /// <returns>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is the first key/value pair in the dictionary that passes the test in the predicate function</returns>
         public static IActiveValue<KeyValuePair<TKey, TValue>> ActiveFirstOrDefault<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, bool>> predicate, ActiveExpressionOptions predicateOptions, IComparer<TKey> keyComparer)
         {
-            ActiveLookup<TKey, TValue> where;
+            ActiveDictionary<TKey, TValue> where;
             Action<KeyValuePair<TKey, TValue>> setValue = null;
 
             void dictionaryChanged(object sender, NotifyDictionaryChangedEventArgs<TKey, TValue> e) => setValue(where.Count > 0 ? where.OrderBy(kv => kv.Key, keyComparer).First() : default);
@@ -699,7 +699,7 @@ namespace Gear.ActiveQuery
         /// <returns>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is the last key/value pair in the dictionary that passes the test in the predicate function</returns>
         public static IActiveValue<KeyValuePair<TKey, TValue>> ActiveLast<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, bool>> predicate, ActiveExpressionOptions predicateOptions, IComparer<TKey> keyComparer)
         {
-            ActiveLookup<TKey, TValue> where;
+            ActiveDictionary<TKey, TValue> where;
             Action<KeyValuePair<TKey, TValue>> setValue = null;
             Action<Exception> setOperationFault = null;
             var none = false;
@@ -872,7 +872,7 @@ namespace Gear.ActiveQuery
         /// <returns>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is the last key/value pair in the dictionary that passes the test in the predicate function</returns>
         public static IActiveValue<KeyValuePair<TKey, TValue>> ActiveLastOrDefault<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, bool>> predicate, ActiveExpressionOptions predicateOptions, IComparer<TKey> keyComparer)
         {
-            ActiveLookup<TKey, TValue> where;
+            ActiveDictionary<TKey, TValue> where;
             Action<KeyValuePair<TKey, TValue>> setValue = null;
 
             void dictionaryChanged(object sender, NotifyDictionaryChangedEventArgs<TKey, TValue> e) => setValue(where.Count > 0 ? where.OrderByDescending(kv => kv.Key, keyComparer).First() : default);
@@ -1161,7 +1161,7 @@ namespace Gear.ActiveQuery
         /// <typeparam name="TResult">The type to filter the values of the dictionary on</typeparam>
         /// <param name="source">The <see cref="IReadOnlyDictionary{TKey, TValue}"/> the values of which to filter</param>
         /// <returns>An <see cref="IReadOnlyDictionary{TKey, TValue}"/> that contains values from the input dictionary of type <typeparamref name="TResult"/></returns>
-        public static ActiveLookup<TKey, TResult> ActiveOfType<TKey, TValue, TResult>(this IReadOnlyDictionary<TKey, TValue> source)
+        public static ActiveDictionary<TKey, TResult> ActiveOfType<TKey, TValue, TResult>(this IReadOnlyDictionary<TKey, TValue> source)
         {
             var synchronizedSource = source as ISynchronized;
             var notifyingSource = source as INotifyDictionaryChanged<TKey, TValue>;
@@ -1197,7 +1197,7 @@ namespace Gear.ActiveQuery
                 if (notifyingSource != null)
                     notifyingSource.DictionaryChanged += dictionaryChanged;
 
-                return new ActiveLookup<TKey, TResult>(rangeObservableDictionary, source as INotifyElementFaultChanges, () =>
+                return new ActiveDictionary<TKey, TResult>(rangeObservableDictionary, source as INotifyElementFaultChanges, () =>
                 {
                     if (notifyingSource != null)
                         notifyingSource.DictionaryChanged -= dictionaryChanged;
@@ -1425,7 +1425,7 @@ namespace Gear.ActiveQuery
         /// <returns>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is the single key/value pair of the input dictionary that satisfies a condition</returns>
         public static IActiveValue<KeyValuePair<TKey, TValue>> ActiveSingle<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, bool>> predicate, ActiveExpressionOptions predicateOptions)
         {
-            ActiveLookup<TKey, TValue> where;
+            ActiveDictionary<TKey, TValue> where;
             Action<KeyValuePair<TKey, TValue>> setValue = null;
             Action<Exception> setOperationFault = null;
             var none = false;
@@ -1566,7 +1566,7 @@ namespace Gear.ActiveQuery
         /// <returns>An <see cref="IActiveValue{TValue}"/> the <see cref="IActiveValue{TValue}.Value"/> of which is the single key/value pair of the input dictionary that satisfies a condition, or <c>default</c>(<c>KeyValuePair&lt;</c><typeparamref name="TKey"/>, <typeparamref name="TValue"/><c>%gt;</c>) if no such key/value pair is found</returns>
         public static IActiveValue<KeyValuePair<TKey, TValue>> ActiveSingleOrDefault<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, bool>> predicate, ActiveExpressionOptions predicateOptions)
         {
-            ActiveLookup<TKey, TValue> where;
+            ActiveDictionary<TKey, TValue> where;
             Action<KeyValuePair<TKey, TValue>> setValue = null;
             Action<Exception> setOperationFault = null;
             var moreThanOne = false;
@@ -1704,24 +1704,24 @@ namespace Gear.ActiveQuery
         #region SwitchContext
 
         /// <summary>
-        /// Creates an <see cref="ActiveLookup{TKey, TValue}"/> that is kept consistent the current thread's <see cref="SynchronizationContext"/> with a specified <see cref="IReadOnlyDictionary{TKey, TValue}"/> that implements <see cref="INotifyDictionaryChanged{TKey, TValue}"/>
+        /// Creates an <see cref="ActiveDictionary{TKey, TValue}"/> that is kept consistent the current thread's <see cref="SynchronizationContext"/> with a specified <see cref="IReadOnlyDictionary{TKey, TValue}"/> that implements <see cref="INotifyDictionaryChanged{TKey, TValue}"/>
         /// </summary>
         /// <typeparam name="TKey">The type of the keys in <paramref name="source"/></typeparam>
         /// <typeparam name="TValue">The type of the values in <paramref name="source"/></typeparam>
         /// <param name="source">A <see cref="IReadOnlyDictionary{TKey, TValue}"/></param>
-        /// <returns>An <see cref="ActiveLookup{TKey, TValue}"/> that is kept consistent with <paramref name="source"/> the current thread's <see cref="SynchronizationContext"/></returns>
-        public static ActiveLookup<TKey, TValue> SwitchContext<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source) =>
+        /// <returns>An <see cref="ActiveDictionary{TKey, TValue}"/> that is kept consistent with <paramref name="source"/> the current thread's <see cref="SynchronizationContext"/></returns>
+        public static ActiveDictionary<TKey, TValue> SwitchContext<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source) =>
             SwitchContext(source, SynchronizationContext.Current);
 
         /// <summary>
-        /// Creates an <see cref="ActiveLookup{TKey, TValue}"/> that is kept consistent on a specified <see cref="SynchronizationContext"/> with a specified <see cref="IReadOnlyDictionary{TKey, TValue}"/> that implements <see cref="INotifyDictionaryChanged{TKey, TValue}"/>
+        /// Creates an <see cref="ActiveDictionary{TKey, TValue}"/> that is kept consistent on a specified <see cref="SynchronizationContext"/> with a specified <see cref="IReadOnlyDictionary{TKey, TValue}"/> that implements <see cref="INotifyDictionaryChanged{TKey, TValue}"/>
         /// </summary>
         /// <typeparam name="TKey">The type of the keys in <paramref name="source"/></typeparam>
         /// <typeparam name="TValue">The type of the values in <paramref name="source"/></typeparam>
         /// <param name="source">A <see cref="IReadOnlyDictionary{TKey, TValue}"/></param>
         /// <param name="synchronizationContext">The <see cref="SynchronizationContext"/> on which to perform consistency operations</param>
-        /// <returns>An <see cref="ActiveLookup{TKey, TValue}"/> that is kept consistent with <paramref name="source"/> on <paramref name="synchronizationContext"/></returns>
-        public static ActiveLookup<TKey, TValue> SwitchContext<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, SynchronizationContext synchronizationContext)
+        /// <returns>An <see cref="ActiveDictionary{TKey, TValue}"/> that is kept consistent with <paramref name="source"/> on <paramref name="synchronizationContext"/></returns>
+        public static ActiveDictionary<TKey, TValue> SwitchContext<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, SynchronizationContext synchronizationContext)
         {
             ISynchronizedObservableRangeDictionary<TKey, TValue> rangeObservableDictionary = null;
 
@@ -1788,7 +1788,7 @@ namespace Gear.ActiveQuery
                         rangeObservableDictionary = keyEqualityComparer != null ? new SynchronizedObservableDictionary<TKey, TValue>(synchronizationContext, startingDictionary, keyEqualityComparer) : new SynchronizedObservableDictionary<TKey, TValue>(synchronizationContext, startingDictionary);
                         break;
                 }
-                return new ActiveLookup<TKey, TValue>(rangeObservableDictionary, source as INotifyElementFaultChanges, () =>
+                return new ActiveDictionary<TKey, TValue>(rangeObservableDictionary, source as INotifyElementFaultChanges, () =>
                 {
                     if (notifier != null)
                         notifier.DictionaryChanged -= dictionaryChanged;
@@ -1798,137 +1798,123 @@ namespace Gear.ActiveQuery
 
         #endregion SwitchContext
 
-        #region ToActiveEnumerable
+        #region ToActiveDictionary
 
         /// <summary>
-        /// Converts the values of an <see cref="IReadOnlyDictionary{TKey, TValue}"/> into an <see cref="IActiveEnumerable{TElement}"/>
-        /// </summary>
-        /// <typeparam name="TKey">The type of the keys in <paramref name="source"/></typeparam>
-        /// <typeparam name="TValue">The type of the values in <paramref name="source"/></typeparam>
-        /// <param name="source">An <see cref="IReadOnlyDictionary{TKey, TValue}"/> to convert</param>
-        /// <returns>An <see cref="IActiveEnumerable{TElement}"/> equivalent to the values of <paramref name="source"/> (and mutates with it so long as <paramref name="source"/> implements <see cref="INotifyDictionaryChanged{TKey, TValue}"/>)</returns>
-        public static IActiveEnumerable<TValue> ToActiveEnumerable<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source) =>
-            ActiveSelect(source, (key, value) => value);
-
-        #endregion ToActiveEnumerable
-
-        #region ToActiveLookup
-
-        /// <summary>
-        /// Generates an <see cref="ActiveLookup{TKey, TValue}"/> which actively projects each key/value pair of a dictionary into a key-value pair using the specified <see cref="IComparer{T}"/>
+        /// Generates an <see cref="ActiveDictionary{TKey, TValue}"/> which actively projects each key/value pair of a dictionary into a key-value pair using the specified <see cref="IComparer{T}"/>
         /// </summary>
         /// <typeparam name="TSourceKey">The type of the keys in <paramref name="source"/></typeparam>
         /// <typeparam name="TSourceValue">The type of the values in <paramref name="source"/></typeparam>
-        /// <typeparam name="TResultKey">The type of the keys in the resulting <see cref="ActiveLookup{TKey, TValue}"/></typeparam>
-        /// <typeparam name="TResultValue">The type of the values in the resulting <see cref="ActiveLookup{TKey, TValue}"/></typeparam>
+        /// <typeparam name="TResultKey">The type of the keys in the resulting <see cref="ActiveDictionary{TKey, TValue}"/></typeparam>
+        /// <typeparam name="TResultValue">The type of the values in the resulting <see cref="ActiveDictionary{TKey, TValue}"/></typeparam>
         /// <param name="source">A dictionary to transform into key/value pairs</param>
         /// <param name="selector">A transform function to apply to each key/value pair in <paramref name="source"/></param>
-        /// <returns>An <see cref="ActiveLookup{TKey, TValue}"/> the key/value pairs of which are the result of invoking the transform function on each key/value pair in <paramref name="source"/></returns>
-        public static ActiveLookup<TResultKey, TResultValue> ToActiveLookup<TSourceKey, TSourceValue, TResultKey, TResultValue>(this IReadOnlyDictionary<TSourceKey, TSourceValue> source, Expression<Func<TSourceKey, TSourceValue, KeyValuePair<TResultKey, TResultValue>>> selector) =>
-            ToActiveLookup(source, selector, null, source.GetIndexingStrategy() ?? IndexingStrategy.NoneOrInherit, null, null);
+        /// <returns>An <see cref="ActiveDictionary{TKey, TValue}"/> the key/value pairs of which are the result of invoking the transform function on each key/value pair in <paramref name="source"/></returns>
+        public static ActiveDictionary<TResultKey, TResultValue> ToActiveDictionary<TSourceKey, TSourceValue, TResultKey, TResultValue>(this IReadOnlyDictionary<TSourceKey, TSourceValue> source, Expression<Func<TSourceKey, TSourceValue, KeyValuePair<TResultKey, TResultValue>>> selector) =>
+            ToActiveDictionary(source, selector, null, source.GetIndexingStrategy() ?? IndexingStrategy.NoneOrInherit, null, null);
 
         /// <summary>
-        /// Generates an <see cref="ActiveLookup{TKey, TValue}"/> using the specified <see cref="IndexingStrategy"/> which actively projects each key/value pair of a dictionary into a key-value pair using the specified <see cref="IComparer{T}"/>
+        /// Generates an <see cref="ActiveDictionary{TKey, TValue}"/> using the specified <see cref="IndexingStrategy"/> which actively projects each key/value pair of a dictionary into a key-value pair using the specified <see cref="IComparer{T}"/>
         /// </summary>
         /// <typeparam name="TSourceKey">The type of the keys in <paramref name="source"/></typeparam>
         /// <typeparam name="TSourceValue">The type of the values in <paramref name="source"/></typeparam>
-        /// <typeparam name="TResultKey">The type of the keys in the resulting <see cref="ActiveLookup{TKey, TValue}"/></typeparam>
-        /// <typeparam name="TResultValue">The type of the values in the resulting <see cref="ActiveLookup{TKey, TValue}"/></typeparam>
+        /// <typeparam name="TResultKey">The type of the keys in the resulting <see cref="ActiveDictionary{TKey, TValue}"/></typeparam>
+        /// <typeparam name="TResultValue">The type of the values in the resulting <see cref="ActiveDictionary{TKey, TValue}"/></typeparam>
         /// <param name="source">A dictionary to transform into key/value pairs</param>
         /// <param name="selector">A transform function to apply to each key/value pair in <paramref name="source"/></param>
-        /// <param name="indexingStrategy">The indexing strategy to use for the resulting <see cref="ActiveLookup{TKey, TValue}"/></param>
-        /// <returns>An <see cref="ActiveLookup{TKey, TValue}"/> using the specified <see cref="IndexingStrategy"/> the key/value pairs of which are the result of invoking the transform function on each key/value pair in <paramref name="source"/></returns>
-        public static ActiveLookup<TResultKey, TResultValue> ToActiveLookup<TSourceKey, TSourceValue, TResultKey, TResultValue>(this IReadOnlyDictionary<TSourceKey, TSourceValue> source, Expression<Func<TSourceKey, TSourceValue, KeyValuePair<TResultKey, TResultValue>>> selector, IndexingStrategy indexingStrategy) =>
-            ToActiveLookup(source, selector, null, indexingStrategy, null, null);
+        /// <param name="indexingStrategy">The indexing strategy to use for the resulting <see cref="ActiveDictionary{TKey, TValue}"/></param>
+        /// <returns>An <see cref="ActiveDictionary{TKey, TValue}"/> using the specified <see cref="IndexingStrategy"/> the key/value pairs of which are the result of invoking the transform function on each key/value pair in <paramref name="source"/></returns>
+        public static ActiveDictionary<TResultKey, TResultValue> ToActiveDictionary<TSourceKey, TSourceValue, TResultKey, TResultValue>(this IReadOnlyDictionary<TSourceKey, TSourceValue> source, Expression<Func<TSourceKey, TSourceValue, KeyValuePair<TResultKey, TResultValue>>> selector, IndexingStrategy indexingStrategy) =>
+            ToActiveDictionary(source, selector, null, indexingStrategy, null, null);
 
         /// <summary>
-        /// Generates an <see cref="ActiveLookup{TKey, TValue}"/> using a hash table which actively projects each key/value pair of a dictionary into a key-value pair using the specified <see cref="IComparer{T}"/>
+        /// Generates an <see cref="ActiveDictionary{TKey, TValue}"/> using a hash table which actively projects each key/value pair of a dictionary into a key-value pair using the specified <see cref="IComparer{T}"/>
         /// </summary>
         /// <typeparam name="TSourceKey">The type of the keys in <paramref name="source"/></typeparam>
         /// <typeparam name="TSourceValue">The type of the values in <paramref name="source"/></typeparam>
-        /// <typeparam name="TResultKey">The type of the keys in the resulting <see cref="ActiveLookup{TKey, TValue}"/></typeparam>
-        /// <typeparam name="TResultValue">The type of the values in the resulting <see cref="ActiveLookup{TKey, TValue}"/></typeparam>
+        /// <typeparam name="TResultKey">The type of the keys in the resulting <see cref="ActiveDictionary{TKey, TValue}"/></typeparam>
+        /// <typeparam name="TResultValue">The type of the values in the resulting <see cref="ActiveDictionary{TKey, TValue}"/></typeparam>
         /// <param name="source">A dictionary to transform into key/value pairs</param>
         /// <param name="selector">A transform function to apply to each key/value pair in <paramref name="source"/></param>
         /// <param name="keyEqualityComparer">An <see cref="IEqualityComparer{T}"/> to compare resulting keys</param>
-        /// <returns>An <see cref="ActiveLookup{TKey, TValue}"/> using a hash table the key/value pairs of which are the result of invoking the transform function on each key/value pair in <paramref name="source"/></returns>
-        public static ActiveLookup<TResultKey, TResultValue> ToActiveLookup<TSourceKey, TSourceValue, TResultKey, TResultValue>(this IReadOnlyDictionary<TSourceKey, TSourceValue> source, Expression<Func<TSourceKey, TSourceValue, KeyValuePair<TResultKey, TResultValue>>> selector, IEqualityComparer<TResultKey> keyEqualityComparer) =>
-            ToActiveLookup(source, selector, null, IndexingStrategy.HashTable, keyEqualityComparer, null);
+        /// <returns>An <see cref="ActiveDictionary{TKey, TValue}"/> using a hash table the key/value pairs of which are the result of invoking the transform function on each key/value pair in <paramref name="source"/></returns>
+        public static ActiveDictionary<TResultKey, TResultValue> ToActiveDictionary<TSourceKey, TSourceValue, TResultKey, TResultValue>(this IReadOnlyDictionary<TSourceKey, TSourceValue> source, Expression<Func<TSourceKey, TSourceValue, KeyValuePair<TResultKey, TResultValue>>> selector, IEqualityComparer<TResultKey> keyEqualityComparer) =>
+            ToActiveDictionary(source, selector, null, IndexingStrategy.HashTable, keyEqualityComparer, null);
 
         /// <summary>
-        /// Generates an <see cref="ActiveLookup{TKey, TValue}"/> using a binary search tree which actively projects each key/value pair of a dictionary into a key-value pair using the specified <see cref="IComparer{T}"/>
+        /// Generates an <see cref="ActiveDictionary{TKey, TValue}"/> using a binary search tree which actively projects each key/value pair of a dictionary into a key-value pair using the specified <see cref="IComparer{T}"/>
         /// </summary>
         /// <typeparam name="TSourceKey">The type of the keys in <paramref name="source"/></typeparam>
         /// <typeparam name="TSourceValue">The type of the values in <paramref name="source"/></typeparam>
-        /// <typeparam name="TResultKey">The type of the keys in the resulting <see cref="ActiveLookup{TKey, TValue}"/></typeparam>
-        /// <typeparam name="TResultValue">The type of the values in the resulting <see cref="ActiveLookup{TKey, TValue}"/></typeparam>
+        /// <typeparam name="TResultKey">The type of the keys in the resulting <see cref="ActiveDictionary{TKey, TValue}"/></typeparam>
+        /// <typeparam name="TResultValue">The type of the values in the resulting <see cref="ActiveDictionary{TKey, TValue}"/></typeparam>
         /// <param name="source">A dictionary to transform into key/value pairs</param>
         /// <param name="selector">A transform function to apply to each key/value pair in <paramref name="source"/></param>
         /// <param name="keyComparer">An <see cref="IComparer{T}"/> to compare resulting keys</param>
-        /// <returns>An <see cref="ActiveLookup{TKey, TValue}"/> using a binary search tree the key/value pairs of which are the result of invoking the transform function on each key/value pair in <paramref name="source"/></returns>
-        public static ActiveLookup<TResultKey, TResultValue> ToActiveLookup<TSourceKey, TSourceValue, TResultKey, TResultValue>(this IReadOnlyDictionary<TSourceKey, TSourceValue> source, Expression<Func<TSourceKey, TSourceValue, KeyValuePair<TResultKey, TResultValue>>> selector, IComparer<TResultKey> keyComparer) =>
-            ToActiveLookup(source, selector, null, IndexingStrategy.SelfBalancingBinarySearchTree, null, keyComparer);
+        /// <returns>An <see cref="ActiveDictionary{TKey, TValue}"/> using a binary search tree the key/value pairs of which are the result of invoking the transform function on each key/value pair in <paramref name="source"/></returns>
+        public static ActiveDictionary<TResultKey, TResultValue> ToActiveDictionary<TSourceKey, TSourceValue, TResultKey, TResultValue>(this IReadOnlyDictionary<TSourceKey, TSourceValue> source, Expression<Func<TSourceKey, TSourceValue, KeyValuePair<TResultKey, TResultValue>>> selector, IComparer<TResultKey> keyComparer) =>
+            ToActiveDictionary(source, selector, null, IndexingStrategy.SelfBalancingBinarySearchTree, null, keyComparer);
 
         /// <summary>
-        /// Generates an <see cref="ActiveLookup{TKey, TValue}"/> which actively projects each key/value pair of a dictionary into a key-value pair using the specified <see cref="IComparer{T}"/>
+        /// Generates an <see cref="ActiveDictionary{TKey, TValue}"/> which actively projects each key/value pair of a dictionary into a key-value pair using the specified <see cref="IComparer{T}"/>
         /// </summary>
         /// <typeparam name="TSourceKey">The type of the keys in <paramref name="source"/></typeparam>
         /// <typeparam name="TSourceValue">The type of the values in <paramref name="source"/></typeparam>
-        /// <typeparam name="TResultKey">The type of the keys in the resulting <see cref="ActiveLookup{TKey, TValue}"/></typeparam>
-        /// <typeparam name="TResultValue">The type of the values in the resulting <see cref="ActiveLookup{TKey, TValue}"/></typeparam>
+        /// <typeparam name="TResultKey">The type of the keys in the resulting <see cref="ActiveDictionary{TKey, TValue}"/></typeparam>
+        /// <typeparam name="TResultValue">The type of the values in the resulting <see cref="ActiveDictionary{TKey, TValue}"/></typeparam>
         /// <param name="source">A dictionary to transform into key/value pairs</param>
         /// <param name="selector">A transform function to apply to each key/value pair in <paramref name="source"/></param>
         /// <param name="selectorOptions">Options governing the behavior of active expressions created using <paramref name="selector"/></param>
-        /// <returns>An <see cref="ActiveLookup{TKey, TValue}"/> the key/value pairs of which are the result of invoking the transform function on each key/value pair in <paramref name="source"/></returns>
-        public static ActiveLookup<TResultKey, TResultValue> ToActiveLookup<TSourceKey, TSourceValue, TResultKey, TResultValue>(this IReadOnlyDictionary<TSourceKey, TSourceValue> source, Expression<Func<TSourceKey, TSourceValue, KeyValuePair<TResultKey, TResultValue>>> selector, ActiveExpressionOptions selectorOptions) =>
-            ToActiveLookup(source, selector, selectorOptions, source.GetIndexingStrategy() ?? IndexingStrategy.NoneOrInherit, null, null);
+        /// <returns>An <see cref="ActiveDictionary{TKey, TValue}"/> the key/value pairs of which are the result of invoking the transform function on each key/value pair in <paramref name="source"/></returns>
+        public static ActiveDictionary<TResultKey, TResultValue> ToActiveDictionary<TSourceKey, TSourceValue, TResultKey, TResultValue>(this IReadOnlyDictionary<TSourceKey, TSourceValue> source, Expression<Func<TSourceKey, TSourceValue, KeyValuePair<TResultKey, TResultValue>>> selector, ActiveExpressionOptions selectorOptions) =>
+            ToActiveDictionary(source, selector, selectorOptions, source.GetIndexingStrategy() ?? IndexingStrategy.NoneOrInherit, null, null);
 
         /// <summary>
-        /// Generates an <see cref="ActiveLookup{TKey, TValue}"/> using the specified <see cref="IndexingStrategy"/> which actively projects each key/value pair of a dictionary into a key-value pair using the specified <see cref="IComparer{T}"/>
+        /// Generates an <see cref="ActiveDictionary{TKey, TValue}"/> using the specified <see cref="IndexingStrategy"/> which actively projects each key/value pair of a dictionary into a key-value pair using the specified <see cref="IComparer{T}"/>
         /// </summary>
         /// <typeparam name="TSourceKey">The type of the keys in <paramref name="source"/></typeparam>
         /// <typeparam name="TSourceValue">The type of the values in <paramref name="source"/></typeparam>
-        /// <typeparam name="TResultKey">The type of the keys in the resulting <see cref="ActiveLookup{TKey, TValue}"/></typeparam>
-        /// <typeparam name="TResultValue">The type of the values in the resulting <see cref="ActiveLookup{TKey, TValue}"/></typeparam>
+        /// <typeparam name="TResultKey">The type of the keys in the resulting <see cref="ActiveDictionary{TKey, TValue}"/></typeparam>
+        /// <typeparam name="TResultValue">The type of the values in the resulting <see cref="ActiveDictionary{TKey, TValue}"/></typeparam>
         /// <param name="source">A dictionary to transform into key/value pairs</param>
         /// <param name="selector">A transform function to apply to each key/value pair in <paramref name="source"/></param>
         /// <param name="selectorOptions">Options governing the behavior of active expressions created using <paramref name="selector"/></param>
-        /// <param name="indexingStrategy">The indexing strategy to use for the resulting <see cref="ActiveLookup{TKey, TValue}"/></param>
-        /// <returns>An <see cref="ActiveLookup{TKey, TValue}"/> using the specified <see cref="IndexingStrategy"/> the key/value pairs of which are the result of invoking the transform function on each key/value pair in <paramref name="source"/></returns>
-        public static ActiveLookup<TResultKey, TResultValue> ToActiveLookup<TSourceKey, TSourceValue, TResultKey, TResultValue>(this IReadOnlyDictionary<TSourceKey, TSourceValue> source, Expression<Func<TSourceKey, TSourceValue, KeyValuePair<TResultKey, TResultValue>>> selector, ActiveExpressionOptions selectorOptions, IndexingStrategy indexingStrategy) =>
-            ToActiveLookup(source, selector, selectorOptions, indexingStrategy, null, null);
+        /// <param name="indexingStrategy">The indexing strategy to use for the resulting <see cref="ActiveDictionary{TKey, TValue}"/></param>
+        /// <returns>An <see cref="ActiveDictionary{TKey, TValue}"/> using the specified <see cref="IndexingStrategy"/> the key/value pairs of which are the result of invoking the transform function on each key/value pair in <paramref name="source"/></returns>
+        public static ActiveDictionary<TResultKey, TResultValue> ToActiveDictionary<TSourceKey, TSourceValue, TResultKey, TResultValue>(this IReadOnlyDictionary<TSourceKey, TSourceValue> source, Expression<Func<TSourceKey, TSourceValue, KeyValuePair<TResultKey, TResultValue>>> selector, ActiveExpressionOptions selectorOptions, IndexingStrategy indexingStrategy) =>
+            ToActiveDictionary(source, selector, selectorOptions, indexingStrategy, null, null);
 
         /// <summary>
-        /// Generates an <see cref="ActiveLookup{TKey, TValue}"/> using a hash table which actively projects each key/value pair of a dictionary into a key-value pair using the specified <see cref="IComparer{T}"/>
+        /// Generates an <see cref="ActiveDictionary{TKey, TValue}"/> using a hash table which actively projects each key/value pair of a dictionary into a key-value pair using the specified <see cref="IComparer{T}"/>
         /// </summary>
         /// <typeparam name="TSourceKey">The type of the keys in <paramref name="source"/></typeparam>
         /// <typeparam name="TSourceValue">The type of the values in <paramref name="source"/></typeparam>
-        /// <typeparam name="TResultKey">The type of the keys in the resulting <see cref="ActiveLookup{TKey, TValue}"/></typeparam>
-        /// <typeparam name="TResultValue">The type of the values in the resulting <see cref="ActiveLookup{TKey, TValue}"/></typeparam>
+        /// <typeparam name="TResultKey">The type of the keys in the resulting <see cref="ActiveDictionary{TKey, TValue}"/></typeparam>
+        /// <typeparam name="TResultValue">The type of the values in the resulting <see cref="ActiveDictionary{TKey, TValue}"/></typeparam>
         /// <param name="source">A dictionary to transform into key/value pairs</param>
         /// <param name="selector">A transform function to apply to each key/value pair in <paramref name="source"/></param>
         /// <param name="selectorOptions">Options governing the behavior of active expressions created using <paramref name="selector"/></param>
         /// <param name="keyEqualityComparer">An <see cref="IEqualityComparer{T}"/> to compare resulting keys</param>
-        /// <returns>An <see cref="ActiveLookup{TKey, TValue}"/> using a hash table the key/value pairs of which are the result of invoking the transform function on each key/value pair in <paramref name="source"/></returns>
-        public static ActiveLookup<TResultKey, TResultValue> ToActiveLookup<TSourceKey, TSourceValue, TResultKey, TResultValue>(this IReadOnlyDictionary<TSourceKey, TSourceValue> source, Expression<Func<TSourceKey, TSourceValue, KeyValuePair<TResultKey, TResultValue>>> selector, ActiveExpressionOptions selectorOptions, IEqualityComparer<TResultKey> keyEqualityComparer) =>
-            ToActiveLookup(source, selector, selectorOptions, IndexingStrategy.HashTable, keyEqualityComparer, null);
+        /// <returns>An <see cref="ActiveDictionary{TKey, TValue}"/> using a hash table the key/value pairs of which are the result of invoking the transform function on each key/value pair in <paramref name="source"/></returns>
+        public static ActiveDictionary<TResultKey, TResultValue> ToActiveDictionary<TSourceKey, TSourceValue, TResultKey, TResultValue>(this IReadOnlyDictionary<TSourceKey, TSourceValue> source, Expression<Func<TSourceKey, TSourceValue, KeyValuePair<TResultKey, TResultValue>>> selector, ActiveExpressionOptions selectorOptions, IEqualityComparer<TResultKey> keyEqualityComparer) =>
+            ToActiveDictionary(source, selector, selectorOptions, IndexingStrategy.HashTable, keyEqualityComparer, null);
 
         /// <summary>
-        /// Generates an <see cref="ActiveLookup{TKey, TValue}"/> using a binary search tree which actively projects each key/value pair of a dictionary into a key-value pair using the specified <see cref="IComparer{T}"/>
+        /// Generates an <see cref="ActiveDictionary{TKey, TValue}"/> using a binary search tree which actively projects each key/value pair of a dictionary into a key-value pair using the specified <see cref="IComparer{T}"/>
         /// </summary>
         /// <typeparam name="TSourceKey">The type of the keys in <paramref name="source"/></typeparam>
         /// <typeparam name="TSourceValue">The type of the values in <paramref name="source"/></typeparam>
-        /// <typeparam name="TResultKey">The type of the keys in the resulting <see cref="ActiveLookup{TKey, TValue}"/></typeparam>
-        /// <typeparam name="TResultValue">The type of the values in the resulting <see cref="ActiveLookup{TKey, TValue}"/></typeparam>
+        /// <typeparam name="TResultKey">The type of the keys in the resulting <see cref="ActiveDictionary{TKey, TValue}"/></typeparam>
+        /// <typeparam name="TResultValue">The type of the values in the resulting <see cref="ActiveDictionary{TKey, TValue}"/></typeparam>
         /// <param name="source">A dictionary to transform into key/value pairs</param>
         /// <param name="selector">A transform function to apply to each key/value pair in <paramref name="source"/></param>
         /// <param name="selectorOptions">Options governing the behavior of active expressions created using <paramref name="selector"/></param>
         /// <param name="keyComparer">An <see cref="IComparer{T}"/> to compare resulting keys</param>
-        /// <returns>An <see cref="ActiveLookup{TKey, TValue}"/> using a binary search tree the key/value pairs of which are the result of invoking the transform function on each key/value pair in <paramref name="source"/></returns>
-        public static ActiveLookup<TResultKey, TResultValue> ToActiveLookup<TSourceKey, TSourceValue, TResultKey, TResultValue>(this IReadOnlyDictionary<TSourceKey, TSourceValue> source, Expression<Func<TSourceKey, TSourceValue, KeyValuePair<TResultKey, TResultValue>>> selector, ActiveExpressionOptions selectorOptions, IComparer<TResultKey> keyComparer) =>
-            ToActiveLookup(source, selector, selectorOptions, IndexingStrategy.SelfBalancingBinarySearchTree, null, keyComparer);
+        /// <returns>An <see cref="ActiveDictionary{TKey, TValue}"/> using a binary search tree the key/value pairs of which are the result of invoking the transform function on each key/value pair in <paramref name="source"/></returns>
+        public static ActiveDictionary<TResultKey, TResultValue> ToActiveDictionary<TSourceKey, TSourceValue, TResultKey, TResultValue>(this IReadOnlyDictionary<TSourceKey, TSourceValue> source, Expression<Func<TSourceKey, TSourceValue, KeyValuePair<TResultKey, TResultValue>>> selector, ActiveExpressionOptions selectorOptions, IComparer<TResultKey> keyComparer) =>
+            ToActiveDictionary(source, selector, selectorOptions, IndexingStrategy.SelfBalancingBinarySearchTree, null, keyComparer);
 
-        static ActiveLookup<TResultKey, TResultValue> ToActiveLookup<TSourceKey, TSourceValue, TResultKey, TResultValue>(IReadOnlyDictionary<TSourceKey, TSourceValue> source, Expression<Func<TSourceKey, TSourceValue, KeyValuePair<TResultKey, TResultValue>>> selector, ActiveExpressionOptions selectorOptions, IndexingStrategy indexingStrategy, IEqualityComparer<TResultKey> keyEqualityComparer, IComparer<TResultKey> keyComparer)
+        static ActiveDictionary<TResultKey, TResultValue> ToActiveDictionary<TSourceKey, TSourceValue, TResultKey, TResultValue>(IReadOnlyDictionary<TSourceKey, TSourceValue> source, Expression<Func<TSourceKey, TSourceValue, KeyValuePair<TResultKey, TResultValue>>> selector, ActiveExpressionOptions selectorOptions, IndexingStrategy indexingStrategy, IEqualityComparer<TResultKey> keyEqualityComparer, IComparer<TResultKey> keyComparer)
         {
             indexingStrategy = source.GetIndexingStrategy() ?? IndexingStrategy.NoneOrInherit;
             ActiveQueryOptions.Optimize(ref selector);
@@ -2104,7 +2090,7 @@ namespace Gear.ActiveQuery
                 rangeObservableDictionary.AddRange(distinctResultsAndFaults.Select(g => g.First().result));
                 foreach (var (key, duplicateCount) in distinctResultsAndFaults.Select(g => (key: g.Key, duplicateCount: g.Count() - 1)).Where(kc => kc.duplicateCount > 0))
                     duplicateKeys.Add(key, duplicateCount);
-                var activeLookup = new ActiveLookup<TResultKey, TResultValue>(rangeObservableDictionary, out setOperationFault, rangeActiveExpression, () =>
+                var activeDictionary = new ActiveDictionary<TResultKey, TResultValue>(rangeObservableDictionary, out setOperationFault, rangeActiveExpression, () =>
                 {
                     rangeActiveExpression.DictionaryChanged -= rangeActiveExpressionChanged;
                     rangeActiveExpression.ValueResultChanged -= valueResultChanged;
@@ -2113,11 +2099,25 @@ namespace Gear.ActiveQuery
                 });
                 checkOperationFault();
 
-                return activeLookup;
+                return activeDictionary;
             });
         }
 
-        #endregion ToActiveLookup
+        #endregion ToActiveDictionary
+
+        #region ToActiveEnumerable
+
+        /// <summary>
+        /// Converts the values of an <see cref="IReadOnlyDictionary{TKey, TValue}"/> into an <see cref="IActiveEnumerable{TElement}"/>
+        /// </summary>
+        /// <typeparam name="TKey">The type of the keys in <paramref name="source"/></typeparam>
+        /// <typeparam name="TValue">The type of the values in <paramref name="source"/></typeparam>
+        /// <param name="source">An <see cref="IReadOnlyDictionary{TKey, TValue}"/> to convert</param>
+        /// <returns>An <see cref="IActiveEnumerable{TElement}"/> equivalent to the values of <paramref name="source"/> (and mutates with it so long as <paramref name="source"/> implements <see cref="INotifyDictionaryChanged{TKey, TValue}"/>)</returns>
+        public static IActiveEnumerable<TValue> ToActiveEnumerable<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source) =>
+            ActiveSelect(source, (key, value) => value);
+
+        #endregion ToActiveEnumerable
 
         #region ValueFor
 
@@ -2278,8 +2278,8 @@ namespace Gear.ActiveQuery
         /// <typeparam name="TValue">The type of the values in <paramref name="source"/></typeparam>
         /// <param name="source">An <see cref="IReadOnlyDictionary{TKey, TValue}"/> to filter</param>
         /// <param name="predicate">A function to test each key/value pair for a condition</param>
-        /// <returns>An <see cref="ActiveLookup{TKey, TValue}"/> that contains elements from the input dictionary that satisfy the condition</returns>
-        public static ActiveLookup<TKey, TValue> ActiveWhere<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, bool>> predicate) =>
+        /// <returns>An <see cref="ActiveDictionary{TKey, TValue}"/> that contains elements from the input dictionary that satisfy the condition</returns>
+        public static ActiveDictionary<TKey, TValue> ActiveWhere<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, bool>> predicate) =>
             ActiveWhere(source, predicate, null);
 
         /// <summary>
@@ -2290,8 +2290,8 @@ namespace Gear.ActiveQuery
         /// <param name="source">An <see cref="IReadOnlyDictionary{TKey, TValue}"/> to filter</param>
         /// <param name="predicate">A function to test each key/value pair for a condition</param>
         /// <param name="predicateOptions">Options governing the behavior of active expressions created using <paramref name="predicate"/></param>
-        /// <returns>An <see cref="ActiveLookup{TKey, TValue}"/> that contains elements from the input dictionary that satisfy the condition</returns>
-        public static ActiveLookup<TKey, TValue> ActiveWhere<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, bool>> predicate, ActiveExpressionOptions predicateOptions)
+        /// <returns>An <see cref="ActiveDictionary{TKey, TValue}"/> that contains elements from the input dictionary that satisfy the condition</returns>
+        public static ActiveDictionary<TKey, TValue> ActiveWhere<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, bool>> predicate, ActiveExpressionOptions predicateOptions)
         {
             ActiveQueryOptions.Optimize(ref predicate);
 
@@ -2340,7 +2340,7 @@ namespace Gear.ActiveQuery
 
                 rangeObservableDictionary = source.CreateSimilarSynchronizedObservableDictionary();
                 rangeObservableDictionary.AddRange(rangeActiveExpression.GetResults().Where(r => r.result).Select(r => new KeyValuePair<TKey, TValue>(r.key, source[r.key])));
-                return new ActiveLookup<TKey, TValue>(rangeObservableDictionary, rangeActiveExpression, () =>
+                return new ActiveDictionary<TKey, TValue>(rangeObservableDictionary, rangeActiveExpression, () =>
                 {
                     rangeActiveExpression.DictionaryChanged -= rangeActiveExpressionChanged;
                     rangeActiveExpression.ValueResultChanged -= valueResultChanged;

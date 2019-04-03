@@ -2,7 +2,7 @@ using Gear.Components;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Linq;
 
-namespace Gear.ActiveQuery.MSTest.Lookup
+namespace Gear.ActiveQuery.MSTest.Dictionary
 {
     [TestClass]
     public class ActiveSum

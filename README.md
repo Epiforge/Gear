@@ -131,7 +131,7 @@ var expr = ActiveExpression.Create<bool>(lambda, false, false);
 
 [![Gear.ActiveQuery Nuget](https://img.shields.io/nuget/v/Gear.ActiveQuery.svg)](https://www.nuget.org/packages/Gear.ActiveQuery)
 
-This library provides re-implementations of extension methods you know and love from `System.Linq.Enumerable`, but instead of returning `Enumerable<T>`s and simple values, these return `ActiveEnumerable<T>`s, `ActiveLookup<TKey, TValue>`s, and `ActiveValue<T>`s.
+This library provides re-implementations of extension methods you know and love from `System.Linq.Enumerable`, but instead of returning `Enumerable<T>`s and simple values, these return `ActiveEnumerable<T>`s, `ActiveDictionary<TKey, TValue>`s, and `ActiveValue<T>`s.
 This is because, unlike traditional LINQ extension methods, these extension methods continuously update their results until those results are disposed.
 
 But... what could cause those updates?
@@ -220,7 +220,7 @@ void Page_Unload(object sender, EventArgs e)
 
 Ahh, but what about exceptions?
 Well, active expressions expose a `Fault` property and raise `PropertyChanging` and `PropertyChanged` events for it, but... you don't really see those active expressions as an Active Query caller, do ya?
-For that reason, Active Query introduces the `INotifyElementFaultChanges` interface, which is implemented by `ActiveEnumerable<T>`, `ActiveLookup<TKey, TValue>`, and `ActiveValue<T>`.
+For that reason, Active Query introduces the `INotifyElementFaultChanges` interface, which is implemented by `ActiveEnumerable<T>`, `ActiveDictionary<TKey, TValue>`, and `ActiveValue<T>`.
 You may subscribe to its `ElementFaultChanging` and `ElementFaultChanged` events to be notified when an active expression runs into a problem.
 You may also call the `GetElementFaults` method at any time to retrieve a list of the elements (or key/value pairs) that have active expressions that are currently faulted and what the exception was in each case.
 
