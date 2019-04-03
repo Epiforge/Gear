@@ -1,7 +1,6 @@
-using System;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-namespace Gear.Components.MSTest
+namespace Gear.Components.Test
 {
     [TestClass]
     public class EquatableList
