@@ -2,8 +2,6 @@ pool:
   vmImage: 'windows-2019'
 
 variables:
-  solution: '**/*.sln'
-  buildPlatform: 'Any CPU'
   buildConfiguration: 'Release'
 
 steps:
@@ -19,33 +17,26 @@ steps:
     packageType: 'sdk'
     version: '3.0.100-preview3-010431' 
 
-- task: NuGetToolInstaller@0
-  displayName: 'Initialize NuGet tooling'
-  
-- task: NuGetCommand@2
-  displayName: 'Restore NuGet packages'
-  inputs:
-    restoreSolution: '$(solution)'
-
-- task: VSBuild@1
+- task: DotNetCoreCLI@2
   displayName: 'Build solution'
   inputs:
-    solution: '$(solution)'
-    platform: '$(buildPlatform)'
-    configuration: '$(buildConfiguration)'
-
-- task: VSTest@2
-  displayName: 'Execute and collect code coverage of unit tests (NETFramework)'
-  inputs:
-    platform: '$(buildPlatform)'
-    configuration: '$(buildConfiguration)'
-    codeCoverageEnabled: true
+    command: 'build'
+    projects: '**/*.sln'
+    arguments: '--configuration $(buildConfiguration)'
 
 - task: DotNetCoreCLI@2
-  displayName: 'Execute and collect code coverage of unit tests (NETCore)'
+  displayName: 'Execute and collect code coverage of unit tests'
   inputs:
     command: 'test'
+    projects: '**/*.Tests/*.csproj'
     arguments: '--configuration $(buildConfiguration) --collect "Code coverage"'
+
+- task: DotNetCoreCLI@2
+  displayName: 'Pack NuGets'
+  inputs:
+    command: 'pack'
+    projects: '**/*.!(*Test)/*.csproj'
+    arguments: '--configuration $(buildConfiguration)'
 
 - task: CopyFiles@2
   displayName: 'Copy artifacts to staging'
