@@ -21,21 +21,18 @@ steps:
   displayName: 'Build solution'
   inputs:
     command: 'build'
-    projects: '**/*.sln'
     arguments: '--configuration $(buildConfiguration)'
 
 - task: DotNetCoreCLI@2
   displayName: 'Execute and collect code coverage of unit tests'
   inputs:
     command: 'test'
-    projects: '**/*Tests/*.csproj'
     arguments: '--configuration $(buildConfiguration) --collect "Code coverage"'
 
 - task: DotNetCoreCLI@2
   displayName: 'Pack NuGets'
   inputs:
     command: 'pack'
-    projects: '**/*.csproj'
     arguments: '--configuration $(buildConfiguration)'
 
 - task: CopyFiles@2
