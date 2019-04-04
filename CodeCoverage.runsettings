@@ -11,6 +11,7 @@
                             </Include>
                             <Exclude>
                                 <ModulePath>.*CPPUnitTestFramework.*</ModulePath>
+                                <ModulePath>.*Gear\..*\.Tests\.dll$</ModulePath>
                             </Exclude>
                         </ModulePaths>
                         <Functions>
