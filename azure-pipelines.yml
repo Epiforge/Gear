@@ -33,7 +33,16 @@ steps:
   displayName: 'Test'
   inputs:
     command: 'test'
-    arguments: '--configuration $(buildConfiguration) --collect "Code coverage"'
+    arguments: '--configuration $(buildConfiguration)'
+
+- script: dotnet test --logger trx --collect "Code coverage"
+  displayName: 'Generate code coverage'
+
+- task: PublishTestResults@2
+  displayName: 'Collect code coverage'
+  inputs:
+    testRunner: VSTest
+    testResultsFiles: '**/*.trx'
 
 - task: DotNetCoreCLI@2
   displayName: 'Pack'
