@@ -33,7 +33,6 @@ steps:
   displayName: 'Execute and collect code coverage of unit tests (NETCore)'
   inputs:
     command: 'test'
-    projects: '**/*.Tests/*.csproj'
     arguments: '--configuration $(buildConfiguration) --collect "Code coverage"'
 
 - task: CopyFiles@2
