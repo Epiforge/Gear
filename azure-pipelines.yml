@@ -1,16 +1,10 @@
 pool:
-  vmImage: 'ubuntu-16.04'
+  vmImage: 'windows-2019'
 
 variables:
   buildConfiguration: 'Release'
 
 steps:
-- task: DotNetCoreInstaller@0
-  displayName: 'Initialize NETCore 2.1 runtime'
-  inputs:
-    packageType: 'runtime'
-    version: '2.1.9' 
-
 - task: DotNetCoreInstaller@0
   displayName: 'Initialize NETCore 3.0 runtime'
   inputs:
