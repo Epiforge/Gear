@@ -3,7 +3,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Collections.Concurrent;
 using System.Linq;
 
-namespace Gear.ActiveExpressions.MSTest
+namespace Gear.ActiveExpressions.Tests
 {
     [TestClass]
     public class ActiveConditionalExpression

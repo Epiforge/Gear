@@ -3,7 +3,7 @@ using System;
 using System.Linq.Expressions;
 using System.Reflection;
 
-namespace Gear.ActiveExpressions.MSTest
+namespace Gear.ActiveExpressions.Tests
 {
     [TestClass]
     public class ActiveMethodCallExpression

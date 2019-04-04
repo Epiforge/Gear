@@ -4,7 +4,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Linq;
 
-namespace Gear.ActiveExpressions.MSTest
+namespace Gear.ActiveExpressions.Tests
 {
     [TestClass]
     public class ActiveCoalesceExpression

@@ -2,7 +2,7 @@ using Gear.Components;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 
-namespace Gear.ActiveExpressions.MSTest
+namespace Gear.ActiveExpressions.Tests
 {
     [TestClass]
     public class ActiveMemberExpression

@@ -35,7 +35,7 @@ steps:
   displayName: 'Pack NuGets'
   inputs:
     command: 'pack'
-    projects: '**/!(*Test*)/*.csproj'
+    projects: '**/*.csproj'
     arguments: '--configuration $(buildConfiguration)'
 
 - task: CopyFiles@2

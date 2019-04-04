@@ -5,7 +5,7 @@ using System.Collections.Concurrent;
 using System.Linq;
 using System.Linq.Expressions;
 
-namespace Gear.ActiveExpressions.MSTest
+namespace Gear.ActiveExpressions.Tests
 {
     [TestClass]
     public class General

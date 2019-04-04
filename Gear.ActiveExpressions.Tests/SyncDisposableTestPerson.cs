@@ -2,7 +2,7 @@ using Gear.Components;
 using System.Linq;
 using System.Threading;
 
-namespace Gear.ActiveExpressions.MSTest
+namespace Gear.ActiveExpressions.Tests
 {
     class SyncDisposableTestPerson : SyncDisposablePropertyChangeNotifier
     {

@@ -2,19 +2,21 @@
 
   <PropertyGroup>
     <TargetFramework>netcoreapp2.1</TargetFramework>
-    <RuntimeFrameworkVersion>2.1.9</RuntimeFrameworkVersion>
+
     <IsPackable>false</IsPackable>
+
     <LangVersion>8.0</LangVersion>
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Linq.Expression.Optimizer" Version="1.0.12" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.0.1" />
     <PackageReference Include="MSTest.TestAdapter" Version="1.4.0" />
     <PackageReference Include="MSTest.TestFramework" Version="1.4.0" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Gear.Components\Gear.Components.csproj" />
+    <ProjectReference Include="..\Gear.ActiveQuery\Gear.ActiveQuery.csproj" />
   </ItemGroup>
 
 </Project>

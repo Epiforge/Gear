@@ -4,7 +4,7 @@ using System.Linq.Expressions;
 using Gear.Components;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-namespace Gear.ActiveExpressions.MSTest
+namespace Gear.ActiveExpressions.Tests
 {
     [TestClass]
     public class Options
