@@ -6,13 +6,13 @@ variables:
 
 steps:
 - task: DotNetCoreInstaller@0
-  displayName: 'Initialize NETCore 3.0 runtime'
+  displayName: 'Initialize .NET Core 3.0 runtime'
   inputs:
     packageType: 'runtime'
     version: '3.0.0-preview3-27503-5'
 
 - task: DotNetCoreInstaller@0
-  displayName: 'Initialize NETCore 3.0 tooling'
+  displayName: 'Initialize .NET Core 3.0 tooling'
   inputs:
     packageType: 'sdk'
     version: '3.0.100-preview3-010431'
@@ -33,16 +33,7 @@ steps:
   displayName: 'Test'
   inputs:
     command: 'test'
-    arguments: '--configuration $(buildConfiguration)'
-
-- script: dotnet test --logger trx --collect "Code coverage"
-  displayName: 'Generate code coverage'
-
-- task: PublishTestResults@2
-  displayName: 'Collect code coverage'
-  inputs:
-    testRunner: VSTest
-    testResultsFiles: '**/*.trx'
+    arguments: '--configuration $(buildConfiguration) --collect "Code coverage"'
 
 - task: DotNetCoreCLI@2
   displayName: 'Pack'
