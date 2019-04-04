@@ -1,5 +1,5 @@
 pool:
-  vmImage: 'windows-2019'
+  vmImage: 'ubuntu-16.04'
 
 variables:
   buildConfiguration: 'Release'
@@ -35,14 +35,14 @@ steps:
   displayName: 'Pack NuGets'
   inputs:
     command: 'pack'
-    projects: '**/*.!(*Test)/*.csproj'
+    projects: '**/*.!(*Test*)/*.csproj'
     arguments: '--configuration $(buildConfiguration)'
 
 - task: CopyFiles@2
   displayName: 'Copy artifacts to staging'
   inputs:
     sourceFolder: '$(Build.SourcesDirectory)'
-    contents: '**\$(buildConfiguration)\**\?(*.nupkg)'
+    contents: '**/$(buildConfiguration)/**/?(*.nupkg)'
     targetFolder: '$(Build.ArtifactStagingDirectory)'
     flattenFolders: true
     
