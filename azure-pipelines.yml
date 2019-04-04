@@ -34,7 +34,7 @@ steps:
   inputs:
     command: 'test'
     projects: '**/*Tests/*.csproj'
-    arguments: '--configuration $(buildConfiguration) --collect "code coverage"'
+    arguments: '--configuration $(buildConfiguration) --collect "code coverage" --settings CodeCoverage.runsettings'
 
 - task: DotNetCoreCLI@2
   displayName: 'Pack'

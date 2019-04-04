@@ -19,17 +19,18 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 	ProjectSection(SolutionItems) = preProject
 		.editorconfig = .editorconfig
 		azure-pipelines.yml = azure-pipelines.yml
+		CodeCoverage.runsettings = CodeCoverage.runsettings
 	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Gear.ActiveExpressions", "Gear.ActiveExpressions\Gear.ActiveExpressions.csproj", "{E9FB39B1-E848-4F3F-9BB8-3095F443F8D4}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Gear.Parallel", "Gear.Parallel\Gear.Parallel.csproj", "{527B7245-EDBF-4A84-9509-8585C3FA4AC9}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gear.Components.Tests", "Gear.Components.Tests\Gear.Components.Tests.csproj", "{32CCF6F0-85A4-4C1D-B3FD-AB1E00072B35}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Gear.Components.Tests", "Gear.Components.Tests\Gear.Components.Tests.csproj", "{32CCF6F0-85A4-4C1D-B3FD-AB1E00072B35}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gear.ActiveExpressions.Tests", "Gear.ActiveExpressions.Tests\Gear.ActiveExpressions.Tests.csproj", "{F7C1737C-7F68-4B5D-9603-D6B563C99AD0}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Gear.ActiveExpressions.Tests", "Gear.ActiveExpressions.Tests\Gear.ActiveExpressions.Tests.csproj", "{F7C1737C-7F68-4B5D-9603-D6B563C99AD0}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gear.ActiveQuery.Tests", "Gear.ActiveQuery.Tests\Gear.ActiveQuery.Tests.csproj", "{8141CCF6-4352-42EB-A06D-4A3E92E7659B}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Gear.ActiveQuery.Tests", "Gear.ActiveQuery.Tests\Gear.ActiveQuery.Tests.csproj", "{8141CCF6-4352-42EB-A06D-4A3E92E7659B}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
