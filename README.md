@@ -17,8 +17,6 @@ Supports `netstandard1.3`.
     - [Active Expressions](#active-expressions)
     - [Active Query](#active-query)
     - [Parallel](#parallel)
-  - [Retired](#retired)
-    - [Caching](#caching)
 - [License](#license)
 - [Contributing](#contributing)
 - [Acknowledgements](#acknowledgements)
@@ -236,16 +234,6 @@ Optimize your optimization, yo.
 This is the library where we stuff all our groovy parallel programming utilities.
 Unfortunately, we haven't thought of much groovyness to add to Microsoft's already bad-ass [Dataflow](https://www.nuget.org/packages/System.Threading.Tasks.Dataflow/).
 Writing some extension methods that make it quicker to use it seemed like the least we could do... so we did it.
-
-## Retired
-
-### Caching
-
-[![Gear.Caching Nuget](https://img.shields.io/nuget/v/Gear.Caching.svg)](https://www.nuget.org/packages/Gear.Caching)
-
-We made this library for a very specific application and don't really use it any more.
-But, it was open sourced and did eventually end up in some other people's stuff, so we still let it live here.
-Our advice would be not to write anything new using it.
 
 # License
 

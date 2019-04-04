@@ -9,13 +9,7 @@ steps:
   displayName: 'Initialize NETCore 3.0 runtime'
   inputs:
     packageType: 'runtime'
-    version: '3.0.0-preview3-27503-5' 
-
-- task: DotNetCoreInstaller@0
-  displayName: 'Initialize NETCore 3.0 tooling'
-  inputs:
-    packageType: 'sdk'
-    version: '3.0.100-preview3-010431' 
+    version: '3.0.0-preview3-27503-5'
 
 - task: DotNetCoreCLI@2
   displayName: 'Restore referenced NuGet packages'
@@ -30,13 +24,13 @@ steps:
     arguments: '--configuration $(buildConfiguration) --no-restore'
 
 - task: DotNetCoreCLI@2
-  displayName: 'Test'
+  displayName: 'Unit test'
   inputs:
     command: 'test'
     arguments: '--configuration $(buildConfiguration) --collect "Code coverage"'
 
 - task: DotNetCoreCLI@2
-  displayName: 'Pack NuGets'
+  displayName: 'Pack'
   inputs:
     command: 'pack'
     arguments: '--configuration $(buildConfiguration)'
