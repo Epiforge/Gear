@@ -6,13 +6,19 @@ variables:
 
 steps:
 - task: DotNetCoreInstaller@0
-  displayName: 'Initialize NETCore runtime'
+  displayName: 'Initialize NETCore 2.1 runtime'
+  inputs:
+    packageType: 'runtime'
+    version: '2.1.9' 
+
+- task: DotNetCoreInstaller@0
+  displayName: 'Initialize NETCore 3.0 runtime'
   inputs:
     packageType: 'runtime'
     version: '3.0.0-preview3-27503-5' 
 
 - task: DotNetCoreInstaller@0
-  displayName: 'Initialize NETCore tooling'
+  displayName: 'Initialize NETCore 3.0 tooling'
   inputs:
     packageType: 'sdk'
     version: '3.0.100-preview3-010431' 
