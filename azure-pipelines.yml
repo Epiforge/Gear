@@ -23,17 +23,24 @@ steps:
     configuration: '$(buildConfiguration)'
 
 - task: VSTest@2
-  displayName: 'Execute and collect code coverage of unit tests'
+  displayName: 'Execute and collect code coverage of unit tests (NETFramework)'
   inputs:
     platform: '$(buildPlatform)'
     configuration: '$(buildConfiguration)'
     codeCoverageEnabled: true
 
+- task: DotNetCoreCLI@2
+  displayName: 'Execute and collect code coverage of unit tests (NETCore)'
+  inputs:
+    command: 'test'
+    projects: '**/*.Tests/*.csproj'
+    arguments: '--configuration $(buildConfiguration) --collect "Code coverage"'
+
 - task: CopyFiles@2
   displayName: 'Copy artifacts to staging'
   inputs:
     sourceFolder: '$(Build.SourcesDirectory)'
-    contents: '**\$(BuildConfiguration)\**\?(*.nupkg)'
+    contents: '**\$(buildConfiguration)\**\?(*.nupkg)'
     targetFolder: '$(Build.ArtifactStagingDirectory)'
     flattenFolders: true
     

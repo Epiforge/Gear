@@ -3,7 +3,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Gear.Components.MSTest
+namespace Gear.Components.Tests
 {
     [TestClass]
     public class Disposable
