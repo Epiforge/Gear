@@ -9,7 +9,7 @@ namespace Gear.ActiveExpressions
     /// Represents an active evaluation of a lambda expression
     /// </summary>
     /// <typeparam name="TResult">The type of the value returned by the lambda expression upon which this active expression is based</typeparam>
-    public interface IActiveExpression<out TResult> : IDisposable, IDisposeStatus, INotifyDisposalOverridden, INotifyDisposed, INotifyDisposing, INotifyPropertyChanged, INotifyPropertyChanging
+    public interface IActiveExpression<out TResult> : IDisposable, IDisposalStatus, INotifyDisposalOverridden, INotifyDisposed, INotifyDisposing, INotifyPropertyChanged, INotifyPropertyChanging
     {
         /// <summary>
         /// Gets the arguments that were passed to the lambda expression
@@ -37,7 +37,7 @@ namespace Gear.ActiveExpressions
     /// </summary>
     /// <typeparam name="TArg">The type of the argument passed to the lambda expression</typeparam>
     /// <typeparam name="TResult">The type of the value returned by the expression upon which this active expression is based</typeparam>
-    public interface IActiveExpression<out TArg, out TResult> : IDisposable, IDisposeStatus, INotifyDisposalOverridden, INotifyDisposed, INotifyDisposing, INotifyPropertyChanged, INotifyPropertyChanging
+    public interface IActiveExpression<out TArg, out TResult> : IDisposable, IDisposalStatus, INotifyDisposalOverridden, INotifyDisposed, INotifyDisposing, INotifyPropertyChanged, INotifyPropertyChanging
     {
         /// <summary>
         /// Gets the argument that was passed to the lambda expression
@@ -66,7 +66,7 @@ namespace Gear.ActiveExpressions
     /// <typeparam name="TArg1">The type of the first argument passed to the lambda expression</typeparam>
     /// <typeparam name="TArg2">The type of the second argument passed to the lambda expression</typeparam>
     /// <typeparam name="TResult">The type of the value returned by the expression upon which this active expression is based</typeparam>
-    public interface IActiveExpression<out TArg1, out TArg2, out TResult> : IDisposable, IDisposeStatus, INotifyDisposalOverridden, INotifyDisposed, INotifyDisposing, INotifyPropertyChanged, INotifyPropertyChanging
+    public interface IActiveExpression<out TArg1, out TArg2, out TResult> : IDisposable, IDisposalStatus, INotifyDisposalOverridden, INotifyDisposed, INotifyDisposing, INotifyPropertyChanged, INotifyPropertyChanging
     {
         /// <summary>
         /// Gets the first argument that was passed to the lambda expression
