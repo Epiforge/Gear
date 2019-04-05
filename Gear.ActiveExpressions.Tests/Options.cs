@@ -34,6 +34,18 @@ namespace Gear.ActiveExpressions.Tests
         #endregion Helper Classes
 
         [TestMethod]
+        public void DefaultHashCodeRemainsTheSame()
+        {
+            var @default = ActiveExpressionOptions.Default;
+            var disposeConstructedObjects = @default.DisposeConstructedObjects;
+            var firstHashCode = @default.GetHashCode();
+            @default.DisposeConstructedObjects = !disposeConstructedObjects;
+            var secondHashCode = @default.GetHashCode();
+            @default.DisposeConstructedObjects = disposeConstructedObjects;
+            Assert.AreEqual(firstHashCode, secondHashCode);
+        }
+
+        [TestMethod]
         public void DisposalUnsupported()
         {
             var options = new ActiveExpressionOptions();
@@ -147,20 +159,23 @@ namespace Gear.ActiveExpressions.Tests
         }
 
         [TestMethod]
-        public void OptionsFreeze()
+        [ExpectedException(typeof(InvalidOperationException))]
+        public void Freeze()
         {
-            var invalidThrown = false;
-            try
-            {
-                var options = new ActiveExpressionOptions();
-                using (var expr = ActiveExpression.Create(() => true, options))
-                    options.DisposeConstructedObjects = false;
-            }
-            catch (InvalidOperationException)
-            {
-                invalidThrown = true;
-            }
-            Assert.IsTrue(invalidThrown);
+            var options = new ActiveExpressionOptions();
+            using (var expr = ActiveExpression.Create(() => true, options))
+                options.DisposeConstructedObjects = false;
+        }
+
+        [TestMethod]
+        public void Inequality()
+        {
+            var options = new ActiveExpressionOptions();
+            Assert.IsTrue(options.AddConstructedTypeDisposal(typeof(SyncDisposableTestPerson)));
+            Assert.IsTrue(options != ActiveExpressionOptions.Default);
+            options = new ActiveExpressionOptions();
+            Assert.IsTrue(options.AddExpressionValueDisposal(() => new TestObject().GetSyncDisposableMethod()));
+            Assert.IsTrue(options != ActiveExpressionOptions.Default);
         }
     }
 }

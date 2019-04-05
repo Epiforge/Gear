@@ -136,9 +136,10 @@ namespace Gear.ActiveExpressions.Tests
                 perfectNumbers[5] = 25;
                 perfectNumbers.RemoveRange(Enumerable.Range(4, 3));
                 perfectNumbers.AddRange(Enumerable.Range(4, 3).ToDictionary(i => i, i => i * i));
+                perfectNumbers.Clear();
                 disconnect();
             }
-            Assert.IsTrue(new int[] { 25, 0, 30, 25, 0, 25 }.SequenceEqual(values));
+            Assert.IsTrue(new int[] { 25, 0, 30, 25, 0, 25, 0 }.SequenceEqual(values));
         }
 
         [TestMethod]
@@ -267,6 +268,25 @@ namespace Gear.ActiveExpressions.Tests
             var people = new ObservableCollection<AsyncDisposableTestPerson> { john };
             var options = new ActiveExpressionOptions();
             options.AddExpressionValueDisposal(() => new ObservableCollection<AsyncDisposableTestPerson>()[0]);
+            using (var ae = ActiveExpression.Create(p => p[0], people, options))
+            {
+                Assert.AreSame(john, ae.Value);
+                Assert.IsFalse(john.IsDisposed);
+                people[0] = emily;
+                Assert.AreSame(emily, ae.Value);
+                Assert.IsTrue(john.IsDisposed);
+            }
+            Assert.IsTrue(emily.IsDisposed);
+        }
+
+        [TestMethod]
+        public void ValueDisposal()
+        {
+            var john = SyncDisposableTestPerson.CreateJohn();
+            var emily = SyncDisposableTestPerson.CreateEmily();
+            var people = new ObservableCollection<SyncDisposableTestPerson> { john };
+            var options = new ActiveExpressionOptions();
+            options.AddExpressionValueDisposal(() => new ObservableCollection<SyncDisposableTestPerson>()[0]);
             using (var ae = ActiveExpression.Create(p => p[0], people, options))
             {
                 Assert.AreSame(john, ae.Value);

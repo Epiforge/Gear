@@ -15,8 +15,8 @@ namespace Gear.ActiveExpressions
     /// </summary>
     public abstract class ActiveExpression : OverridableSyncDisposablePropertyChangeNotifier
     {
-        static readonly ConcurrentDictionary<MethodInfo, FastMethodInfo> compiledMethods = new ConcurrentDictionary<MethodInfo, FastMethodInfo>();
-        static readonly ConcurrentDictionary<MethodInfo, PropertyInfo> propertyGetMethodToProperty = new ConcurrentDictionary<MethodInfo, PropertyInfo>();
+        static readonly ConcurrentDictionary<MethodInfo, FastMethodInfo> compiledMethods = new ConcurrentDictionary<MethodInfo, FastMethodInfo>(); // NCrunch: no coverage
+        static readonly ConcurrentDictionary<MethodInfo, PropertyInfo> propertyGetMethodToProperty = new ConcurrentDictionary<MethodInfo, PropertyInfo>(); // NCrunch: no coverage
 
         internal static ActiveExpression Create(Expression expression, ActiveExpressionOptions options, bool deferEvaluation)
         {
@@ -155,7 +155,7 @@ namespace Gear.ActiveExpressions
         /// <param name="lambdaExpression">The lambda expression</param>
         /// <param name="arguments">The arguments</param>
         /// <returns>The active expression</returns>
-        public static IActiveExpression<TResult> Create<TResult>(LambdaExpression lambdaExpression, params object[] arguments) =>
+        public static ActiveExpression<TResult> Create<TResult>(LambdaExpression lambdaExpression, params object[] arguments) =>
             CreateWithOptions<TResult>(lambdaExpression, null, arguments);
 
         /// <summary>
@@ -166,7 +166,7 @@ namespace Gear.ActiveExpressions
         /// <param name="options">Active expression options to use instead of <see cref="ActiveExpressionOptions.Default"/></param>
         /// <param name="arguments">The arguments</param>
         /// <returns>The active expression</returns>
-        public static IActiveExpression<TResult> CreateWithOptions<TResult>(LambdaExpression lambdaExpression, ActiveExpressionOptions options, params object[] arguments)
+        public static ActiveExpression<TResult> CreateWithOptions<TResult>(LambdaExpression lambdaExpression, ActiveExpressionOptions options, params object[] arguments)
         {
             options?.Freeze();
             return ActiveExpression<TResult>.Create(lambdaExpression, options, arguments);
@@ -179,7 +179,7 @@ namespace Gear.ActiveExpressions
         /// <param name="expression">The strongly-typed lambda expression</param>
         /// <param name="options">Active expression options to use instead of <see cref="ActiveExpressionOptions.Default"/></param>
         /// <returns>The active expression</returns>
-        public static IActiveExpression<TResult> Create<TResult>(Expression<Func<TResult>> expression, ActiveExpressionOptions options = null)
+        public static ActiveExpression<TResult> Create<TResult>(Expression<Func<TResult>> expression, ActiveExpressionOptions options = null)
         {
             options?.Freeze();
             return ActiveExpression<TResult>.Create(expression, options);
@@ -194,7 +194,7 @@ namespace Gear.ActiveExpressions
         /// <param name="arg">The argument</param>
         /// <param name="options">Active expression options to use instead of <see cref="ActiveExpressionOptions.Default"/></param>
         /// <returns>The active expression</returns>
-        public static IActiveExpression<TArg, TResult> Create<TArg, TResult>(Expression<Func<TArg, TResult>> expression, TArg arg, ActiveExpressionOptions options = null)
+        public static ActiveExpression<TArg, TResult> Create<TArg, TResult>(Expression<Func<TArg, TResult>> expression, TArg arg, ActiveExpressionOptions options = null)
         {
             options?.Freeze();
             return ActiveExpression<TArg, TResult>.Create(expression, arg, options);
@@ -211,7 +211,7 @@ namespace Gear.ActiveExpressions
         /// <param name="arg2">The second argument</param>
         /// <param name="options">Active expression options to use instead of <see cref="ActiveExpressionOptions.Default"/></param>
         /// <returns>The active expression</returns>
-        public static IActiveExpression<TArg1, TArg2, TResult> Create<TArg1, TArg2, TResult>(Expression<Func<TArg1, TArg2, TResult>> expression, TArg1 arg1, TArg2 arg2, ActiveExpressionOptions options = null)
+        public static ActiveExpression<TArg1, TArg2, TResult> Create<TArg1, TArg2, TResult>(Expression<Func<TArg1, TArg2, TResult>> expression, TArg1 arg1, TArg2 arg2, ActiveExpressionOptions options = null)
         {
             options?.Freeze();
             return ActiveExpression<TArg1, TArg2, TResult>.Create(expression, arg1, arg2, options);
@@ -230,7 +230,7 @@ namespace Gear.ActiveExpressions
         /// <param name="arg3">The third argument</param>
         /// <param name="options">Active expression options to use instead of <see cref="ActiveExpressionOptions.Default"/></param>
         /// <returns>The active expression</returns>
-        public static IActiveExpression<TArg1, TArg2, TArg3, TResult> Create<TArg1, TArg2, TArg3, TResult>(Expression<Func<TArg1, TArg2, TArg3, TResult>> expression, TArg1 arg1, TArg2 arg2, TArg3 arg3, ActiveExpressionOptions options = null)
+        public static ActiveExpression<TArg1, TArg2, TArg3, TResult> Create<TArg1, TArg2, TArg3, TResult>(Expression<Func<TArg1, TArg2, TArg3, TResult>> expression, TArg1 arg1, TArg2 arg2, TArg3 arg3, ActiveExpressionOptions options = null)
         {
             options?.Freeze();
             return ActiveExpression<TArg1, TArg2, TArg3, TResult>.Create(expression, arg1, arg2, arg3, options);
@@ -424,7 +424,7 @@ namespace Gear.ActiveExpressions
         /// </summary>
         public static Func<Expression, Expression> Optimizer { get; set; }
 
-        internal ActiveExpression(Type type, ExpressionType nodeType, ActiveExpressionOptions options, bool deferEvaluation)
+        public ActiveExpression(Type type, ExpressionType nodeType, ActiveExpressionOptions options, bool deferEvaluation)
         {
             Type = type;
             defaultValue = FastDefault.Get(type);
@@ -435,7 +435,7 @@ namespace Gear.ActiveExpressions
             deferringEvaluation = deferEvaluation;
         }
 
-        internal ActiveExpression(Type type, ExpressionType nodeType, ActiveExpressionOptions options, object value) : this(type, nodeType, options, false) => val = value;
+        public ActiveExpression(Type type, ExpressionType nodeType, ActiveExpressionOptions options, object value) : this(type, nodeType, options, false) => val = value;
 
         readonly object defaultValue;
         bool deferringEvaluation;
@@ -463,7 +463,6 @@ namespace Gear.ActiveExpressions
         /// <summary>
         /// Evaluates the current node
         /// </summary>
-        [ExcludeFromCodeCoverage]
         protected virtual void Evaluate()
         {
         }
@@ -580,7 +579,7 @@ namespace Gear.ActiveExpressions
         static readonly object instanceManagementLock = new object();
         static readonly Dictionary<(ActiveExpression activeExpression, EquatableList<object> args), ActiveExpression<TResult>> instances = new Dictionary<(ActiveExpression activeExpression, EquatableList<object> args), ActiveExpression<TResult>>();
 
-        internal static IActiveExpression<TResult> Create(LambdaExpression expression, ActiveExpressionOptions options, params object[] args)
+        internal static ActiveExpression<TResult> Create(LambdaExpression expression, ActiveExpressionOptions options, params object[] args)
         {
             var activeExpression = ActiveExpression.Create(ActiveExpression.ReplaceParameters(expression, args), options, false);
             var arguments = new EquatableList<object>(args);
@@ -713,7 +712,7 @@ namespace Gear.ActiveExpressions
         static readonly object instanceManagementLock = new object();
         static readonly Dictionary<(ActiveExpression activeExpression, TArg arg), ActiveExpression<TArg, TResult>> instances = new Dictionary<(ActiveExpression activeExpression, TArg arg), ActiveExpression<TArg, TResult>>();
 
-        internal static IActiveExpression<TArg, TResult> Create(LambdaExpression expression, TArg arg, ActiveExpressionOptions options = null)
+        internal static ActiveExpression<TArg, TResult> Create(LambdaExpression expression, TArg arg, ActiveExpressionOptions options = null)
         {
             var activeExpression = ActiveExpression.Create(ActiveExpression.ReplaceParameters(expression, arg), options, false);
             var key = (activeExpression, arg);
@@ -845,7 +844,7 @@ namespace Gear.ActiveExpressions
         static readonly object instanceManagementLock = new object();
         static readonly Dictionary<(ActiveExpression activeExpression, TArg1 arg1, TArg2 arg2), ActiveExpression<TArg1, TArg2, TResult>> instances = new Dictionary<(ActiveExpression activeExpression, TArg1 arg1, TArg2 arg2), ActiveExpression<TArg1, TArg2, TResult>>();
 
-        internal static IActiveExpression<TArg1, TArg2, TResult> Create(LambdaExpression expression, TArg1 arg1, TArg2 arg2, ActiveExpressionOptions options = null)
+        internal static ActiveExpression<TArg1, TArg2, TResult> Create(LambdaExpression expression, TArg1 arg1, TArg2 arg2, ActiveExpressionOptions options = null)
         {
             var activeExpression = ActiveExpression.Create(ActiveExpression.ReplaceParameters(expression, arg1, arg2), options, false);
             var key = (activeExpression, arg1, arg2);
@@ -984,7 +983,7 @@ namespace Gear.ActiveExpressions
         static readonly object instanceManagementLock = new object();
         static readonly Dictionary<(ActiveExpression activeExpression, TArg1 arg1, TArg2 arg2, TArg3 arg3), ActiveExpression<TArg1, TArg2, TArg3, TResult>> instances = new Dictionary<(ActiveExpression activeExpression, TArg1 arg1, TArg2 arg2, TArg3 arg3), ActiveExpression<TArg1, TArg2, TArg3, TResult>>();
 
-        internal static IActiveExpression<TArg1, TArg2, TArg3, TResult> Create(LambdaExpression expression, TArg1 arg1, TArg2 arg2, TArg3 arg3, ActiveExpressionOptions options = null)
+        internal static ActiveExpression<TArg1, TArg2, TArg3, TResult> Create(LambdaExpression expression, TArg1 arg1, TArg2 arg2, TArg3 arg3, ActiveExpressionOptions options = null)
         {
             var activeExpression = ActiveExpression.Create(ActiveExpression.ReplaceParameters(expression, arg1, arg2, arg3), options, false);
             var key = (activeExpression, arg1, arg2, arg3);

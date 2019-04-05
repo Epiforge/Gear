@@ -10,6 +10,33 @@ namespace Gear.ActiveExpressions.Tests
     [TestClass]
     public class General
     {
+        #region Helper Classes
+
+        class DummyActiveExpression : ActiveExpression
+        {
+            public DummyActiveExpression() : base(typeof(bool), ExpressionType.Constant, null, false) => EvaluateIfNotDeferred();
+
+            protected override bool Dispose(bool disposing) => false;
+        }
+
+        #endregion Helper Classes
+
+        [TestMethod]
+        [ExpectedException(typeof(NotSupportedException))]
+        public void BaseEquals()
+        {
+            using (var dummy = new DummyActiveExpression())
+                dummy.Equals(null);
+        }
+
+        [TestMethod]
+        [ExpectedException(typeof(NotSupportedException))]
+        public void BaseGetHashCode()
+        {
+            using (var dummy = new DummyActiveExpression())
+                dummy.GetHashCode();
+        }
+
         [TestMethod]
         public void CharStringConversion()
         {
@@ -91,6 +118,27 @@ namespace Gear.ActiveExpressions.Tests
             using (var expr = ActiveExpression.Create<int>(Expression.Lambda(Expression.Negate(Expression.Constant(3)))))
                 hashCode2 = expr.GetHashCode();
             Assert.IsTrue(hashCode1 == hashCode2);
+        }
+
+        [TestMethod]
+        public void LambdaArguments()
+        {
+            using (var expr = ActiveExpression.Create<int>(Expression.Lambda(Expression.Negate(Expression.Constant(3)))))
+                Assert.AreEqual(0, expr.Arguments.Count);
+        }
+
+        [TestMethod]
+        public void LambdaOptions()
+        {
+            using (var expr = ActiveExpression.Create<int>(Expression.Lambda(Expression.Negate(Expression.Constant(3)))))
+                Assert.IsNull(expr.Options);
+        }
+
+        [TestMethod]
+        public void OneArgumentOptions()
+        {
+            using (var expr = ActiveExpression.Create(a => a, 1))
+                Assert.IsNull(expr.Options);
         }
 
         [TestMethod]
@@ -252,6 +300,13 @@ namespace Gear.ActiveExpressions.Tests
         }
 
         [TestMethod]
+        public void ThreeArgumentOptions()
+        {
+            using (var expr = ActiveExpression.Create((a, b, c) => a + b + c, 1, 1, 1))
+                Assert.IsNull(expr.Options);
+        }
+
+        [TestMethod]
         public void TimeSpanStringConversion()
         {
             var threeMinutes = TimeSpan.FromMinutes(3);
@@ -268,6 +323,13 @@ namespace Gear.ActiveExpressions.Tests
             using (var expr = ActiveExpression.Create((a, b) => a + b, 1, 2))
                 hashCode2 = expr.GetHashCode();
             Assert.IsTrue(hashCode1 == hashCode2);
+        }
+
+        [TestMethod]
+        public void TwoArgumentOptions()
+        {
+            using (var expr = ActiveExpression.Create((a, b) => a + b, 1, 1))
+                Assert.IsNull(expr.Options);
         }
 
         [TestMethod]
