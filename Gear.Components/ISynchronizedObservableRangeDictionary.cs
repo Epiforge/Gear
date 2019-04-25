@@ -46,7 +46,7 @@ namespace Gear.Components
         /// <summary>
         /// Determines whether the <see cref="ISynchronizedObservableRangeDictionary{TKey, TValue}"/> contains an element with the specified value
         /// </summary>
-        /// <param name="value">THe value to locate in the <see cref="ISynchronizedObservableRangeDictionary{TKey, TValue}"/></param>
+        /// <param name="value">The value to locate in the <see cref="ISynchronizedObservableRangeDictionary{TKey, TValue}"/></param>
         /// <returns><c>true</c> if the <see cref="ISynchronizedObservableRangeDictionary{TKey, TValue}"/> contains an element with the value; otherwise, <c>false</c></returns>
         Task<bool> ContainsValueAsync(TValue value);
 
