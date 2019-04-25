@@ -10,45 +10,10 @@ namespace Gear.ActiveQuery
         {
             switch (indexingStrategy)
             {
-                case IndexingStrategy.SelfBalancingBinarySearchTree when (keyComparer != null):
-                    return new SortedDictionary<TKey, TResultValue>(keyComparer);
                 case IndexingStrategy.SelfBalancingBinarySearchTree:
-                    return new SortedDictionary<TKey, TResultValue>();
-                case IndexingStrategy.NoneOrInherit when (keyEqualityComparer != null):
-                case IndexingStrategy.HashTable when (keyEqualityComparer != null):
-                    return new Dictionary<TKey, TResultValue>(keyEqualityComparer);
+                    return keyComparer != null ? new SortedDictionary<TKey, TResultValue>(keyComparer) : new SortedDictionary<TKey, TResultValue>();
                 default:
-                    return new Dictionary<TKey, TResultValue>();
-            }
-        }
-
-        static IObservableRangeDictionary<TKey, TResultValue> CreateObservableDictionary<TKey, TSourceValue, TResultValue>(IndexingStrategy? indexingStrategy = null, IEqualityComparer<TKey> keyEqualityComparer = null, IComparer<TKey> keyComparer = null)
-        {
-            switch (indexingStrategy)
-            {
-                case IndexingStrategy.SelfBalancingBinarySearchTree when (keyComparer != null):
-                    return new ObservableSortedDictionary<TKey, TResultValue>(keyComparer);
-                case IndexingStrategy.SelfBalancingBinarySearchTree:
-                    return new ObservableSortedDictionary<TKey, TResultValue>();
-                case IndexingStrategy.NoneOrInherit when (keyEqualityComparer != null):
-                case IndexingStrategy.HashTable when (keyEqualityComparer != null):
-                    return new ObservableDictionary<TKey, TResultValue>(keyEqualityComparer);
-                default:
-                    return new ObservableDictionary<TKey, TResultValue>();
-            }
-        }
-
-        public static IDictionary<TKey, TValue> CreateSimilarDictionary<TKey, TValue>(this IDictionary<TKey, TValue> dictionary) => CreateSimilarDictionary<TKey, TValue, TValue>(dictionary);
-
-        public static IDictionary<TKey, TResultValue> CreateSimilarDictionary<TKey, TSourceValue, TResultValue>(this IDictionary<TKey, TSourceValue> dictionary)
-        {
-            var indexingStrategy = GetIndexingStrategy(dictionary);
-            switch (indexingStrategy)
-            {
-                case IndexingStrategy.SelfBalancingBinarySearchTree:
-                    return CreateDictionary<TKey, TSourceValue, TResultValue>(indexingStrategy, keyComparer: GetKeyComparer(dictionary));
-                default:
-                    return CreateDictionary<TKey, TSourceValue, TResultValue>(indexingStrategy, keyEqualityComparer: GetKeyEqualityComparer(dictionary));
+                    return keyEqualityComparer != null ? new Dictionary<TKey, TResultValue>(keyEqualityComparer) : new Dictionary<TKey, TResultValue>();
             }
         }
 
@@ -66,57 +31,9 @@ namespace Gear.ActiveQuery
             }
         }
 
-        public static IObservableRangeDictionary<TKey, TValue> CreateSimilarObservableDictionary<TKey, TValue>(this IDictionary<TKey, TValue> dictionary) => CreateSimilarObservableDictionary<TKey, TValue, TValue>(dictionary);
-
-        public static IObservableRangeDictionary<TKey, TResultValue> CreateSimilarObservableDictionary<TKey, TSourceValue, TResultValue>(this IDictionary<TKey, TSourceValue> dictionary)
-        {
-            var indexingStrategy = GetIndexingStrategy(dictionary);
-            switch (indexingStrategy)
-            {
-                case IndexingStrategy.SelfBalancingBinarySearchTree:
-                    return CreateObservableDictionary<TKey, TSourceValue, TResultValue>(indexingStrategy, keyComparer: GetKeyComparer(dictionary));
-                default:
-                    return CreateObservableDictionary<TKey, TSourceValue, TResultValue>(indexingStrategy, keyEqualityComparer: GetKeyEqualityComparer(dictionary));
-            }
-        }
-
-        public static IObservableRangeDictionary<TKey, TValue> CreateSimilarObservableDictionary<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> readOnlyDictionary) => CreateSimilarObservableDictionary<TKey, TValue, TValue>(readOnlyDictionary);
-
-        public static IObservableRangeDictionary<TKey, TResultValue> CreateSimilarObservableDictionary<TKey, TSourceValue, TResultValue>(this IReadOnlyDictionary<TKey, TSourceValue> readOnlyDictionary)
-        {
-            var indexingStrategy = GetIndexingStrategy(readOnlyDictionary);
-            switch (indexingStrategy)
-            {
-                case IndexingStrategy.SelfBalancingBinarySearchTree:
-                    return CreateObservableDictionary<TKey, TSourceValue, TResultValue>(indexingStrategy, keyComparer: GetKeyComparer(readOnlyDictionary));
-                default:
-                    return CreateObservableDictionary<TKey, TSourceValue, TResultValue>(indexingStrategy, keyEqualityComparer: GetKeyEqualityComparer(readOnlyDictionary));
-            }
-        }
-
-        public static ISynchronizedObservableRangeDictionary<TKey, TValue> CreateSimilarSynchronizedObservableDictionary<TKey, TValue>(this IDictionary<TKey, TValue> dictionary) => CreateSimilarSynchronizedObservableDictionary<TKey, TValue, TValue>(dictionary, SynchronizationContext.Current);
-
-        public static ISynchronizedObservableRangeDictionary<TKey, TValue> CreateSimilarSynchronizedObservableDictionary<TKey, TValue>(this IDictionary<TKey, TValue> dictionary, SynchronizationContext synchronizationContext) => CreateSimilarSynchronizedObservableDictionary<TKey, TValue, TValue>(dictionary, synchronizationContext);
-
-        public static ISynchronizedObservableRangeDictionary<TKey, TResultValue> CreateSimilarSynchronizedObservableDictionary<TKey, TSourceValue, TResultValue>(this IDictionary<TKey, TSourceValue> dictionary) => CreateSimilarSynchronizedObservableDictionary<TKey, TSourceValue, TResultValue>(dictionary, SynchronizationContext.Current);
-
-        public static ISynchronizedObservableRangeDictionary<TKey, TResultValue> CreateSimilarSynchronizedObservableDictionary<TKey, TSourceValue, TResultValue>(this IDictionary<TKey, TSourceValue> dictionary, SynchronizationContext synchronizationContext)
-        {
-            var indexingStrategy = GetIndexingStrategy(dictionary);
-            switch (indexingStrategy)
-            {
-                case IndexingStrategy.SelfBalancingBinarySearchTree:
-                    return CreateSynchronizedObservableDictionary<TKey, TSourceValue, TResultValue>(synchronizationContext, indexingStrategy, keyComparer: GetKeyComparer(dictionary));
-                default:
-                    return CreateSynchronizedObservableDictionary<TKey, TSourceValue, TResultValue>(synchronizationContext, indexingStrategy, keyEqualityComparer: GetKeyEqualityComparer(dictionary));
-            }
-        }
-
         public static ISynchronizedObservableRangeDictionary<TKey, TValue> CreateSimilarSynchronizedObservableDictionary<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> readOnlyDictionary) => CreateSimilarSynchronizedObservableDictionary(readOnlyDictionary, SynchronizationContext.Current);
 
         public static ISynchronizedObservableRangeDictionary<TKey, TValue> CreateSimilarSynchronizedObservableDictionary<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> readOnlyDictionary, SynchronizationContext synchronizationContext) => CreateSimilarSynchronizedObservableDictionary<TKey, TValue, TValue>(readOnlyDictionary, synchronizationContext);
-
-        public static ISynchronizedObservableRangeDictionary<TKey, TResultValue> CreateSimilarSynchronizedObservableDictionary<TKey, TSourceValue, TResultValue>(this IReadOnlyDictionary<TKey, TSourceValue> readOnlyDictionary) => CreateSimilarSynchronizedObservableDictionary<TKey, TSourceValue, TResultValue>(readOnlyDictionary, SynchronizationContext.Current);
 
         public static ISynchronizedObservableRangeDictionary<TKey, TResultValue> CreateSimilarSynchronizedObservableDictionary<TKey, TSourceValue, TResultValue>(this IReadOnlyDictionary<TKey, TSourceValue> readOnlyDictionary, SynchronizationContext synchronizationContext)
         {
@@ -134,85 +51,52 @@ namespace Gear.ActiveQuery
         {
             switch (indexingStrategy)
             {
-                case IndexingStrategy.SelfBalancingBinarySearchTree when (keyComparer != null):
-                    return new SynchronizedObservableSortedDictionary<TKey, TResultValue>(synchronizationContext, keyComparer);
-                case IndexingStrategy.SelfBalancingBinarySearchTree:
-                    return new SynchronizedObservableSortedDictionary<TKey, TResultValue>(synchronizationContext);
-                case IndexingStrategy.NoneOrInherit when (keyEqualityComparer != null):
-                case IndexingStrategy.HashTable when (keyEqualityComparer != null):
-                    return new SynchronizedObservableDictionary<TKey, TResultValue>(synchronizationContext, keyEqualityComparer);
+                case IndexingStrategy.SelfBalancingBinarySearchTree when keyComparer != null:
+                    return keyComparer != null ? new SynchronizedObservableSortedDictionary<TKey, TResultValue>(synchronizationContext, keyComparer) : new SynchronizedObservableSortedDictionary<TKey, TResultValue>(synchronizationContext);
                 default:
-                    return new SynchronizedObservableDictionary<TKey, TResultValue>(synchronizationContext);
+                    return keyEqualityComparer != null ? new SynchronizedObservableDictionary<TKey, TResultValue>(synchronizationContext, keyEqualityComparer) : new SynchronizedObservableDictionary<TKey, TResultValue>(synchronizationContext);
             }
-        }
-
-        public static IndexingStrategy? GetIndexingStrategy<TKey, TValue>(this IDictionary<TKey, TValue> dictionary)
-        {
-            if (dictionary is Dictionary<TKey, TValue> || dictionary is ObservableDictionary<TKey, TValue> || dictionary is SynchronizedObservableDictionary<TKey, TValue>)
-                return IndexingStrategy.HashTable;
-            if (dictionary is SortedDictionary<TKey, TValue> || dictionary is ObservableSortedDictionary<TKey, TValue> || dictionary is SynchronizedObservableSortedDictionary<TKey, TValue>)
-                return IndexingStrategy.SelfBalancingBinarySearchTree;
-            return null;
         }
 
         public static IndexingStrategy? GetIndexingStrategy<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> readOnlyDictionary)
         {
-            if (readOnlyDictionary is Dictionary<TKey, TValue> || readOnlyDictionary is ObservableDictionary<TKey, TValue> || readOnlyDictionary is SynchronizedObservableDictionary<TKey, TValue>)
-                return IndexingStrategy.HashTable;
-            if (readOnlyDictionary is SortedDictionary<TKey, TValue> || readOnlyDictionary is ObservableSortedDictionary<TKey, TValue> || readOnlyDictionary is SynchronizedObservableSortedDictionary<TKey, TValue>)
-                return IndexingStrategy.SelfBalancingBinarySearchTree;
-            return null;
-        }
-
-        public static IEqualityComparer<TKey> GetKeyEqualityComparer<TKey, TValue>(this IDictionary<TKey, TValue> dictionary, bool attemptCoercion = true)
-        {
-            switch (dictionary)
-            {
-                case SynchronizedObservableDictionary<TKey, TValue> synchronizedObservable:
-                    return synchronizedObservable.Comparer;
-                case ObservableDictionary<TKey, TValue> observable:
-                    return observable.Comparer;
-                case Dictionary<TKey, TValue> standard:
-                    return standard.Comparer;
-                default:
-                    return attemptCoercion && GetKeyComparer(dictionary, false) is IEqualityComparer<TKey> coercedEqualityComparer ? coercedEqualityComparer : null;
-            }
+            IndexingStrategy? result = null;
+            if (readOnlyDictionary is ActiveDictionary<TKey, TValue> activeDictionary)
+                result = activeDictionary.IndexingStrategy;
+            else if (readOnlyDictionary is Dictionary<TKey, TValue> || readOnlyDictionary is ObservableDictionary<TKey, TValue> || readOnlyDictionary is SynchronizedObservableDictionary<TKey, TValue>)
+                result = IndexingStrategy.HashTable;
+            else if (readOnlyDictionary is SortedDictionary<TKey, TValue> || readOnlyDictionary is ObservableSortedDictionary<TKey, TValue> || readOnlyDictionary is SynchronizedObservableSortedDictionary<TKey, TValue>)
+                result = IndexingStrategy.SelfBalancingBinarySearchTree;
+            return result;
         }
 
         public static IEqualityComparer<TKey> GetKeyEqualityComparer<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> readOnlyDictionary, bool attemptCoercion = true)
         {
+            IEqualityComparer<TKey> result = null;
             switch (readOnlyDictionary)
             {
+                case ActiveDictionary<TKey, TValue> activeDictionary when activeDictionary.IndexingStrategy == IndexingStrategy.HashTable:
+                    result = activeDictionary.EqualityComparer;
+                    break;
                 case SynchronizedObservableDictionary<TKey, TValue> synchronizedObservable:
-                    return synchronizedObservable.Comparer;
+                    result = synchronizedObservable.Comparer;
+                    break;
                 case ObservableDictionary<TKey, TValue> observable:
-                    return observable.Comparer;
+                    result = observable.Comparer;
+                    break;
                 case Dictionary<TKey, TValue> standard:
-                    return standard.Comparer;
-                default:
-                    return attemptCoercion && GetKeyComparer(readOnlyDictionary, false) is IEqualityComparer<TKey> coercedEqualityComparer ? coercedEqualityComparer : null;
+                    result = standard.Comparer;
+                    break;
             }
-        }
-
-        public static IComparer<TKey> GetKeyComparer<TKey, TValue>(this IDictionary<TKey, TValue> dictionary, bool attemptCoercion = true)
-        {
-            switch (dictionary)
-            {
-                case SynchronizedObservableSortedDictionary<TKey, TValue> synchronizedObservable:
-                    return synchronizedObservable.Comparer;
-                case ObservableSortedDictionary<TKey, TValue> observable:
-                    return observable.Comparer;
-                case SortedDictionary<TKey, TValue> standard:
-                    return standard.Comparer;
-                default:
-                    return attemptCoercion && GetKeyEqualityComparer(dictionary, false) is IComparer<TKey> coercedComparer ? coercedComparer : null;
-            }
+            return result ?? (attemptCoercion && GetKeyComparer(readOnlyDictionary, false) is IEqualityComparer<TKey> coercedEqualityComparer ? coercedEqualityComparer : null);
         }
 
         public static IComparer<TKey> GetKeyComparer<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> readOnlyDictionary, bool attemptCoercion = true)
         {
             switch (readOnlyDictionary)
             {
+                case ActiveDictionary<TKey, TValue> activeDictionary when activeDictionary.IndexingStrategy == IndexingStrategy.SelfBalancingBinarySearchTree:
+                    return activeDictionary.Comparer;
                 case SynchronizedObservableSortedDictionary<TKey, TValue> synchronizedObservable:
                     return synchronizedObservable.Comparer;
                 case ObservableSortedDictionary<TKey, TValue> observable:

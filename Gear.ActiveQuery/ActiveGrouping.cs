@@ -11,9 +11,7 @@ namespace Gear.ActiveQuery
     /// <typeparam name="TElement">The type of the source elements</typeparam>
     public class ActiveGrouping<TKey, TElement> : ActiveEnumerable<TElement>, IGrouping<TKey, TElement>
     {
-        internal ActiveGrouping(TKey key, ObservableCollection<TElement> list, INotifyElementFaultChanges faultNotifier = null, Action onDispose = null) : base(list, faultNotifier, onDispose) => Key = key;
-
-        internal ActiveGrouping(TKey key, ObservableCollection<TElement> list, Action onDispose) : base(list, onDispose) => Key = key;
+        public ActiveGrouping(TKey key, ObservableCollection<TElement> list, INotifyElementFaultChanges faultNotifier = null, Action onDispose = null) : base(list, faultNotifier, onDispose) => Key = key;
 
         /// <summary>
         /// Gets the value shared by the source elements in this group

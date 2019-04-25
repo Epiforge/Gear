@@ -5,7 +5,7 @@ using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.Threading;
 
-namespace Gear.ActiveQuery.MSTest
+namespace Gear.ActiveQuery.Tests
 {
     public class TestSimpleObservableCollection<T> : PropertyChangeNotifier, IEnumerable<T>, INotifyCollectionChanged, ISynchronized
     {

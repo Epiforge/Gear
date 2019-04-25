@@ -8,8 +8,6 @@ namespace Gear.ActiveQuery
 {
     static class RangeActiveExpression
     {
-        public static DictionaryRangeActiveExpression<TKey, TValue, TResult> Create<TKey, TValue, TResult>(IDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, TResult>> expression, ActiveExpressionOptions options = null) => DictionaryRangeActiveExpression<TKey, TValue, TResult>.Create(source, expression, options);
-
         public static ReadOnlyDictionaryRangeActiveExpression<TKey, TValue, TResult> Create<TKey, TValue, TResult>(IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, TResult>> expression, ActiveExpressionOptions options = null) => ReadOnlyDictionaryRangeActiveExpression<TKey, TValue, TResult>.Create(source, expression, options);
 
         public static EnumerableRangeActiveExpression<TResult> Create<TResult>(IEnumerable source, Expression<Func<object, TResult>> expression, ActiveExpressionOptions options = null) => EnumerableRangeActiveExpression<TResult>.Create(source, expression, options);

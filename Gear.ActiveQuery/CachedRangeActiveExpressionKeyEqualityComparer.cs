@@ -7,20 +7,14 @@ using System.Linq.Expressions;
 
 namespace Gear.ActiveQuery
 {
-    class CachedRangeActiveExpressionKeyEqualityComparer<TResult> : IEqualityComparer<(IEnumerable source, Expression<Func<object, TResult>> expression, ActiveExpressionOptions options)>, IEqualityComparer<(IDictionary source, Expression<Func<object, object, TResult>> expression, ActiveExpressionOptions options)>
+    class CachedRangeActiveExpressionKeyEqualityComparer<TResult> : IEqualityComparer<(IEnumerable source, Expression<Func<object, TResult>> expression, ActiveExpressionOptions options)>
     {
         public static CachedRangeActiveExpressionKeyEqualityComparer<TResult> Default { get; } = new CachedRangeActiveExpressionKeyEqualityComparer<TResult>();
 
         public bool Equals((IEnumerable source, Expression<Func<object, TResult>> expression, ActiveExpressionOptions options) x, (IEnumerable source, Expression<Func<object, TResult>> expression, ActiveExpressionOptions options) y) =>
             ReferenceEquals(x.source, y.source) && ExpressionEqualityComparer.Default.Equals(x.expression, y.expression) && x.options == y.options;
 
-        public bool Equals((IDictionary source, Expression<Func<object, object, TResult>> expression, ActiveExpressionOptions options) x, (IDictionary source, Expression<Func<object, object, TResult>> expression, ActiveExpressionOptions options) y) =>
-            ReferenceEquals(x.source, y.source) && ExpressionEqualityComparer.Default.Equals(x.expression, y.expression) && x.options == y.options;
-
         public int GetHashCode((IEnumerable source, Expression<Func<object, TResult>> expression, ActiveExpressionOptions options) obj) =>
-            HashCodes.CombineHashCodes(obj.source?.GetHashCode() ?? 0, ExpressionEqualityComparer.Default.GetHashCode(obj.expression), obj.options?.GetHashCode() ?? 0);
-
-        public int GetHashCode((IDictionary source, Expression<Func<object, object, TResult>> expression, ActiveExpressionOptions options) obj) =>
             HashCodes.CombineHashCodes(obj.source?.GetHashCode() ?? 0, ExpressionEqualityComparer.Default.GetHashCode(obj.expression), obj.options?.GetHashCode() ?? 0);
     }
 
@@ -35,18 +29,12 @@ namespace Gear.ActiveQuery
             HashCodes.CombineHashCodes(obj.source?.GetHashCode() ?? 0, ExpressionEqualityComparer.Default.GetHashCode(obj.expression), obj.options?.GetHashCode() ?? 0);
     }
 
-    class CachedRangeActiveExpressionKeyEqualityComparer<TKey, TValue, TResult> : IEqualityComparer<(IDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, TResult>> expression, ActiveExpressionOptions options)>, IEqualityComparer<(IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, TResult>> expression, ActiveExpressionOptions options)>
+    class CachedRangeActiveExpressionKeyEqualityComparer<TKey, TValue, TResult> : IEqualityComparer<(IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, TResult>> expression, ActiveExpressionOptions options)>
     {
         public static CachedRangeActiveExpressionKeyEqualityComparer<TKey, TValue, TResult> Default { get; } = new CachedRangeActiveExpressionKeyEqualityComparer<TKey, TValue, TResult>();
 
-        public bool Equals((IDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, TResult>> expression, ActiveExpressionOptions options) x, (IDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, TResult>> expression, ActiveExpressionOptions options) y) =>
-            ReferenceEquals(x.source, y.source) && ExpressionEqualityComparer.Default.Equals(x.expression, y.expression) && x.options == y.options;
-
         public bool Equals((IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, TResult>> expression, ActiveExpressionOptions options) x, (IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, TResult>> expression, ActiveExpressionOptions options) y) =>
             ReferenceEquals(x.source, y.source) && ExpressionEqualityComparer.Default.Equals(x.expression, y.expression) && x.options == y.options;
-
-        public int GetHashCode((IDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, TResult>> expression, ActiveExpressionOptions options) obj) =>
-            HashCodes.CombineHashCodes(obj.source?.GetHashCode() ?? 0, ExpressionEqualityComparer.Default.GetHashCode(obj.expression), obj.options?.GetHashCode() ?? 0);
 
         public int GetHashCode((IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, TResult>> expression, ActiveExpressionOptions options) obj) =>
             HashCodes.CombineHashCodes(obj.source?.GetHashCode() ?? 0, ExpressionEqualityComparer.Default.GetHashCode(obj.expression), obj.options?.GetHashCode() ?? 0);

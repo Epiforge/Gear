@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 
-namespace Gear.ActiveQuery.MSTest
+namespace Gear.ActiveQuery.Tests
 {
     class TestPerson : PropertyChangeNotifier, IComparable<TestPerson>
     {

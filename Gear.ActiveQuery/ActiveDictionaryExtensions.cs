@@ -1855,6 +1855,9 @@ namespace Gear.ActiveQuery
         public static ActiveDictionary<TResultKey, TResultValue> ToActiveDictionary<TSourceKey, TSourceValue, TResultKey, TResultValue>(this IReadOnlyDictionary<TSourceKey, TSourceValue> source, Expression<Func<TSourceKey, TSourceValue, KeyValuePair<TResultKey, TResultValue>>> selector, IComparer<TResultKey> keyComparer) =>
             ToActiveDictionary(source, selector, null, IndexingStrategy.SelfBalancingBinarySearchTree, null, keyComparer);
 
+        public static ActiveDictionary<TResultKey, TResultValue> ToActiveDictionary<TSourceKey, TSourceValue, TResultKey, TResultValue, TResultKeyComparer>(this IReadOnlyDictionary<TSourceKey, TSourceValue> source, Expression<Func<TSourceKey, TSourceValue, KeyValuePair<TResultKey, TResultValue>>> selector, TResultKeyComparer keyComparer, IndexingStrategy indexingStrategy) where TResultKeyComparer : IComparer<TResultKey>, IEqualityComparer<TResultKey> =>
+            ToActiveDictionary(source, selector, null, indexingStrategy, indexingStrategy != IndexingStrategy.SelfBalancingBinarySearchTree ? keyComparer : (IEqualityComparer<TResultKey>)null, indexingStrategy == IndexingStrategy.SelfBalancingBinarySearchTree ? keyComparer : (IComparer<TResultKey>)null);
+
         /// <summary>
         /// Generates an <see cref="ActiveDictionary{TKey, TValue}"/> which actively projects each key/value pair of a dictionary into a key-value pair using the specified <see cref="IComparer{T}"/>
         /// </summary>
@@ -1914,9 +1917,11 @@ namespace Gear.ActiveQuery
         public static ActiveDictionary<TResultKey, TResultValue> ToActiveDictionary<TSourceKey, TSourceValue, TResultKey, TResultValue>(this IReadOnlyDictionary<TSourceKey, TSourceValue> source, Expression<Func<TSourceKey, TSourceValue, KeyValuePair<TResultKey, TResultValue>>> selector, ActiveExpressionOptions selectorOptions, IComparer<TResultKey> keyComparer) =>
             ToActiveDictionary(source, selector, selectorOptions, IndexingStrategy.SelfBalancingBinarySearchTree, null, keyComparer);
 
+        public static ActiveDictionary<TResultKey, TResultValue> ToActiveDictionary<TSourceKey, TSourceValue, TResultKey, TResultValue, TResultKeyComparer>(this IReadOnlyDictionary<TSourceKey, TSourceValue> source, Expression<Func<TSourceKey, TSourceValue, KeyValuePair<TResultKey, TResultValue>>> selector, ActiveExpressionOptions selectorOptions, TResultKeyComparer keyComparer, IndexingStrategy indexingStrategy) where TResultKeyComparer : IComparer<TResultKey>, IEqualityComparer<TResultKey> =>
+            ToActiveDictionary(source, selector, selectorOptions, indexingStrategy, indexingStrategy != IndexingStrategy.SelfBalancingBinarySearchTree ? keyComparer : (IEqualityComparer<TResultKey>)null, indexingStrategy == IndexingStrategy.SelfBalancingBinarySearchTree ? keyComparer : (IComparer<TResultKey>)null);
+
         static ActiveDictionary<TResultKey, TResultValue> ToActiveDictionary<TSourceKey, TSourceValue, TResultKey, TResultValue>(IReadOnlyDictionary<TSourceKey, TSourceValue> source, Expression<Func<TSourceKey, TSourceValue, KeyValuePair<TResultKey, TResultValue>>> selector, ActiveExpressionOptions selectorOptions, IndexingStrategy indexingStrategy, IEqualityComparer<TResultKey> keyEqualityComparer, IComparer<TResultKey> keyComparer)
         {
-            indexingStrategy = source.GetIndexingStrategy() ?? IndexingStrategy.NoneOrInherit;
             ActiveQueryOptions.Optimize(ref selector);
 
             var synchronizedSource = source as ISynchronized;

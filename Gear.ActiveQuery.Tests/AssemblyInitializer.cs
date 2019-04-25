@@ -1,6 +1,6 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-namespace Gear.ActiveQuery.MSTest
+namespace Gear.ActiveQuery.Tests
 {
     [TestClass]
     public class AssemblyInitializer

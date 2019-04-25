@@ -15,7 +15,7 @@ namespace Gear.ActiveQuery
     /// <typeparam name="TElement">The type of the elements in the sequence</typeparam>
     public class ActiveEnumerable<TElement> : SyncDisposablePropertyChangeNotifier, IActiveEnumerable<TElement>
     {
-        internal ActiveEnumerable(IReadOnlyList<TElement> readOnlyList, INotifyElementFaultChanges faultNotifier = null, Action onDispose = null)
+        public ActiveEnumerable(IReadOnlyList<TElement> readOnlyList, INotifyElementFaultChanges faultNotifier = null, Action onDispose = null)
         {
             synchronized = readOnlyList as ISynchronized ?? throw new ArgumentException($"{nameof(readOnlyList)} must implement {nameof(ISynchronized)}", nameof(readOnlyList));
             this.faultNotifier = faultNotifier ?? (readOnlyList as INotifyElementFaultChanges);
@@ -41,7 +41,7 @@ namespace Gear.ActiveQuery
             this.onDispose = onDispose;
         }
 
-        internal ActiveEnumerable(IReadOnlyList<TElement> readOnlyList, Action onDispose) : this(readOnlyList, null, onDispose)
+        public ActiveEnumerable(IReadOnlyList<TElement> readOnlyList, Action onDispose) : this(readOnlyList, null, onDispose)
         {
         }
 

@@ -14,7 +14,7 @@ namespace Gear.ActiveQuery
     /// <typeparam name="TValue">The type of values</typeparam>
     public class ActiveDictionary<TKey, TValue> : SyncDisposablePropertyChangeNotifier, INotifyDictionaryChanged, INotifyDictionaryChanged<TKey, TValue>, INotifyElementFaultChanges, IReadOnlyDictionary<TKey, TValue>, ISynchronized
     {
-        internal ActiveDictionary(IReadOnlyDictionary<TKey, TValue> readOnlyDictionary, Action onDispose = null)
+        public ActiveDictionary(IReadOnlyDictionary<TKey, TValue> readOnlyDictionary, Action onDispose = null)
         {
             synchronized = readOnlyDictionary as ISynchronized ?? throw new ArgumentException($"{nameof(readOnlyDictionary)} must implement {nameof(ISynchronized)}", nameof(readOnlyDictionary));
             if (readOnlyDictionary is ActiveDictionary<TKey, TValue> activeDictionary)
@@ -32,7 +32,7 @@ namespace Gear.ActiveQuery
             this.onDispose = onDispose;
         }
 
-        internal ActiveDictionary(IReadOnlyDictionary<TKey, TValue> readOnlyDictionary, INotifyElementFaultChanges faultNotifier, Action onDispose = null) : this(readOnlyDictionary, onDispose)
+        public ActiveDictionary(IReadOnlyDictionary<TKey, TValue> readOnlyDictionary, INotifyElementFaultChanges faultNotifier, Action onDispose = null) : this(readOnlyDictionary, onDispose)
         {
             this.faultNotifier = faultNotifier ?? (readOnlyDictionary as INotifyElementFaultChanges);
             if (this.faultNotifier != null)
@@ -42,11 +42,7 @@ namespace Gear.ActiveQuery
             }
         }
 
-        internal ActiveDictionary(IReadOnlyDictionary<TKey, TValue> readOnlyDictionary, out Action<Exception> setOperationFault, Action onDispose = null) : this(readOnlyDictionary, out setOperationFault, null, onDispose)
-        {
-        }
-
-        internal ActiveDictionary(IReadOnlyDictionary<TKey, TValue> readOnlyDictionary, out Action<Exception> setOperationFault, INotifyElementFaultChanges faultNotifier = null, Action onDispose = null) : this(readOnlyDictionary, faultNotifier, onDispose) =>
+        public ActiveDictionary(IReadOnlyDictionary<TKey, TValue> readOnlyDictionary, out Action<Exception> setOperationFault, INotifyElementFaultChanges faultNotifier = null, Action onDispose = null) : this(readOnlyDictionary, faultNotifier, onDispose) =>
             setOperationFault = SetOperationFault;
 
         readonly INotifyElementFaultChanges faultNotifier;
@@ -155,14 +151,29 @@ namespace Gear.ActiveQuery
         public TValue this[TKey key] => readOnlyDictionary[key];
 
         /// <summary>
+        /// Gets the <see cref="IComparer{T}"/> in use by the <see cref="ActiveDictionary{TKey, TValue}"/> in order to order keys
+        /// </summary>
+        public IComparer<TKey> Comparer => readOnlyDictionary.GetKeyComparer();
+
+        /// <summary>
         /// Gets the number of elements in the collection
         /// </summary>
         public int Count => readOnlyDictionary.Count;
 
         /// <summary>
+        /// Gets the <see cref="IEqualityComparer{T}"/> in use by the <see cref="ActiveDictionary{TKey, TValue}"/> in order to hash and to test keys for equality
+        /// </summary>
+        public IEqualityComparer<TKey> EqualityComparer => readOnlyDictionary.GetKeyEqualityComparer();
+
+        /// <summary>
         /// Gets an enumerable collection that contains the keys in the read-only dictionary
         /// </summary>
         public IEnumerable<TKey> Keys => readOnlyDictionary.Keys;
+
+        /// <summary>
+        /// Gets the <see cref="ActiveQuery.IndexingStrategy"/> in use by the <see cref="ActiveDictionary{TKey, TValue}"/>
+        /// </summary>
+        public IndexingStrategy? IndexingStrategy => readOnlyDictionary.GetIndexingStrategy();
 
         /// <summary>
         /// Gets the exception that occured the most recent time the query updated

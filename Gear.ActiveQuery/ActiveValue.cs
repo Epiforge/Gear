@@ -10,7 +10,7 @@ namespace Gear.ActiveQuery
     /// <typeparam name="TValue">The type of the scalar result</typeparam>
     public class ActiveValue<TValue> : SyncDisposablePropertyChangeNotifier, IActiveValue<TValue>
     {
-        internal ActiveValue(TValue value, Exception operationFault = null, INotifyElementFaultChanges elementFaultChangeNotifier = null)
+        public ActiveValue(TValue value, Exception operationFault = null, INotifyElementFaultChanges elementFaultChangeNotifier = null)
         {
             this.value = value;
             this.operationFault = operationFault;
@@ -18,28 +18,16 @@ namespace Gear.ActiveQuery
             InitializeFaultNotification();
         }
 
-        internal ActiveValue(out Action<TValue> setValue, INotifyElementFaultChanges elementFaultChangeNotifier = null, Action onDispose = null) : this(default, out setValue, null, elementFaultChangeNotifier, onDispose)
-        {
-        }
-
-        internal ActiveValue(out Action<TValue> setValue, out Action<Exception> setOperationFault, INotifyElementFaultChanges elementFaultChangeNotifier = null, Action onDispose = null) : this(default, out setValue, null, out setOperationFault, elementFaultChangeNotifier, onDispose)
-        {
-        }
-
-        internal ActiveValue(out Action<TValue> setValue, Exception operationFault, INotifyElementFaultChanges elementFaultChangeNotifier = null, Action onDispose = null) : this(default, out setValue, operationFault, elementFaultChangeNotifier, onDispose)
-        {
-        }
-
-        internal ActiveValue(TValue value, out Action<TValue> setValue, Exception operationFault = null, INotifyElementFaultChanges elementFaultChangeNotifier = null, Action onDispose = null) : this(value, operationFault, elementFaultChangeNotifier)
+        public ActiveValue(TValue value, out Action<TValue> setValue, Exception operationFault = null, INotifyElementFaultChanges elementFaultChangeNotifier = null, Action onDispose = null) : this(value, operationFault, elementFaultChangeNotifier)
         {
             setValue = SetValue;
             this.onDispose = onDispose;
         }
 
-        internal ActiveValue(TValue value, out Action<TValue> setValue, out Action<Exception> setOperationFault, INotifyElementFaultChanges elementFaultChangeNotifier = null, Action onDispose = null) : this(value, out setValue, null, elementFaultChangeNotifier, onDispose) =>
+        public ActiveValue(TValue value, out Action<TValue> setValue, out Action<Exception> setOperationFault, INotifyElementFaultChanges elementFaultChangeNotifier = null, Action onDispose = null) : this(value, out setValue, null, elementFaultChangeNotifier, onDispose) =>
             setOperationFault = SetOperationFault;
 
-        internal ActiveValue(TValue value, out Action<TValue> setValue, Exception operationFault, out Action<Exception> setOperationFault, INotifyElementFaultChanges elementFaultChangeNotifier = null, Action onDispose = null) : this(value, out setValue, operationFault, elementFaultChangeNotifier, onDispose) =>
+        public ActiveValue(TValue value, out Action<TValue> setValue, Exception operationFault, out Action<Exception> setOperationFault, INotifyElementFaultChanges elementFaultChangeNotifier = null, Action onDispose = null) : this(value, out setValue, operationFault, elementFaultChangeNotifier, onDispose) =>
             setOperationFault = SetOperationFault;
 
         readonly INotifyElementFaultChanges elementFaultChangeNotifier;

@@ -1,7 +1,7 @@
 using Gear.Components;
 using System;
 
-namespace Gear.ActiveQuery.MSTest
+namespace Gear.ActiveQuery.Tests
 {
     class TestTeam : PropertyChangeNotifier, IComparable<TestTeam>
     {

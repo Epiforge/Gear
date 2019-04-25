@@ -36,19 +36,7 @@ namespace Gear.ActiveQuery
                 ++rangeActiveExpression.disposalCount;
             }
             if (monitorCreated)
-            {
-                var initialized = false;
-                try
-                {
-                    rangeActiveExpression.Initialize();
-                    initialized = true;
-                }
-                finally
-                {
-                    if (!initialized)
-                        rangeActiveExpression.Dispose();
-                }
-            }
+                rangeActiveExpression.Initialize();
             return rangeActiveExpression;
         }
 
@@ -136,14 +124,12 @@ namespace Gear.ActiveQuery
             {
                 List<IActiveExpression<object, TResult>> addedActiveExpressions;
                 activeExpressionsAccess.EnterWriteLock();
-                OnPropertyChanging(nameof(Count));
                 try
                 {
                     addedActiveExpressions = AddActiveExpressionsUnderLock(index, elements);
                 }
                 finally
                 {
-                    OnPropertyChanged(nameof(Count));
                     activeExpressionsAccess.ExitWriteLock();
                 }
                 return addedActiveExpressions.Select(ae => (ae.Arg, ae.Value)).ToImmutableArray();
@@ -198,9 +184,6 @@ namespace Gear.ActiveQuery
                     break;
                 case NotifyCollectionChangedAction.Replace:
                     activeExpressionsAccess.EnterWriteLock();
-                    var replaceCountChanging = e.NewItems.Count != e.OldItems.Count;
-                    if (replaceCountChanging)
-                        OnPropertyChanging(nameof(Count));
                     IEnumerable<(object element, TResult result)> removed, added;
                     try
                     {
@@ -209,15 +192,12 @@ namespace Gear.ActiveQuery
                     }
                     finally
                     {
-                        if (replaceCountChanging)
-                            OnPropertyChanged(nameof(Count));
                         activeExpressionsAccess.ExitWriteLock();
                     }
                     OnGenericCollectionChanged(new NotifyGenericCollectionChangedEventArgs<(object element, TResult result)>(NotifyCollectionChangedAction.Replace, added, removed, e.OldStartingIndex));
                     break;
-                case NotifyCollectionChangedAction.Reset:
+                default:
                     activeExpressionsAccess.EnterWriteLock();
-                    OnPropertyChanging(nameof(Count));
                     try
                     {
                         RemoveActiveExpressionsUnderLock(0, activeExpressions.Count);
@@ -225,13 +205,10 @@ namespace Gear.ActiveQuery
                     }
                     finally
                     {
-                        OnPropertyChanged(nameof(Count));
                         activeExpressionsAccess.ExitWriteLock();
                     }
                     OnGenericCollectionChanged(new NotifyGenericCollectionChangedEventArgs<(object element, TResult result)>(NotifyCollectionChangedAction.Reset));
                     break;
-                default:
-                    throw new NotSupportedException();
             }
         }
 
@@ -284,36 +261,6 @@ namespace Gear.ActiveQuery
 
         internal IReadOnlyList<(object element, TResult result)> GetResultsUnderLock() => activeExpressions.Select(eae => (eae.element, eae.activeExpression.Value)).ToImmutableArray();
 
-        public IReadOnlyList<(object element, TResult result, Exception fault)> GetResultsAndFaults()
-        {
-            activeExpressionsAccess.EnterReadLock();
-            try
-            {
-                return GetResultsAndFaultsUnderLock();
-            }
-            finally
-            {
-                activeExpressionsAccess.ExitReadLock();
-            }
-        }
-
-        internal IReadOnlyList<(object element, TResult result, Exception fault)> GetResultsAndFaultsUnderLock() => activeExpressions.Select(eae => (eae.element, eae.activeExpression.Value, eae.activeExpression.Fault)).ToImmutableArray();
-
-        public IReadOnlyList<(object element, TResult result, Exception fault, int count)> GetResultsFaultsAndCounts()
-        {
-            activeExpressionsAccess.EnterReadLock();
-            try
-            {
-                return GetResultsFaultsAndCountsUnderLock();
-            }
-            finally
-            {
-                activeExpressionsAccess.ExitReadLock();
-            }
-        }
-
-        internal IReadOnlyList<(object element, TResult result, Exception fault, int count)> GetResultsFaultsAndCountsUnderLock() => activeExpressions.Select(eae => (eae.element, eae.activeExpression.Value, eae.activeExpression.Fault, activeExpressionCounts[eae.activeExpression])).ToImmutableArray();
-
         void Initialize()
         {
             AddActiveExpressions(0, source.Cast<object>());
@@ -359,14 +306,12 @@ namespace Gear.ActiveQuery
             if (count > 0)
             {
                 activeExpressionsAccess.EnterWriteLock();
-                OnPropertyChanging(nameof(Count));
                 try
                 {
                     result = RemoveActiveExpressionsUnderLock(index, count);
                 }
                 finally
                 {
-                    OnPropertyChanged(nameof(Count));
                     activeExpressionsAccess.ExitWriteLock();
                 }
             }
@@ -376,12 +321,11 @@ namespace Gear.ActiveQuery
         List<(object element, TResult result)> RemoveActiveExpressionsUnderLock(int index, int count)
         {
             var result = new List<(object element, TResult result)>();
-            OnPropertyChanging(nameof(Count));
             foreach (var (element, activeExpression) in activeExpressions.GetRange(index, count))
             {
                 result.Add((element, activeExpression.Value));
                 var activeExpressionCount = activeExpressionCounts[activeExpression];
-                if (activeExpressionCount == 0)
+                if (activeExpressionCount == 1)
                 {
                     activeExpressionCounts.Remove(activeExpression);
                     activeExpression.PropertyChanging -= ActiveExpressionPropertyChanging;
@@ -398,24 +342,6 @@ namespace Gear.ActiveQuery
         void SourceElementFaultChanged(object sender, ElementFaultChangeEventArgs e) => ElementFaultChanged?.Invoke(sender, e);
 
         void SourceElementFaultChanging(object sender, ElementFaultChangeEventArgs e) => ElementFaultChanging?.Invoke(sender, e);
-
-        public int Count
-        {
-            get
-            {
-                activeExpressionsAccess.EnterReadLock();
-                try
-                {
-                    return CountUnderLock;
-                }
-                finally
-                {
-                    activeExpressionsAccess.ExitReadLock();
-                }
-            }
-        }
-
-        internal int CountUnderLock => activeExpressions.Count;
 
         public ActiveExpressionOptions Options { get; }
     }
@@ -445,19 +371,7 @@ namespace Gear.ActiveQuery
                 ++rangeActiveExpression.disposalCount;
             }
             if (monitorCreated)
-            {
-                var initialized = false;
-                try
-                {
-                    rangeActiveExpression.Initialize();
-                    initialized = true;
-                }
-                finally
-                {
-                    if (!initialized)
-                        rangeActiveExpression.Dispose();
-                }
-            }
+                rangeActiveExpression.Initialize();
             return rangeActiveExpression;
         }
 
@@ -545,14 +459,12 @@ namespace Gear.ActiveQuery
             {
                 List<IActiveExpression<TElement, TResult>> addedActiveExpressions;
                 activeExpressionsAccess.EnterWriteLock();
-                OnPropertyChanging(nameof(Count));
                 try
                 {
                     addedActiveExpressions = AddActiveExpressionsUnderLock(index, elements);
                 }
                 finally
                 {
-                    OnPropertyChanged(nameof(Count));
                     activeExpressionsAccess.ExitWriteLock();
                 }
                 return addedActiveExpressions.Select(ae => (ae.Arg, ae.Value)).ToImmutableArray();
@@ -607,9 +519,6 @@ namespace Gear.ActiveQuery
                     break;
                 case NotifyCollectionChangedAction.Replace:
                     activeExpressionsAccess.EnterWriteLock();
-                    var countChanging = e.NewItems.Count != e.OldItems.Count;
-                    if (countChanging)
-                        OnPropertyChanging(nameof(Count));
                     IEnumerable<(TElement element, TResult result)> removed, added;
                     try
                     {
@@ -618,15 +527,12 @@ namespace Gear.ActiveQuery
                     }
                     finally
                     {
-                        if (countChanging)
-                            OnPropertyChanged(nameof(Count));
                         activeExpressionsAccess.ExitWriteLock();
                     }
                     OnGenericCollectionChanged(new NotifyGenericCollectionChangedEventArgs<(TElement element, TResult result)>(NotifyCollectionChangedAction.Replace, added, removed, e.OldStartingIndex));
                     break;
-                case NotifyCollectionChangedAction.Reset:
+                default:
                     activeExpressionsAccess.EnterWriteLock();
-                    OnPropertyChanging(nameof(Count));
                     try
                     {
                         RemoveActiveExpressionsUnderLock(0, activeExpressions.Count);
@@ -634,13 +540,10 @@ namespace Gear.ActiveQuery
                     }
                     finally
                     {
-                        OnPropertyChanged(nameof(Count));
                         activeExpressionsAccess.ExitWriteLock();
                     }
                     OnGenericCollectionChanged(new NotifyGenericCollectionChangedEventArgs<(TElement element, TResult result)>(NotifyCollectionChangedAction.Reset));
                     break;
-                default:
-                    throw new NotSupportedException();
             }
         }
 
@@ -692,21 +595,6 @@ namespace Gear.ActiveQuery
         }
 
         internal IReadOnlyList<(TElement element, TResult result)> GetResultsUnderLock() => activeExpressions.Select(ae => (ae.element, ae.activeExpression.Value)).ToImmutableArray();
-
-        public IReadOnlyList<(TElement element, TResult result, Exception fault)> GetResultsAndFaults()
-        {
-            activeExpressionsAccess.EnterReadLock();
-            try
-            {
-                return GetResultsAndFaultsUnderLock();
-            }
-            finally
-            {
-                activeExpressionsAccess.ExitReadLock();
-            }
-        }
-
-        internal IReadOnlyList<(TElement element, TResult result, Exception fault)> GetResultsAndFaultsUnderLock() => activeExpressions.Select(ae => (ae.element, ae.activeExpression.Value, ae.activeExpression.Fault)).ToImmutableArray();
 
         public IReadOnlyList<(TElement element, TResult result, Exception fault, int count)> GetResultsFaultsAndCounts()
         {
@@ -768,14 +656,12 @@ namespace Gear.ActiveQuery
             if (count > 0)
             {
                 activeExpressionsAccess.EnterWriteLock();
-                OnPropertyChanging(nameof(Count));
                 try
                 {
                     result = RemoveActiveExpressionsUnderLock(index, count);
                 }
                 finally
                 {
-                    OnPropertyChanged(nameof(Count));
                     activeExpressionsAccess.ExitWriteLock();
                 }
             }
@@ -789,7 +675,7 @@ namespace Gear.ActiveQuery
             {
                 result.Add((element, activeExpression.Value));
                 var activeExpressionCount = activeExpressionCounts[activeExpression];
-                if (activeExpressionCount == 0)
+                if (activeExpressionCount == 1)
                 {
                     activeExpressionCounts.Remove(activeExpression);
                     activeExpression.PropertyChanging -= ActiveExpressionPropertyChanging;
@@ -806,24 +692,6 @@ namespace Gear.ActiveQuery
         void SourceElementFaultChanged(object sender, ElementFaultChangeEventArgs e) => ElementFaultChanged?.Invoke(sender, e);
 
         void SourceElementFaultChanging(object sender, ElementFaultChangeEventArgs e) => ElementFaultChanging?.Invoke(sender, e);
-
-        public int Count
-        {
-            get
-            {
-                activeExpressionsAccess.EnterReadLock();
-                try
-                {
-                    return CountUnderLock;
-                }
-                finally
-                {
-                    activeExpressionsAccess.ExitReadLock();
-                }
-            }
-        }
-
-        internal int CountUnderLock => activeExpressions.Count;
 
         public ActiveExpressionOptions Options { get; }
     }
