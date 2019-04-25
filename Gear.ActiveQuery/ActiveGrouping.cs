@@ -11,6 +11,13 @@ namespace Gear.ActiveQuery
     /// <typeparam name="TElement">The type of the source elements</typeparam>
     public class ActiveGrouping<TKey, TElement> : ActiveEnumerable<TElement>, IGrouping<TKey, TElement>
     {
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ActiveGrouping{TKey, TElement}"/> class
+        /// </summary>
+        /// <param name="key">The key value that members of the group share in common</param>
+        /// <param name="list">The list of members of the group</param>
+        /// <param name="faultNotifier">The <see cref="INotifyElementFaultChanges"/> for the underlying data of the group's members</param>
+        /// <param name="onDispose">The action to take when the <see cref="ActiveGrouping{TKey, TValue}"/> is disposed</param>
         public ActiveGrouping(TKey key, ObservableCollection<TElement> list, INotifyElementFaultChanges faultNotifier = null, Action onDispose = null) : base(list, faultNotifier, onDispose) => Key = key;
 
         /// <summary>

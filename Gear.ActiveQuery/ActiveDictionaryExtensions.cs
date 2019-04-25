@@ -1855,6 +1855,19 @@ namespace Gear.ActiveQuery
         public static ActiveDictionary<TResultKey, TResultValue> ToActiveDictionary<TSourceKey, TSourceValue, TResultKey, TResultValue>(this IReadOnlyDictionary<TSourceKey, TSourceValue> source, Expression<Func<TSourceKey, TSourceValue, KeyValuePair<TResultKey, TResultValue>>> selector, IComparer<TResultKey> keyComparer) =>
             ToActiveDictionary(source, selector, null, IndexingStrategy.SelfBalancingBinarySearchTree, null, keyComparer);
 
+        /// <summary>
+        /// Generates an <see cref="ActiveDictionary{TKey, TValue}"/> using a specified <see cref="IndexingStrategy"/> which actively projects each key/value pair of a dictionary into a key-value pair using the specified <see cref="IComparer{T}"/>
+        /// </summary>
+        /// <typeparam name="TSourceKey">The type of the keys in <paramref name="source"/></typeparam>
+        /// <typeparam name="TSourceValue">The type of the values in <paramref name="source"/></typeparam>
+        /// <typeparam name="TResultKey">The type of the keys in the resulting <see cref="ActiveDictionary{TKey, TValue}"/></typeparam>
+        /// <typeparam name="TResultValue">The type of the values in the resulting <see cref="ActiveDictionary{TKey, TValue}"/></typeparam>
+        /// <typeparam name="TResultKeyComparer">The type of the comparer for <typeparamref name="TResultKey"/> values</typeparam>
+        /// <param name="source">A dictionary to transform into key/value pairs</param>
+        /// <param name="selector">A transform function to apply to each key/value pair in <paramref name="source"/></param>
+        /// <param name="keyComparer">An <see cref="IComparer{T}"/> to compare resulting keys</param>
+        /// <param name="indexingStrategy">The <see cref="IndexingStrategy"/> to be used by the <see cref="ActiveDictionary{TKey, TValue}"/></param>
+        /// <returns>An <see cref="ActiveDictionary{TKey, TValue}"/> using a specified <see cref="IndexingStrategy"/> the key/value pairs of which are the result of invoking the transform function on each key/value pair in <paramref name="source"/></returns>
         public static ActiveDictionary<TResultKey, TResultValue> ToActiveDictionary<TSourceKey, TSourceValue, TResultKey, TResultValue, TResultKeyComparer>(this IReadOnlyDictionary<TSourceKey, TSourceValue> source, Expression<Func<TSourceKey, TSourceValue, KeyValuePair<TResultKey, TResultValue>>> selector, TResultKeyComparer keyComparer, IndexingStrategy indexingStrategy) where TResultKeyComparer : IComparer<TResultKey>, IEqualityComparer<TResultKey> =>
             ToActiveDictionary(source, selector, null, indexingStrategy, indexingStrategy != IndexingStrategy.SelfBalancingBinarySearchTree ? keyComparer : (IEqualityComparer<TResultKey>)null, indexingStrategy == IndexingStrategy.SelfBalancingBinarySearchTree ? keyComparer : (IComparer<TResultKey>)null);
 
@@ -1917,6 +1930,20 @@ namespace Gear.ActiveQuery
         public static ActiveDictionary<TResultKey, TResultValue> ToActiveDictionary<TSourceKey, TSourceValue, TResultKey, TResultValue>(this IReadOnlyDictionary<TSourceKey, TSourceValue> source, Expression<Func<TSourceKey, TSourceValue, KeyValuePair<TResultKey, TResultValue>>> selector, ActiveExpressionOptions selectorOptions, IComparer<TResultKey> keyComparer) =>
             ToActiveDictionary(source, selector, selectorOptions, IndexingStrategy.SelfBalancingBinarySearchTree, null, keyComparer);
 
+        /// <summary>
+        /// Generates an <see cref="ActiveDictionary{TKey, TValue}"/> using a specified <see cref="IndexingStrategy"/> which actively projects each key/value pair of a dictionary into a key-value pair using the specified <see cref="IComparer{T}"/>
+        /// </summary>
+        /// <typeparam name="TSourceKey">The type of the keys in <paramref name="source"/></typeparam>
+        /// <typeparam name="TSourceValue">The type of the values in <paramref name="source"/></typeparam>
+        /// <typeparam name="TResultKey">The type of the keys in the resulting <see cref="ActiveDictionary{TKey, TValue}"/></typeparam>
+        /// <typeparam name="TResultValue">The type of the values in the resulting <see cref="ActiveDictionary{TKey, TValue}"/></typeparam>
+        /// <typeparam name="TResultKeyComparer">The type of the comparer for <typeparamref name="TResultKey"/> values</typeparam>
+        /// <param name="source">A dictionary to transform into key/value pairs</param>
+        /// <param name="selector">A transform function to apply to each key/value pair in <paramref name="source"/></param>
+        /// <param name="selectorOptions">Options governing the behavior of active expressions created using <paramref name="selector"/></param>
+        /// <param name="keyComparer">An <see cref="IComparer{T}"/> to compare resulting keys</param>
+        /// <param name="indexingStrategy">The <see cref="IndexingStrategy"/> to be used by the <see cref="ActiveDictionary{TKey, TValue}"/></param>
+        /// <returns>An <see cref="ActiveDictionary{TKey, TValue}"/> using a specified <see cref="IndexingStrategy"/> the key/value pairs of which are the result of invoking the transform function on each key/value pair in <paramref name="source"/></returns>
         public static ActiveDictionary<TResultKey, TResultValue> ToActiveDictionary<TSourceKey, TSourceValue, TResultKey, TResultValue, TResultKeyComparer>(this IReadOnlyDictionary<TSourceKey, TSourceValue> source, Expression<Func<TSourceKey, TSourceValue, KeyValuePair<TResultKey, TResultValue>>> selector, ActiveExpressionOptions selectorOptions, TResultKeyComparer keyComparer, IndexingStrategy indexingStrategy) where TResultKeyComparer : IComparer<TResultKey>, IEqualityComparer<TResultKey> =>
             ToActiveDictionary(source, selector, selectorOptions, indexingStrategy, indexingStrategy != IndexingStrategy.SelfBalancingBinarySearchTree ? keyComparer : (IEqualityComparer<TResultKey>)null, indexingStrategy == IndexingStrategy.SelfBalancingBinarySearchTree ? keyComparer : (IComparer<TResultKey>)null);
 

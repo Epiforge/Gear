@@ -15,6 +15,12 @@ namespace Gear.ActiveQuery
     /// <typeparam name="TElement">The type of the elements in the sequence</typeparam>
     public class ActiveEnumerable<TElement> : SyncDisposablePropertyChangeNotifier, IActiveEnumerable<TElement>
     {
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ActiveEnumerable{TElement}"/> class
+        /// </summary>
+        /// <param name="readOnlyList">The read-only list upon which the <see cref="ActiveEnumerable{TElement}"/> is based</param>
+        /// <param name="faultNotifier">The <see cref="INotifyElementFaultChanges"/> for the underlying data of the <see cref="ActiveEnumerable{TElement}"/></param>
+        /// <param name="onDispose">The action to take when the <see cref="ActiveEnumerable{TElement}"/> is disposed</param>
         public ActiveEnumerable(IReadOnlyList<TElement> readOnlyList, INotifyElementFaultChanges faultNotifier = null, Action onDispose = null)
         {
             synchronized = readOnlyList as ISynchronized ?? throw new ArgumentException($"{nameof(readOnlyList)} must implement {nameof(ISynchronized)}", nameof(readOnlyList));
@@ -41,6 +47,11 @@ namespace Gear.ActiveQuery
             this.onDispose = onDispose;
         }
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ActiveEnumerable{TElement}"/> class
+        /// </summary>
+        /// <param name="readOnlyList">The read-only list upon which the <see cref="ActiveEnumerable{TElement}"/> is based</param>
+        /// <param name="onDispose">The action to take when the <see cref="ActiveEnumerable{TElement}"/> is disposed</param>
         public ActiveEnumerable(IReadOnlyList<TElement> readOnlyList, Action onDispose) : this(readOnlyList, null, onDispose)
         {
         }

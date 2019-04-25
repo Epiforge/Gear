@@ -10,6 +10,12 @@ namespace Gear.ActiveQuery
     /// <typeparam name="TValue">The type of the scalar result</typeparam>
     public class ActiveValue<TValue> : SyncDisposablePropertyChangeNotifier, IActiveValue<TValue>
     {
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ActiveValue{TValue}"/> class
+        /// </summary>
+        /// <param name="value">The current value</param>
+        /// <param name="operationFault">An action that will set the <see cref="OperationFault"/> property of the <see cref="ActiveValue{TValue}"/></param>
+        /// <param name="elementFaultChangeNotifier">The <see cref="INotifyElementFaultChanges"/> for the underlying data from which the value is aggregated</param>
         public ActiveValue(TValue value, Exception operationFault = null, INotifyElementFaultChanges elementFaultChangeNotifier = null)
         {
             this.value = value;
@@ -18,15 +24,40 @@ namespace Gear.ActiveQuery
             InitializeFaultNotification();
         }
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ActiveValue{TValue}"/> class
+        /// </summary>
+        /// <param name="value">The current value</param>
+        /// <param name="setValue">An action that will set the <see cref="Value"/> property of the <see cref="ActiveValue{TValue}"/></param>
+        /// <param name="operationFault">The current operation fault</param>
+        /// <param name="elementFaultChangeNotifier">The <see cref="INotifyElementFaultChanges"/> for the underlying data from which the value is aggregated</param>
+        /// <param name="onDispose">The action to take when the <see cref="ActiveValue{TValue}"/> is disposed</param>
         public ActiveValue(TValue value, out Action<TValue> setValue, Exception operationFault = null, INotifyElementFaultChanges elementFaultChangeNotifier = null, Action onDispose = null) : this(value, operationFault, elementFaultChangeNotifier)
         {
             setValue = SetValue;
             this.onDispose = onDispose;
         }
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ActiveValue{TValue}"/> class
+        /// </summary>
+        /// <param name="value">The current value</param>
+        /// <param name="setValue">An action that will set the <see cref="Value"/> property of the <see cref="ActiveValue{TValue}"/></param>
+        /// <param name="setOperationFault">An action that will set the <see cref="OperationFault"/> property of the <see cref="ActiveValue{TValue}"/></param>
+        /// <param name="elementFaultChangeNotifier">The <see cref="INotifyElementFaultChanges"/> for the underlying data from which the value is aggregated</param>
+        /// <param name="onDispose">The action to take when the <see cref="ActiveValue{TValue}"/> is disposed</param>
         public ActiveValue(TValue value, out Action<TValue> setValue, out Action<Exception> setOperationFault, INotifyElementFaultChanges elementFaultChangeNotifier = null, Action onDispose = null) : this(value, out setValue, null, elementFaultChangeNotifier, onDispose) =>
             setOperationFault = SetOperationFault;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ActiveValue{TValue}"/> class
+        /// </summary>
+        /// <param name="value">The current value</param>
+        /// <param name="setValue">An action that will set the <see cref="Value"/> property of the <see cref="ActiveValue{TValue}"/></param>
+        /// <param name="operationFault">The current operation fault</param>
+        /// <param name="setOperationFault">An action that will set the <see cref="OperationFault"/> property of the <see cref="ActiveValue{TValue}"/></param>
+        /// <param name="elementFaultChangeNotifier">The <see cref="INotifyElementFaultChanges"/> for the underlying data from which the value is aggregated</param>
+        /// <param name="onDispose">The action to take when the <see cref="ActiveValue{TValue}"/> is disposed</param>
         public ActiveValue(TValue value, out Action<TValue> setValue, Exception operationFault, out Action<Exception> setOperationFault, INotifyElementFaultChanges elementFaultChangeNotifier = null, Action onDispose = null) : this(value, out setValue, operationFault, elementFaultChangeNotifier, onDispose) =>
             setOperationFault = SetOperationFault;
 

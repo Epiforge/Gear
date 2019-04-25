@@ -14,6 +14,11 @@ namespace Gear.ActiveQuery
     /// <typeparam name="TValue">The type of values</typeparam>
     public class ActiveDictionary<TKey, TValue> : SyncDisposablePropertyChangeNotifier, INotifyDictionaryChanged, INotifyDictionaryChanged<TKey, TValue>, INotifyElementFaultChanges, IReadOnlyDictionary<TKey, TValue>, ISynchronized
     {
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ActiveDictionary{TKey, TValue}"/> class
+        /// </summary>
+        /// <param name="readOnlyDictionary">The read-only dictionary upon which the <see cref="ActiveDictionary{TKey, TValue}"/> is based</param>
+        /// <param name="onDispose">The action to take when the <see cref="ActiveDictionary{TKey, TValue}"/> is disposed</param>
         public ActiveDictionary(IReadOnlyDictionary<TKey, TValue> readOnlyDictionary, Action onDispose = null)
         {
             synchronized = readOnlyDictionary as ISynchronized ?? throw new ArgumentException($"{nameof(readOnlyDictionary)} must implement {nameof(ISynchronized)}", nameof(readOnlyDictionary));
@@ -32,6 +37,12 @@ namespace Gear.ActiveQuery
             this.onDispose = onDispose;
         }
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ActiveDictionary{TKey, TValue}"/> class
+        /// </summary>
+        /// <param name="readOnlyDictionary">The read-only dictionary upon which the <see cref="ActiveDictionary{TKey, TValue}"/> is based</param>
+        /// <param name="faultNotifier">The <see cref="INotifyElementFaultChanges"/> for the underlying data of the <see cref="ActiveDictionary{TKey, TValue}"/></param>
+        /// <param name="onDispose">The action to take when the <see cref="ActiveDictionary{TKey, TValue}"/> is disposed</param>
         public ActiveDictionary(IReadOnlyDictionary<TKey, TValue> readOnlyDictionary, INotifyElementFaultChanges faultNotifier, Action onDispose = null) : this(readOnlyDictionary, onDispose)
         {
             this.faultNotifier = faultNotifier ?? (readOnlyDictionary as INotifyElementFaultChanges);
@@ -42,6 +53,13 @@ namespace Gear.ActiveQuery
             }
         }
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ActiveDictionary{TKey, TValue}"/> class
+        /// </summary>
+        /// <param name="readOnlyDictionary">The read-only dictionary upon which the <see cref="ActiveDictionary{TKey, TValue}"/> is based</param>
+        /// <param name="setOperationFault">An action that will set the <see cref="OperationFault"/> property of the <see cref="ActiveDictionary{TKey, TValue}"/></param>
+        /// <param name="faultNotifier">The <see cref="INotifyElementFaultChanges"/> for the underlying data of the <see cref="ActiveDictionary{TKey, TValue}"/></param>
+        /// <param name="onDispose">The action to take when the <see cref="ActiveDictionary{TKey, TValue}"/> is disposed</param>
         public ActiveDictionary(IReadOnlyDictionary<TKey, TValue> readOnlyDictionary, out Action<Exception> setOperationFault, INotifyElementFaultChanges faultNotifier = null, Action onDispose = null) : this(readOnlyDictionary, faultNotifier, onDispose) =>
             setOperationFault = SetOperationFault;
 

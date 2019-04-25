@@ -7,6 +7,7 @@ namespace Gear.ActiveQuery
     /// </summary>
     public class ElementFaultChangeEventArgs : EventArgs
     {
+        /// <summary>
         /// Initializes a new instance of the <see cref="ElementFaultChangeEventArgs"/> class
         /// </summary>
         /// <param name="element">The element</param>
