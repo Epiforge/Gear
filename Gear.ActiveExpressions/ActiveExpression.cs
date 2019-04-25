@@ -424,6 +424,13 @@ namespace Gear.ActiveExpressions
         /// </summary>
         public static Func<Expression, Expression> Optimizer { get; set; }
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ActiveExpression"/> class
+        /// </summary>
+        /// <param name="type">The <see cref="System.Type"/> for all possible values of this node</param>
+        /// <param name="nodeType">The <see cref="ExpressionType"/> for this node</param>
+        /// <param name="options">The <see cref="ActiveExpressionOptions"/> instance of this node</param>
+        /// <param name="deferEvaluation"><c>true</c> if evaluation should be deferred until the <see cref="Value"/> property is accessed; otherwise, <c>false</c></param>
         public ActiveExpression(Type type, ExpressionType nodeType, ActiveExpressionOptions options, bool deferEvaluation)
         {
             Type = type;
@@ -435,6 +442,13 @@ namespace Gear.ActiveExpressions
             deferringEvaluation = deferEvaluation;
         }
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ActiveExpression"/> class
+        /// </summary>
+        /// <param name="type">The <see cref="System.Type"/> for all possible values of this node</param>
+        /// <param name="nodeType">The <see cref="ExpressionType"/> for this node</param>
+        /// <param name="options">The <see cref="ActiveExpressionOptions"/> instance of this node</param>
+        /// <param name="value">The value of this node</param>
         public ActiveExpression(Type type, ExpressionType nodeType, ActiveExpressionOptions options, object value) : this(type, nodeType, options, false) => val = value;
 
         readonly object defaultValue;
