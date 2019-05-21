@@ -152,7 +152,7 @@ namespace Gear.ActiveQuery
                     activeExpression.PropertyChanged += ActiveExpressionPropertyChanged;
                 }
                 addedActiveExpressions.Add(activeExpression);
-                return (element, activeExpression);
+                return (element, (IActiveExpression<object, TResult>)activeExpression);
             }));
             return addedActiveExpressions;
         }
@@ -487,7 +487,7 @@ namespace Gear.ActiveQuery
                     activeExpression.PropertyChanged += ActiveExpressionPropertyChanged;
                 }
                 addedActiveExpressions.Add(activeExpression);
-                return (element, activeExpression);
+                return (element, (IActiveExpression<TElement, TResult>)activeExpression);
             }));
             return addedActiveExpressions;
         }
