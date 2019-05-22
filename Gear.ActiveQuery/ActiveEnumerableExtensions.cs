@@ -1820,6 +1820,12 @@ namespace Gear.ActiveQuery
                                         startingIndiciesAndCounts.Remove(element);
                                     else
                                         startingIndiciesAndCounts[element] = (startingIndex, currentCount - removedCount);
+                                    foreach (var otherElement in startingIndiciesAndCounts.Keys.ToImmutableArray())
+                                    {
+                                        var (otherStartingIndex, otherCount) = startingIndiciesAndCounts[otherElement];
+                                        if (otherStartingIndex > startingIndex)
+                                            startingIndiciesAndCounts[otherElement] = (otherStartingIndex - removedCount, otherCount);
+                                    }
                                 }
                         }
                         if ((e.NewItems?.Count ?? 0) > 0)
