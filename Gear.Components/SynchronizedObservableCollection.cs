@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.Threading;
@@ -75,6 +76,16 @@ namespace Gear.Components
         /// <param name="array">The one-dimensional <see cref="Array"/> that is the destination of the elements copied from <see cref="SynchronizedObservableCollection{T}"/></param>
         /// <param name="index">The zero-based index in <paramref name="array"/> at which copying begins</param>
         public Task CopyToAsync(T[] array, int index) => this.ExecuteAsync(() => CopyTo(array, index));
+
+        /// <summary>
+        /// Copies the entire <see cref="SynchronizedObservableCollection{T}"/> into a <see cref="IReadOnlyList{T}"/>
+        /// </summary>
+        public IReadOnlyList<T> GetAll() => this.Execute(() => Items.ToImmutableArray());
+
+        /// <summary>
+        /// Copies the entire <see cref="SynchronizedObservableCollection{T}"/> into a <see cref="IReadOnlyList{T}"/>
+        /// </summary>
+        public Task<IReadOnlyList<T>> GetAllAsync() => this.ExecuteAsync(() => (IReadOnlyList<T>)Items.ToImmutableArray());
 
         /// <summary>
         /// Gets the element at the specified index and removes it from the <see cref="SynchronizedObservableCollection{T}"/>
