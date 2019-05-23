@@ -310,6 +310,9 @@ public partial class App : Application
 }
 ```
 
+*Note: The messages sent via SingleInstance have been serialized to JSON and back again along the way.*
+*If you sent something complex on one end, you're gonna get a Newtonsoft.JSON JToken object on the other.*
+
 # License
 
 [Apache 2.0 License](LICENSE)
