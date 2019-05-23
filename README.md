@@ -17,6 +17,7 @@ Supports `netstandard1.3`.
     - [Active Expressions](#active-expressions)
     - [Active Query](#active-query)
     - [Parallel](#parallel)
+    - [Named Pipes Single-Instance](#named-pipes-single-instance)
 - [License](#license)
 - [Contributing](#contributing)
 - [Acknowledgements](#acknowledgements)
@@ -234,6 +235,16 @@ Optimize your optimization, yo.
 This is the library where we stuff all our groovy parallel programming utilities.
 Unfortunately, we haven't thought of much groovyness to add to Microsoft's already bad-ass [Dataflow](https://www.nuget.org/packages/System.Threading.Tasks.Dataflow/).
 Writing some extension methods that make it quicker to use it seemed like the least we could do... so we did it.
+
+### Named Pipes Single-Instance
+
+[![Gear.NamedPipesSingleInstance Nuget](https://img.shields.io/nuget/v/Gear.NamedPipesSingleInstance.svg)](https://www.nuget.org/packages/Gear.NamedPipesSingleInstance)
+
+Been thinking about using the new [WPF](https://github.com/dotnet/wpf) and [WinForms](https://github.com/dotnet/winforms) UI frameworks on top of [.NET Core](https://github.com/dotnet/corefx), huh?
+A little upset that [the old-school method of making your app single-instance](http://blogs.microsoft.co.il/arik/2010/05/28/wpf-single-instance-application/) doesn't work in .NET Core since it doesn't have Remoting?
+We were, too.
+So, we made this NuGet for ourselves and decided to share it.
+This lil' guy make it really simple for the first instance and secondary instances of your app to talk to each other using named pipes.
 
 # License
 
