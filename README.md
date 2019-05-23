@@ -244,7 +244,7 @@ Been thinking about using the new [WPF](https://github.com/dotnet/wpf) and [WinF
 A little upset that [the old-school method of making your app single-instance](http://blogs.microsoft.co.il/arik/2010/05/28/wpf-single-instance-application/) doesn't work in .NET Core since it doesn't have Remoting?
 We were, too.
 So, we made this NuGet for ourselves and decided to share it.
-This lil' guy make it really simple for the first instance and secondary instances of your app to talk to each other using named pipes.
+This lil' guy makes it really simple for the first and secondary instances of your app to talk to each other using named pipes.
 
 Here's an example of the App code-behind of a WPF app using this:
 ```csharp
@@ -288,7 +288,7 @@ public partial class App : Application
             Environment.Exit(0);
         }
 
-        // Go about the business of starting your app (you'll need to use Current.Dispatcher to get back on the UI thread)
+        // Finish starting your app (you'll need to use Current.Dispatcher to get back on the UI thread)
     }
 
     protected override void OnStartup(StartupEventArgs e)
