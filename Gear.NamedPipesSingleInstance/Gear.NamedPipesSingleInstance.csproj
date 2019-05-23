@@ -1,0 +1,46 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyVersion>1.0.0</AssemblyVersion>
+    <Authors>Epiforge</Authors>
+    <Company>Epiforge</Company>
+    <Description>Gear for creating single-instance applications using named pipes.</Description>
+    <FileVersion>1.0.0</FileVersion>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <Owners>Epiforge</Owners>
+    <PackageIconUrl>https://raw.githubusercontent.com/Epiforge/Gear/master/NuGet.jpg</PackageIconUrl>
+    <PackageId>Gear.NamedPipesSingleInstance</PackageId>
+    <PackageLicense>https://raw.githubusercontent.com/Epiforge/Gear/master/LICENSE</PackageLicense>
+    <PackageProjectUrl>https://github.com/Epiforge/Gear</PackageProjectUrl>
+    <PackageTags>core wpf windows-forms single instance</PackageTags>
+    <PackageVersion>1.0.0</PackageVersion>
+    <PackOnBuild>true</PackOnBuild>
+    <Product>Named Pipes Single Instance Gear</Product>
+    <ReleaseVersion>1.0.0</ReleaseVersion>
+    <RepositoryType>GitHub</RepositoryType>
+    <RepositoryUrl>https://github.com/Epiforge/Gear</RepositoryUrl>
+    <Summary>Gear for creating single-instance applications using named pipes.</Summary>
+    <SynchReleaseVersion>false</SynchReleaseVersion>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <Title>Named Pipes Single Instance Gear</Title>
+    <Version>1.0.0</Version>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <LangVersion>8.0</LangVersion>
+    <DebugType>full</DebugType>
+    <DebugSymbols>true</DebugSymbols>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <LangVersion>8.0</LangVersion>
+    <DocumentationFile>bin\Release\netstandard2.0\Gear.NamedPipesSingleInstance.xml</DocumentationFile>
+    <DebugType>full</DebugType>
+    <DebugSymbols>true</DebugSymbols>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="12.0.2" />
+  </ItemGroup>
+
+</Project>
