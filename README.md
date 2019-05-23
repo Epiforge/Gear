@@ -246,6 +246,70 @@ We were, too.
 So, we made this NuGet for ourselves and decided to share it.
 This lil' guy make it really simple for the first instance and secondary instances of your app to talk to each other using named pipes.
 
+Here's an example of the App code-behind of a WPF app using this:
+```csharp
+using Gear.NamedPipesSingleInstance;
+
+public partial class App : Application
+{
+    public static async Task OnUiThreadAsync(Action action)
+    {
+        if (Current.Dispatcher.CheckAccess())
+        {
+            action();
+            return;
+        }
+        await Current.Dispatcher.InvokeAsync(action);
+    }
+
+    public static Task ShowMainWindowAsync() => OnUiThreadAsync(() =>
+    {
+        var mainWindow = Current.Windows.OfType<MainWindow>().FirstOrDefault();
+        if (mainWindow != null)
+        {
+            if (!mainWindow.IsVisible)
+                mainWindow.Show();
+            else if (mainWindow.WindowState == WindowState.Minimized)
+                mainWindow.WindowState = WindowState.Normal;
+            mainWindow.Activate();
+        }
+    });
+
+    public App() =>
+        singleInstance = new SingleInstance("yourappnamehere", SecondaryInstanceMessageReceivedHandler);
+
+    readonly SingleInstance singleInstance;
+
+    async void Initialize(object state)
+    {
+        if (!singleInstance.IsFirstInstance)
+        {
+            await singleInstance.SendMessageAsync("showmainwindow");
+            Environment.Exit(0);
+        }
+
+        // Go about the business of starting your app (you'll need to use Current.Dispatcher to get back on the UI thread)
+    }
+
+    protected override void OnStartup(StartupEventArgs e)
+    {
+        ThreadPool.QueueUserWorkItem(Initialize);
+        base.OnStartup(e);
+    }
+
+    async Task SecondaryInstanceMessageReceivedHandler(object message)
+    {
+        // Don't forget that you will be on a worker pool thread in here (as opposed to the UI thread)
+        switch (message)
+        {
+            case "showmainwindow":
+                await ShowMainWindowAsync();
+                break;
+        }
+    }
+}
+```
+
 # License
 
 [Apache 2.0 License](LICENSE)
