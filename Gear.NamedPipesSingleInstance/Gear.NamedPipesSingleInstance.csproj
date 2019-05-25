@@ -28,13 +28,13 @@
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <DebugSymbols>true</DebugSymbols>
-    <DebugType>full</DebugType>
+    <DebugType>portable</DebugType>
     <LangVersion>8.0</LangVersion>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
     <DebugSymbols>true</DebugSymbols>
-    <DebugType>full</DebugType>
+    <DebugType>portable</DebugType>
     <DocumentationFile>bin\Release\netstandard2.0\Gear.NamedPipesSingleInstance.xml</DocumentationFile>
     <IncludeSymbols>true</IncludeSymbols>
     <LangVersion>8.0</LangVersion>
