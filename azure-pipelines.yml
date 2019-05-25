@@ -9,13 +9,13 @@ steps:
   displayName: 'Initialize .NET Core 3.0 runtime'
   inputs:
     packageType: 'runtime'
-    version: '3.0.0-preview3-27503-5'
+    version: '3.0.0-preview5-27626-15'
 
 - task: DotNetCoreInstaller@0
   displayName: 'Initialize .NET Core 3.0 tooling'
   inputs:
     packageType: 'sdk'
-    version: '3.0.100-preview3-010431'
+    version: '3.0.100-preview5-011568'
 
 - task: DotNetCoreCLI@2
   displayName: 'Restore references'
