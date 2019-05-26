@@ -17,7 +17,7 @@ namespace Gear.ActiveQuery
         #region All
 
         /// <summary>
-        /// Actively determines whether all key/value pairs of a sequence satisfy a condition
+        /// Actively determines whether all key/value pairs of a dictionary satisfy a condition
         /// </summary>
         /// <typeparam name="TKey">The type of the keys in <paramref name="source"/></typeparam>
         /// <typeparam name="TValue">The type of the values in <paramref name="source"/></typeparam>
@@ -28,7 +28,7 @@ namespace Gear.ActiveQuery
             ActiveAll(source, predicate, null);
 
         /// <summary>
-        /// Actively determines whether all key/value pairs of a sequence satisfy a condition
+        /// Actively determines whether all key/value pairs of a dictionary satisfy a condition
         /// </summary>
         /// <typeparam name="TKey">The type of the keys in <paramref name="source"/></typeparam>
         /// <typeparam name="TValue">The type of the values in <paramref name="source"/></typeparam>
@@ -220,6 +220,89 @@ namespace Gear.ActiveQuery
         }
 
         #endregion Average
+
+        #region Count
+
+        /// <summary>
+        /// Actively determines the number of key/value pairs in a dictionary
+        /// </summary>
+        /// <typeparam name="TKey">The type of the keys in <paramref name="source"/></typeparam>
+        /// <typeparam name="TValue">The type of the values in <paramref name="source"/></typeparam>
+        /// <param name="source">A <see cref="IReadOnlyDictionary{TKey, TValue}"/></param>
+        /// <returns>An active value the value of which is <c>true</c> if the source sequence contains any elements; otherwise, <c>false</c></returns>
+        public static IActiveValue<int> ActiveCount<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source)
+        {
+            var elementFaultChangeNotifier = source as INotifyElementFaultChanges;
+            if (source is INotifyDictionaryChanged<TKey, TValue> changeNotifyingSource)
+            {
+                var synchronizedSource = source as ISynchronized;
+                Action<int> setValue = null;
+
+                void sourceDictionaryChanged(object sender, NotifyDictionaryChangedEventArgs<TKey, TValue> e) => synchronizedSource.SequentialExecute(() => setValue(source.Count));
+
+                return synchronizedSource.SequentialExecute(() =>
+                {
+                    changeNotifyingSource.DictionaryChanged += sourceDictionaryChanged;
+                    return new ActiveValue<int>(source.Count, out setValue, elementFaultChangeNotifier: elementFaultChangeNotifier, onDispose: () => changeNotifyingSource.DictionaryChanged -= sourceDictionaryChanged);
+                });
+            }
+            try
+            {
+                return new ActiveValue<int>(source.Count(), elementFaultChangeNotifier: elementFaultChangeNotifier);
+            }
+            catch (Exception ex)
+            {
+                return new ActiveValue<int>(default, ex, elementFaultChangeNotifier);
+            }
+        }
+
+
+        /// <summary>
+        /// Actively counts whether all key/value pairs of a dictionary that satisfy a condition
+        /// </summary>
+        /// <typeparam name="TKey">The type of the keys in <paramref name="source"/></typeparam>
+        /// <typeparam name="TValue">The type of the values in <paramref name="source"/></typeparam>
+        /// <param name="source">A <see cref="IReadOnlyDictionary{TKey, TValue}"/> that contains the key/value pairs to apply the predicate to</param>
+        /// <param name="predicate">A function to test each key/value pair for a condition</param>
+        /// <returns>An active value the value of which is the number of key/value pairs of the source dictionary that the test in the specified predicate</returns>
+        public static IActiveValue<int> ActiveCount<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, bool>> predicate) =>
+            ActiveCount(source, predicate, null);
+
+        /// <summary>
+        /// Actively counts whether all key/value pairs of a dictionary that satisfy a condition
+        /// </summary>
+        /// <typeparam name="TKey">The type of the keys in <paramref name="source"/></typeparam>
+        /// <typeparam name="TValue">The type of the values in <paramref name="source"/></typeparam>
+        /// <param name="source">A <see cref="IReadOnlyDictionary{TKey, TValue}"/> that contains the key/value pairs to apply the predicate to</param>
+        /// <param name="predicate">A function to test each key/value pair for a condition</param>
+        /// <param name="predicateOptions">Options governing the behavior of active expressions created using <paramref name="predicate"/></param>
+        /// <returns>An active value the value of which is the number of key/value pairs of the source dictionary that the test in the specified predicate</returns>
+        public static IActiveValue<int> ActiveCount<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> source, Expression<Func<TKey, TValue, bool>> predicate, ActiveExpressionOptions predicateOptions)
+        {
+            var changeNotifyingSource = source as INotifyDictionaryChanged<TKey, TValue>;
+            ActiveDictionary<TKey, TValue> where;
+            Action<int> setValue = null;
+
+            void dictionaryChanged(object sender, EventArgs e) => setValue(where.Count);
+
+            return (source as ISynchronized).SequentialExecute(() =>
+            {
+                where = ActiveWhere(source, predicate, predicateOptions);
+                where.DictionaryChanged += dictionaryChanged;
+                if (changeNotifyingSource != null)
+                    changeNotifyingSource.DictionaryChanged += dictionaryChanged;
+
+                return new ActiveValue<int>(where.Count, out setValue, elementFaultChangeNotifier: where, onDispose: () =>
+                {
+                    where.DictionaryChanged -= dictionaryChanged;
+                    where.Dispose();
+                    if (changeNotifyingSource != null)
+                        changeNotifyingSource.DictionaryChanged -= dictionaryChanged;
+                });
+            });
+        }
+
+        #endregion Count
 
         #region First
 

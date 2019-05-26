@@ -440,6 +440,116 @@ namespace Gear.ActiveQuery
 
         #endregion Concat
 
+        #region Count
+
+        /// <summary>
+        /// Actively determines the number of elements in a sequence
+        /// </summary>
+        /// <param name="source">The <see cref="IEnumerable"/> from which to count elements</param>
+        /// <returns>An active value the value of which is <c>true</c> if the source sequence contains any elements; otherwise, <c>false</c></returns>
+        public static IActiveValue<int> ActiveCount(this IEnumerable source)
+        {
+            var elementFaultChangeNotifier = source as INotifyElementFaultChanges;
+            if (source is INotifyCollectionChanged changeNotifyingSource)
+            {
+                var synchronizedSource = source as ISynchronized;
+                Action<int> setValue = null;
+
+                void sourceCollectionChanged(object sender, NotifyCollectionChangedEventArgs e) => synchronizedSource.SequentialExecute(() => setValue(source.Cast<object>().Count()));
+
+                return synchronizedSource.SequentialExecute(() =>
+                {
+                    changeNotifyingSource.CollectionChanged += sourceCollectionChanged;
+                    return new ActiveValue<int>(source.Cast<object>().Count(), out setValue, elementFaultChangeNotifier: elementFaultChangeNotifier, onDispose: () => changeNotifyingSource.CollectionChanged -= sourceCollectionChanged);
+                });
+            }
+            try
+            {
+                return new ActiveValue<int>(source.Cast<object>().Count(), elementFaultChangeNotifier: elementFaultChangeNotifier);
+            }
+            catch (Exception ex)
+            {
+                return new ActiveValue<int>(default, ex, elementFaultChangeNotifier);
+            }
+        }
+
+        /// <summary>
+        /// Actively determines the number of elements in a sequence
+        /// </summary>
+        /// <param name="source">The <see cref="IEnumerable"/> from which to count elements</param>
+        /// <returns>An active value the value of which is <c>true</c> if the source sequence contains any elements; otherwise, <c>false</c></returns>
+        public static IActiveValue<int> ActiveCount<TSource>(this IEnumerable<TSource> source)
+        {
+            var elementFaultChangeNotifier = source as INotifyElementFaultChanges;
+            if (source is INotifyCollectionChanged changeNotifyingSource)
+            {
+                var synchronizedSource = source as ISynchronized;
+                Action<int> setValue = null;
+
+                void sourceCollectionChanged(object sender, NotifyCollectionChangedEventArgs e) => synchronizedSource.SequentialExecute(() => setValue(source.Count()));
+
+                return synchronizedSource.SequentialExecute(() =>
+                {
+                    changeNotifyingSource.CollectionChanged += sourceCollectionChanged;
+                    return new ActiveValue<int>(source.Count(), out setValue, elementFaultChangeNotifier: elementFaultChangeNotifier, onDispose: () => changeNotifyingSource.CollectionChanged -= sourceCollectionChanged);
+                });
+            }
+            try
+            {
+                return new ActiveValue<int>(source.Count(), elementFaultChangeNotifier: elementFaultChangeNotifier);
+            }
+            catch (Exception ex)
+            {
+                return new ActiveValue<int>(default, ex, elementFaultChangeNotifier);
+            }
+        }
+
+        /// <summary>
+        /// Actively determines the number of elements in a sequence that satisfies a condition
+        /// </summary>
+        /// <typeparam name="TSource">The type of the elements of <paramref name="source"/></typeparam>
+        /// <param name="source">An <see cref="IEnumerable{T}"/> that contains elements to apply the predicate to</param>
+        /// <param name="predicate">A function to test each element for a condition</param>
+        /// <returns>An active value the value of which is the number of elements in the source sequence that pass the test in the specified predicate</returns>
+        public static IActiveValue<int> ActiveCount<TSource>(this IEnumerable<TSource> source, Expression<Func<TSource, bool>> predicate) =>
+            ActiveCount(source, predicate, null);
+
+        /// <summary>
+        /// Actively determines the number of elements in a sequence that satisfies a condition
+        /// </summary>
+        /// <typeparam name="TSource">The type of the elements of <paramref name="source"/></typeparam>
+        /// <param name="source">An <see cref="IEnumerable{T}"/> that contains elements to apply the predicate to</param>
+        /// <param name="predicate">A function to test each element for a condition</param>
+        /// <param name="predicateOptions">Options governing the behavior of active expressions created using <paramref name="predicate"/></param>
+        /// <returns>An active value the value of which is the number of elements in the source sequence that pass the test in the specified predicate</returns>
+        public static IActiveValue<int> ActiveCount<TSource>(this IEnumerable<TSource> source, Expression<Func<TSource, bool>> predicate, ActiveExpressionOptions predicateOptions)
+        {
+            var readOnlySource = source as IReadOnlyCollection<TSource>;
+            var changeNotifyingSource = source as INotifyCollectionChanged;
+            IActiveEnumerable<TSource> where;
+            Action<int> setValue = null;
+
+            void collectionChanged(object sender, NotifyCollectionChangedEventArgs e) => setValue(where.Count);
+
+            return (source as ISynchronized).SequentialExecute(() =>
+            {
+                where = ActiveWhere(source, predicate, predicateOptions);
+                where.CollectionChanged += collectionChanged;
+                if (changeNotifyingSource != null)
+                    changeNotifyingSource.CollectionChanged += collectionChanged;
+
+                return new ActiveValue<int>(where.Count, out setValue, elementFaultChangeNotifier: where, onDispose: () =>
+                {
+                    where.CollectionChanged -= collectionChanged;
+                    if (changeNotifyingSource != null)
+                        changeNotifyingSource.CollectionChanged -= collectionChanged;
+                    where.Dispose();
+                });
+            });
+        }
+
+        #endregion Count
+
         #region Distinct
 
         /// <summary>
