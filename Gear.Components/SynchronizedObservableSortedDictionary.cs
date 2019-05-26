@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -190,6 +191,16 @@ namespace Gear.Components
         /// <param name="array">The one-dimensional <see cref="Array"/> that is the destination of the elements copied from <see cref="ICollection{T}"/> (the <see cref="Array"/> must have zero-based indexing)</param>
         /// <param name="index">The zero-based index in <paramref name="array"/> at which copying begins</param>
         public override void CopyTo(KeyValuePair<TKey, TValue>[] array, int index) => this.Execute(() => base.CopyTo(array, index));
+
+        /// <summary>
+        /// Copies all keys in the <see cref="SynchronizedObservableSortedDictionary{TKey, TValue}"/> into a <see cref="IReadOnlyList{T}"/>
+        /// </summary>
+        public IReadOnlyList<TKey> GetAllKeys() => this.Execute(() => Keys.ToImmutableArray());
+
+        /// <summary>
+        /// Copies all keys in the <see cref="SynchronizedObservableSortedDictionary{TKey, TValue}"/> into a <see cref="IReadOnlyList{T}"/>
+        /// </summary>
+        public Task<IReadOnlyList<TKey>> GetAllKeysAsync() => this.ExecuteAsync(() => (IReadOnlyList<TKey>)Keys.ToImmutableArray());
 
         /// <summary>
         /// Returns an <see cref="IDictionaryEnumerator"/> object for the <see cref="IDictionary"/> object

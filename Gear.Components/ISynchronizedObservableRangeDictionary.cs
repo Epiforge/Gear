@@ -51,6 +51,16 @@ namespace Gear.Components
         Task<bool> ContainsValueAsync(TValue value);
 
         /// <summary>
+        /// Copies all keys in the <see cref="ISynchronizedObservableRangeDictionary{TKey, TValue}"/> into a <see cref="IReadOnlyList{T}"/>
+        /// </summary>
+        IReadOnlyList<TKey> GetAllKeys();
+
+        /// <summary>
+        /// Copies all keys in the <see cref="ISynchronizedObservableRangeDictionary{TKey, TValue}"/> into a <see cref="IReadOnlyList{T}"/>
+        /// </summary>
+        Task<IReadOnlyList<TKey>> GetAllKeysAsync();
+
+        /// <summary>
         /// Gets the elements with the specified keys
         /// </summary>
         /// <param name="keys">The keys of the elements to get</param>
