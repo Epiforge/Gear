@@ -43,6 +43,16 @@ namespace Gear.Components
         public Task<bool> ContainsValueAsync(TValue value) => synchronizedObservableRangeDictionary.ContainsValueAsync(value);
 
         /// <summary>
+        /// Copies all keys in the read-only synchronized observable range dictionary into a <see cref="IReadOnlyList{T}"/>
+        /// </summary>
+        public IReadOnlyList<TKey> GetAllKeys() => synchronizedObservableRangeDictionary.GetAllKeys();
+
+        /// <summary>
+        /// Copies all keys in the read-only synchronized observable range dictionary into a <see cref="IReadOnlyList{T}"/>
+        /// </summary>
+        public Task<IReadOnlyList<TKey>> GetAllKeysAsync() => synchronizedObservableRangeDictionary.GetAllKeysAsync();
+
+        /// <summary>
         /// Gets the elements with the specified keys
         /// </summary>
         /// <param name="keys">The keys of the elements to get</param>
