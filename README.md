@@ -4,7 +4,7 @@
 
 General utilities to help with stuff in .NET Development, from Epiforge.
 
-Work on these libraries has ceased. For the successor to Gear, see [Cogs](https://github.com/Epiforge/Cogs).
+*NOTE: Work on these libraries has ceased. For the successor to Gear, see [Cogs](https://github.com/Epiforge/Cogs).*
 
 Supports `netstandard1.3`.
 
