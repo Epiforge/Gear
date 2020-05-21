@@ -2087,7 +2087,7 @@ namespace Gear.Caching
                 DateTime? expired = null;
                 var expiredValue = default(TValue);
                 TValue value;
-                using (await GetAsyncReaderWriterLock(key).WriterLockAsync().ConfigureAwait(false))
+                using (await GetAsyncReaderWriterLock(key).WriterLockAsync(ct).ConfigureAwait(false))
                 {
                     ct.ThrowIfCancellationRequested();
                     if (buckets.TryGetValue(key, out var bucket))
