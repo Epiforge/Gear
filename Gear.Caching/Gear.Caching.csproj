@@ -1,28 +1,19 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <AssemblyVersion>1.0.17</AssemblyVersion>
+    <AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
     <Authors>Epiforge</Authors>
     <Company>Epiforge</Company>
     <Description>Gear for caching stuff.</Description>
-    <FileVersion>1.0.17</FileVersion>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <Owners>Epiforge</Owners>
-    <PackageIconUrl>https://raw.githubusercontent.com/Epiforge/Gear/master/NuGet.jpg</PackageIconUrl>
-    <PackageId>Gear.Caching</PackageId>
-    <PackageLicense>https://raw.githubusercontent.com/Epiforge/Gear/master/LICENSE</PackageLicense>
+    <PackageIcon>NuGet.jpg</PackageIcon>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/Epiforge/Gear</PackageProjectUrl>
-    <PackageTags>cache caching-library async await async-await task</PackageTags>
-    <PackageVersion>1.0.17</PackageVersion>
-    <PackOnBuild>true</PackOnBuild>
     <Product>Caching Gear</Product>
-    <ReleaseVersion>1.0.17</ReleaseVersion>
-    <RepositoryType>GitHub</RepositoryType>
-    <RepositoryUrl>https://github.com/Epiforge/Gear</RepositoryUrl>
-    <Summary>Gear for caching stuff.</Summary>
-    <SynchReleaseVersion>false</SynchReleaseVersion>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <TargetFramework>netstandard1.3</TargetFramework>
-    <Title>Caching Gear</Title>
     <Version>1.0.17</Version>
   </PropertyGroup>
 
@@ -38,6 +29,13 @@
     <DebugType>full</DebugType>
     <DebugSymbols>true</DebugSymbols>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\NuGet.jpg">
+      <Pack>True</Pack>
+      <PackagePath></PackagePath>
+    </None>
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Gear.Components" Version="1.0.58" />

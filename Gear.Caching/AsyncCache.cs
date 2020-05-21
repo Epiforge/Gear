@@ -14,7 +14,7 @@ namespace Gear.Caching
     /// </summary>
     /// <typeparam name="TKey">The type of the keys in the cache</typeparam>
     /// <typeparam name="TValue">The base type of the values in the cache</typeparam>
-    public class AsyncCache<TKey, TValue> : Disposable
+    public partial class AsyncCache<TKey, TValue> : Disposable
     {
         /// <summary>
         /// Initializes a new instance of the <see cref="AsyncCache{TKey, TValue}"/> class
@@ -50,8 +50,8 @@ namespace Gear.Caching
 
         ConcurrentDictionary<TKey, Bucket> buckets;
         readonly IEqualityComparer<TKey> comparer;
-        ConcurrentDictionary<TKey, CancellationTokenSource> refreshCancellationTokenSources;
-        ConcurrentDictionary<TKey, AsyncAutoResetEvent> refreshAutoResetEvents;
+        readonly ConcurrentDictionary<TKey, CancellationTokenSource> refreshCancellationTokenSources;
+        readonly ConcurrentDictionary<TKey, AsyncAutoResetEvent> refreshAutoResetEvents;
         ConcurrentDictionary<TKey, AsyncReaderWriterLock> retrievalAccess;
 
         /// <summary>
@@ -593,8 +593,8 @@ namespace Gear.Caching
             ThrowIfDisposed();
 			foreach (var key in buckets.Keys.ToList())
             {
-                refreshAutoResetEvents.TryRemove(key, out AsyncAutoResetEvent removedAutoResetEvent);
-                if (refreshCancellationTokenSources.TryRemove(key, out CancellationTokenSource removedCancellationTokenSource))
+                refreshAutoResetEvents.TryRemove(key, out _);
+                if (refreshCancellationTokenSources.TryRemove(key, out var removedCancellationTokenSource))
                 {
                     try
                     {
@@ -621,8 +621,8 @@ namespace Gear.Caching
             {
                 foreach (var key in keys)
                 {
-                    refreshAutoResetEvents.TryRemove(key, out AsyncAutoResetEvent removedAutoResetEvent);
-                    if (refreshCancellationTokenSources.TryRemove(key, out CancellationTokenSource removedCancellationTokenSource))
+                    refreshAutoResetEvents.TryRemove(key, out _);
+                    if (refreshCancellationTokenSources.TryRemove(key, out var removedCancellationTokenSource))
                     {
                         try
                         {
@@ -655,11 +655,11 @@ namespace Gear.Caching
                 using (GetAsyncReaderWriterLock(key).ReaderLock(cancellationToken))
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-                    if (!buckets.TryGetValue(key, out Bucket bucket))
+                    if (!buckets.TryGetValue(key, out var bucket))
                         return false;
                     if (bucket.Expiration < DateTime.UtcNow)
                     {
-                        buckets.TryRemove(key, out Bucket removedBucket);
+                        buckets.TryRemove(key, out var removedBucket);
                         expired = removedBucket.Expiration;
                         removedBucket.TrySoftGetValue(out expiredValue);
                         return false;
@@ -693,11 +693,11 @@ namespace Gear.Caching
                 using (await GetAsyncReaderWriterLock(key).ReaderLockAsync(cancellationToken).ConfigureAwait(false))
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-                    if (!buckets.TryGetValue(key, out Bucket bucket))
+                    if (!buckets.TryGetValue(key, out var bucket))
                         throw new KeyNotFoundException();
                     if (bucket.Expiration < DateTime.UtcNow)
                     {
-                        buckets.TryRemove(key, out Bucket removedBucket);
+                        buckets.TryRemove(key, out var removedBucket);
                         expired = removedBucket.Expiration;
                         removedBucket.TrySoftGetValue(out expiredValue);
                         return false;
@@ -744,7 +744,7 @@ namespace Gear.Caching
 		public TValue Get(TKey key, CancellationToken cancellationToken = default)
         {
             ThrowIfDisposed();
-            if (!TryGet(key, out TValue value, cancellationToken))
+            if (!TryGet(key, out var value, cancellationToken))
                 throw new KeyNotFoundException();
             return value;
         }
@@ -1332,11 +1332,11 @@ namespace Gear.Caching
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 value = valueSource.GetValue(cancellationToken);
-                if (buckets.TryGetValue(key, out Bucket bucket))
+                if (buckets.TryGetValue(key, out var bucket))
                 {
                     if (bucket.Expiration < DateTime.UtcNow)
                     {
-                        buckets.TryRemove(key, out Bucket removedBucket);
+                        buckets.TryRemove(key, out var removedBucket);
                         expired = removedBucket.Expiration;
                         removedBucket.TrySoftGetValue(out expiredValue);
                     }
@@ -1386,11 +1386,11 @@ namespace Gear.Caching
                     if (typeof(TValue) == typeof(object))
                         value = (TValue)(await TaskResolver.ResolveAsync(value).ConfigureAwait(false));
                 }
-                if (buckets.TryGetValue(key, out Bucket bucket))
+                if (buckets.TryGetValue(key, out var bucket))
                 {
                     if (bucket.Expiration < DateTime.UtcNow)
                     {
-                        buckets.TryRemove(key, out Bucket removedBucket);
+                        buckets.TryRemove(key, out var removedBucket);
                         expired = removedBucket.Expiration;
                         removedBucket.TrySoftGetValue(out expiredValue);
                     }
@@ -1436,11 +1436,11 @@ namespace Gear.Caching
                 using (GetAsyncReaderWriterLock(key).ReaderLock(cancellationToken))
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-                    if (buckets.TryGetValue(key, out Bucket bucket))
+                    if (buckets.TryGetValue(key, out var bucket))
                     {
                         if (bucket.Expiration < DateTime.UtcNow)
                         {
-                            buckets.TryRemove(key, out Bucket removedBucket);
+                            buckets.TryRemove(key, out var removedBucket);
                             expired = removedBucket.Expiration;
                             removedBucket.TrySoftGetValue(out expiredValue);
                         }
@@ -1453,11 +1453,11 @@ namespace Gear.Caching
                 using (GetAsyncReaderWriterLock(key).WriterLock(cancellationToken))
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-                    if (buckets.TryGetValue(key, out Bucket bucket))
+                    if (buckets.TryGetValue(key, out var bucket))
                     {
                         if (bucket.Expiration < DateTime.UtcNow)
                         {
-                            buckets.TryRemove(key, out Bucket removedBucket);
+                            buckets.TryRemove(key, out var removedBucket);
                             expired = removedBucket.Expiration;
                             removedBucket.TrySoftGetValue(out expiredValue);
                         }
@@ -1502,11 +1502,11 @@ namespace Gear.Caching
                 using (GetAsyncReaderWriterLock(key).ReaderLock(cancellationToken))
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-                    if (buckets.TryGetValue(key, out Bucket bucket))
+                    if (buckets.TryGetValue(key, out var bucket))
                     {
                         if (bucket.Expiration < DateTime.UtcNow)
                         {
-                            buckets.TryRemove(key, out Bucket removedBucket);
+                            buckets.TryRemove(key, out var removedBucket);
                             expired = removedBucket.Expiration;
                             removedBucket.TrySoftGetValue(out expiredValue);
                         }
@@ -1519,11 +1519,11 @@ namespace Gear.Caching
                 using (GetAsyncReaderWriterLock(key).WriterLock(cancellationToken))
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-                    if (buckets.TryGetValue(key, out Bucket bucket))
+                    if (buckets.TryGetValue(key, out var bucket))
                     {
                         if (bucket.Expiration < DateTime.UtcNow)
                         {
-                            buckets.TryRemove(key, out Bucket removedBucket);
+                            buckets.TryRemove(key, out var removedBucket);
                             expired = removedBucket.Expiration;
                             removedBucket.TrySoftGetValue(out expiredValue);
                         }
@@ -1572,7 +1572,7 @@ namespace Gear.Caching
                                 TValue oldValue;
                                 using (await GetAsyncReaderWriterLock(key).ReaderLockAsync(refreshCancellationToken).ConfigureAwait(false))
                                 {
-                                    if (!buckets.TryGetValue(key, out Bucket refreshingBucket) || refreshingBucket.Id != addedBucketId)
+                                    if (!buckets.TryGetValue(key, out var refreshingBucket) || refreshingBucket.Id != addedBucketId)
                                         break;
                                     if (!refreshingBucket.TrySoftGetValue(out oldValue))
                                         continue;
@@ -1580,7 +1580,7 @@ namespace Gear.Caching
                                 var newValue = valueFactory.GetValue(refreshCancellationToken);
                                 using (await GetAsyncReaderWriterLock(key).WriterLockAsync(refreshCancellationToken).ConfigureAwait(false))
                                 {
-                                    if (!buckets.TryGetValue(key, out Bucket refreshingBucket) || refreshingBucket.Id != addedBucketId)
+                                    if (!buckets.TryGetValue(key, out var refreshingBucket) || refreshingBucket.Id != addedBucketId)
                                         break;
                                     await refreshingBucket.SetValueAsync(newValue, false, refreshCancellationToken).ConfigureAwait(false);
                                 }
@@ -1629,11 +1629,11 @@ namespace Gear.Caching
                 using (await GetAsyncReaderWriterLock(key).ReaderLockAsync(cancellationToken).ConfigureAwait(false))
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-                    if (buckets.TryGetValue(key, out Bucket bucket))
+                    if (buckets.TryGetValue(key, out var bucket))
                     {
                         if (bucket.Expiration < DateTime.UtcNow)
                         {
-                            buckets.TryRemove(key, out Bucket removedBucket);
+                            buckets.TryRemove(key, out var removedBucket);
                             expired = removedBucket.Expiration;
                             removedBucket.TrySoftGetValue(out expiredValue);
                         }
@@ -1646,11 +1646,11 @@ namespace Gear.Caching
                 using (await GetAsyncReaderWriterLock(key).WriterLockAsync(cancellationToken).ConfigureAwait(false))
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-                    if (buckets.TryGetValue(key, out Bucket bucket))
+                    if (buckets.TryGetValue(key, out var bucket))
                     {
                         if (bucket.Expiration < DateTime.UtcNow)
                         {
-                            buckets.TryRemove(key, out Bucket removedBucket);
+                            buckets.TryRemove(key, out var removedBucket);
                             expired = removedBucket.Expiration;
                             removedBucket.TrySoftGetValue(out expiredValue);
                         }
@@ -1707,7 +1707,7 @@ namespace Gear.Caching
                                 TValue oldValue;
                                 using (await GetAsyncReaderWriterLock(key).ReaderLockAsync(refreshCancellationToken).ConfigureAwait(false))
                                 {
-                                    if (!buckets.TryGetValue(key, out Bucket refreshingBucket) || refreshingBucket.Id != addedBucketId)
+                                    if (!buckets.TryGetValue(key, out var refreshingBucket) || refreshingBucket.Id != addedBucketId)
                                         break;
                                     if (!refreshingBucket.TrySoftGetValue(out oldValue))
                                         continue;
@@ -1723,7 +1723,7 @@ namespace Gear.Caching
                                 }
                                 using (await GetAsyncReaderWriterLock(key).WriterLockAsync(refreshCancellationToken).ConfigureAwait(false))
                                 {
-                                    if (!buckets.TryGetValue(key, out Bucket refreshingBucket) || refreshingBucket.Id != addedBucketId)
+                                    if (!buckets.TryGetValue(key, out var refreshingBucket) || refreshingBucket.Id != addedBucketId)
                                         break;
                                     await refreshingBucket.SetValueAsync(newValue, false, refreshCancellationToken).ConfigureAwait(false);
                                 }
@@ -1773,11 +1773,11 @@ namespace Gear.Caching
                 using (await GetAsyncReaderWriterLock(key).ReaderLockAsync(cancellationToken).ConfigureAwait(false))
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-                    if (buckets.TryGetValue(key, out Bucket bucket))
+                    if (buckets.TryGetValue(key, out var bucket))
                     {
                         if (bucket.Expiration < DateTime.UtcNow)
                         {
-                            buckets.TryRemove(key, out Bucket removedBucket);
+                            buckets.TryRemove(key, out var removedBucket);
                             expired = removedBucket.Expiration;
                             removedBucket.TrySoftGetValue(out expiredValue);
                         }
@@ -1790,11 +1790,11 @@ namespace Gear.Caching
                 using (await GetAsyncReaderWriterLock(key).WriterLockAsync(cancellationToken).ConfigureAwait(false))
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-                    if (buckets.TryGetValue(key, out Bucket bucket))
+                    if (buckets.TryGetValue(key, out var bucket))
                     {
                         if (bucket.Expiration < DateTime.UtcNow)
                         {
-                            buckets.TryRemove(key, out Bucket removedBucket);
+                            buckets.TryRemove(key, out var removedBucket);
                             expired = removedBucket.Expiration;
                             removedBucket.TrySoftGetValue(out expiredValue);
                         }
@@ -1841,11 +1841,11 @@ namespace Gear.Caching
             using (GetAsyncReaderWriterLock(key).WriterLock(cancellationToken))
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                if (buckets.TryGetValue(key, out Bucket bucket))
+                if (buckets.TryGetValue(key, out var bucket))
                 {
                     if (bucket.Expiration < DateTime.UtcNow)
                     {
-                        buckets.TryRemove(key, out Bucket removedBucket);
+                        buckets.TryRemove(key, out var removedBucket);
                         expired = removedBucket.Expiration;
                         removedBucket.TrySoftGetValue(out expiredValue);
                     }
@@ -1892,11 +1892,11 @@ namespace Gear.Caching
             using (await GetAsyncReaderWriterLock(key).WriterLockAsync(cancellationToken).ConfigureAwait(false))
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                if (buckets.TryGetValue(key, out Bucket bucket))
+                if (buckets.TryGetValue(key, out var bucket))
                 {
                     if (bucket.Expiration < DateTime.UtcNow)
                     {
-                        buckets.TryRemove(key, out Bucket removedBucket);
+                        buckets.TryRemove(key, out var removedBucket);
                         expired = removedBucket.Expiration;
                         removedBucket.TrySoftGetValue(out expiredValue);
                     }
@@ -1950,11 +1950,11 @@ namespace Gear.Caching
             using (GetAsyncReaderWriterLock(key).WriterLock(cancellationToken))
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                if (buckets.TryGetValue(key, out Bucket bucket))
+                if (buckets.TryGetValue(key, out var bucket))
                 {
                     if (bucket.Expiration < DateTime.UtcNow)
                     {
-                        buckets.TryRemove(key, out Bucket removedBucket);
+                        buckets.TryRemove(key, out var removedBucket);
                         expired = removedBucket.Expiration;
                         removedBucket.TrySoftGetValue(out expiredValue);
                     }
@@ -2007,7 +2007,7 @@ namespace Gear.Caching
                             TValue oldValue;
                             using (await GetAsyncReaderWriterLock(key).ReaderLockAsync(refreshCancellationToken).ConfigureAwait(false))
                             {
-                                if (!buckets.TryGetValue(key, out Bucket refreshingBucket) || refreshingBucket.Id != addedBucketId)
+                                if (!buckets.TryGetValue(key, out var refreshingBucket) || refreshingBucket.Id != addedBucketId)
                                     break;
                                 if (!refreshingBucket.TrySoftGetValue(out oldValue))
                                     continue;
@@ -2015,7 +2015,7 @@ namespace Gear.Caching
                             var newValue = valueSource.GetValue(refreshCancellationToken);
                             using (await GetAsyncReaderWriterLock(key).WriterLockAsync(refreshCancellationToken).ConfigureAwait(false))
                             {
-                                if (!buckets.TryGetValue(key, out Bucket refreshingBucket) || refreshingBucket.Id != addedBucketId)
+                                if (!buckets.TryGetValue(key, out var refreshingBucket) || refreshingBucket.Id != addedBucketId)
                                     break;
                                 await refreshingBucket.SetValueAsync(newValue, false, refreshCancellationToken).ConfigureAwait(false);
                             }
@@ -2061,11 +2061,11 @@ namespace Gear.Caching
             using (await GetAsyncReaderWriterLock(key).WriterLockAsync().ConfigureAwait(false))
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                if (buckets.TryGetValue(key, out Bucket bucket))
+                if (buckets.TryGetValue(key, out var bucket))
                 {
                     if (bucket.Expiration < DateTime.UtcNow)
                     {
-                        buckets.TryRemove(key, out Bucket removedBucket);
+                        buckets.TryRemove(key, out var removedBucket);
                         expired = removedBucket.Expiration;
                         removedBucket.TrySoftGetValue(out expiredValue);
                     }
@@ -2126,7 +2126,7 @@ namespace Gear.Caching
                             TValue oldValue;
                             using (await GetAsyncReaderWriterLock(key).ReaderLockAsync(refreshCancellationToken).ConfigureAwait(false))
                             {
-                                if (!buckets.TryGetValue(key, out Bucket refreshingBucket) || refreshingBucket.Id != addedBucketId)
+                                if (!buckets.TryGetValue(key, out var refreshingBucket) || refreshingBucket.Id != addedBucketId)
                                     break;
                                 if (!refreshingBucket.TrySoftGetValue(out oldValue))
                                     continue;
@@ -2142,7 +2142,7 @@ namespace Gear.Caching
                             }
                             using (await GetAsyncReaderWriterLock(key).WriterLockAsync(refreshCancellationToken).ConfigureAwait(false))
                             {
-                                if (!buckets.TryGetValue(key, out Bucket refreshingBucket) || refreshingBucket.Id != addedBucketId)
+                                if (!buckets.TryGetValue(key, out var refreshingBucket) || refreshingBucket.Id != addedBucketId)
                                     break;
                                 await refreshingBucket.SetValueAsync(newValue, false, refreshCancellationToken).ConfigureAwait(false);
                             }
@@ -2192,11 +2192,11 @@ namespace Gear.Caching
                 using (GetAsyncReaderWriterLock(key).WriterLock(cancellationToken))
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-                    if (!buckets.TryGetValue(key, out Bucket bucket))
+                    if (!buckets.TryGetValue(key, out var bucket))
                         return TryOperationResult.KeyNotFound;
                     if (bucket.Expiration < DateTime.UtcNow)
                     {
-                        buckets.TryRemove(key, out Bucket removedBucket);
+                        buckets.TryRemove(key, out var removedBucket);
                         expired = bucket.Expiration.Value;
                         bucket.TrySoftGetValue(out expiredValue);
                         return TryOperationResult.KeyNotFound;
@@ -2251,11 +2251,11 @@ namespace Gear.Caching
                 using (await GetAsyncReaderWriterLock(key).WriterLockAsync(cancellationToken).ConfigureAwait(false))
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-                    if (!buckets.TryGetValue(key, out Bucket bucket))
+                    if (!buckets.TryGetValue(key, out var bucket))
                         return TryOperationResult.KeyNotFound;
                     if (bucket.Expiration < DateTime.UtcNow)
                     {
-                        buckets.TryRemove(key, out Bucket removedBucket);
+                        buckets.TryRemove(key, out var removedBucket);
                         expired = bucket.Expiration.Value;
                         bucket.TrySoftGetValue(out expiredValue);
                         return TryOperationResult.KeyNotFound;
@@ -2298,10 +2298,7 @@ namespace Gear.Caching
             }
         }
 
-        static AsyncReaderWriterLock ReaderWriterLockFactory(TKey key)
-        {
-            return new AsyncReaderWriterLock();
-        }
+        static AsyncReaderWriterLock ReaderWriterLockFactory(TKey key) => new AsyncReaderWriterLock();
 
         /// <summary>
         /// Removes a value from the cache
@@ -2411,7 +2408,7 @@ namespace Gear.Caching
         {
             ThrowIfDisposed();
             foreach (var key in buckets.Keys.ToList())
-                if (refreshAutoResetEvents.TryGetValue(key, out AsyncAutoResetEvent autoResetEvent))
+                if (refreshAutoResetEvents.TryGetValue(key, out var autoResetEvent))
                     autoResetEvent.Set();
         }
 
@@ -2642,17 +2639,17 @@ namespace Gear.Caching
                 using (GetAsyncReaderWriterLock(key).WriterLock(cancellationToken))
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-                    if (!buckets.TryGetValue(key, out Bucket bucket))
+                    if (!buckets.TryGetValue(key, out var bucket))
                         return false;
                     if (bucket.Expiration < DateTime.UtcNow)
                     {
-                        buckets.TryRemove(key, out Bucket removedBucket);
+                        buckets.TryRemove(key, out var removedBucket);
                         expired = removedBucket.Expiration;
                         removedBucket.TrySoftGetValue(out expiredValue);
                         return false;
                     }
-                    var wasAutoResetEventRemoved = refreshAutoResetEvents.TryRemove(key, out AsyncAutoResetEvent removedAutoResetEvent);
-                    var wasCancellationTokenSourceRemoved = refreshCancellationTokenSources.TryRemove(key, out CancellationTokenSource removedCancellationTokenSource);
+                    var wasAutoResetEventRemoved = refreshAutoResetEvents.TryRemove(key, out var removedAutoResetEvent);
+                    var wasCancellationTokenSourceRemoved = refreshCancellationTokenSources.TryRemove(key, out var removedCancellationTokenSource);
                     if (wasCancellationTokenSourceRemoved)
                         Task.Run(() =>
                         {
@@ -2693,17 +2690,17 @@ namespace Gear.Caching
                 using (await GetAsyncReaderWriterLock(key).WriterLockAsync(cancellationToken).ConfigureAwait(false))
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-                    if (!buckets.TryGetValue(key, out Bucket bucket))
+                    if (!buckets.TryGetValue(key, out var bucket))
                         return false;
                     if (bucket.Expiration < DateTime.UtcNow)
                     {
-                        buckets.TryRemove(key, out Bucket removedBucket);
+                        buckets.TryRemove(key, out var removedBucket);
                         expired = removedBucket.Expiration;
                         removedBucket.TrySoftGetValue(out expiredValue);
                         return false;
                     }
-                    var wasAutoResetEventRemoved = refreshAutoResetEvents.TryRemove(key, out AsyncAutoResetEvent removedAutoResetEvent);
-                    var wasCancellationTokenSourceRemoved = refreshCancellationTokenSources.TryRemove(key, out CancellationTokenSource removedCancellationTokenSource);
+                    var wasAutoResetEventRemoved = refreshAutoResetEvents.TryRemove(key, out var removedAutoResetEvent);
+                    var wasCancellationTokenSourceRemoved = refreshCancellationTokenSources.TryRemove(key, out var removedCancellationTokenSource);
                     if (wasCancellationTokenSourceRemoved)
 #pragma warning disable CS4014
                         Task.Run(() =>
@@ -2747,14 +2744,14 @@ namespace Gear.Caching
                 using (GetAsyncReaderWriterLock(key).ReaderLock(cancellationToken))
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-                    if (!buckets.TryGetValue(key, out Bucket bucket))
+                    if (!buckets.TryGetValue(key, out var bucket))
                     {
                         value = default;
                         return false;
                     }
                     if (bucket.Expiration < DateTime.UtcNow)
                     {
-                        buckets.TryRemove(key, out Bucket removedBucket);
+                        buckets.TryRemove(key, out var removedBucket);
                         expired = removedBucket.Expiration;
                         removedBucket.TrySoftGetValue(out expiredValue);
                         value = default;
@@ -2811,11 +2808,11 @@ namespace Gear.Caching
                 using (await GetAsyncReaderWriterLock(key).ReaderLockAsync(cancellationToken).ConfigureAwait(false))
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-                    if (!buckets.TryGetValue(key, out Bucket bucket))
+                    if (!buckets.TryGetValue(key, out var bucket))
                         return new TryGetResult();
                     if (bucket.Expiration < DateTime.UtcNow)
                     {
-                        buckets.TryRemove(key, out Bucket removedBucket);
+                        buckets.TryRemove(key, out var removedBucket);
                         expired = removedBucket.Expiration;
                         removedBucket.TrySoftGetValue(out expiredValue);
                         return new TryGetResult();
@@ -2842,8 +2839,8 @@ namespace Gear.Caching
         {
             ThrowIfDisposed();
             var tgr = await TryGetAsync(key, cancellationToken);
-            if (tgr.WasFound && tgr.Value is T)
-                return new TryGetResult<T>((T)tgr.Value);
+            if (tgr.WasFound && tgr.Value is T value)
+                return new TryGetResult<T>(value);
             return new TryGetResult<T>();
         }
 
@@ -2865,10 +2862,10 @@ namespace Gear.Caching
                 using (GetAsyncReaderWriterLock(key).WriterLock(cancellationToken))
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-                    if (!buckets.TryGetValue(key, out Bucket bucket))
+                    if (!buckets.TryGetValue(key, out var bucket))
                         return false;
-                    refreshAutoResetEvents.TryRemove(key, out AsyncAutoResetEvent removedAutoResetEvent);
-                    if (refreshCancellationTokenSources.TryRemove(key, out CancellationTokenSource removedCancellationTokenSource))
+                    refreshAutoResetEvents.TryRemove(key, out var removedAutoResetEvent);
+                    if (refreshCancellationTokenSources.TryRemove(key, out var removedCancellationTokenSource))
                         Task.Run(() =>
                         {
                             try
@@ -2882,7 +2879,7 @@ namespace Gear.Caching
                             }
                         });
                     var isExpired = bucket.Expiration < DateTime.UtcNow;
-                    buckets.TryRemove(key, out Bucket removedBucket);
+                    buckets.TryRemove(key, out var removedBucket);
                     if (isExpired)
                     {
                         expired = bucket.Expiration.Value;
@@ -2919,10 +2916,10 @@ namespace Gear.Caching
                 using (await GetAsyncReaderWriterLock(key).WriterLockAsync(cancellationToken).ConfigureAwait(false))
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-                    if (!buckets.TryGetValue(key, out Bucket bucket))
+                    if (!buckets.TryGetValue(key, out var bucket))
                         return false;
-                    refreshAutoResetEvents.TryRemove(key, out AsyncAutoResetEvent removedAutoResetEvent);
-                    if (refreshCancellationTokenSources.TryRemove(key, out CancellationTokenSource removedCancellationTokenSource))
+                    refreshAutoResetEvents.TryRemove(key, out var removedAutoResetEvent);
+                    if (refreshCancellationTokenSources.TryRemove(key, out var removedCancellationTokenSource))
 #pragma warning disable CS4014
                         Task.Run(() =>
                         {
@@ -2938,7 +2935,7 @@ namespace Gear.Caching
                         });
 #pragma warning restore CS4014
                     var isExpired = bucket.Expiration < DateTime.UtcNow;
-                    buckets.TryRemove(key, out Bucket removedBucket);
+                    buckets.TryRemove(key, out var removedBucket);
                     if (isExpired)
                     {
                         expired = bucket.Expiration.Value;
@@ -2974,16 +2971,16 @@ namespace Gear.Caching
                 using (GetAsyncReaderWriterLock(key).ReaderLock(cancellationToken))
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-                    if (!buckets.TryGetValue(key, out Bucket bucket))
+                    if (!buckets.TryGetValue(key, out var bucket))
                         return false;
                     if (bucket.Expiration < DateTime.UtcNow)
                     {
-                        buckets.TryRemove(key, out Bucket removedBucket);
+                        buckets.TryRemove(key, out var removedBucket);
                         expired = removedBucket.Expiration;
                         removedBucket.TrySoftGetValue(out expiredValue);
                         return false;
                     }
-                    if (!refreshAutoResetEvents.TryGetValue(key, out AsyncAutoResetEvent autoResetEvent))
+                    if (!refreshAutoResetEvents.TryGetValue(key, out var autoResetEvent))
                         return false;
                     autoResetEvent.Set();
                     return true;
@@ -3013,16 +3010,16 @@ namespace Gear.Caching
                 using (await GetAsyncReaderWriterLock(key).ReaderLockAsync(cancellationToken).ConfigureAwait(false))
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-                    if (!buckets.TryGetValue(key, out Bucket bucket))
+                    if (!buckets.TryGetValue(key, out var bucket))
                         return false;
                     if (bucket.Expiration < DateTime.UtcNow)
                     {
-                        buckets.TryRemove(key, out Bucket removedBucket);
+                        buckets.TryRemove(key, out var removedBucket);
                         expired = removedBucket.Expiration;
                         removedBucket.TrySoftGetValue(out expiredValue);
                         return false;
                     }
-                    if (!refreshAutoResetEvents.TryGetValue(key, out AsyncAutoResetEvent autoResetEvent))
+                    if (!refreshAutoResetEvents.TryGetValue(key, out var autoResetEvent))
                         return false;
                     autoResetEvent.Set();
                     return true;
@@ -3666,7 +3663,7 @@ namespace Gear.Caching
                             weakenAt = DateTime.UtcNow + owner.WeakenReferencesIn.Value;
                         return strongValue;
                     }
-                    if (weakValue.TryGetTarget(out object reference))
+                    if (weakValue.TryGetTarget(out var reference))
                         return (TValue)reference;
                     var valueSource = ValueSource;
                     weakValue = default;
@@ -3690,7 +3687,7 @@ namespace Gear.Caching
                             weakenAt = DateTime.UtcNow + owner.WeakenReferencesIn.Value;
                         return strongValue;
                     }
-                    if (weakValue.TryGetTarget(out object reference))
+                    if (weakValue.TryGetTarget(out var reference))
                         return (TValue)reference;
                     var valueSource = ValueSource;
                     weakValue = default;
@@ -3796,7 +3793,7 @@ namespace Gear.Caching
                         value = strongValue;
                         return true;
                     }
-                    if (weakValue.TryGetTarget(out object livingReference))
+                    if (weakValue.TryGetTarget(out var livingReference))
                     {
                         value = (TValue)livingReference;
                         return true;
@@ -3812,181 +3809,6 @@ namespace Gear.Caching
         }
 
         /// <summary>
-        /// The result of attempting to get a value from the cache
-        /// </summary>
-        public class TryGetResult
-        {
-			/// <summary>
-			/// Initializes a new instance of the <see cref="TryGetResult"/> class as a failed attempt
-            /// </summary>
-            public TryGetResult() => WasFound = false;
-
-            /// <summary>
-			/// Initializes a new instance of the <see cref="TryGetResult"/> class as a successful attempt
-            /// </summary>
-            /// <param name="value">The value</param>
-            public TryGetResult(TValue value)
-            {
-                Value = value;
-                WasFound = true;
-            }
-
-            /// <summary>
-            /// Gets the value
-            /// </summary>
-            public TValue Value { get; }
-
-            /// <summary>
-            /// Gets whether the value was found
-            /// </summary>
-            public bool WasFound { get; }
-        }
-
-        /// <summary>
-        /// The result of attempting to get a typed value from the cache
-        /// </summary>
-        public class TryGetResult<T> where T : TValue
-        {
-			/// <summary>
-			/// Initializes a new instance of the <see cref="TryGetResult{T}"/> class as a failed attempt
-            /// </summary>
-            public TryGetResult() => WasFound = false;
-
-            /// <summary>
-			/// Initializes a new instance of the <see cref="TryGetResult{T}"/> class as a successful attempt
-            /// </summary>
-            /// <param name="value">The value</param>
-            public TryGetResult(T value)
-            {
-                Value = value;
-                WasFound = true;
-            }
-
-            /// <summary>
-            /// Gets the value
-            /// </summary>
-            public T Value { get; }
-
-            /// <summary>
-            /// Gets whether the value was found
-            /// </summary>
-            public bool WasFound { get; }
-        }
-
-        #region EventArgs classes
-
-        /// <summary>
-		/// Event arguments for <see cref="AsyncCache{TKey, TValue}"/> events based on keys
-        /// </summary>
-        public class KeyedEventArgs : EventArgs
-        {
-			/// <summary>
-			/// Initializes a new instance of the <see cref="KeyedEventArgs"/> class
-            /// </summary>
-            /// <param name="key">The key</param>
-            public KeyedEventArgs(TKey key) => Key = key;
-
-            /// <summary>
-            /// Gets the key
-            /// </summary>
-            public TKey Key { get; }
-        }
-
-        /// <summary>
-		/// Event arguments for <see cref="AsyncCache{TKey, TValue}"/> exception events based on keys
-        /// </summary>
-        public class KeyedExceptionEventArgs : KeyedEventArgs
-        {
-			/// <summary>
-			/// Initializes a new instance of the <see cref="KeyedExceptionEventArgs"/> class
-            /// </summary>
-            /// <param name="key">The key</param>
-            /// <param name="ex">The exception</param>
-            public KeyedExceptionEventArgs(TKey key, Exception ex) : base(key) => Exception = ex;
-
-            /// <summary>
-            /// Gets the exception
-            /// </summary>
-            public Exception Exception { get; }
-        }
-
-        /// <summary>
-		/// Event arguments for <see cref="AsyncCache{TKey, TValue}"/> events based on keys and values
-        /// </summary>
-        public class KeyValueEventArgs : KeyedEventArgs
-        {
-			/// <summary>
-			/// Initializes a new instance of the <see cref="KeyValueEventArgs"/> class
-            /// </summary>
-            /// <param name="key">The key</param>
-            /// <param name="value">The value</param>
-            public KeyValueEventArgs(TKey key, TValue value) : base(key) => Value = value;
-
-            /// <summary>
-            /// Gets the value
-            /// </summary>
-            public TValue Value { get; }
-        }
-
-        /// <summary>
-		/// Event arguments for the <see cref="AsyncCache{TKey, TValue}.ValueExpired"/> event
-        /// </summary>
-        public class ValueExpiredEventArgs : KeyValueEventArgs
-        {
-			/// <summary>
-			/// Initializes a new instance of the <see cref="ValueExpiredEventArgs"/> class
-            /// </summary>
-            /// <param name="key">The key</param>
-            /// <param name="value">The value</param>
-            /// <param name="expired">When the value expired</param>
-            public ValueExpiredEventArgs(TKey key, TValue value, DateTime expired) : base(key, value) => Expired = expired;
-            
-            /// <summary>
-            /// Gets when the value expired
-            /// </summary>
-            public DateTime Expired { get; }
-        }
-
-        /// <summary>
-		/// Event arguments for the <see cref="AsyncCache{TKey, TValue}.ValueUpdated"/> event
-        /// </summary>
-        public class ValueUpdatedEventArgs : KeyedEventArgs
-        {
-			/// <summary>
-			/// Initializes a new instance of the <see cref="ValueUpdatedEventArgs"/> class
-            /// </summary>
-            /// <param name="key">The key</param>
-            /// <param name="oldValue">The old value</param>
-            /// <param name="newValue">The new value</param>
-			/// <param name="isRefresh">Whether the update was the result of a refresh</param>
-            public ValueUpdatedEventArgs(TKey key, TValue oldValue, TValue newValue, bool isRefresh) : base(key)
-            {
-                OldValue = oldValue;
-                NewValue = NewValue;
-                IsRefresh = isRefresh;
-            }
-
-            /// <summary>
-            /// Gets whether the update was the result of a refresh
-            /// </summary>
-            public bool IsRefresh { get; }
-
-            /// <summary>
-            /// Gets the new value
-            /// </summary>
-            public TValue NewValue { get; }
-
-            /// <summary>
-            /// Gets the old value
-            /// </summary>
-            public TValue OldValue { get; }
-        }
-
-		#endregion EventArgs classes
-
-		#region ValueSource classes
-
-        /// <summary>
         /// The source of a value to add or update in the cache
         /// </summary>
 		protected abstract class ValueSource<T> where T : TValue
@@ -3995,32 +3817,36 @@ namespace Gear.Caching
 			/// Creates a <see cref="ValueSource{T}"/> using an existing value
             /// </summary>
             /// <param name="value">The value</param>
-            static public ValueSource<T> Create(T value) => new Value<T>(value);
+            public static ValueSource<T> Create(T value) => new Value<T>(value);
 
             /// <summary>
 			/// Creates a <see cref="ValueSource{T}"/> using a value factory
             /// </summary>
             /// <param name="valueFactory">The value factory</param>
-            static public ValueSource<T> Create(Func<T> valueFactory) => new ValueFactory<T>(valueFactory);
+            public static ValueSource<T> Create(Func<T> valueFactory) => new ValueFactory<T>(valueFactory);
 
             /// <summary>
 			/// Creates a <see cref="ValueSource{T}"/> using a cancellable value factory
             /// </summary>
             /// <param name="cancelableValueFactory">The cancellable value factory</param>
-            static public ValueSource<T> Create(Func<CancellationToken, T> cancelableValueFactory) => new CancelableValueFactory<T>(cancelableValueFactory);
+            public static ValueSource<T> Create(Func<CancellationToken, T> cancelableValueFactory) => new CancelableValueFactory<T>(cancelableValueFactory);
 
             /// <summary>
 			/// Creates a <see cref="ValueSource{T}"/> using an asynchronous value factory
             /// </summary>
             /// <param name="asyncValueFactory">The asynchronous value factory</param>
-            static public ValueSource<T> Create(Func<Task<T>> asyncValueFactory) => new AsyncValueFactory<T>(asyncValueFactory);
+            public static ValueSource<T> Create(Func<Task<T>> asyncValueFactory) => new AsyncValueFactory<T>(asyncValueFactory);
 
             /// <summary>
 			/// Creates a <see cref="ValueSource{T}"/> using a cancellable asynchronous value factory
             /// </summary>
 			/// <param name="cancelableAsyncValueFactory">The cancellable asynchronous value factory</param>
-            static public ValueSource<T> Create(Func<CancellationToken, Task<T>> cancelableAsyncValueFactory) => new AsyncCancelableValueFactory<T>(cancelableAsyncValueFactory);
+            public static ValueSource<T> Create(Func<CancellationToken, Task<T>> cancelableAsyncValueFactory) => new AsyncCancelableValueFactory<T>(cancelableAsyncValueFactory);
 
+            /// <summary>
+            /// Creates a <see cref="ValueSource{TVariant}"/>
+            /// </summary>
+            /// <typeparam name="TVariant">The contravariant type</typeparam>
             public ValueSource<TVariant> CreateContravariantValueSource<TVariant>() where TVariant : TValue =>
                 IsAsync ? ValueSource<TVariant>.Create(async cancellationToken => (TVariant)((object)await GetValueAsync(cancellationToken).ConfigureAwait(false))) : ValueSource<TVariant>.Create(cancellationToken => (TVariant)((object)GetValue(cancellationToken)));
 
@@ -4175,7 +4001,5 @@ namespace Gear.Caching
 			/// </summary>
 			public override bool IsAsync => true;
         };
-
-        #endregion ValueSource classes
     }
 }
