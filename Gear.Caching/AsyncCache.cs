@@ -19,10 +19,12 @@ namespace Gear.Caching
         /// <summary>
         /// Initializes a new instance of the <see cref="AsyncCache{TKey, TValue}"/> class
         /// </summary>
+        /// <param name="operationTimeout">The maximum amount of time any operation on the cache may take before failing (if <c>null</c> or <c>default</c>, operations may be attempted for an infinite period of time)</param>
         /// <param name="weakenReferencesIn">The amount of time a value may remain unaccessed before potentially being subjected to garbage collection (if not specified, values will never be garbage collected)</param>
         /// <param name="addReferencesAsWeak">Whether newly added values start as weak references (has no effect if <paramref name="weakenReferencesIn"/> is <c>null</c> or <c>default</c>)</param>
-        public AsyncCache(TimeSpan? weakenReferencesIn = default, bool addReferencesAsWeak = false)
+        public AsyncCache(TimeSpan? operationTimeout = default, TimeSpan? weakenReferencesIn = default, bool addReferencesAsWeak = false)
         {
+            OperationTimeout = operationTimeout;
             AddReferencesAsWeak = addReferencesAsWeak;
             buckets = new ConcurrentDictionary<TKey, Bucket>();
             refreshCancellationTokenSources = new ConcurrentDictionary<TKey, CancellationTokenSource>();
@@ -35,10 +37,12 @@ namespace Gear.Caching
         /// Initializes a new instance of the <see cref="AsyncCache{TKey, TValue}"/> class that uses the specified <see cref="IEqualityComparer{T}"/>
         /// </summary>
         /// <param name="comparer">The equality comparison implementation to use when comparing keys</param>
+        /// <param name="operationTimeout">The maximum amount of time any operation on the cache may take before failing (if <c>null</c> or <c>default</c>, operations may be attempted for an infinite period of time)</param>
         /// <param name="weakenReferencesIn">The amount of time a value may remain unaccessed before potentially being subjected to garbage collection (if not specified, values will never be garbage collected)</param>
         /// <param name="addReferencesAsWeak">Whether newly added values start as weak references (has no effect if <paramref name="weakenReferencesIn"/> is <c>null</c> or <c>default</c>)</param>
-        public AsyncCache(IEqualityComparer<TKey> comparer, TimeSpan? weakenReferencesIn = default, bool addReferencesAsWeak = false)
+        public AsyncCache(IEqualityComparer<TKey> comparer, TimeSpan? operationTimeout = default, TimeSpan? weakenReferencesIn = default, bool addReferencesAsWeak = false)
         {
+            OperationTimeout = operationTimeout;
             AddReferencesAsWeak = addReferencesAsWeak;
             this.comparer = comparer;
             buckets = new ConcurrentDictionary<TKey, Bucket>(comparer);
@@ -53,6 +57,21 @@ namespace Gear.Caching
         readonly ConcurrentDictionary<TKey, CancellationTokenSource> refreshCancellationTokenSources;
         readonly ConcurrentDictionary<TKey, AsyncAutoResetEvent> refreshAutoResetEvents;
         ConcurrentDictionary<TKey, AsyncReaderWriterLock> retrievalAccess;
+
+        /// <summary>
+        /// Gets whether newly added values start as weak references (has no effect if <see cref="WeakenReferencesIn"/> is <c>null</c> or <c>default</c>)
+        /// </summary>
+        public bool AddReferencesAsWeak { get; }
+
+        /// <summary>
+        /// Gets the maximum amount of time any operation on the cache may take before failing (if <c>null</c> or <c>default</c>, operations may be attempted for an infinite period of time)
+        /// </summary>
+        public TimeSpan? OperationTimeout { get; }
+
+        /// <summary>
+        /// Gets the amount of time a value can be left unaccessed by callers before being potentially subjected to garbage collection (if <c>null</c> or <c>default</c>, values will never be garbage collected)
+        /// </summary>
+        public TimeSpan? WeakenReferencesIn { get; }
 
         /// <summary>
         /// Occurs after the cache is reset
@@ -1321,45 +1340,46 @@ namespace Gear.Caching
         /// <param name="valueSource">The source of the value</param>
         /// <param name="expireIn">The amount of time in which the value should expire</param>
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
-        protected virtual void PerformAddOrUpdate(TKey key, ValueSource<TValue> valueSource, TimeSpan? expireIn = null, CancellationToken cancellationToken = default)
-        {
-            DateTime? expired = null;
-            var expiredValue = default(TValue);
-            var updated = false;
-            var oldValue = default(TValue);
-            TValue value;
-            using (GetAsyncReaderWriterLock(key).WriterLock(cancellationToken))
+        protected virtual void PerformAddOrUpdate(TKey key, ValueSource<TValue> valueSource, TimeSpan? expireIn = null, CancellationToken cancellationToken = default) =>
+            WrapTimeout(ct =>
             {
-                cancellationToken.ThrowIfCancellationRequested();
-                value = valueSource.GetValue(cancellationToken);
-                if (buckets.TryGetValue(key, out var bucket))
+                DateTime? expired = null;
+                var expiredValue = default(TValue);
+                var updated = false;
+                var oldValue = default(TValue);
+                TValue value;
+                using (GetAsyncReaderWriterLock(key).WriterLock(ct))
                 {
-                    if (bucket.Expiration < DateTime.UtcNow)
+                    ct.ThrowIfCancellationRequested();
+                    value = valueSource.GetValue(ct);
+                    if (buckets.TryGetValue(key, out var bucket))
                     {
-                        buckets.TryRemove(key, out var removedBucket);
-                        expired = removedBucket.Expiration;
-                        removedBucket.TrySoftGetValue(out expiredValue);
+                        if (bucket.Expiration < DateTime.UtcNow)
+                        {
+                            buckets.TryRemove(key, out var removedBucket);
+                            expired = removedBucket.Expiration;
+                            removedBucket.TrySoftGetValue(out expiredValue);
+                        }
+                        else
+                        {
+                            oldValue = bucket.GetValue(ct);
+                            bucket.SetValue(value, true, ct);
+                            bucket.Expiration = DateTime.UtcNow + expireIn;
+                            updated = true;
+                        }
                     }
-                    else
-                    {
-                        oldValue = bucket.GetValue(cancellationToken);
-                        bucket.SetValue(value, true, cancellationToken);
-                        bucket.Expiration = DateTime.UtcNow + expireIn;
-                        updated = true;
-                    }
+                    if (!updated)
+                        buckets.TryAdd(key, new Bucket(this, key, value, valueSource, expireIn));
                 }
-                if (!updated)
-                    buckets.TryAdd(key, new Bucket(this, key, value, valueSource, expireIn));
-            }
-            if (updated)
-                OnValueUpdated(new ValueUpdatedEventArgs(key, oldValue, value, false));
-            else
-            {
-                if (expired != null)
-                    OnValueExpired(new ValueExpiredEventArgs(key, expiredValue, expired.Value));
-                OnValueAdded(new KeyValueEventArgs(key, value));
-            }
-        }
+                if (updated)
+                    OnValueUpdated(new ValueUpdatedEventArgs(key, oldValue, value, false));
+                else
+                {
+                    if (expired != null)
+                        OnValueExpired(new ValueExpiredEventArgs(key, expiredValue, expired.Value));
+                    OnValueAdded(new KeyValueEventArgs(key, value));
+                }
+            }, cancellationToken);
 
         /// <summary>
         /// Invoked when a caller adds a value to or updates a value in the cache
@@ -1368,52 +1388,53 @@ namespace Gear.Caching
         /// <param name="valueSource">The source of the value</param>
         /// <param name="expireIn">The amount of time in which the value should expire</param>
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
-        protected virtual async Task PerformAddOrUpdateAsync(TKey key, ValueSource<TValue> valueSource, TimeSpan? expireIn = null, CancellationToken cancellationToken = default)
-        {
-            DateTime? expired = null;
-            var expiredValue = default(TValue);
-            var updated = false;
-            var oldValue = default(TValue);
-            TValue value;
-            using (await GetAsyncReaderWriterLock(key).WriterLockAsync(cancellationToken).ConfigureAwait(false))
+        protected virtual Task PerformAddOrUpdateAsync(TKey key, ValueSource<TValue> valueSource, TimeSpan? expireIn = null, CancellationToken cancellationToken = default) =>
+            WrapTimeoutAsync(async ct =>
             {
-                cancellationToken.ThrowIfCancellationRequested();
-                if (valueSource.IsAsync)
-                    value = await valueSource.GetValueAsync(cancellationToken).ConfigureAwait(false);
-                else
+                DateTime? expired = null;
+                var expiredValue = default(TValue);
+                var updated = false;
+                var oldValue = default(TValue);
+                TValue value;
+                using (await GetAsyncReaderWriterLock(key).WriterLockAsync(ct).ConfigureAwait(false))
                 {
-                    value = valueSource.GetValue(cancellationToken);
-                    if (typeof(TValue) == typeof(object))
-                        value = (TValue)(await TaskResolver.ResolveAsync(value).ConfigureAwait(false));
-                }
-                if (buckets.TryGetValue(key, out var bucket))
-                {
-                    if (bucket.Expiration < DateTime.UtcNow)
-                    {
-                        buckets.TryRemove(key, out var removedBucket);
-                        expired = removedBucket.Expiration;
-                        removedBucket.TrySoftGetValue(out expiredValue);
-                    }
+                    ct.ThrowIfCancellationRequested();
+                    if (valueSource.IsAsync)
+                        value = await valueSource.GetValueAsync(ct).ConfigureAwait(false);
                     else
                     {
-                        oldValue = await bucket.GetValueAsync(cancellationToken).ConfigureAwait(false);
-                        await bucket.SetValueAsync(value, true, cancellationToken).ConfigureAwait(false);
-                        bucket.Expiration = DateTime.UtcNow + expireIn;
-                        updated = true;
+                        value = valueSource.GetValue(ct);
+                        if (typeof(TValue) == typeof(object))
+                            value = (TValue)(await TaskResolver.ResolveAsync(value).ConfigureAwait(false));
                     }
+                    if (buckets.TryGetValue(key, out var bucket))
+                    {
+                        if (bucket.Expiration < DateTime.UtcNow)
+                        {
+                            buckets.TryRemove(key, out var removedBucket);
+                            expired = removedBucket.Expiration;
+                            removedBucket.TrySoftGetValue(out expiredValue);
+                        }
+                        else
+                        {
+                            oldValue = await bucket.GetValueAsync(ct).ConfigureAwait(false);
+                            await bucket.SetValueAsync(value, true, ct).ConfigureAwait(false);
+                            bucket.Expiration = DateTime.UtcNow + expireIn;
+                            updated = true;
+                        }
+                    }
+                    if (!updated)
+                        buckets.TryAdd(key, new Bucket(this, key, value, valueSource, expireIn));
                 }
-                if (!updated)
-                    buckets.TryAdd(key, new Bucket(this, key, value, valueSource, expireIn));
-            }
-            if (updated)
-                OnValueUpdated(new ValueUpdatedEventArgs(key, oldValue, value, false));
-            else
-            {
-                if (expired != null)
-                    OnValueExpired(new ValueExpiredEventArgs(key, expiredValue, expired.Value));
-                OnValueAdded(new KeyValueEventArgs(key, value));
-            }
-        }
+                if (updated)
+                    OnValueUpdated(new ValueUpdatedEventArgs(key, oldValue, value, false));
+                else
+                {
+                    if (expired != null)
+                        OnValueExpired(new ValueExpiredEventArgs(key, expiredValue, expired.Value));
+                    OnValueAdded(new KeyValueEventArgs(key, value));
+                }
+            }, cancellationToken);
 
         /// <summary>
         /// Invoked when a caller gets a value in the cache or adds it to the cache if it is not already present
@@ -1425,61 +1446,62 @@ namespace Gear.Caching
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
         /// <returns>The value</returns>
         /// <exception cref="InvalidCastException">The value associated to <paramref name="key"/> cannot be cast to <typeparamref name="T"/></exception>
-        protected virtual T PerformGetOrAdd<T>(TKey key, ValueSource<T> valueSource, TimeSpan? expireIn = null, CancellationToken cancellationToken = default) where T : TValue
-        {
-            DateTime? expired = null;
-            var expiredValue = default(TValue);
-            var added = false;
-            var value = default(T);
-            try
+        protected virtual T PerformGetOrAdd<T>(TKey key, ValueSource<T> valueSource, TimeSpan? expireIn = null, CancellationToken cancellationToken = default) where T : TValue =>
+            WrapTimeout(ct =>
             {
-                using (GetAsyncReaderWriterLock(key).ReaderLock(cancellationToken))
+                DateTime? expired = null;
+                var expiredValue = default(TValue);
+                var added = false;
+                var value = default(T);
+                try
                 {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    if (buckets.TryGetValue(key, out var bucket))
+                    using (GetAsyncReaderWriterLock(key).ReaderLock(ct))
                     {
-                        if (bucket.Expiration < DateTime.UtcNow)
+                        ct.ThrowIfCancellationRequested();
+                        if (buckets.TryGetValue(key, out var bucket))
                         {
-                            buckets.TryRemove(key, out var removedBucket);
-                            expired = removedBucket.Expiration;
-                            removedBucket.TrySoftGetValue(out expiredValue);
+                            if (bucket.Expiration < DateTime.UtcNow)
+                            {
+                                buckets.TryRemove(key, out var removedBucket);
+                                expired = removedBucket.Expiration;
+                                removedBucket.TrySoftGetValue(out expiredValue);
+                            }
+                            else if (bucket.GetValue(ct) is T typedValue)
+                                return typedValue;
+                            else
+                                throw new InvalidCastException();
                         }
-                        else if (bucket.GetValue(cancellationToken) is T typedValue)
-                            return typedValue;
-                        else
-                            throw new InvalidCastException();
+                    }
+                    using (GetAsyncReaderWriterLock(key).WriterLock(ct))
+                    {
+                        ct.ThrowIfCancellationRequested();
+                        if (buckets.TryGetValue(key, out var bucket))
+                        {
+                            if (bucket.Expiration < DateTime.UtcNow)
+                            {
+                                buckets.TryRemove(key, out var removedBucket);
+                                expired = removedBucket.Expiration;
+                                removedBucket.TrySoftGetValue(out expiredValue);
+                            }
+                            else if (bucket.GetValue(ct) is T typedValue)
+                                return typedValue;
+                            else
+                                throw new InvalidCastException();
+                        }
+                        value = valueSource.GetValue(ct);
+                        buckets.TryAdd(key, new Bucket(this, key, value, valueSource.CreateContravariantValueSource<TValue>(), expireIn));
+                        added = true;
+                        return value;
                     }
                 }
-                using (GetAsyncReaderWriterLock(key).WriterLock(cancellationToken))
+                finally
                 {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    if (buckets.TryGetValue(key, out var bucket))
-                    {
-                        if (bucket.Expiration < DateTime.UtcNow)
-                        {
-                            buckets.TryRemove(key, out var removedBucket);
-                            expired = removedBucket.Expiration;
-                            removedBucket.TrySoftGetValue(out expiredValue);
-                        }
-                        else if (bucket.GetValue(cancellationToken) is T typedValue)
-                            return typedValue;
-                        else
-                            throw new InvalidCastException();
-                    }
-                    value = valueSource.GetValue(cancellationToken);
-                    buckets.TryAdd(key, new Bucket(this, key, value, valueSource.CreateContravariantValueSource<TValue>(), expireIn));
-                    added = true;
-                    return value;
+                    if (expired != null)
+                        OnValueExpired(new ValueExpiredEventArgs(key, expiredValue, expired.Value));
+                    if (added)
+                        OnValueAdded(new KeyValueEventArgs(key, value));
                 }
-            }
-            finally
-            {
-                if (expired != null)
-                    OnValueExpired(new ValueExpiredEventArgs(key, expiredValue, expired.Value));
-                if (added)
-                    OnValueAdded(new KeyValueEventArgs(key, value));
-            }
-        }
+            }, cancellationToken);
 
         /// <summary>
         /// Invoked when a caller gets a value in the cache or adds it to the cache if it is not already present and refreshes it
@@ -1491,122 +1513,123 @@ namespace Gear.Caching
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
         /// <returns>The value</returns>
         /// <exception cref="InvalidCastException">The value associated to <paramref name="key"/> cannot be cast to <typeparamref name="T"/></exception>
-        protected virtual T PerformGetOrAddAndRefresh<T>(TKey key, ValueSource<T> valueFactory, TimeSpan interval, CancellationToken cancellationToken = default) where T : TValue
-        {
-            DateTime? expired = null;
-            var expiredValue = default(TValue);
-            Bucket addedBucket = null;
-            T value = default;
-            try
+        protected virtual T PerformGetOrAddAndRefresh<T>(TKey key, ValueSource<T> valueFactory, TimeSpan interval, CancellationToken cancellationToken = default) where T : TValue =>
+            WrapTimeout(ct =>
             {
-                using (GetAsyncReaderWriterLock(key).ReaderLock(cancellationToken))
+                DateTime? expired = null;
+                var expiredValue = default(TValue);
+                Bucket addedBucket = null;
+                T value = default;
+                try
                 {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    if (buckets.TryGetValue(key, out var bucket))
+                    using (GetAsyncReaderWriterLock(key).ReaderLock(ct))
                     {
-                        if (bucket.Expiration < DateTime.UtcNow)
+                        ct.ThrowIfCancellationRequested();
+                        if (buckets.TryGetValue(key, out var bucket))
                         {
-                            buckets.TryRemove(key, out var removedBucket);
-                            expired = removedBucket.Expiration;
-                            removedBucket.TrySoftGetValue(out expiredValue);
+                            if (bucket.Expiration < DateTime.UtcNow)
+                            {
+                                buckets.TryRemove(key, out var removedBucket);
+                                expired = removedBucket.Expiration;
+                                removedBucket.TrySoftGetValue(out expiredValue);
+                            }
+                            else if (bucket.GetValue(ct) is T typedValue)
+                                return typedValue;
+                            else
+                                throw new InvalidCastException();
                         }
-                        else if (bucket.GetValue(cancellationToken) is T typedValue)
-                            return typedValue;
-                        else
-                            throw new InvalidCastException();
+                    }
+                    using (GetAsyncReaderWriterLock(key).WriterLock(ct))
+                    {
+                        ct.ThrowIfCancellationRequested();
+                        if (buckets.TryGetValue(key, out var bucket))
+                        {
+                            if (bucket.Expiration < DateTime.UtcNow)
+                            {
+                                buckets.TryRemove(key, out var removedBucket);
+                                expired = removedBucket.Expiration;
+                                removedBucket.TrySoftGetValue(out expiredValue);
+                            }
+                            else if (bucket.GetValue(ct) is T typedValue)
+                                return typedValue;
+                            else
+                                throw new InvalidCastException();
+                        }
+                        value = valueFactory.GetValue(ct);
+                        addedBucket = new Bucket(this, key, value, valueFactory.CreateContravariantValueSource<TValue>());
+                        buckets.TryAdd(key, addedBucket);
+                        return value;
                     }
                 }
-                using (GetAsyncReaderWriterLock(key).WriterLock(cancellationToken))
+                finally
                 {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    if (buckets.TryGetValue(key, out var bucket))
+                    if (expired != null)
+                        OnValueExpired(new ValueExpiredEventArgs(key, expiredValue, expired.Value));
+                    if (addedBucket != null)
                     {
-                        if (bucket.Expiration < DateTime.UtcNow)
+                        var addedBucketId = addedBucket.Id;
+                        var refreshCancellationToken = refreshCancellationTokenSources.AddOrUpdate(key, CancellationTokenSourceFactory, CancellationTokenSourceFactory).Token;
+                        var refreshAutoResetEvent = refreshAutoResetEvents.AddOrUpdate(key, AutoResetEventFactory, AutoResetEventFactory);
+                        Task.Run(async () =>
                         {
-                            buckets.TryRemove(key, out var removedBucket);
-                            expired = removedBucket.Expiration;
-                            removedBucket.TrySoftGetValue(out expiredValue);
-                        }
-                        else if (bucket.GetValue(cancellationToken) is T typedValue)
-                            return typedValue;
-                        else
-                            throw new InvalidCastException();
-                    }
-                    value = valueFactory.GetValue(cancellationToken);
-                    addedBucket = new Bucket(this, key, value, valueFactory.CreateContravariantValueSource<TValue>());
-                    buckets.TryAdd(key, addedBucket);
-                    return value;
-                }
-            }
-            finally
-            {
-                if (expired != null)
-                    OnValueExpired(new ValueExpiredEventArgs(key, expiredValue, expired.Value));
-                if (addedBucket != null)
-                {
-                    var addedBucketId = addedBucket.Id;
-                    var refreshCancellationToken = refreshCancellationTokenSources.AddOrUpdate(key, CancellationTokenSourceFactory, CancellationTokenSourceFactory).Token;
-                    var refreshAutoResetEvent = refreshAutoResetEvents.AddOrUpdate(key, AutoResetEventFactory, AutoResetEventFactory);
-                    Task.Run(async () =>
-                    {
-                        while (true)
-                        {
-                            try
-                            {
-                                using (var manualResetEventCancellationTokenSource = new CancellationTokenSource())
-                                {
-                                    await Task.WhenAny(Task.Delay(interval, refreshCancellationToken), refreshAutoResetEvent.WaitAsync(manualResetEventCancellationTokenSource.Token)).ConfigureAwait(false);
-                                    await Task.Run(() =>
-                                    {
-                                        try
-                                        {
-                                            manualResetEventCancellationTokenSource.Cancel();
-                                        }
-                                        catch (ObjectDisposedException)
-                                        {
-                                            // Allow this to happen silently
-                                        }
-                                    }).ConfigureAwait(false);
-                                }
-                                refreshCancellationToken.ThrowIfCancellationRequested();
-                                TValue oldValue;
-                                using (await GetAsyncReaderWriterLock(key).ReaderLockAsync(refreshCancellationToken).ConfigureAwait(false))
-                                {
-                                    if (!buckets.TryGetValue(key, out var refreshingBucket) || refreshingBucket.Id != addedBucketId)
-                                        break;
-                                    if (!refreshingBucket.TrySoftGetValue(out oldValue))
-                                        continue;
-                                }
-                                var newValue = valueFactory.GetValue(refreshCancellationToken);
-                                using (await GetAsyncReaderWriterLock(key).WriterLockAsync(refreshCancellationToken).ConfigureAwait(false))
-                                {
-                                    if (!buckets.TryGetValue(key, out var refreshingBucket) || refreshingBucket.Id != addedBucketId)
-                                        break;
-                                    await refreshingBucket.SetValueAsync(newValue, false, refreshCancellationToken).ConfigureAwait(false);
-                                }
-                                OnValueUpdated(new ValueUpdatedEventArgs(key, oldValue, newValue, true));
-                            }
-                            catch (OperationCanceledException)
-                            {
-                                break;
-                            }
-                            catch (Exception ex)
+                            while (true)
                             {
                                 try
                                 {
-                                    OnValueRefreshFailed(new KeyedExceptionEventArgs(key, ex));
+                                    using (var manualResetEventCancellationTokenSource = new CancellationTokenSource())
+                                    {
+                                        await Task.WhenAny(Task.Delay(interval, refreshCancellationToken), refreshAutoResetEvent.WaitAsync(manualResetEventCancellationTokenSource.Token)).ConfigureAwait(false);
+                                        await Task.Run(() =>
+                                        {
+                                            try
+                                            {
+                                                manualResetEventCancellationTokenSource.Cancel();
+                                            }
+                                            catch (ObjectDisposedException)
+                                            {
+                                                // Allow this to happen silently
+                                            }
+                                        }).ConfigureAwait(false);
+                                    }
+                                    refreshCancellationToken.ThrowIfCancellationRequested();
+                                    TValue oldValue;
+                                    using (await GetAsyncReaderWriterLock(key).ReaderLockAsync(refreshCancellationToken).ConfigureAwait(false))
+                                    {
+                                        if (!buckets.TryGetValue(key, out var refreshingBucket) || refreshingBucket.Id != addedBucketId)
+                                            break;
+                                        if (!refreshingBucket.TrySoftGetValue(out oldValue))
+                                            continue;
+                                    }
+                                    var newValue = valueFactory.GetValue(refreshCancellationToken);
+                                    using (await GetAsyncReaderWriterLock(key).WriterLockAsync(refreshCancellationToken).ConfigureAwait(false))
+                                    {
+                                        if (!buckets.TryGetValue(key, out var refreshingBucket) || refreshingBucket.Id != addedBucketId)
+                                            break;
+                                        await refreshingBucket.SetValueAsync(newValue, false, refreshCancellationToken).ConfigureAwait(false);
+                                    }
+                                    OnValueUpdated(new ValueUpdatedEventArgs(key, oldValue, newValue, true));
                                 }
-                                catch
+                                catch (OperationCanceledException)
                                 {
-                                    // An unhandled exception thrown by an event handler must not be allowed to prevent subsequent refreshing
+                                    break;
+                                }
+                                catch (Exception ex)
+                                {
+                                    try
+                                    {
+                                        OnValueRefreshFailed(new KeyedExceptionEventArgs(key, ex));
+                                    }
+                                    catch
+                                    {
+                                        // An unhandled exception thrown by an event handler must not be allowed to prevent subsequent refreshing
+                                    }
                                 }
                             }
-                        }
-                    });
-                    OnValueAdded(new KeyValueEventArgs(key, value));
+                        });
+                        OnValueAdded(new KeyValueEventArgs(key, value));
+                    }
                 }
-            }
-        }
+            }, cancellationToken);
 
         /// <summary>
         /// Gets a value in the cache or adds it to the cache if it is not already present and refreshes it
@@ -1618,17 +1641,232 @@ namespace Gear.Caching
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
         /// <returns>The value</returns>
         /// <exception cref="InvalidCastException">The value associated to <paramref name="key"/> cannot be cast to <typeparamref name="T"/></exception>
-        protected virtual async Task<T> PerformGetOrAddAndRefreshAsync<T>(TKey key, ValueSource<T> valueSource, TimeSpan interval, CancellationToken cancellationToken = default) where T : TValue
-        {
-            DateTime? expired = null;
-            var expiredValue = default(TValue);
-            Bucket addedBucket = null;
-            T value = default;
-            try
+        protected virtual Task<T> PerformGetOrAddAndRefreshAsync<T>(TKey key, ValueSource<T> valueSource, TimeSpan interval, CancellationToken cancellationToken = default) where T : TValue =>
+            WrapTimeoutAsync(async ct =>
             {
-                using (await GetAsyncReaderWriterLock(key).ReaderLockAsync(cancellationToken).ConfigureAwait(false))
+                DateTime? expired = null;
+                var expiredValue = default(TValue);
+                Bucket addedBucket = null;
+                T value = default;
+                try
                 {
-                    cancellationToken.ThrowIfCancellationRequested();
+                    using (await GetAsyncReaderWriterLock(key).ReaderLockAsync(ct).ConfigureAwait(false))
+                    {
+                        ct.ThrowIfCancellationRequested();
+                        if (buckets.TryGetValue(key, out var bucket))
+                        {
+                            if (bucket.Expiration < DateTime.UtcNow)
+                            {
+                                buckets.TryRemove(key, out var removedBucket);
+                                expired = removedBucket.Expiration;
+                                removedBucket.TrySoftGetValue(out expiredValue);
+                            }
+                            else if (await bucket.GetValueAsync(ct).ConfigureAwait(false) is T typedValue)
+                                return typedValue;
+                            else
+                                throw new InvalidCastException();
+                        }
+                    }
+                    using (await GetAsyncReaderWriterLock(key).WriterLockAsync(ct).ConfigureAwait(false))
+                    {
+                        ct.ThrowIfCancellationRequested();
+                        if (buckets.TryGetValue(key, out var bucket))
+                        {
+                            if (bucket.Expiration < DateTime.UtcNow)
+                            {
+                                buckets.TryRemove(key, out var removedBucket);
+                                expired = removedBucket.Expiration;
+                                removedBucket.TrySoftGetValue(out expiredValue);
+                            }
+                            else if (await bucket.GetValueAsync(ct).ConfigureAwait(false) is T typedValue)
+                                return typedValue;
+                            else
+                                throw new InvalidCastException();
+                        }
+                        if (valueSource.IsAsync)
+                            value = await valueSource.GetValueAsync(ct).ConfigureAwait(false);
+                        else
+                        {
+                            value = valueSource.GetValue(ct);
+                            if (typeof(TValue) == typeof(object))
+                                value = (T)(await TaskResolver.ResolveAsync(value).ConfigureAwait(false));
+                        }
+                        addedBucket = new Bucket(this, key, value, valueSource.CreateContravariantValueSource<TValue>());
+                        buckets.TryAdd(key, addedBucket);
+                        return value;
+                    }
+                }
+                finally
+                {
+                    if (expired != null)
+                        OnValueExpired(new ValueExpiredEventArgs(key, expiredValue, expired.Value));
+                    if (addedBucket != null)
+                    {
+                        var addedBucketId = addedBucket.Id;
+                        var refreshCancellationToken = refreshCancellationTokenSources.AddOrUpdate(key, CancellationTokenSourceFactory, CancellationTokenSourceFactory).Token;
+                        var refreshAutoResetEvent = refreshAutoResetEvents.AddOrUpdate(key, AutoResetEventFactory, AutoResetEventFactory);
+#pragma warning disable CS4014
+                        Task.Run(async () =>
+                        {
+                            while (true)
+                            {
+                                try
+                                {
+                                    using (var manualResetEventCancellationTokenSource = new CancellationTokenSource())
+                                    {
+                                        await Task.WhenAny(Task.Delay(interval, refreshCancellationToken), refreshAutoResetEvent.WaitAsync(manualResetEventCancellationTokenSource.Token)).ConfigureAwait(false);
+                                        await Task.Run(() =>
+                                        {
+                                            try
+                                            {
+                                                manualResetEventCancellationTokenSource.Cancel();
+                                            }
+                                            catch (ObjectDisposedException)
+                                            {
+                                                // Allow this to happen silently
+                                            }
+                                        }).ConfigureAwait(false);
+                                    }
+                                    refreshCancellationToken.ThrowIfCancellationRequested();
+                                    TValue oldValue;
+                                    using (await GetAsyncReaderWriterLock(key).ReaderLockAsync(refreshCancellationToken).ConfigureAwait(false))
+                                    {
+                                        if (!buckets.TryGetValue(key, out var refreshingBucket) || refreshingBucket.Id != addedBucketId)
+                                            break;
+                                        if (!refreshingBucket.TrySoftGetValue(out oldValue))
+                                            continue;
+                                    }
+                                    T newValue;
+                                    if (valueSource.IsAsync)
+                                        newValue = await valueSource.GetValueAsync(refreshCancellationToken).ConfigureAwait(false);
+                                    else
+                                    {
+                                        newValue = valueSource.GetValue(refreshCancellationToken);
+                                        if (typeof(TValue) == typeof(object))
+                                            newValue = (T)(await TaskResolver.ResolveAsync(newValue).ConfigureAwait(false));
+                                    }
+                                    using (await GetAsyncReaderWriterLock(key).WriterLockAsync(refreshCancellationToken).ConfigureAwait(false))
+                                    {
+                                        if (!buckets.TryGetValue(key, out var refreshingBucket) || refreshingBucket.Id != addedBucketId)
+                                            break;
+                                        await refreshingBucket.SetValueAsync(newValue, false, refreshCancellationToken).ConfigureAwait(false);
+                                    }
+                                    OnValueUpdated(new ValueUpdatedEventArgs(key, oldValue, newValue, true));
+                                }
+                                catch (OperationCanceledException)
+                                {
+                                    break;
+                                }
+                                catch (Exception ex)
+                                {
+                                    try
+                                    {
+                                        OnValueRefreshFailed(new KeyedExceptionEventArgs(key, ex));
+                                    }
+                                    catch
+                                    {
+                                        // An unhandled exception thrown by an event handler must not be allowed to prevent subsequent refreshing
+                                    }
+                                }
+                            }
+                        });
+#pragma warning restore CS4014
+                        OnValueAdded(new KeyValueEventArgs(key, value));
+                    }
+                }
+            }, cancellationToken);
+
+        /// <summary>
+        /// Gets a value in the cache or adds it to the cache if it is not already present
+        /// </summary>
+        /// <typeparam name="T">The type of the value</typeparam>
+        /// <param name="key">The key of the value</param>
+        /// <param name="valueSource">The source of the value to add if the value is not present in the cache</param>
+        /// <param name="expireIn">The amount of time in which the value should expire</param>
+        /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
+        /// <returns>The value</returns>
+        /// <exception cref="InvalidCastException">The value associated to <paramref name="key"/> cannot be cast to <typeparamref name="T"/></exception>
+        protected virtual Task<T> PerformGetOrAddAsync<T>(TKey key, ValueSource<T> valueSource, TimeSpan? expireIn = null, CancellationToken cancellationToken = default) where T : TValue =>
+            WrapTimeoutAsync(async ct =>
+            {
+                DateTime? expired = null;
+                var expiredValue = default(TValue);
+                var added = false;
+                var value = default(T);
+                try
+                {
+                    using (await GetAsyncReaderWriterLock(key).ReaderLockAsync(ct).ConfigureAwait(false))
+                    {
+                        ct.ThrowIfCancellationRequested();
+                        if (buckets.TryGetValue(key, out var bucket))
+                        {
+                            if (bucket.Expiration < DateTime.UtcNow)
+                            {
+                                buckets.TryRemove(key, out var removedBucket);
+                                expired = removedBucket.Expiration;
+                                removedBucket.TrySoftGetValue(out expiredValue);
+                            }
+                            else if (await bucket.GetValueAsync(ct).ConfigureAwait(false) is T typedValue)
+                                return typedValue;
+                            else
+                                throw new InvalidCastException();
+                        }
+                    }
+                    using (await GetAsyncReaderWriterLock(key).WriterLockAsync(ct).ConfigureAwait(false))
+                    {
+                        ct.ThrowIfCancellationRequested();
+                        if (buckets.TryGetValue(key, out var bucket))
+                        {
+                            if (bucket.Expiration < DateTime.UtcNow)
+                            {
+                                buckets.TryRemove(key, out var removedBucket);
+                                expired = removedBucket.Expiration;
+                                removedBucket.TrySoftGetValue(out expiredValue);
+                            }
+                            else if (await bucket.GetValueAsync(ct).ConfigureAwait(false) is T typedValue)
+                                return typedValue;
+                            else
+                                throw new InvalidCastException();
+                        }
+                        if (valueSource.IsAsync)
+                            value = await valueSource.GetValueAsync(ct).ConfigureAwait(false);
+                        else
+                        {
+                            value = valueSource.GetValue(ct);
+                            if (typeof(TValue) == typeof(object))
+                                value = (T)(await TaskResolver.ResolveAsync(value).ConfigureAwait(false));
+                        }
+                        buckets.TryAdd(key, new Bucket(this, key, value, valueSource.CreateContravariantValueSource<TValue>(), expireIn));
+                        added = true;
+                        return value;
+                    }
+                }
+                finally
+                {
+                    if (expired != null)
+                        OnValueExpired(new ValueExpiredEventArgs(key, expiredValue, expired.Value));
+                    if (added)
+                        OnValueAdded(new KeyValueEventArgs(key, value));
+                }
+            }, cancellationToken);
+
+        /// <summary>
+        /// Invoked when a caller tries to add a value to the cache
+        /// </summary>
+        /// <param name="key">The key of the value</param>
+        /// <param name="valueSource">The value</param>
+        /// <param name="expireIn">The amount of time in which the value should expire</param>
+        /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
+        /// <returns>true is the value was added; otherwise, false</returns>
+        protected virtual TryOperationResult PerformTryAdd(TKey key, ValueSource<TValue> valueSource, TimeSpan? expireIn = null, CancellationToken cancellationToken = default) =>
+            WrapTimeout(ct =>
+            {
+                DateTime? expired = null;
+                var expiredValue = default(TValue);
+                TValue value;
+                using (GetAsyncReaderWriterLock(key).WriterLock(ct))
+                {
+                    ct.ThrowIfCancellationRequested();
                     if (buckets.TryGetValue(key, out var bucket))
                     {
                         if (bucket.Expiration < DateTime.UtcNow)
@@ -1637,48 +1875,258 @@ namespace Gear.Caching
                             expired = removedBucket.Expiration;
                             removedBucket.TrySoftGetValue(out expiredValue);
                         }
-                        else if (await bucket.GetValueAsync(cancellationToken).ConfigureAwait(false) is T typedValue)
-                            return typedValue;
                         else
-                            throw new InvalidCastException();
+                            return TryOperationResult.DuplicateKey;
                     }
-                }
-                using (await GetAsyncReaderWriterLock(key).WriterLockAsync(cancellationToken).ConfigureAwait(false))
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    if (buckets.TryGetValue(key, out var bucket))
+                    try
                     {
-                        if (bucket.Expiration < DateTime.UtcNow)
+                        value = valueSource.GetValue(ct);
+                    }
+                    catch (Exception ex)
+                    {
+                        try
                         {
-                            buckets.TryRemove(key, out var removedBucket);
-                            expired = removedBucket.Expiration;
-                            removedBucket.TrySoftGetValue(out expiredValue);
+                            OnValueAddFailed(new KeyedExceptionEventArgs(key, ex));
                         }
-                        else if (await bucket.GetValueAsync(cancellationToken).ConfigureAwait(false) is T typedValue)
-                            return typedValue;
-                        else
-                            throw new InvalidCastException();
+                        catch
+                        {
+                            // Nothing we can do about this
+                        }
+                        return new TryOperationResult(ex);
                     }
-                    if (valueSource.IsAsync)
-                        value = await valueSource.GetValueAsync(cancellationToken).ConfigureAwait(false);
-                    else
-                    {
-                        value = valueSource.GetValue(cancellationToken);
-                        if (typeof(TValue) == typeof(object))
-                            value = (T)(await TaskResolver.ResolveAsync(value).ConfigureAwait(false));
-                    }
-                    addedBucket = new Bucket(this, key, value, valueSource.CreateContravariantValueSource<TValue>());
-                    buckets.TryAdd(key, addedBucket);
-                    return value;
+                    buckets.TryAdd(key, new Bucket(this, key, value, valueSource, expireIn));
                 }
-            }
-            finally
-            {
                 if (expired != null)
                     OnValueExpired(new ValueExpiredEventArgs(key, expiredValue, expired.Value));
-                if (addedBucket != null)
+                OnValueAdded(new KeyValueEventArgs(key, value));
+                return TryOperationResult.Succeeded;
+            }, cancellationToken);
+
+        /// <summary>
+        /// Tries to add a value to the cache
+        /// </summary>
+        /// <param name="key">The key of the value</param>
+        /// <param name="valueSource">The source of the value</param>
+        /// <param name="expireIn">The amount of time in which the value should expire</param>
+        /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
+        /// <returns>true if the value was added; otherwise, false</returns>
+        protected virtual Task<TryOperationResult> PerformTryAddAsync(TKey key, ValueSource<TValue> valueSource, TimeSpan? expireIn = null, CancellationToken cancellationToken = default) =>
+            WrapTimeoutAsync(async ct =>
+            {
+                DateTime? expired = null;
+                var expiredValue = default(TValue);
+                TValue value;
+                using (await GetAsyncReaderWriterLock(key).WriterLockAsync(ct).ConfigureAwait(false))
                 {
+                    ct.ThrowIfCancellationRequested();
+                    if (buckets.TryGetValue(key, out var bucket))
+                    {
+                        if (bucket.Expiration < DateTime.UtcNow)
+                        {
+                            buckets.TryRemove(key, out var removedBucket);
+                            expired = removedBucket.Expiration;
+                            removedBucket.TrySoftGetValue(out expiredValue);
+                        }
+                        else
+                            return TryOperationResult.DuplicateKey;
+                    }
+                    try
+                    {
+                        if (valueSource.IsAsync)
+                            value = await valueSource.GetValueAsync(ct).ConfigureAwait(false);
+                        else
+                        {
+                            value = valueSource.GetValue(ct);
+                            if (typeof(TValue) == typeof(object))
+                                value = (TValue)(await TaskResolver.ResolveAsync(value).ConfigureAwait(false));
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        try
+                        {
+                            OnValueAddFailed(new KeyedExceptionEventArgs(key, ex));
+                        }
+                        catch
+                        {
+                            // Nothing we can do about this
+                        }
+                        return new TryOperationResult(ex);
+                    }
+                    buckets.TryAdd(key, new Bucket(this, key, value, valueSource, expireIn));
+                }
+                if (expired != null)
+                    OnValueExpired(new ValueExpiredEventArgs(key, expiredValue, expired.Value));
+                OnValueAdded(new KeyValueEventArgs(key, value));
+                return TryOperationResult.Succeeded;
+            }, cancellationToken);
+
+        /// <summary>
+        /// Tries to add a value to the cache and refresh it
+        /// </summary>
+        /// <param name="key">The key of the value</param>
+        /// <param name="valueSource">The source of the value</param>
+        /// <param name="interval">The amount of time between refreshes</param>
+        /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
+        /// <returns>true if the value was added; otherwise, false</returns>
+        protected virtual TryOperationResult PerformTryAddAndRefresh(TKey key, ValueSource<TValue> valueSource, TimeSpan interval, CancellationToken cancellationToken = default) =>
+            WrapTimeout(ct =>
+            {
+                DateTime? expired = null;
+                var expiredValue = default(TValue);
+                TValue value;
+                using (GetAsyncReaderWriterLock(key).WriterLock(ct))
+                {
+                    ct.ThrowIfCancellationRequested();
+                    if (buckets.TryGetValue(key, out var bucket))
+                    {
+                        if (bucket.Expiration < DateTime.UtcNow)
+                        {
+                            buckets.TryRemove(key, out var removedBucket);
+                            expired = removedBucket.Expiration;
+                            removedBucket.TrySoftGetValue(out expiredValue);
+                        }
+                        else
+                            return TryOperationResult.DuplicateKey;
+                    }
+                    try
+                    {
+                        value = valueSource.GetValue(ct);
+                    }
+                    catch (Exception ex)
+                    {
+                        try
+                        {
+                            OnValueAddFailed(new KeyedExceptionEventArgs(key, ex));
+                        }
+                        catch
+                        {
+                            // Nothing we can do about this
+                        }
+                        return new TryOperationResult(ex);
+                    }
+                    var addedBucket = new Bucket(this, key, value, valueSource);
                     var addedBucketId = addedBucket.Id;
+                    buckets.TryAdd(key, addedBucket);
+                    var refreshCancellationToken = refreshCancellationTokenSources.AddOrUpdate(key, CancellationTokenSourceFactory, CancellationTokenSourceFactory).Token;
+                    var refreshAutoResetEvent = refreshAutoResetEvents.AddOrUpdate(key, AutoResetEventFactory, AutoResetEventFactory);
+                    Task.Run(async () =>
+                    {
+                        while (true)
+                        {
+                            try
+                            {
+                                using (var manualResetEventCancellationTokenSource = new CancellationTokenSource())
+                                {
+                                    await Task.WhenAny(Task.Delay(interval, refreshCancellationToken), refreshAutoResetEvent.WaitAsync(manualResetEventCancellationTokenSource.Token)).ConfigureAwait(false);
+                                    await Task.Run(() =>
+                                    {
+                                        try
+                                        {
+                                            manualResetEventCancellationTokenSource.Cancel();
+                                        }
+                                        catch (ObjectDisposedException)
+                                        {
+                                            // Allow this to happen silently
+                                        }
+                                    }).ConfigureAwait(false);
+                                }
+                                refreshCancellationToken.ThrowIfCancellationRequested();
+                                TValue oldValue;
+                                using (await GetAsyncReaderWriterLock(key).ReaderLockAsync(refreshCancellationToken).ConfigureAwait(false))
+                                {
+                                    if (!buckets.TryGetValue(key, out var refreshingBucket) || refreshingBucket.Id != addedBucketId)
+                                        break;
+                                    if (!refreshingBucket.TrySoftGetValue(out oldValue))
+                                        continue;
+                                }
+                                var newValue = valueSource.GetValue(refreshCancellationToken);
+                                using (await GetAsyncReaderWriterLock(key).WriterLockAsync(refreshCancellationToken).ConfigureAwait(false))
+                                {
+                                    if (!buckets.TryGetValue(key, out var refreshingBucket) || refreshingBucket.Id != addedBucketId)
+                                        break;
+                                    await refreshingBucket.SetValueAsync(newValue, false, refreshCancellationToken).ConfigureAwait(false);
+                                }
+                                OnValueUpdated(new ValueUpdatedEventArgs(key, oldValue, newValue, true));
+                            }
+                            catch (OperationCanceledException)
+                            {
+                                break;
+                            }
+                            catch (Exception ex)
+                            {
+                                try
+                                {
+                                    OnValueRefreshFailed(new KeyedExceptionEventArgs(key, ex));
+                                }
+                                catch
+                                {
+                                    // An unhandled exception thrown by an event handler must not be allowed to prevent subsequent refreshing
+                                }
+                            }
+                        }
+                    });
+                }
+                if (expired != null)
+                    OnValueExpired(new ValueExpiredEventArgs(key, expiredValue, expired.Value));
+                OnValueAdded(new KeyValueEventArgs(key, value));
+                return TryOperationResult.Succeeded;
+            }, cancellationToken);
+
+        /// <summary>
+        /// Tries to add a value to the cache and refresh it
+        /// </summary>
+        /// <param name="key">The key of the value</param>
+        /// <param name="valueSource">The source of the value</param>
+        /// <param name="interval">The amount of time between refreshes</param>
+        /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
+        /// <returns>true if the value was added; otherwise, false</returns>
+        protected virtual Task<TryOperationResult> PerformTryAddAndRefreshAsync(TKey key, ValueSource<TValue> valueSource, TimeSpan interval, CancellationToken cancellationToken = default) =>
+            WrapTimeout(async ct =>
+            {
+                DateTime? expired = null;
+                var expiredValue = default(TValue);
+                TValue value;
+                using (await GetAsyncReaderWriterLock(key).WriterLockAsync().ConfigureAwait(false))
+                {
+                    ct.ThrowIfCancellationRequested();
+                    if (buckets.TryGetValue(key, out var bucket))
+                    {
+                        if (bucket.Expiration < DateTime.UtcNow)
+                        {
+                            buckets.TryRemove(key, out var removedBucket);
+                            expired = removedBucket.Expiration;
+                            removedBucket.TrySoftGetValue(out expiredValue);
+                        }
+                        else
+                            return TryOperationResult.DuplicateKey;
+                    }
+                    try
+                    {
+                        if (valueSource.IsAsync)
+                            value = await valueSource.GetValueAsync(ct).ConfigureAwait(false);
+                        else
+                        {
+                            value = valueSource.GetValue(ct);
+                            if (typeof(TValue) == typeof(object))
+                                value = (TValue)(await TaskResolver.ResolveAsync(value).ConfigureAwait(false));
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        try
+                        {
+                            OnValueAddFailed(new KeyedExceptionEventArgs(key, ex));
+                        }
+                        catch
+                        {
+                            // Nothing we can do about this
+                        }
+                        return new TryOperationResult(ex);
+                    }
+                    var addedBucket = new Bucket(this, key, value, valueSource);
+                    var addedBucketId = addedBucket.Id;
+                    buckets.TryAdd(key, addedBucket);
                     var refreshCancellationToken = refreshCancellationTokenSources.AddOrUpdate(key, CancellationTokenSourceFactory, CancellationTokenSourceFactory).Token;
                     var refreshAutoResetEvent = refreshAutoResetEvents.AddOrUpdate(key, AutoResetEventFactory, AutoResetEventFactory);
 #pragma warning disable CS4014
@@ -1712,14 +2160,14 @@ namespace Gear.Caching
                                     if (!refreshingBucket.TrySoftGetValue(out oldValue))
                                         continue;
                                 }
-                                T newValue;
+                                TValue newValue;
                                 if (valueSource.IsAsync)
                                     newValue = await valueSource.GetValueAsync(refreshCancellationToken).ConfigureAwait(false);
                                 else
                                 {
                                     newValue = valueSource.GetValue(refreshCancellationToken);
                                     if (typeof(TValue) == typeof(object))
-                                        newValue = (T)(await TaskResolver.ResolveAsync(newValue).ConfigureAwait(false));
+                                        newValue = (TValue)(await TaskResolver.ResolveAsync(newValue).ConfigureAwait(false));
                                 }
                                 using (await GetAsyncReaderWriterLock(key).WriterLockAsync(refreshCancellationToken).ConfigureAwait(false))
                                 {
@@ -1747,431 +2195,12 @@ namespace Gear.Caching
                         }
                     });
 #pragma warning restore CS4014
-                    OnValueAdded(new KeyValueEventArgs(key, value));
                 }
-            }
-        }
-
-        /// <summary>
-        /// Gets a value in the cache or adds it to the cache if it is not already present
-        /// </summary>
-        /// <typeparam name="T">The type of the value</typeparam>
-        /// <param name="key">The key of the value</param>
-        /// <param name="valueSource">The source of the value to add if the value is not present in the cache</param>
-        /// <param name="expireIn">The amount of time in which the value should expire</param>
-        /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
-        /// <returns>The value</returns>
-        /// <exception cref="InvalidCastException">The value associated to <paramref name="key"/> cannot be cast to <typeparamref name="T"/></exception>
-        protected virtual async Task<T> PerformGetOrAddAsync<T>(TKey key, ValueSource<T> valueSource, TimeSpan? expireIn = null, CancellationToken cancellationToken = default) where T : TValue
-        {
-            DateTime? expired = null;
-            var expiredValue = default(TValue);
-            var added = false;
-            var value = default(T);
-            try
-            {
-                using (await GetAsyncReaderWriterLock(key).ReaderLockAsync(cancellationToken).ConfigureAwait(false))
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    if (buckets.TryGetValue(key, out var bucket))
-                    {
-                        if (bucket.Expiration < DateTime.UtcNow)
-                        {
-                            buckets.TryRemove(key, out var removedBucket);
-                            expired = removedBucket.Expiration;
-                            removedBucket.TrySoftGetValue(out expiredValue);
-                        }
-                        else if (await bucket.GetValueAsync(cancellationToken).ConfigureAwait(false) is T typedValue)
-                            return typedValue;
-                        else
-                            throw new InvalidCastException();
-                    }
-                }
-                using (await GetAsyncReaderWriterLock(key).WriterLockAsync(cancellationToken).ConfigureAwait(false))
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    if (buckets.TryGetValue(key, out var bucket))
-                    {
-                        if (bucket.Expiration < DateTime.UtcNow)
-                        {
-                            buckets.TryRemove(key, out var removedBucket);
-                            expired = removedBucket.Expiration;
-                            removedBucket.TrySoftGetValue(out expiredValue);
-                        }
-                        else if (await bucket.GetValueAsync(cancellationToken).ConfigureAwait(false) is T typedValue)
-                            return typedValue;
-                        else
-                            throw new InvalidCastException();
-                    }
-                    if (valueSource.IsAsync)
-                        value = await valueSource.GetValueAsync(cancellationToken).ConfigureAwait(false);
-                    else
-                    {
-                        value = valueSource.GetValue(cancellationToken);
-                        if (typeof(TValue) == typeof(object))
-                            value = (T)(await TaskResolver.ResolveAsync(value).ConfigureAwait(false));
-                    }
-                    buckets.TryAdd(key, new Bucket(this, key, value, valueSource.CreateContravariantValueSource<TValue>(), expireIn));
-                    added = true;
-                    return value;
-                }
-            }
-            finally
-            {
                 if (expired != null)
                     OnValueExpired(new ValueExpiredEventArgs(key, expiredValue, expired.Value));
-                if (added)
-                    OnValueAdded(new KeyValueEventArgs(key, value));
-            }
-        }
-
-        /// <summary>
-        /// Invoked when a caller tries to add a value to the cache
-        /// </summary>
-        /// <param name="key">The key of the value</param>
-        /// <param name="valueSource">The value</param>
-        /// <param name="expireIn">The amount of time in which the value should expire</param>
-        /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
-        /// <returns>true is the value was added; otherwise, false</returns>
-        protected virtual TryOperationResult PerformTryAdd(TKey key, ValueSource<TValue> valueSource, TimeSpan? expireIn = null, CancellationToken cancellationToken = default)
-        {
-            DateTime? expired = null;
-            var expiredValue = default(TValue);
-            TValue value;
-            using (GetAsyncReaderWriterLock(key).WriterLock(cancellationToken))
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                if (buckets.TryGetValue(key, out var bucket))
-                {
-                    if (bucket.Expiration < DateTime.UtcNow)
-                    {
-                        buckets.TryRemove(key, out var removedBucket);
-                        expired = removedBucket.Expiration;
-                        removedBucket.TrySoftGetValue(out expiredValue);
-                    }
-                    else
-                        return TryOperationResult.DuplicateKey;
-                }
-                try
-                {
-                    value = valueSource.GetValue(cancellationToken);
-                }
-                catch (Exception ex)
-                {
-                    try
-                    {
-                        OnValueAddFailed(new KeyedExceptionEventArgs(key, ex));
-                    }
-                    catch
-                    {
-                        // Nothing we can do about this
-                    }
-                    return new TryOperationResult(ex);
-                }
-                buckets.TryAdd(key, new Bucket(this, key, value, valueSource, expireIn));
-            }
-            if (expired != null)
-                OnValueExpired(new ValueExpiredEventArgs(key, expiredValue, expired.Value));
-            OnValueAdded(new KeyValueEventArgs(key, value));
-            return TryOperationResult.Succeeded;
-        }
-
-        /// <summary>
-        /// Tries to add a value to the cache
-        /// </summary>
-        /// <param name="key">The key of the value</param>
-        /// <param name="valueSource">The source of the value</param>
-        /// <param name="expireIn">The amount of time in which the value should expire</param>
-        /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
-        /// <returns>true if the value was added; otherwise, false</returns>
-        protected virtual async Task<TryOperationResult> PerformTryAddAsync(TKey key, ValueSource<TValue> valueSource, TimeSpan? expireIn = null, CancellationToken cancellationToken = default)
-        {
-            DateTime? expired = null;
-            var expiredValue = default(TValue);
-            TValue value;
-            using (await GetAsyncReaderWriterLock(key).WriterLockAsync(cancellationToken).ConfigureAwait(false))
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                if (buckets.TryGetValue(key, out var bucket))
-                {
-                    if (bucket.Expiration < DateTime.UtcNow)
-                    {
-                        buckets.TryRemove(key, out var removedBucket);
-                        expired = removedBucket.Expiration;
-                        removedBucket.TrySoftGetValue(out expiredValue);
-                    }
-                    else
-                        return TryOperationResult.DuplicateKey;
-                }
-                try
-                {
-                    if (valueSource.IsAsync)
-                        value = await valueSource.GetValueAsync(cancellationToken).ConfigureAwait(false);
-                    else
-                    {
-                        value = valueSource.GetValue(cancellationToken);
-                        if (typeof(TValue) == typeof(object))
-                            value = (TValue)(await TaskResolver.ResolveAsync(value).ConfigureAwait(false));
-                    }
-                }
-                catch (Exception ex)
-                {
-                    try
-                    {
-                        OnValueAddFailed(new KeyedExceptionEventArgs(key, ex));
-                    }
-                    catch
-                    {
-                        // Nothing we can do about this
-                    }
-                    return new TryOperationResult(ex);
-                }
-                buckets.TryAdd(key, new Bucket(this, key, value, valueSource, expireIn));
-            }
-            if (expired != null)
-                OnValueExpired(new ValueExpiredEventArgs(key, expiredValue, expired.Value));
-            OnValueAdded(new KeyValueEventArgs(key, value));
-            return TryOperationResult.Succeeded;
-        }
-
-        /// <summary>
-        /// Tries to add a value to the cache and refresh it
-        /// </summary>
-        /// <param name="key">The key of the value</param>
-        /// <param name="valueSource">The source of the value</param>
-        /// <param name="interval">The amount of time between refreshes</param>
-        /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
-        /// <returns>true if the value was added; otherwise, false</returns>
-        protected virtual TryOperationResult PerformTryAddAndRefresh(TKey key, ValueSource<TValue> valueSource, TimeSpan interval, CancellationToken cancellationToken = default)
-        {
-            DateTime? expired = null;
-            var expiredValue = default(TValue);
-            TValue value;
-            using (GetAsyncReaderWriterLock(key).WriterLock(cancellationToken))
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                if (buckets.TryGetValue(key, out var bucket))
-                {
-                    if (bucket.Expiration < DateTime.UtcNow)
-                    {
-                        buckets.TryRemove(key, out var removedBucket);
-                        expired = removedBucket.Expiration;
-                        removedBucket.TrySoftGetValue(out expiredValue);
-                    }
-                    else
-                        return TryOperationResult.DuplicateKey;
-                }
-                try
-                {
-                    value = valueSource.GetValue(cancellationToken);
-                }
-                catch (Exception ex)
-                {
-                    try
-                    {
-                        OnValueAddFailed(new KeyedExceptionEventArgs(key, ex));
-                    }
-                    catch
-                    {
-                        // Nothing we can do about this
-                    }
-                    return new TryOperationResult(ex);
-                }
-                var addedBucket = new Bucket(this, key, value, valueSource);
-                var addedBucketId = addedBucket.Id;
-                buckets.TryAdd(key, addedBucket);
-                var refreshCancellationToken = refreshCancellationTokenSources.AddOrUpdate(key, CancellationTokenSourceFactory, CancellationTokenSourceFactory).Token;
-                var refreshAutoResetEvent = refreshAutoResetEvents.AddOrUpdate(key, AutoResetEventFactory, AutoResetEventFactory);
-                Task.Run(async () =>
-                {
-                    while (true)
-                    {
-                        try
-                        {
-                            using (var manualResetEventCancellationTokenSource = new CancellationTokenSource())
-                            {
-                                await Task.WhenAny(Task.Delay(interval, refreshCancellationToken), refreshAutoResetEvent.WaitAsync(manualResetEventCancellationTokenSource.Token)).ConfigureAwait(false);
-                                await Task.Run(() =>
-                                {
-                                    try
-                                    {
-                                        manualResetEventCancellationTokenSource.Cancel();
-                                    }
-                                    catch (ObjectDisposedException)
-                                    {
-                                        // Allow this to happen silently
-                                    }
-                                }).ConfigureAwait(false);
-                            }
-                            refreshCancellationToken.ThrowIfCancellationRequested();
-                            TValue oldValue;
-                            using (await GetAsyncReaderWriterLock(key).ReaderLockAsync(refreshCancellationToken).ConfigureAwait(false))
-                            {
-                                if (!buckets.TryGetValue(key, out var refreshingBucket) || refreshingBucket.Id != addedBucketId)
-                                    break;
-                                if (!refreshingBucket.TrySoftGetValue(out oldValue))
-                                    continue;
-                            }
-                            var newValue = valueSource.GetValue(refreshCancellationToken);
-                            using (await GetAsyncReaderWriterLock(key).WriterLockAsync(refreshCancellationToken).ConfigureAwait(false))
-                            {
-                                if (!buckets.TryGetValue(key, out var refreshingBucket) || refreshingBucket.Id != addedBucketId)
-                                    break;
-                                await refreshingBucket.SetValueAsync(newValue, false, refreshCancellationToken).ConfigureAwait(false);
-                            }
-                            OnValueUpdated(new ValueUpdatedEventArgs(key, oldValue, newValue, true));
-                        }
-                        catch (OperationCanceledException)
-                        {
-                            break;
-                        }
-                        catch (Exception ex)
-                        {
-                            try
-                            {
-                                OnValueRefreshFailed(new KeyedExceptionEventArgs(key, ex));
-                            }
-                            catch
-                            {
-                                // An unhandled exception thrown by an event handler must not be allowed to prevent subsequent refreshing
-                            }
-                        }
-                    }
-                });
-            }
-            if (expired != null)
-                OnValueExpired(new ValueExpiredEventArgs(key, expiredValue, expired.Value));
-            OnValueAdded(new KeyValueEventArgs(key, value));
-            return TryOperationResult.Succeeded;
-        }
-
-        /// <summary>
-        /// Tries to add a value to the cache and refresh it
-        /// </summary>
-        /// <param name="key">The key of the value</param>
-        /// <param name="valueSource">The source of the value</param>
-        /// <param name="interval">The amount of time between refreshes</param>
-        /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
-        /// <returns>true if the value was added; otherwise, false</returns>
-        protected virtual async Task<TryOperationResult> PerformTryAddAndRefreshAsync(TKey key, ValueSource<TValue> valueSource, TimeSpan interval, CancellationToken cancellationToken = default)
-        {
-            DateTime? expired = null;
-            var expiredValue = default(TValue);
-            TValue value;
-            using (await GetAsyncReaderWriterLock(key).WriterLockAsync().ConfigureAwait(false))
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                if (buckets.TryGetValue(key, out var bucket))
-                {
-                    if (bucket.Expiration < DateTime.UtcNow)
-                    {
-                        buckets.TryRemove(key, out var removedBucket);
-                        expired = removedBucket.Expiration;
-                        removedBucket.TrySoftGetValue(out expiredValue);
-                    }
-                    else
-                        return TryOperationResult.DuplicateKey;
-                }
-                try
-                {
-                    if (valueSource.IsAsync)
-                        value = await valueSource.GetValueAsync(cancellationToken).ConfigureAwait(false);
-                    else
-                    {
-                        value = valueSource.GetValue(cancellationToken);
-                        if (typeof(TValue) == typeof(object))
-                            value = (TValue)(await TaskResolver.ResolveAsync(value).ConfigureAwait(false));
-                    }
-                }
-                catch (Exception ex)
-                {
-                    try
-                    {
-                        OnValueAddFailed(new KeyedExceptionEventArgs(key, ex));
-                    }
-                    catch
-                    {
-                        // Nothing we can do about this
-                    }
-                    return new TryOperationResult(ex);
-                }
-                var addedBucket = new Bucket(this, key, value, valueSource);
-                var addedBucketId = addedBucket.Id;
-                buckets.TryAdd(key, addedBucket);
-                var refreshCancellationToken = refreshCancellationTokenSources.AddOrUpdate(key, CancellationTokenSourceFactory, CancellationTokenSourceFactory).Token;
-                var refreshAutoResetEvent = refreshAutoResetEvents.AddOrUpdate(key, AutoResetEventFactory, AutoResetEventFactory);
-#pragma warning disable CS4014
-                Task.Run(async () =>
-                {
-                    while (true)
-                    {
-                        try
-                        {
-                            using (var manualResetEventCancellationTokenSource = new CancellationTokenSource())
-                            {
-                                await Task.WhenAny(Task.Delay(interval, refreshCancellationToken), refreshAutoResetEvent.WaitAsync(manualResetEventCancellationTokenSource.Token)).ConfigureAwait(false);
-                                await Task.Run(() =>
-                                {
-                                    try
-                                    {
-                                        manualResetEventCancellationTokenSource.Cancel();
-                                    }
-                                    catch (ObjectDisposedException)
-                                    {
-                                        // Allow this to happen silently
-                                    }
-                                }).ConfigureAwait(false);
-                            }
-                            refreshCancellationToken.ThrowIfCancellationRequested();
-                            TValue oldValue;
-                            using (await GetAsyncReaderWriterLock(key).ReaderLockAsync(refreshCancellationToken).ConfigureAwait(false))
-                            {
-                                if (!buckets.TryGetValue(key, out var refreshingBucket) || refreshingBucket.Id != addedBucketId)
-                                    break;
-                                if (!refreshingBucket.TrySoftGetValue(out oldValue))
-                                    continue;
-                            }
-                            TValue newValue;
-                            if (valueSource.IsAsync)
-                                newValue = await valueSource.GetValueAsync(refreshCancellationToken).ConfigureAwait(false);
-                            else
-                            {
-                                newValue = valueSource.GetValue(refreshCancellationToken);
-                                if (typeof(TValue) == typeof(object))
-                                    newValue = (TValue)(await TaskResolver.ResolveAsync(newValue).ConfigureAwait(false));
-                            }
-                            using (await GetAsyncReaderWriterLock(key).WriterLockAsync(refreshCancellationToken).ConfigureAwait(false))
-                            {
-                                if (!buckets.TryGetValue(key, out var refreshingBucket) || refreshingBucket.Id != addedBucketId)
-                                    break;
-                                await refreshingBucket.SetValueAsync(newValue, false, refreshCancellationToken).ConfigureAwait(false);
-                            }
-                            OnValueUpdated(new ValueUpdatedEventArgs(key, oldValue, newValue, true));
-                        }
-                        catch (OperationCanceledException)
-                        {
-                            break;
-                        }
-                        catch (Exception ex)
-                        {
-                            try
-                            {
-                                OnValueRefreshFailed(new KeyedExceptionEventArgs(key, ex));
-                            }
-                            catch
-                            {
-                                // An unhandled exception thrown by an event handler must not be allowed to prevent subsequent refreshing
-                            }
-                        }
-                    }
-                });
-#pragma warning restore CS4014
-            }
-            if (expired != null)
-                OnValueExpired(new ValueExpiredEventArgs(key, expiredValue, expired.Value));
-            OnValueAdded(new KeyValueEventArgs(key, value));
-            return TryOperationResult.Succeeded;
-        }
+                OnValueAdded(new KeyValueEventArgs(key, value));
+                return TryOperationResult.Succeeded;
+            }, cancellationToken);
 
         /// <summary>
         /// Tries to update a value in the cache
@@ -2182,55 +2211,56 @@ namespace Gear.Caching
         /// <param name="expireIn">The amount of time in which the value should expire</param>
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
         /// <returns>true if the value was updated; otherwise, false</returns>
-        protected virtual TryOperationResult PerformTryUpdate(TKey key, ValueSource<TValue> valueSource, bool setExpiration, TimeSpan? expireIn, CancellationToken cancellationToken = default)
-        {
-            DateTime? expired = null;
-            var expiredValue = default(TValue);
-            try
+        protected virtual TryOperationResult PerformTryUpdate(TKey key, ValueSource<TValue> valueSource, bool setExpiration, TimeSpan? expireIn, CancellationToken cancellationToken = default) =>
+            WrapTimeout(ct =>
             {
-                TValue value, oldValue;
-                using (GetAsyncReaderWriterLock(key).WriterLock(cancellationToken))
+                DateTime? expired = null;
+                var expiredValue = default(TValue);
+                try
                 {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    if (!buckets.TryGetValue(key, out var bucket))
-                        return TryOperationResult.KeyNotFound;
-                    if (bucket.Expiration < DateTime.UtcNow)
+                    TValue value, oldValue;
+                    using (GetAsyncReaderWriterLock(key).WriterLock(ct))
                     {
-                        buckets.TryRemove(key, out var removedBucket);
-                        expired = bucket.Expiration.Value;
-                        bucket.TrySoftGetValue(out expiredValue);
-                        return TryOperationResult.KeyNotFound;
-                    }
-                    try
-                    {
-                        value = valueSource.GetValue(cancellationToken);
-                    }
-                    catch (Exception ex)
-                    {
+                        ct.ThrowIfCancellationRequested();
+                        if (!buckets.TryGetValue(key, out var bucket))
+                            return TryOperationResult.KeyNotFound;
+                        if (bucket.Expiration < DateTime.UtcNow)
+                        {
+                            buckets.TryRemove(key, out var removedBucket);
+                            expired = bucket.Expiration.Value;
+                            bucket.TrySoftGetValue(out expiredValue);
+                            return TryOperationResult.KeyNotFound;
+                        }
                         try
                         {
-                            OnValueUpdateFailed(new KeyedExceptionEventArgs(key, ex));
+                            value = valueSource.GetValue(ct);
                         }
-                        catch
+                        catch (Exception ex)
                         {
-                            // Nothing we can do about this
+                            try
+                            {
+                                OnValueUpdateFailed(new KeyedExceptionEventArgs(key, ex));
+                            }
+                            catch
+                            {
+                                // Nothing we can do about this
+                            }
+                            return new TryOperationResult(ex);
                         }
-                        return new TryOperationResult(ex);
+                        oldValue = bucket.GetValue(ct);
+                        bucket.SetValue(value, true, ct);
+                        if (setExpiration)
+                            bucket.Expiration = DateTime.UtcNow + expireIn;
                     }
-                    oldValue = bucket.GetValue(cancellationToken);
-                    bucket.SetValue(value, true, cancellationToken);
-                    if (setExpiration)
-                        bucket.Expiration = DateTime.UtcNow + expireIn;
+                    OnValueUpdated(new ValueUpdatedEventArgs(key, oldValue, value, false));
+                    return TryOperationResult.Succeeded;
                 }
-                OnValueUpdated(new ValueUpdatedEventArgs(key, oldValue, value, false));
-                return TryOperationResult.Succeeded;
-            }
-            finally
-            {
-                if (expired != null)
-                    OnValueExpired(new ValueExpiredEventArgs(key, expiredValue, expired.Value));
-            }
-        }
+                finally
+                {
+                    if (expired != null)
+                        OnValueExpired(new ValueExpiredEventArgs(key, expiredValue, expired.Value));
+                }
+            }, cancellationToken);
 
         /// <summary>
         /// Tries to update a value in the cache
@@ -2241,62 +2271,63 @@ namespace Gear.Caching
         /// <param name="expireIn">The amount of time in which the value should expire</param>
         /// <param name="cancellationToken">The cancellation token used to cancel the operation</param>
         /// <returns>true if the value was updated; otherwise, false</returns>
-        protected virtual async Task<TryOperationResult> PerformTryUpdateAsync(TKey key, ValueSource<TValue> valueSource, bool setExpiration, TimeSpan? expireIn, CancellationToken cancellationToken = default)
-        {
-            DateTime? expired = null;
-            var expiredValue = default(TValue);
-            try
+        protected virtual Task<TryOperationResult> PerformTryUpdateAsync(TKey key, ValueSource<TValue> valueSource, bool setExpiration, TimeSpan? expireIn, CancellationToken cancellationToken = default) =>
+            WrapTimeoutAsync(async ct =>
             {
-                TValue value, oldValue;
-                using (await GetAsyncReaderWriterLock(key).WriterLockAsync(cancellationToken).ConfigureAwait(false))
+                DateTime? expired = null;
+                var expiredValue = default(TValue);
+                try
                 {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    if (!buckets.TryGetValue(key, out var bucket))
-                        return TryOperationResult.KeyNotFound;
-                    if (bucket.Expiration < DateTime.UtcNow)
+                    TValue value, oldValue;
+                    using (await GetAsyncReaderWriterLock(key).WriterLockAsync(ct).ConfigureAwait(false))
                     {
-                        buckets.TryRemove(key, out var removedBucket);
-                        expired = bucket.Expiration.Value;
-                        bucket.TrySoftGetValue(out expiredValue);
-                        return TryOperationResult.KeyNotFound;
-                    }
-                    try
-                    {
-                        if (valueSource.IsAsync)
-                            value = await valueSource.GetValueAsync(cancellationToken).ConfigureAwait(false);
-                        else
+                        ct.ThrowIfCancellationRequested();
+                        if (!buckets.TryGetValue(key, out var bucket))
+                            return TryOperationResult.KeyNotFound;
+                        if (bucket.Expiration < DateTime.UtcNow)
                         {
-                            value = valueSource.GetValue(cancellationToken);
-                            if (typeof(TValue) == typeof(object))
-                                value = (TValue)(await TaskResolver.ResolveAsync(value).ConfigureAwait(false));
+                            buckets.TryRemove(key, out var removedBucket);
+                            expired = bucket.Expiration.Value;
+                            bucket.TrySoftGetValue(out expiredValue);
+                            return TryOperationResult.KeyNotFound;
                         }
-                    }
-                    catch (Exception ex)
-                    {
                         try
                         {
-                            OnValueUpdateFailed(new KeyedExceptionEventArgs(key, ex));
+                            if (valueSource.IsAsync)
+                                value = await valueSource.GetValueAsync(ct).ConfigureAwait(false);
+                            else
+                            {
+                                value = valueSource.GetValue(ct);
+                                if (typeof(TValue) == typeof(object))
+                                    value = (TValue)(await TaskResolver.ResolveAsync(value).ConfigureAwait(false));
+                            }
                         }
-                        catch
+                        catch (Exception ex)
                         {
-                            // Nothing we can do about this
+                            try
+                            {
+                                OnValueUpdateFailed(new KeyedExceptionEventArgs(key, ex));
+                            }
+                            catch
+                            {
+                                // Nothing we can do about this
+                            }
+                            return new TryOperationResult(ex);
                         }
-                        return new TryOperationResult(ex);
+                        oldValue = await bucket.GetValueAsync(ct).ConfigureAwait(false);
+                        await bucket.SetValueAsync(value, true, ct).ConfigureAwait(false);
+                        if (setExpiration)
+                            bucket.Expiration = DateTime.UtcNow + expireIn;
                     }
-                    oldValue = await bucket.GetValueAsync(cancellationToken).ConfigureAwait(false);
-                    await bucket.SetValueAsync(value, true, cancellationToken).ConfigureAwait(false);
-                    if (setExpiration)
-                        bucket.Expiration = DateTime.UtcNow + expireIn;
+                    OnValueUpdated(new ValueUpdatedEventArgs(key, oldValue, value, false));
+                    return TryOperationResult.Succeeded;
                 }
-                OnValueUpdated(new ValueUpdatedEventArgs(key, oldValue, value, false));
-                return TryOperationResult.Succeeded;
-            }
-            finally
-            {
-                if (expired != null)
-                    OnValueExpired(new ValueExpiredEventArgs(key, expiredValue, expired.Value));
-            }
-        }
+                finally
+                {
+                    if (expired != null)
+                        OnValueExpired(new ValueExpiredEventArgs(key, expiredValue, expired.Value));
+                }
+            }, cancellationToken);
 
         static AsyncReaderWriterLock ReaderWriterLockFactory(TKey key) => new AsyncReaderWriterLock();
 
@@ -3609,14 +3640,66 @@ namespace Gear.Caching
         }
 
         /// <summary>
-        /// Gets whether newly added values start as weak references (has no effect if <see cref="WeakenReferencesIn"/> is <c>null</c> or <c>default</c>)
+        /// Ensures that a method representing an operation times out in the <see cref="OperationTimeout"/> property has been set
         /// </summary>
-        public bool AddReferencesAsWeak { get; }
+        /// <param name="method">The method</param>
+        /// <param name="cancellationToken">The cancellation token from the caller</param>
+        protected void WrapTimeout(Action<CancellationToken> method, CancellationToken cancellationToken)
+        {
+            if (OperationTimeout is TimeSpan operationTimeout)
+                using (var timeoutCts = new CancellationTokenSource(operationTimeout))
+                using (var combinedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token))
+                    method(combinedCts.Token);
+            else
+                method(cancellationToken);
+        }
 
         /// <summary>
-        /// Gets the amount of time a value can be left unaccessed by callers before being potentially subjected to garbage collection (if <c>null</c> or <c>default</c>, values will never be garbage collected)
+        /// Ensures that a method representing an operation times out in the <see cref="OperationTimeout"/> property has been set and returns its return
         /// </summary>
-        public TimeSpan? WeakenReferencesIn { get; }
+        /// <typeparam name="T">The return type of the method</typeparam>
+        /// <param name="method">The method</param>
+        /// <param name="cancellationToken">The cancellation token from the caller</param>
+        protected T WrapTimeout<T>(Func<CancellationToken, T> method, CancellationToken cancellationToken)
+        {
+            if (OperationTimeout is TimeSpan operationTimeout)
+                using (var timeoutCts = new CancellationTokenSource(operationTimeout))
+                using (var combinedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token))
+                    return method(combinedCts.Token);
+            else
+                return method(cancellationToken);
+        }
+
+        /// <summary>
+        /// Ensures that an asynchronous method representing an operation times out in the <see cref="OperationTimeout"/> property has been set
+        /// </summary>
+        /// <param name="asyncMethod">The asynchronous method</param>
+        /// <param name="cancellationToken">The cancellation token from the caller</param>
+        protected async Task WrapTimeoutAsync(Func<CancellationToken, Task> asyncMethod, CancellationToken cancellationToken)
+        {
+            if (OperationTimeout is TimeSpan operationTimeout)
+                using (var timeoutCts = new CancellationTokenSource(operationTimeout))
+                using (var combinedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token))
+                    await asyncMethod(combinedCts.Token).ConfigureAwait(false);
+            else
+                await asyncMethod(cancellationToken).ConfigureAwait(false);
+        }
+
+        /// <summary>
+        /// Ensures that a asynchronous method representing an operation times out in the <see cref="OperationTimeout"/> property has been set and returns its return
+        /// </summary>
+        /// <typeparam name="T">The return type of the method</typeparam>
+        /// <param name="asyncMethod">The asynchronous method</param>
+        /// <param name="cancellationToken">The cancellation token from the caller</param>
+        protected async Task<T> WrapTimeoutAsync<T>(Func<CancellationToken, Task<T>> asyncMethod, CancellationToken cancellationToken)
+        {
+            if (OperationTimeout is TimeSpan operationTimeout)
+                using (var timeoutCts = new CancellationTokenSource(operationTimeout))
+                using (var combinedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token))
+                    return await asyncMethod(combinedCts.Token).ConfigureAwait(false);
+            else
+                return await asyncMethod(cancellationToken).ConfigureAwait(false);
+        }
 
         class Bucket
         {
